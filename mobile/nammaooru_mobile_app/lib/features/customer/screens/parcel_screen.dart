@@ -9,24 +9,24 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
-import '../services/labour_service.dart';
-import 'create_labour_screen.dart';
-import 'labour_post_detail_screen.dart';
+import '../services/parcel_service.dart';
+import 'create_parcel_screen.dart';
+import 'parcel_post_detail_screen.dart';
 
-class LabourScreen extends StatefulWidget {
-  const LabourScreen({super.key});
+class ParcelScreen extends StatefulWidget {
+  const ParcelScreen({super.key});
 
   @override
-  State<LabourScreen> createState() => _LabourScreenState();
+  State<ParcelScreen> createState() => _ParcelScreenState();
 }
 
 final _nameBlurFilter = ImageFilter.blur(sigmaX: 5, sigmaY: 5);
 
-class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderStateMixin {
-  final LabourService _labourService = LabourService();
+class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderStateMixin {
+  final ParcelService _parcelService = ParcelService();
   List<dynamic> _posts = [];
   bool _isLoading = true;
-  String? _selectedCategory;
+  String? _selectedServiceType;
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
@@ -37,68 +37,26 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   bool _isLoadingMyPosts = false;
   bool _myPostsLoaded = false;
 
-  static const Color _labourBlue = Color(0xFF1565C0);
+  static const Color _parcelOrange = Color(0xFFE65100);
 
-  static const Map<String, String> _categoryLabels = {
+  static const Map<String, String> _serviceTypeLabels = {
     'All': 'All',
-    'PAINTER': 'Painter',
-    'CARPENTER': 'Carpenter',
-    'ELECTRICIAN': 'Electrician',
-    'PLUMBER': 'Plumber',
-    'CONTRACTOR': 'Contractor',
-    'MASON': 'Mason',
-    'DRIVER': 'Driver',
-    'WELDER': 'Welder',
-    'MECHANIC': 'Mechanic',
-    'TAILOR': 'Tailor',
-    'AC_TECHNICIAN': 'AC Technician',
-    'HELPER': 'Helper',
-    'BIKE_REPAIR': 'Bike Repair',
-    'CAR_REPAIR': 'Car Repair',
-    'TYRE_PUNCTURE': 'Tyre Puncture',
-    'GENERAL_LABOUR': 'General Labour',
-    'OTHER': 'Other',
+    'DOOR_TO_DOOR': 'Door to Door',
+    'PICKUP_POINT': 'Pickup Point',
+    'BOTH': 'Both',
   };
 
-  static const Map<String, String> _categoryTamilMap = {
+  static const Map<String, String> _serviceTypeTamilMap = {
     'All': 'அனைத்தும்',
-    'PAINTER': 'பெயிண்டர்',
-    'CARPENTER': 'தச்சர்',
-    'ELECTRICIAN': 'எலக்ட்ரீஷியன்',
-    'PLUMBER': 'பிளம்பர்',
-    'CONTRACTOR': 'கான்ட்ராக்டர்',
-    'MASON': 'மேஸ்திரி',
-    'DRIVER': 'டிரைவர்',
-    'WELDER': 'வெல்டர்',
-    'MECHANIC': 'மெக்கானிக்',
-    'TAILOR': 'தையல்காரர்',
-    'AC_TECHNICIAN': 'ஏசி டெக்னீஷியன்',
-    'HELPER': 'ஹெல்பர்',
-    'BIKE_REPAIR': 'பைக் ரிப்பேர்',
-    'CAR_REPAIR': 'கார் ரிப்பேர்',
-    'TYRE_PUNCTURE': 'டயர் பஞ்சர்',
-    'GENERAL_LABOUR': 'கூலி',
-    'OTHER': 'பிற',
+    'DOOR_TO_DOOR': 'வீடு வீடாக',
+    'PICKUP_POINT': 'பிக்கப் பாயிண்ட்',
+    'BOTH': 'இரண்டும்',
   };
 
-  static const Map<String, IconData> _categoryIcons = {
-    'PAINTER': Icons.format_paint,
-    'CARPENTER': Icons.carpenter,
-    'ELECTRICIAN': Icons.electrical_services,
-    'PLUMBER': Icons.plumbing,
-    'CONTRACTOR': Icons.engineering,
-    'MASON': Icons.construction,
-    'DRIVER': Icons.drive_eta,
-    'WELDER': Icons.local_fire_department,
-    'MECHANIC': Icons.build,
-    'TAILOR': Icons.content_cut,
-    'AC_TECHNICIAN': Icons.ac_unit,
-    'HELPER': Icons.handyman,
-    'BIKE_REPAIR': Icons.two_wheeler,
-    'CAR_REPAIR': Icons.directions_car,
-    'TYRE_PUNCTURE': Icons.tire_repair,
-    'GENERAL_LABOUR': Icons.person,
-    'OTHER': Icons.work,
+  static const Map<String, IconData> _serviceTypeIcons = {
+    'DOOR_TO_DOOR': Icons.home,
+    'PICKUP_POINT': Icons.store,
+    'BOTH': Icons.swap_horiz,
   };
 
   @override
@@ -136,10 +94,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     });
 
     try {
-      final response = await _labourService.getApprovedPosts(
+      final response = await _parcelService.getApprovedPosts(
         page: 0,
         size: 20,
-        category: _selectedCategory,
+        serviceType: _selectedServiceType,
       );
 
       if (mounted) {
@@ -162,10 +120,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   Future<void> _loadMorePosts() async {
     _currentPage++;
     try {
-      final response = await _labourService.getApprovedPosts(
+      final response = await _parcelService.getApprovedPosts(
         page: _currentPage,
         size: 20,
-        category: _selectedCategory,
+        serviceType: _selectedServiceType,
       );
 
       if (mounted) {
@@ -183,7 +141,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   Future<void> _loadMyPosts() async {
     setState(() => _isLoadingMyPosts = true);
     try {
-      final response = await _labourService.getMyPosts();
+      final response = await _parcelService.getMyPosts();
       if (mounted) {
         setState(() {
           _myPosts = response['data'] ?? [];
@@ -198,21 +156,21 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     }
   }
 
-  String _getCategoryDisplay(String? category) {
-    if (category == null) return '';
-    return _categoryLabels[category] ?? category;
+  String _getServiceTypeDisplay(String? serviceType) {
+    if (serviceType == null) return '';
+    return _serviceTypeLabels[serviceType] ?? serviceType;
   }
 
-  String _getCategoryTamil(String cat, BuildContext context) {
+  String _getServiceTypeTamil(String type, BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context, listen: false);
-    final english = _categoryLabels[cat] ?? cat;
-    final tamil = _categoryTamilMap[cat] ?? cat;
+    final english = _serviceTypeLabels[type] ?? type;
+    final tamil = _serviceTypeTamilMap[type] ?? type;
     return lang.getText(english, tamil);
   }
 
-  void _onCategorySelected(String category) {
+  void _onServiceTypeSelected(String serviceType) {
     setState(() {
-      _selectedCategory = category == 'All' ? null : category;
+      _selectedServiceType = serviceType == 'All' ? null : serviceType;
     });
     _loadPosts();
   }
@@ -223,10 +181,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       context.go('/login');
       return;
     }
-    _callWorker(post['phone'] ?? '');
+    _callService(post['phone'] ?? '');
   }
 
-  Future<void> _callWorker(String phone) async {
+  Future<void> _callService(String phone) async {
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -263,7 +221,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Why are you reporting "${post['name']}"?',
+                  'Why are you reporting "${post['serviceName']}"?',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(height: 12),
@@ -271,7 +229,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                   title: Text(reason, style: const TextStyle(fontSize: 14)),
                   value: reason,
                   groupValue: selectedReason,
-                  activeColor: _labourBlue,
+                  activeColor: _parcelOrange,
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                   onChanged: (value) {
@@ -331,13 +289,13 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       return;
     }
 
-    final result = await _labourService.reportPost(postId, reason, details: details);
+    final result = await _parcelService.reportPost(postId, reason, details: details);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? (result['success'] == true ? 'Listing reported' : 'Failed to report')),
-          backgroundColor: result['success'] == true ? _labourBlue : Colors.red,
+          backgroundColor: result['success'] == true ? _parcelOrange : Colors.red,
         ),
       );
     }
@@ -351,7 +309,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CreateLabourScreen()),
+      MaterialPageRoute(builder: (context) => const CreateParcelScreen()),
     ).then((_) {
       _loadPosts();
       _myPostsLoaded = false;
@@ -360,7 +318,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     });
   }
 
-  // ─── Build ───
+  // --- Build ---
 
   @override
   Widget build(BuildContext context) {
@@ -369,10 +327,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Labours', 'தொழிலாளர்கள்'),
+          langProvider.getText('Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: _labourBlue,
+        backgroundColor: _parcelOrange,
         foregroundColor: Colors.white,
         elevation: 0,
         bottom: TabBar(
@@ -383,8 +341,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           unselectedLabelStyle: const TextStyle(fontSize: 13),
           tabs: [
-            Tab(text: langProvider.getText('Browse', 'பார்க்க')),
-            Tab(text: '${langProvider.getText('My Posts', 'என் பதிவுகள்')}${_myPosts.isNotEmpty ? ' (${_myPosts.length})' : ''}'),
+            Tab(text: langProvider.getText('Browse', '\u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
+            Tab(text: '${langProvider.getText('My Posts', '\u0b8e\u0ba9\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1\u0b95\u0bb3\u0bcd')}${_myPosts.isNotEmpty ? ' (${_myPosts.length})' : ''}'),
           ],
         ),
       ),
@@ -397,19 +355,19 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToCreatePost(),
-        backgroundColor: _labourBlue,
+        backgroundColor: _parcelOrange,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add, size: 28),
       ),
     );
   }
 
-  // ─── Tab 1: Browse Labours ───
+  // --- Tab 1: Browse Parcels ---
 
   Widget _buildBrowseTab() {
     return Column(
       children: [
-        // Category filter chips
+        // Service type filter chips
         Container(
           color: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -418,21 +376,21 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _categoryLabels.length,
+              itemCount: _serviceTypeLabels.length,
               itemBuilder: (context, index) {
-                final cat = _categoryLabels.keys.elementAt(index);
-                final isSelected = (_selectedCategory == null && cat == 'All') ||
-                    _selectedCategory == cat;
+                final type = _serviceTypeLabels.keys.elementAt(index);
+                final isSelected = (_selectedServiceType == null && type == 'All') ||
+                    _selectedServiceType == type;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(_getCategoryTamil(cat, context)),
+                    label: Text(_getServiceTypeTamil(type, context)),
                     selected: isSelected,
-                    onSelected: (_) => _onCategorySelected(cat),
-                    selectedColor: _labourBlue.withOpacity(0.2),
-                    checkmarkColor: _labourBlue,
+                    onSelected: (_) => _onServiceTypeSelected(type),
+                    selectedColor: _parcelOrange.withOpacity(0.2),
+                    checkmarkColor: _parcelOrange,
                     labelStyle: TextStyle(
-                      color: isSelected ? _labourBlue : Colors.grey[700],
+                      color: isSelected ? _parcelOrange : Colors.grey[700],
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
@@ -475,10 +433,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.construction_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.local_shipping_outlined, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            langProvider.getText('No labourers listed yet', 'தொழிலாளர்கள் இன்னும் பதிவிடப்படவில்லை'),
+            langProvider.getText('No parcel services listed yet', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8\u0b95\u0bb3\u0bcd \u0b87\u0ba9\u0bcd\u0ba9\u0bc1\u0bae\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0b9f\u0baa\u0bcd\u0baa\u0b9f\u0bb5\u0bbf\u0bb2\u0bcd\u0bb2\u0bc8'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -487,16 +445,16 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           ),
           const SizedBox(height: 8),
           Text(
-            langProvider.getText('Be the first to post!', 'முதலில் பதிவு செய்யுங்கள்!'),
+            langProvider.getText('Be the first to post!', '\u0bae\u0bc1\u0ba4\u0bb2\u0bbf\u0bb2\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd!'),
             style: TextStyle(color: Colors.grey[500]),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () => _navigateToCreatePost(),
             icon: const Icon(Icons.add),
-            label: Text(langProvider.getText('Add Labour', 'தொழிலாளர் சேர்க்க')),
+            label: Text(langProvider.getText('Add Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _labourBlue,
+              backgroundColor: _parcelOrange,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -519,7 +477,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LabourPostDetailScreen(post: post),
+        builder: (context) => ParcelPostDetailScreen(post: post),
       ),
     );
   }
@@ -527,8 +485,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   Widget _buildPostCard(Map<String, dynamic> post) {
     final isUnavailable = post['status'] == 'SOLD';
     final fullImageUrl = _getFirstImageUrl(post);
-    final category = post['category']?.toString() ?? '';
-    final categoryIcon = _categoryIcons[category] ?? Icons.work;
+    final serviceType = post['serviceType']?.toString() ?? '';
+    final serviceTypeIcon = _serviceTypeIcons[serviceType] ?? Icons.local_shipping;
 
     return GestureDetector(
       onTap: () => _navigateToDetail(post),
@@ -563,8 +521,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                     errorWidget: (context, url, error) => Container(
                       width: 100,
                       height: 130,
-                      color: _labourBlue.withOpacity(0.1),
-                      child: Icon(categoryIcon, size: 40, color: _labourBlue),
+                      color: _parcelOrange.withOpacity(0.1),
+                      child: Icon(serviceTypeIcon, size: 40, color: _parcelOrange),
                     ),
                   ),
                 )
@@ -573,13 +531,13 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                   width: 100,
                   height: 130,
                   decoration: BoxDecoration(
-                    color: _labourBlue.withOpacity(0.1),
+                    color: _parcelOrange.withOpacity(0.1),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(12),
                       bottomLeft: Radius.circular(12),
                     ),
                   ),
-                  child: Icon(categoryIcon, size: 40, color: _labourBlue),
+                  child: Icon(serviceTypeIcon, size: 40, color: _parcelOrange),
                 ),
               // Details
               Expanded(
@@ -588,12 +546,12 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Name
+                      // Service Name
                       Builder(builder: (context) {
                         final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
                         return isLoggedIn
                             ? Text(
-                                post['name'] ?? '',
+                                post['serviceName'] ?? '',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -606,7 +564,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                                 child: ImageFiltered(
                                   imageFilter: _nameBlurFilter,
                                   child: Text(
-                                    post['name'] ?? '',
+                                    post['serviceName'] ?? '',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -619,33 +577,54 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                               );
                       }),
                       const SizedBox(height: 4),
-                      // Category badge
+                      // Service type badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _labourBlue.withOpacity(0.1),
+                          color: _parcelOrange.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          _getCategoryDisplay(category),
-                          style: const TextStyle(fontSize: 11, color: _labourBlue, fontWeight: FontWeight.w500),
+                          _getServiceTypeDisplay(serviceType),
+                          style: const TextStyle(fontSize: 11, color: _parcelOrange, fontWeight: FontWeight.w500),
                         ),
                       ),
                       const SizedBox(height: 4),
-                      // Experience
-                      if (post['experience'] != null && post['experience'].toString().isNotEmpty)
+                      // From -> To route
+                      if ((post['fromLocation'] != null && post['fromLocation'].toString().isNotEmpty) ||
+                          (post['toLocation'] != null && post['toLocation'].toString().isNotEmpty))
                         Row(
                           children: [
-                            Icon(Icons.work_history, size: 14, color: Colors.grey[500]),
+                            Icon(Icons.route, size: 14, color: Colors.grey[500]),
                             const SizedBox(width: 4),
-                            Text(
-                              post['experience'],
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                            Flexible(
+                              child: Text(
+                                '${post['fromLocation'] ?? ''} \u2192 ${post['toLocation'] ?? ''}',
+                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),
-                      // Location
-                      if (post['location'] != null && post['location'].toString().isNotEmpty) ...[
+                      // Price info
+                      if (post['priceInfo'] != null && post['priceInfo'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(Icons.currency_rupee, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                post['priceInfo'],
+                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      // Address
+                      if (post['address'] != null && post['address'].toString().isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
@@ -653,7 +632,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                post['location'],
+                                post['address'],
                                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -674,7 +653,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                                   icon: const Icon(Icons.call, size: 16),
                                   label: const Text('Call', style: TextStyle(fontSize: 13)),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _labourBlue,
+                                    backgroundColor: _parcelOrange,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(horizontal: 8),
                                     shape: RoundedRectangleBorder(
@@ -730,7 +709,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     );
   }
 
-  // ─── Tab 2: My Posts ───
+  // --- Tab 2: My Posts ---
 
   Widget _buildMyPostsTab() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -745,7 +724,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.push('/login'),
-              style: ElevatedButton.styleFrom(backgroundColor: _labourBlue, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(backgroundColor: _parcelOrange, foregroundColor: Colors.white),
               child: const Text('Log In'),
             ),
           ],
@@ -766,15 +745,15 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
             Icon(Icons.post_add, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              langProvider.getText('You haven\'t posted anything yet', 'நீங்கள் இன்னும் எதுவும் பதிவிடவில்லை'),
+              langProvider.getText('You haven\'t posted anything yet', '\u0ba8\u0bc0\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0b87\u0ba9\u0bcd\u0ba9\u0bc1\u0bae\u0bcd \u0b8e\u0ba4\u0bc1\u0bb5\u0bc1\u0bae\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0b9f\u0bb5\u0bbf\u0bb2\u0bcd\u0bb2\u0bc8'),
               style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => _navigateToCreatePost(),
               icon: const Icon(Icons.add),
-              label: Text(langProvider.getText('Add Labour', 'தொழிலாளர் சேர்க்க')),
-              style: ElevatedButton.styleFrom(backgroundColor: _labourBlue, foregroundColor: Colors.white),
+              label: Text(langProvider.getText('Add Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
+              style: ElevatedButton.styleFrom(backgroundColor: _parcelOrange, foregroundColor: Colors.white),
             ),
           ],
         ),
@@ -800,8 +779,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   Widget _buildMyPostCard(Map<String, dynamic> post) {
     final status = post['status'] ?? 'PENDING_APPROVAL';
     final fullImageUrl = _getFirstImageUrl(post);
-    final category = post['category']?.toString() ?? '';
-    final categoryIcon = _categoryIcons[category] ?? Icons.work;
+    final serviceType = post['serviceType']?.toString() ?? '';
+    final serviceTypeIcon = _serviceTypeIcons[serviceType] ?? Icons.local_shipping;
 
     Color statusColor;
     String statusText;
@@ -872,8 +851,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        width: 80, height: 80, color: _labourBlue.withOpacity(0.1),
-                        child: Icon(categoryIcon, size: 30, color: _labourBlue),
+                        width: 80, height: 80, color: _parcelOrange.withOpacity(0.1),
+                        child: Icon(serviceTypeIcon, size: 30, color: _parcelOrange),
                       ),
                     ),
                   ),
@@ -885,10 +864,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: _labourBlue.withOpacity(0.1),
+                      color: _parcelOrange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(categoryIcon, size: 30, color: _labourBlue),
+                    child: Icon(serviceTypeIcon, size: 30, color: _parcelOrange),
                   ),
                 ),
               // Details
@@ -899,18 +878,23 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        post['name'] ?? '',
+                        post['serviceName'] ?? '',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _getCategoryDisplay(category),
-                        style: TextStyle(fontSize: 13, color: _labourBlue, fontWeight: FontWeight.w500),
+                        _getServiceTypeDisplay(serviceType),
+                        style: TextStyle(fontSize: 13, color: _parcelOrange, fontWeight: FontWeight.w500),
                       ),
-                      if (post['experience'] != null && post['experience'].toString().isNotEmpty) ...[
+                      if ((post['fromLocation'] != null && post['fromLocation'].toString().isNotEmpty) ||
+                          (post['toLocation'] != null && post['toLocation'].toString().isNotEmpty)) ...[
                         const SizedBox(height: 2),
-                        Text(post['experience'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                        Text(
+                          '${post['fromLocation'] ?? ''} \u2192 ${post['toLocation'] ?? ''}',
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                       if (status == 'APPROVED') ...[
                         const SizedBox(height: 8),
@@ -919,7 +903,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () async {
-                                  final result = await _labourService.markAsUnavailable(post['id']);
+                                  final result = await _parcelService.markAsUnavailable(post['id']);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
@@ -946,7 +930,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                                   ),
                                 );
                                 if (confirm == true) {
-                                  final result = await _labourService.deletePost(post['id']);
+                                  final result = await _parcelService.deletePost(post['id']);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
@@ -968,7 +952,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () async {
-                                  final result = await _labourService.markAsAvailable(post['id']);
+                                  final result = await _parcelService.markAsAvailable(post['id']);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
@@ -996,7 +980,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                                   ),
                                 );
                                 if (confirm == true) {
-                                  final result = await _labourService.deletePost(post['id']);
+                                  final result = await _parcelService.deletePost(post['id']);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),

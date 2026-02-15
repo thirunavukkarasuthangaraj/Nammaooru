@@ -132,10 +132,17 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Marketplace',
       items: [
+        { title: 'Post Dashboard', icon: 'dashboard', route: '/admin/post-dashboard', badge: null },
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
         { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null },
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
+        { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
+        { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
+        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
+        { title: 'Labour Reports', icon: 'report_problem', route: '/admin/labours/reported', badge: null },
+        { title: 'Travel Reports', icon: 'report_problem', route: '/admin/travels/reported', badge: null },
+        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null },
         { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null }
       ]
     },
@@ -158,6 +165,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'System Settings', icon: 'settings', route: '/settings', badge: null },
         { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
+        { title: 'Feature Config', icon: 'toggle_on', route: '/admin/feature-config', badge: null },
         { title: 'Menu Permissions', icon: 'menu_open', route: '/admin/menu-permissions', badge: null },
         { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null },
@@ -208,10 +216,17 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Marketplace',
       items: [
+        { title: 'Post Dashboard', icon: 'dashboard', route: '/admin/post-dashboard', badge: null },
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
         { title: 'Real Estate', icon: 'home_work', route: '/admin/real-estate', badge: null },
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
+        { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
+        { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
+        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
+        { title: 'Labour Reports', icon: 'report_problem', route: '/admin/labours/reported', badge: null },
+        { title: 'Travel Reports', icon: 'report_problem', route: '/admin/travels/reported', badge: null },
+        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null },
         { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null }
       ]
     },
@@ -233,6 +248,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'System',
       items: [
         { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
+        { title: 'Feature Config', icon: 'toggle_on', route: '/admin/feature-config', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null }
       ]
     }

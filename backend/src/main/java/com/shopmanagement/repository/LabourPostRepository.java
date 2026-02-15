@@ -29,4 +29,8 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
     Page<LabourPost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<LabourPost> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LabourCategory category, LocalDateTime after, Pageable pageable);
+
+    long countByStatus(PostStatus status);
+
+    long countByReportCountGreaterThan(int count);
 }

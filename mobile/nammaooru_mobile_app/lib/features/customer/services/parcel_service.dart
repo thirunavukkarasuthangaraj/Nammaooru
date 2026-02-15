@@ -4,81 +4,93 @@ import '../../../core/api/api_client.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/storage/secure_storage.dart';
 
-class LabourService {
+class ParcelService {
   final ApiService _apiService = ApiService();
 
-  /// Get approved labour posts (public feed)
+  /// Get approved parcel posts (public feed)
   Future<Map<String, dynamic>> getApprovedPosts({
     int page = 0,
     int size = 20,
-    String? category,
+    String? serviceType,
   }) async {
     try {
-      Logger.api('Fetching labour posts - page: $page, size: $size, category: $category');
+      Logger.api('Fetching parcel posts - page: $page, size: $size, serviceType: $serviceType');
 
       final queryParams = <String, String>{
         'page': page.toString(),
         'size': size.toString(),
       };
 
-      if (category != null && category.isNotEmpty) {
-        queryParams['category'] = category;
+      if (serviceType != null && serviceType.isNotEmpty) {
+        queryParams['serviceType'] = serviceType;
       }
 
       final response = await _apiService.get(
-        '/labours',
+        '/parcels',
         queryParams: queryParams,
         includeAuth: true,
       );
 
       return response;
     } catch (e) {
-      Logger.e('Failed to fetch labour posts', 'LABOURS', e);
+      Logger.e('Failed to fetch parcel posts', 'PARCELS', e);
       rethrow;
     }
   }
 
-  /// Get my posts (user's own labour listings)
+  /// Get my posts (user's own parcel listings)
   Future<Map<String, dynamic>> getMyPosts() async {
     try {
-      Logger.api('Fetching my labour posts');
+      Logger.api('Fetching my parcel posts');
 
       final response = await _apiService.get(
-        '/labours/my',
+        '/parcels/my',
         includeAuth: true,
       );
 
       return response;
     } catch (e) {
-      Logger.e('Failed to fetch my labour posts', 'LABOURS', e);
+      Logger.e('Failed to fetch my parcel posts', 'PARCELS', e);
       rethrow;
     }
   }
 
-  /// Create a new labour post with optional images (up to 3)
+  /// Create a new parcel post with optional images (up to 3)
   Future<Map<String, dynamic>> createPost({
-    required String name,
+    required String serviceName,
     required String phone,
-    required String category,
-    String? experience,
-    String? location,
+    required String serviceType,
+    String? fromLocation,
+    String? toLocation,
+    String? priceInfo,
+    String? address,
+    String? timings,
     String? description,
     List<String>? imagePaths,
   }) async {
     try {
-      Logger.api('Creating labour post: $name ($category)');
+      Logger.api('Creating parcel post: $serviceName ($serviceType)');
 
       final formMap = <String, dynamic>{
-        'name': name,
+        'serviceName': serviceName,
         'phone': phone,
-        'category': category,
+        'serviceType': serviceType,
       };
 
-      if (experience != null && experience.isNotEmpty) {
-        formMap['experience'] = experience;
+      if (fromLocation != null && fromLocation.isNotEmpty) {
+        formMap['fromLocation'] = fromLocation;
       }
-      if (location != null && location.isNotEmpty) {
-        formMap['location'] = location;
+      if (toLocation != null && toLocation.isNotEmpty) {
+        formMap['toLocation'] = toLocation;
+      }
+      if (priceInfo != null && priceInfo.isNotEmpty) {
+        formMap['priceInfo'] = priceInfo;
+      }
+      if (address != null && address.isNotEmpty) {
+        formMap['address'] = address;
+      }
+      if (timings != null && timings.isNotEmpty) {
+        formMap['timings'] = timings;
       }
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;
@@ -115,7 +127,7 @@ class LabourService {
       }
 
       final response = await dio.post(
-        '/labours',
+        '/parcels',
         data: formData,
         options: Options(headers: headers),
       );
@@ -123,10 +135,10 @@ class LabourService {
       return {
         'success': true,
         'data': response.data?['data'],
-        'message': response.data?['message'] ?? 'Labour listing submitted successfully',
+        'message': response.data?['message'] ?? 'Parcel service listing submitted successfully',
       };
     } on DioException catch (e) {
-      Logger.e('Failed to create labour post', 'LABOURS', e);
+      Logger.e('Failed to create parcel post', 'PARCELS', e);
       final errorMessage = e.response?.data?['message'] ??
                           e.response?.data?['error'] ??
                           'Failed to create listing. Please try again.';
@@ -135,7 +147,7 @@ class LabourService {
         'message': errorMessage,
       };
     } catch (e) {
-      Logger.e('Failed to create labour post', 'LABOURS', e);
+      Logger.e('Failed to create parcel post', 'PARCELS', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',
@@ -147,7 +159,7 @@ class LabourService {
     try {
       return await SecureStorage.getAuthToken();
     } catch (e) {
-      Logger.e('Failed to get auth token', 'LABOURS', e);
+      Logger.e('Failed to get auth token', 'PARCELS', e);
       return null;
     }
   }
@@ -155,10 +167,10 @@ class LabourService {
   /// Mark a listing as available (toggle back from unavailable)
   Future<Map<String, dynamic>> markAsAvailable(int postId) async {
     try {
-      Logger.api('Marking labour post as available: $postId');
+      Logger.api('Marking parcel post as available: $postId');
 
       final response = await ApiClient.put(
-        '/labours/$postId/available',
+        '/parcels/$postId/available',
       );
 
       return {
@@ -167,13 +179,13 @@ class LabourService {
         'message': response.data?['message'] ?? 'Listing marked as available',
       };
     } on DioException catch (e) {
-      Logger.e('Failed to mark labour post as available', 'LABOURS', e);
+      Logger.e('Failed to mark parcel post as available', 'PARCELS', e);
       return {
         'success': false,
         'message': e.response?.data?['message'] ?? 'Failed to mark as available',
       };
     } catch (e) {
-      Logger.e('Failed to mark labour post as available', 'LABOURS', e);
+      Logger.e('Failed to mark parcel post as available', 'PARCELS', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',
@@ -184,10 +196,10 @@ class LabourService {
   /// Mark a listing as unavailable
   Future<Map<String, dynamic>> markAsUnavailable(int postId) async {
     try {
-      Logger.api('Marking labour post as unavailable: $postId');
+      Logger.api('Marking parcel post as unavailable: $postId');
 
       final response = await ApiClient.put(
-        '/labours/$postId/unavailable',
+        '/parcels/$postId/unavailable',
       );
 
       return {
@@ -196,13 +208,13 @@ class LabourService {
         'message': response.data?['message'] ?? 'Listing marked as unavailable',
       };
     } on DioException catch (e) {
-      Logger.e('Failed to mark labour post as unavailable', 'LABOURS', e);
+      Logger.e('Failed to mark parcel post as unavailable', 'PARCELS', e);
       return {
         'success': false,
         'message': e.response?.data?['message'] ?? 'Failed to mark as unavailable',
       };
     } catch (e) {
-      Logger.e('Failed to mark labour post as unavailable', 'LABOURS', e);
+      Logger.e('Failed to mark parcel post as unavailable', 'PARCELS', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',
@@ -213,10 +225,10 @@ class LabourService {
   /// Delete a listing
   Future<Map<String, dynamic>> deletePost(int postId) async {
     try {
-      Logger.api('Deleting labour post: $postId');
+      Logger.api('Deleting parcel post: $postId');
 
       final response = await ApiClient.delete(
-        '/labours/$postId',
+        '/parcels/$postId',
       );
 
       return {
@@ -224,13 +236,13 @@ class LabourService {
         'message': response.data?['message'] ?? 'Listing deleted',
       };
     } on DioException catch (e) {
-      Logger.e('Failed to delete labour post', 'LABOURS', e);
+      Logger.e('Failed to delete parcel post', 'PARCELS', e);
       return {
         'success': false,
         'message': e.response?.data?['message'] ?? 'Failed to delete listing',
       };
     } catch (e) {
-      Logger.e('Failed to delete labour post', 'LABOURS', e);
+      Logger.e('Failed to delete parcel post', 'PARCELS', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',
@@ -241,10 +253,10 @@ class LabourService {
   /// Report a listing
   Future<Map<String, dynamic>> reportPost(int postId, String reason, {String? details}) async {
     try {
-      Logger.api('Reporting labour post: $postId, reason: $reason');
+      Logger.api('Reporting parcel post: $postId, reason: $reason');
 
       final response = await ApiClient.post(
-        '/labours/$postId/report',
+        '/parcels/$postId/report',
         data: {
           'reason': reason,
           if (details != null && details.isNotEmpty) 'details': details,
@@ -256,13 +268,13 @@ class LabourService {
         'message': response.data?['message'] ?? 'Listing reported successfully',
       };
     } on DioException catch (e) {
-      Logger.e('Failed to report labour post', 'LABOURS', e);
+      Logger.e('Failed to report parcel post', 'PARCELS', e);
       return {
         'success': false,
         'message': e.response?.data?['message'] ?? 'Failed to report listing',
       };
     } catch (e) {
-      Logger.e('Failed to report labour post', 'LABOURS', e);
+      Logger.e('Failed to report parcel post', 'PARCELS', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',

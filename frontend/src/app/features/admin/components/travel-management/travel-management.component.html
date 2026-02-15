@@ -1,0 +1,190 @@
+<div class="travel-management">
+  <div class="header">
+    <h2>Travel Management</h2>
+    <p class="subtitle">Review and manage travel listing posts</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button mat-flat-button
+            [color]="activeTab === 'pending' ? 'primary' : undefined"
+            (click)="switchTab('pending')">
+      Pending Approval
+    </button>
+    <button mat-flat-button
+            [color]="activeTab === 'all' ? 'primary' : undefined"
+            (click)="switchTab('all')">
+      All Posts
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading posts...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && posts.length === 0" class="empty-state">
+    <mat-icon class="empty-icon">directions_car</mat-icon>
+    <h3>No posts found</h3>
+    <p *ngIf="activeTab === 'pending'">No travel listings are waiting for approval.</p>
+    <p *ngIf="activeTab === 'all'">No travel posts yet.</p>
+  </div>
+
+  <!-- Posts table -->
+  <div *ngIf="!loading && posts.length > 0" class="posts-container">
+    <table mat-table [dataSource]="posts" class="posts-table">
+
+      <!-- Image Column -->
+      <ng-container matColumnDef="image">
+        <th mat-header-cell *matHeaderCellDef>Image</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="post-image" [class.clickable]="post.imageUrls" (click)="post.imageUrls && openGallery(post)">
+            <img *ngIf="post.imageUrls"
+                 [src]="getFirstImageUrl(post.imageUrls)"
+                 alt="Travel"
+                 loading="lazy">
+            <mat-icon *ngIf="!post.imageUrls" class="no-image">directions_car</mat-icon>
+            <span class="image-count" *ngIf="getImageCount(post.imageUrls) > 1">
+              {{ getImageCount(post.imageUrls) }}
+            </span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Title Column -->
+      <ng-container matColumnDef="title">
+        <th mat-header-cell *matHeaderCellDef>Title</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="post-title">{{ post.title }}</div>
+          <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+        </td>
+      </ng-container>
+
+      <!-- Vehicle Type Column -->
+      <ng-container matColumnDef="vehicleType">
+        <th mat-header-cell *matHeaderCellDef>Vehicle Type</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="category-chip">{{ getVehicleTypeLabel(post.vehicleType) }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Route Column -->
+      <ng-container matColumnDef="route">
+        <th mat-header-cell *matHeaderCellDef>Route</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="route" *ngIf="post.fromLocation || post.toLocation">
+            {{ post.fromLocation || '-' }} &rarr; {{ post.toLocation || '-' }}
+          </span>
+          <span class="no-data" *ngIf="!post.fromLocation && !post.toLocation">-</span>
+        </td>
+      </ng-container>
+
+      <!-- Price Column -->
+      <ng-container matColumnDef="price">
+        <th mat-header-cell *matHeaderCellDef>Price</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="price" *ngIf="post.price">{{ post.price }}</span>
+          <span class="no-data" *ngIf="!post.price">-</span>
+        </td>
+      </ng-container>
+
+      <!-- Phone Column -->
+      <ng-container matColumnDef="phone">
+        <th mat-header-cell *matHeaderCellDef>Phone</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="owner-info">
+            <span class="owner-name">{{ post.sellerName }}</span>
+            <span class="owner-phone">{{ post.phone }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">
+            {{ getStatusLabel(post.status) }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Date Column -->
+      <ng-container matColumnDef="date">
+        <th mat-header-cell *matHeaderCellDef>Date</th>
+        <td mat-cell *matCellDef="let post">
+          <span class="date">{{ formatDate(post.createdAt) }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let post">
+          <div class="action-buttons">
+            <button mat-icon-button color="primary"
+                    *ngIf="post.status === 'PENDING_APPROVAL'"
+                    (click)="approvePost(post)"
+                    matTooltip="Approve">
+              <mat-icon>check_circle</mat-icon>
+            </button>
+            <button mat-icon-button color="warn"
+                    *ngIf="post.status === 'PENDING_APPROVAL'"
+                    (click)="rejectPost(post)"
+                    matTooltip="Reject">
+              <mat-icon>cancel</mat-icon>
+            </button>
+            <button mat-icon-button color="warn"
+                    (click)="deletePost(post)"
+                    matTooltip="Delete">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="['image', 'title', 'vehicleType', 'route', 'price', 'phone', 'status', 'date', 'actions']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['image', 'title', 'vehicleType', 'route', 'price', 'phone', 'status', 'date', 'actions']"></tr>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button mat-button [disabled]="currentPage === 0" (click)="onPageChange(currentPage - 1)">
+        <mat-icon>chevron_left</mat-icon> Previous
+      </button>
+      <span class="page-info">Page {{ currentPage + 1 }} of {{ totalPages }} ({{ totalItems }} posts)</span>
+      <button mat-button [disabled]="currentPage >= totalPages - 1" (click)="onPageChange(currentPage + 1)">
+        Next <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Image Gallery Lightbox -->
+  <div class="gallery-overlay" *ngIf="galleryOpen" (click)="closeGallery()">
+    <div class="gallery-content" (click)="$event.stopPropagation()">
+      <button class="gallery-close" (click)="closeGallery()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div class="gallery-title">{{ galleryTitle }}</div>
+      <div class="gallery-image-container">
+        <button class="gallery-nav prev" *ngIf="galleryImages.length > 1" (click)="prevImage()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <img [src]="galleryImages[galleryIndex]" alt="Travel photo" class="gallery-image">
+        <button class="gallery-nav next" *ngIf="galleryImages.length > 1" (click)="nextImage()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+      <div class="gallery-counter">{{ galleryIndex + 1 }} / {{ galleryImages.length }}</div>
+      <div class="gallery-thumbnails" *ngIf="galleryImages.length > 1">
+        <img *ngFor="let img of galleryImages; let i = index"
+             [src]="img"
+             [class.active]="i === galleryIndex"
+             (click)="galleryIndex = i"
+             alt="Thumbnail">
+      </div>
+    </div>
+  </div>
+</div>

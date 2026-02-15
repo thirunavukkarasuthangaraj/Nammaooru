@@ -91,8 +91,15 @@ public class SecurityConfig {
                                 "/api/real-estate",  // Public: View approved real estate posts
                                 "/api/real-estate/featured",  // Public: View featured properties
                                 "/api/real-estate/*",  // Public: View single property by ID
+                                "/api/labours",  // Public: View approved labour posts
+                                "/api/labours/*",  // Public: View single labour post by ID
+                                "/api/travels",  // Public: View approved travel posts
+                                "/api/travels/*",  // Public: View single travel post by ID
+                                "/api/parcel-services",  // Public: View approved parcel posts
+                                "/api/parcel-services/*",  // Public: View single parcel post by ID
                                 "/api/delivery/confirmation/**",  // Allow OTP verification
                                 "/api/customer/shops/**",
+                                "/api/feature-config/visible",  // Public: Get visible features for mobile
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
                                 "/uploads/**",
                                 "/shops/**",

@@ -36,11 +36,14 @@ import '../widgets/combo_banner_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../services/marketplace_service.dart';
+import '../services/feature_config_service.dart';
 import '../screens/marketplace_screen.dart';
 import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
 import '../screens/farmer_products_screen.dart';
 import '../screens/labour_screen.dart';
+import '../screens/travel_screen.dart';
+import '../screens/parcel_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -68,10 +71,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   List<dynamic> _marketplacePosts = [];
   bool _isLoadingMarketplace = false;
 
+  List<Map<String, dynamic>> _dynamicFeatures = [];
+  bool _isLoadingFeatures = false;
+
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
   final _promoService = PromoCodeService();
   final _marketplaceService = MarketplaceService();
+  final _featureConfigService = FeatureConfigService();
 
   @override
   void initState() {
@@ -86,6 +93,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     // Get location first, then load dashboard data (so shops can be filtered by location)
     await _getCurrentLocationOnStartup();
     _loadDashboardData();
+    _loadFeatureConfig();
   }
 
   @override
@@ -1435,102 +1443,197 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  Future<void> _loadFeatureConfig() async {
+    if (_userLatitude == null || _userLongitude == null) return;
+    setState(() => _isLoadingFeatures = true);
+    try {
+      final features = await _featureConfigService.getVisibleFeatures(
+        _userLatitude!,
+        _userLongitude!,
+      );
+      if (mounted && features.isNotEmpty) {
+        setState(() {
+          _dynamicFeatures = features;
+          _isLoadingFeatures = false;
+        });
+      } else {
+        setState(() => _isLoadingFeatures = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingFeatures = false);
+    }
+  }
+
+  // Map icon string from backend to Flutter IconData
+  IconData _mapIcon(String? iconName) {
+    const iconMap = <String, IconData>{
+      'shopping_basket_rounded': Icons.shopping_basket_rounded,
+      'restaurant_rounded': Icons.restaurant_rounded,
+      'storefront_rounded': Icons.storefront_rounded,
+      'eco_rounded': Icons.eco_rounded,
+      'construction_rounded': Icons.construction_rounded,
+      'directions_bus_rounded': Icons.directions_bus_rounded,
+      'local_shipping_rounded': Icons.local_shipping_rounded,
+      'directions_car_rounded': Icons.directions_car_rounded,
+    };
+    return iconMap[iconName] ?? Icons.grid_view_rounded;
+  }
+
+  // Parse hex color string to Color
+  Color _parseColor(String? colorStr) {
+    if (colorStr == null || colorStr.isEmpty) return const Color(0xFF2196F3);
+    try {
+      final hex = colorStr.replaceFirst('#', '');
+      return Color(int.parse('FF$hex', radix: 16));
+    } catch (_) {
+      return const Color(0xFF2196F3);
+    }
+  }
+
+  // Navigate based on route from backend
+  void _navigateToFeature(String? route) {
+    if (route == null || route.isEmpty) return;
+
+    // Map backend routes to actual navigation
+    if (route.contains('category=grocery')) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => const ShopListingScreen(category: 'grocery', categoryTitle: 'Grocery'),
+      ));
+    } else if (route.contains('category=food')) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => const ShopListingScreen(category: 'food', categoryTitle: 'Food'),
+      ));
+    } else if (route.contains('marketplace')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()));
+    } else if (route.contains('farmer-products')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const FarmerProductsScreen()));
+    } else if (route.contains('labours')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen()));
+    } else if (route.contains('travels')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
+    } else if (route.contains('parcels')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()));
+    } else if (route.contains('bus-timing')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen()));
+    }
+  }
+
   Widget _buildServiceCategories() {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // Use dynamic features if available, otherwise fallback to hardcoded
+        if (_dynamicFeatures.isNotEmpty) {
+          return _buildDynamicCategories(languageProvider);
+        }
+        return _buildDefaultCategories(languageProvider);
+      },
+    );
+  }
+
+  Widget _buildDynamicCategories(LanguageProvider languageProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          childAspectRatio: 1.15,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          children: _dynamicFeatures.map((feature) {
+            final isTamil = Provider.of<LanguageProvider>(context, listen: false).isTamil;
+            final title = isTamil && feature['displayNameTamil'] != null && feature['displayNameTamil'].toString().isNotEmpty
+                ? feature['displayNameTamil']
+                : feature['displayName'] ?? '';
+            return _buildModernCategoryTile(
+              icon: _mapIcon(feature['icon']),
+              title: title,
+              subtitle: '',
+              color: _parseColor(feature['color']),
+              onTap: () => _navigateToFeature(feature['route']),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultCategories(LanguageProvider languageProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          childAspectRatio: 1.15,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
           children: [
-            // Service Categories Grid
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 1.15,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              children: [
-                // 1. Grocery
-                _buildModernCategoryTile(
-                  icon: Icons.shopping_basket_rounded,
-                  title: languageProvider.getText('Grocery', 'மளிகை'),
-                  subtitle: languageProvider.getText('Daily essentials', 'தினசரி பொருட்கள்'),
-                  color: const Color(0xFF4CAF50),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ShopListingScreen(
-                        category: 'grocery',
-                        categoryTitle: 'Grocery',
-                      ),
-                    ),
-                  ),
-                ),
-                // 2. Food
-                _buildModernCategoryTile(
-                  icon: Icons.restaurant_rounded,
-                  title: languageProvider.getText('Food', 'உணவு'),
-                  subtitle: languageProvider.getText('Restaurants & more', 'உணவகங்கள்'),
-                  color: const Color(0xFFFF5722),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ShopListingScreen(
-                        category: 'food',
-                        categoryTitle: 'Food',
-                      ),
-                    ),
-                  ),
-                ),
-                // 3. Marketplace (includes Buy & Sell + Real Estate)
-                _buildModernCategoryTile(
-                  icon: Icons.storefront_rounded,
-                  title: languageProvider.getText('Marketplace', 'சந்தை'),
-                  subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு & விற்கு'),
-                  color: const Color(0xFF2196F3),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MarketplaceScreen()),
-                  ),
-                ),
-                // 4. Farmer Products
-                _buildModernCategoryTile(
-                  icon: Icons.eco_rounded,
-                  title: languageProvider.getText('Farm Products', 'விவசாயம்'),
-                  subtitle: languageProvider.getText('Shop & Farmer posts', 'கடை & விவசாயி'),
-                  color: const Color(0xFF2E7D32),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const FarmerProductsScreen()),
-                  ),
-                ),
-                // 5. Labours
-                _buildModernCategoryTile(
-                  icon: Icons.construction_rounded,
-                  title: languageProvider.getText('Labours', 'தொழிலாளர்'),
-                  subtitle: languageProvider.getText('Find local workers', 'தொழிலாளர் தேடுக'),
-                  color: const Color(0xFF1565C0),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LabourScreen()),
-                  ),
-                ),
-                // 6. Bus Timing
-                _buildModernCategoryTile(
-                  icon: Icons.directions_bus_rounded,
-                  title: languageProvider.getText('Bus Timing', 'பேருந்து நேரம்'),
-                  subtitle: languageProvider.getText('Schedules & routes', 'அட்டவணை'),
-                  color: const Color(0xFF9C27B0),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const BusTimingScreen()),
-                  ),
-                ),
-              ],
+            _buildModernCategoryTile(
+              icon: Icons.shopping_basket_rounded,
+              title: languageProvider.getText('Grocery', 'மளிகை'),
+              subtitle: languageProvider.getText('Daily essentials', 'தினசரி பொருட்கள்'),
+              color: const Color(0xFF4CAF50),
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                builder: (context) => const ShopListingScreen(category: 'grocery', categoryTitle: 'Grocery'),
+              )),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.restaurant_rounded,
+              title: languageProvider.getText('Food', 'உணவு'),
+              subtitle: languageProvider.getText('Restaurants & more', 'உணவகங்கள்'),
+              color: const Color(0xFFFF5722),
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                builder: (context) => const ShopListingScreen(category: 'food', categoryTitle: 'Food'),
+              )),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.storefront_rounded,
+              title: languageProvider.getText('Marketplace', 'சந்தை'),
+              subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு & விற்கு'),
+              color: const Color(0xFF2196F3),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.eco_rounded,
+              title: languageProvider.getText('Farm Products', 'விவசாயம்'),
+              subtitle: languageProvider.getText('Shop & Farmer posts', 'கடை & விவசாயி'),
+              color: const Color(0xFF2E7D32),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FarmerProductsScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.construction_rounded,
+              title: languageProvider.getText('Labours', 'தொழிலாளர்'),
+              subtitle: languageProvider.getText('Find local workers', 'தொழிலாளர் தேடுக'),
+              color: const Color(0xFF1565C0),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.directions_bus_rounded,
+              title: languageProvider.getText('Travels', 'பயணங்கள்'),
+              subtitle: languageProvider.getText('Car, Bus for rent', 'கார், பேருந்து வாடகை'),
+              color: const Color(0xFF00897B),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.local_shipping_rounded,
+              title: languageProvider.getText('Parcel Service', 'பார்சல் சேவை'),
+              subtitle: languageProvider.getText('Courier & delivery', 'கூரியர் & டெலிவரி'),
+              color: const Color(0xFFE65100),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.directions_bus_rounded,
+              title: languageProvider.getText('Bus Timing', 'பேருந்து நேரம்'),
+              subtitle: languageProvider.getText('Schedules & routes', 'அட்டவணை'),
+              color: const Color(0xFF9C27B0),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen())),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 

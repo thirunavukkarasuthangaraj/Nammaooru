@@ -1,12 +1,12 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.dto.notification.NotificationRequest;
-import com.shopmanagement.entity.LabourPost;
-import com.shopmanagement.entity.LabourPost.LabourCategory;
-import com.shopmanagement.entity.LabourPost.PostStatus;
+import com.shopmanagement.entity.TravelPost;
+import com.shopmanagement.entity.TravelPost.VehicleType;
+import com.shopmanagement.entity.TravelPost.PostStatus;
 import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.User;
-import com.shopmanagement.repository.LabourPostRepository;
+import com.shopmanagement.repository.TravelPostRepository;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class LabourPostService {
+public class TravelPostService {
 
-    private final LabourPostRepository labourPostRepository;
+    private final TravelPostRepository travelPostRepository;
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
@@ -38,17 +38,18 @@ public class LabourPostService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public LabourPost createPost(String name, String phone, String categoryStr,
-                                  String experience, String location, String description,
+    public TravelPost createPost(String title, String phone, String vehicleTypeStr,
+                                  String fromLocation, String toLocation, String price,
+                                  Integer seatsAvailable, String description,
                                   List<MultipartFile> images, String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        LabourCategory category;
+        VehicleType vehicleType;
         try {
-            category = LabourCategory.valueOf(categoryStr.toUpperCase());
+            vehicleType = VehicleType.valueOf(vehicleTypeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid labour category: " + categoryStr);
+            throw new RuntimeException("Invalid vehicle type: " + vehicleTypeStr);
         }
 
         String imageUrls = null;
@@ -56,7 +57,7 @@ public class LabourPostService {
             List<String> uploadedUrls = new ArrayList<>();
             for (MultipartFile image : images) {
                 if (image != null && !image.isEmpty()) {
-                    uploadedUrls.add(fileUploadService.uploadFile(image, "labours"));
+                    uploadedUrls.add(fileUploadService.uploadFile(image, "travels"));
                 }
             }
             if (!uploadedUrls.isEmpty()) {
@@ -65,14 +66,16 @@ public class LabourPostService {
         }
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("labours.post.auto_approve", "true"));
+                settingService.getSettingValue("travels.post.auto_approve", "true"));
 
-        LabourPost post = LabourPost.builder()
-                .name(name)
+        TravelPost post = TravelPost.builder()
+                .title(title)
                 .phone(phone)
-                .category(category)
-                .experience(experience)
-                .location(location)
+                .vehicleType(vehicleType)
+                .fromLocation(fromLocation)
+                .toLocation(toLocation)
+                .price(price)
+                .seatsAvailable(seatsAvailable)
                 .description(description)
                 .imageUrls(imageUrls)
                 .sellerUserId(user.getId())
@@ -80,12 +83,12 @@ public class LabourPostService {
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .build();
 
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post created: id={}, name={}, category={}, poster={}, autoApproved={}",
-                saved.getId(), name, category, username, autoApprove);
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post created: id={}, title={}, vehicleType={}, poster={}, autoApproved={}",
+                saved.getId(), title, vehicleType, username, autoApprove);
 
         if (autoApprove) {
-            notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been auto-approved and is now visible to others.");
+            notifySellerPostStatus(saved, "Your travel listing for '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
         } else {
             notifyAdminsNewPost(saved);
         }
@@ -94,86 +97,86 @@ public class LabourPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getApprovedPosts(Pageable pageable) {
+    public Page<TravelPost> getApprovedPosts(Pageable pageable) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
         LocalDateTime cutoffDate = getCutoffDate();
 
         if (cutoffDate != null) {
-            return labourPostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
+            return travelPostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
-        return labourPostRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
+        return travelPostRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getApprovedPostsByCategory(String categoryStr, Pageable pageable) {
+    public Page<TravelPost> getApprovedPostsByVehicleType(String vehicleTypeStr, Pageable pageable) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
         LocalDateTime cutoffDate = getCutoffDate();
 
-        LabourCategory category;
+        VehicleType vehicleType;
         try {
-            category = LabourCategory.valueOf(categoryStr.toUpperCase());
+            vehicleType = VehicleType.valueOf(vehicleTypeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid labour category: " + categoryStr);
+            throw new RuntimeException("Invalid vehicle type: " + vehicleTypeStr);
         }
 
         if (cutoffDate != null) {
-            return labourPostRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
+            return travelPostRepository.findByStatusInAndVehicleTypeAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, vehicleType, cutoffDate, pageable);
         }
-        return labourPostRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(visibleStatuses, category, pageable);
+        return travelPostRepository.findByStatusInAndVehicleTypeOrderByCreatedAtDesc(visibleStatuses, vehicleType, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<LabourPost> getMyPosts(String username) {
+    public List<TravelPost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return labourPostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return travelPostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getPendingPosts(Pageable pageable) {
-        return labourPostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.PENDING_APPROVAL, pageable);
+    public Page<TravelPost> getPendingPosts(Pageable pageable) {
+        return travelPostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.PENDING_APPROVAL, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getReportedPosts(Pageable pageable) {
-        return labourPostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+    public Page<TravelPost> getReportedPosts(Pageable pageable) {
+        return travelPostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<TravelPost> getAllPostsForAdmin(Pageable pageable) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
-        return labourPostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
+        return travelPostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 
     @Transactional
-    public LabourPost approvePost(Long id) {
-        LabourPost post = labourPostRepository.findById(id)
+    public TravelPost approvePost(Long id) {
+        TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setStatus(PostStatus.APPROVED);
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post approved: id={}", id);
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post approved: id={}", id);
 
-        notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been approved and is now visible to others.");
+        notifySellerPostStatus(saved, "Your travel listing for '" + saved.getTitle() + "' has been approved and is now visible to others.");
 
         return saved;
     }
 
     @Transactional
-    public LabourPost rejectPost(Long id) {
-        LabourPost post = labourPostRepository.findById(id)
+    public TravelPost rejectPost(Long id) {
+        TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setStatus(PostStatus.REJECTED);
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post rejected: id={}", id);
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post rejected: id={}", id);
 
-        notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been rejected by admin.");
+        notifySellerPostStatus(saved, "Your travel listing for '" + saved.getTitle() + "' has been rejected by admin.");
 
         return saved;
     }
 
     @Transactional
-    public LabourPost changePostStatus(Long id, String statusStr) {
-        LabourPost post = labourPostRepository.findById(id)
+    public TravelPost changePostStatus(Long id, String statusStr) {
+        TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         PostStatus newStatus;
@@ -185,8 +188,8 @@ public class LabourPostService {
 
         PostStatus oldStatus = post.getStatus();
         post.setStatus(newStatus);
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post status changed: id={}, {} -> {}", id, oldStatus, newStatus);
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post status changed: id={}, {} -> {}", id, oldStatus, newStatus);
 
         String message = getStatusChangeMessage(saved, newStatus);
         if (message != null) {
@@ -196,28 +199,28 @@ public class LabourPostService {
         return saved;
     }
 
-    private String getStatusChangeMessage(LabourPost post, PostStatus status) {
+    private String getStatusChangeMessage(TravelPost post, PostStatus status) {
         switch (status) {
             case APPROVED:
-                return "Your labour listing for '" + post.getName() + "' has been approved and is now visible to others.";
+                return "Your travel listing for '" + post.getTitle() + "' has been approved and is now visible to others.";
             case REJECTED:
-                return "Your labour listing for '" + post.getName() + "' has been rejected by admin.";
+                return "Your travel listing for '" + post.getTitle() + "' has been rejected by admin.";
             case HOLD:
-                return "Your labour listing for '" + post.getName() + "' has been put on hold by admin.";
+                return "Your travel listing for '" + post.getTitle() + "' has been put on hold by admin.";
             case HIDDEN:
-                return "Your labour listing for '" + post.getName() + "' has been hidden by admin.";
+                return "Your travel listing for '" + post.getTitle() + "' has been hidden by admin.";
             case CORRECTION_REQUIRED:
-                return "Your labour listing for '" + post.getName() + "' needs correction. Please update and resubmit.";
+                return "Your travel listing for '" + post.getTitle() + "' needs correction. Please update and resubmit.";
             case REMOVED:
-                return "Your labour listing for '" + post.getName() + "' has been removed by admin.";
+                return "Your travel listing for '" + post.getTitle() + "' has been removed by admin.";
             default:
                 return null;
         }
     }
 
     @Transactional
-    public LabourPost markAsUnavailable(Long id, String username) {
-        LabourPost post = labourPostRepository.findById(id)
+    public TravelPost markAsUnavailable(Long id, String username) {
+        TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         User user = userRepository.findByUsername(username)
@@ -228,13 +231,13 @@ public class LabourPostService {
         }
 
         post.setStatus(PostStatus.SOLD);
-        log.info("Labour post marked as unavailable: id={}", id);
-        return labourPostRepository.save(post);
+        log.info("Travel post marked as unavailable: id={}", id);
+        return travelPostRepository.save(post);
     }
 
     @Transactional
-    public LabourPost markAsAvailable(Long id, String username) {
-        LabourPost post = labourPostRepository.findById(id)
+    public TravelPost markAsAvailable(Long id, String username) {
+        TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         User user = userRepository.findByUsername(username)
@@ -245,13 +248,13 @@ public class LabourPostService {
         }
 
         post.setStatus(PostStatus.APPROVED);
-        log.info("Labour post marked as available: id={}", id);
-        return labourPostRepository.save(post);
+        log.info("Travel post marked as available: id={}", id);
+        return travelPostRepository.save(post);
     }
 
     @Transactional
     public void deletePost(Long id, String username, boolean isAdmin) {
-        LabourPost post = labourPostRepository.findById(id)
+        TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         if (!isAdmin) {
@@ -262,34 +265,34 @@ public class LabourPostService {
             }
         }
 
-        labourPostRepository.delete(post);
-        log.info("Labour post deleted: id={}", id);
+        travelPostRepository.delete(post);
+        log.info("Travel post deleted: id={}", id);
     }
 
     @Transactional(readOnly = true)
-    public LabourPost getPostById(Long id) {
-        return labourPostRepository.findById(id)
+    public TravelPost getPostById(Long id) {
+        return travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
     }
 
     @Transactional
     public void reportPost(Long postId, String reason, String details, String username) {
-        LabourPost post = labourPostRepository.findById(postId)
+        TravelPost post = travelPostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         int newCount = (post.getReportCount() != null ? post.getReportCount() : 0) + 1;
         post.setReportCount(newCount);
 
         int reportThreshold = Integer.parseInt(
-                settingService.getSettingValue("labours.post.report_threshold", "3"));
+                settingService.getSettingValue("travels.post.report_threshold", "3"));
         if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
-            log.warn("Labour post auto-flagged due to {} reports: id={}, name={}", newCount, postId, post.getName());
+            log.warn("Travel post auto-flagged due to {} reports: id={}, title={}", newCount, postId, post.getTitle());
             notifyAdminsFlaggedPost(post, newCount);
         }
 
-        labourPostRepository.save(post);
-        log.info("Labour post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
+        travelPostRepository.save(post);
+        log.info("Travel post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
     }
 
     // ---- Notification helpers ----
@@ -303,106 +306,106 @@ public class LabourPostService {
         return adminIds;
     }
 
-    private void notifyAdminsNewPost(LabourPost post) {
+    private void notifyAdminsNewPost(TravelPost post) {
         try {
             List<Long> adminIds = getAdminUserIds();
             if (adminIds.isEmpty()) return;
 
             NotificationRequest request = NotificationRequest.builder()
-                    .title("New Labour Listing")
-                    .message("'" + post.getName() + "' (" + post.getCategory() + ") by " + post.getSellerName() + " is pending approval.")
+                    .title("New Travel Listing")
+                    .message("'" + post.getTitle() + "' (" + post.getVehicleType() + ") by " + post.getSellerName() + " is pending approval.")
                     .type(Notification.NotificationType.ANNOUNCEMENT)
                     .priority(Notification.NotificationPriority.HIGH)
                     .recipientIds(adminIds)
                     .recipientType(Notification.RecipientType.ADMIN)
                     .referenceId(post.getId())
-                    .referenceType("LABOUR_POST")
-                    .actionUrl("/admin/labours")
+                    .referenceType("TRAVEL_POST")
+                    .actionUrl("/admin/travels")
                     .actionText("Review Listing")
-                    .icon("construction")
-                    .category("LABOURS")
+                    .icon("directions_car")
+                    .category("TRAVELS")
                     .sendPush(true)
                     .build();
 
             notificationService.createNotification(request);
-            log.info("Admin notification sent for new labour post: id={}", post.getId());
+            log.info("Admin notification sent for new travel post: id={}", post.getId());
         } catch (Exception e) {
-            log.error("Failed to send admin notification for labour post: {}", post.getId(), e);
+            log.error("Failed to send admin notification for travel post: {}", post.getId(), e);
         }
     }
 
-    private void notifySellerPostStatus(LabourPost post, String message) {
+    private void notifySellerPostStatus(TravelPost post, String message) {
         try {
             NotificationRequest request = NotificationRequest.builder()
-                    .title("Labour Listing Update")
+                    .title("Travel Listing Update")
                     .message(message)
                     .type(Notification.NotificationType.INFO)
                     .priority(Notification.NotificationPriority.MEDIUM)
                     .recipientId(post.getSellerUserId())
                     .recipientType(Notification.RecipientType.USER)
                     .referenceId(post.getId())
-                    .referenceType("LABOUR_POST")
-                    .actionUrl("/labours/my-posts")
+                    .referenceType("TRAVEL_POST")
+                    .actionUrl("/travels/my-posts")
                     .actionText("View Listing")
-                    .icon("construction")
-                    .category("LABOURS")
+                    .icon("directions_car")
+                    .category("TRAVELS")
                     .sendPush(true)
                     .build();
 
             notificationService.createNotification(request);
-            log.info("Seller notification sent for labour post: id={}, seller={}", post.getId(), post.getSellerUserId());
+            log.info("Seller notification sent for travel post: id={}, seller={}", post.getId(), post.getSellerUserId());
         } catch (Exception e) {
-            log.error("Failed to send seller notification for labour post: {}", post.getId(), e);
+            log.error("Failed to send seller notification for travel post: {}", post.getId(), e);
         }
     }
 
     private List<PostStatus> getVisibleStatuses() {
-        String json = settingService.getSettingValue("labours.post.visible_statuses", "[\"APPROVED\"]");
+        String json = settingService.getSettingValue("travels.post.visible_statuses", "[\"APPROVED\"]");
         try {
             List<String> statusStrings = objectMapper.readValue(json, new TypeReference<List<String>>() {});
             return statusStrings.stream()
                     .map(s -> PostStatus.valueOf(s.toUpperCase()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("Failed to parse labours visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
+            log.warn("Failed to parse travels visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
             return List.of(PostStatus.APPROVED);
         }
     }
 
     private LocalDateTime getCutoffDate() {
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("labours.post.duration_days", "60"));
+                settingService.getSettingValue("travels.post.duration_days", "60"));
         if (durationDays <= 0) {
             return null;
         }
         return LocalDateTime.now().minusDays(durationDays);
     }
 
-    private void notifyAdminsFlaggedPost(LabourPost post, int reportCount) {
+    private void notifyAdminsFlaggedPost(TravelPost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();
             if (adminIds.isEmpty()) return;
 
             NotificationRequest request = NotificationRequest.builder()
-                    .title("Labour Listing Flagged")
-                    .message("'" + post.getName() + "' has been auto-flagged with " + reportCount + " reports. Please review.")
+                    .title("Travel Listing Flagged")
+                    .message("'" + post.getTitle() + "' has been auto-flagged with " + reportCount + " reports. Please review.")
                     .type(Notification.NotificationType.WARNING)
                     .priority(Notification.NotificationPriority.URGENT)
                     .recipientIds(adminIds)
                     .recipientType(Notification.RecipientType.ADMIN)
                     .referenceId(post.getId())
-                    .referenceType("LABOUR_POST")
-                    .actionUrl("/admin/labours")
+                    .referenceType("TRAVEL_POST")
+                    .actionUrl("/admin/travels")
                     .actionText("Review Listing")
                     .icon("alert-triangle")
-                    .category("LABOURS")
+                    .category("TRAVELS")
                     .sendPush(true)
                     .build();
 
             notificationService.createNotification(request);
-            log.info("Admin notification sent for flagged labour post: id={}, reports={}", post.getId(), reportCount);
+            log.info("Admin notification sent for flagged travel post: id={}, reports={}", post.getId(), reportCount);
         } catch (Exception e) {
-            log.error("Failed to send admin notification for flagged labour post: {}", post.getId(), e);
+            log.error("Failed to send admin notification for flagged travel post: {}", post.getId(), e);
         }
     }
 }

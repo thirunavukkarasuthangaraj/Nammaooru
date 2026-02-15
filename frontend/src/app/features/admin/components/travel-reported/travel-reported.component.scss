@@ -1,0 +1,252 @@
+.travel-reported {
+  padding: 24px;
+
+  .header {
+    margin-bottom: 24px;
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .header-icon {
+        color: #e65100;
+      }
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: #666;
+      font-size: 14px;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px;
+
+    p {
+      margin-top: 16px;
+      color: #666;
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 64px 24px;
+
+    .empty-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: #4caf50;
+    }
+
+    h3 {
+      margin: 16px 0 8px;
+      color: #333;
+    }
+
+    p {
+      color: #666;
+    }
+  }
+
+  .posts-container {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .total-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 24px;
+    background: #fff3e0;
+    color: #e65100;
+    font-weight: 500;
+    font-size: 14px;
+    border-bottom: 1px solid #ffe0b2;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .posts-table {
+    width: 100%;
+
+    .post-image {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .no-image {
+        color: #ccc;
+        font-size: 28px;
+      }
+    }
+
+    .post-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .post-description {
+      font-size: 12px;
+      color: #888;
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .report-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #fff3e0;
+      color: #e65100;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+
+      .report-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      &.high {
+        background: #ffebee;
+        color: #c62828;
+      }
+    }
+
+    .category-chip {
+      background: #e0f2f1;
+      color: #00897b;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .seller-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .seller-name {
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      .seller-phone {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+
+    .status-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+
+      &.status-flagged {
+        background: #ffebee;
+        color: #c62828;
+      }
+
+      &.status-pending_approval {
+        background: #fff3e0;
+        color: #e65100;
+      }
+
+      &.status-approved {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      &.status-rejected {
+        background: #ffebee;
+        color: #c62828;
+      }
+
+      &.status-sold {
+        background: #f3e5f5;
+        color: #6a1b9a;
+      }
+
+      &.status-hold {
+        background: #fff3e0;
+        color: #e65100;
+      }
+
+      &.status-hidden {
+        background: #eceff1;
+        color: #546e7a;
+      }
+
+      &.status-correction_required {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
+
+      &.status-removed {
+        background: #fce4ec;
+        color: #b71c1c;
+      }
+    }
+
+    .date {
+      font-size: 12px;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    .action-dropdown {
+      font-size: 13px;
+      white-space: nowrap;
+    }
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px;
+    border-top: 1px solid #eee;
+
+    .page-info {
+      font-size: 13px;
+      color: #666;
+    }
+  }
+}

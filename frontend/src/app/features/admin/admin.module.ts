@@ -42,6 +42,14 @@ import { BusTimingManagementComponent } from './components/bus-timing-management
 import { ReportedPostsComponent } from './components/reported-posts/reported-posts.component';
 import { MarketplaceConfigComponent } from './components/marketplace-config/marketplace-config.component';
 import { FarmerProductsManagementComponent } from './components/farmer-products-management/farmer-products-management.component';
+import { LabourManagementComponent } from './components/labour-management/labour-management.component';
+import { LabourReportedComponent } from './components/labour-reported/labour-reported.component';
+import { TravelManagementComponent } from './components/travel-management/travel-management.component';
+import { TravelReportedComponent } from './components/travel-reported/travel-reported.component';
+import { ParcelManagementComponent } from './components/parcel-management/parcel-management.component';
+import { ParcelReportedComponent } from './components/parcel-reported/parcel-reported.component';
+import { PostDashboardComponent } from './components/post-dashboard/post-dashboard.component';
+import { FeatureConfigManagementComponent } from './components/feature-config-management/feature-config-management.component';
 
 @NgModule({
   declarations: [
@@ -60,7 +68,15 @@ import { FarmerProductsManagementComponent } from './components/farmer-products-
     BusTimingManagementComponent,
     ReportedPostsComponent,
     MarketplaceConfigComponent,
-    FarmerProductsManagementComponent
+    FarmerProductsManagementComponent,
+    LabourManagementComponent,
+    LabourReportedComponent,
+    TravelManagementComponent,
+    TravelReportedComponent,
+    ParcelManagementComponent,
+    ParcelReportedComponent,
+    PostDashboardComponent,
+    FeatureConfigManagementComponent
   ],
   imports: [
     CommonModule,
@@ -154,6 +170,38 @@ import { FarmerProductsManagementComponent } from './components/farmer-products-
       {
         path: 'farmer-products',
         component: FarmerProductsManagementComponent
+      },
+      {
+        path: 'labours',
+        component: LabourManagementComponent
+      },
+      {
+        path: 'labours/reported',
+        component: LabourReportedComponent
+      },
+      {
+        path: 'travels',
+        component: TravelManagementComponent
+      },
+      {
+        path: 'travels/reported',
+        component: TravelReportedComponent
+      },
+      {
+        path: 'parcels',
+        component: ParcelManagementComponent
+      },
+      {
+        path: 'parcels/reported',
+        component: ParcelReportedComponent
+      },
+      {
+        path: 'post-dashboard',
+        component: PostDashboardComponent
+      },
+      {
+        path: 'feature-config',
+        component: FeatureConfigManagementComponent
       },
       {
         path: 'shops',

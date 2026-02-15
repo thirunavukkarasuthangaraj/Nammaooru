@@ -1,0 +1,95 @@
+package com.shopmanagement.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "travel_posts")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+public class TravelPost {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(nullable = false, length = 20)
+    private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vehicle_type", nullable = false, length = 30)
+    private VehicleType vehicleType;
+
+    @Column(name = "from_location", length = 200)
+    private String fromLocation;
+
+    @Column(name = "to_location", length = 200)
+    private String toLocation;
+
+    @Column(length = 50)
+    private String price;
+
+    @Column(name = "seats_available")
+    private Integer seatsAvailable;
+
+    @Column(length = 1000)
+    private String description;
+
+    @Column(name = "image_urls", length = 1500)
+    private String imageUrls;
+
+    @Column(name = "seller_user_id", nullable = false)
+    private Long sellerUserId;
+
+    @Column(name = "seller_name", length = 200)
+    private String sellerName;
+
+    @Column(name = "report_count")
+    @Builder.Default
+    private Integer reportCount = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    @Builder.Default
+    private PostStatus status = PostStatus.PENDING_APPROVAL;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public enum VehicleType {
+        CAR,
+        SMALL_BUS,
+        BUS
+    }
+
+    public enum PostStatus {
+        PENDING_APPROVAL,
+        APPROVED,
+        REJECTED,
+        SOLD,
+        FLAGGED,
+        HOLD,
+        HIDDEN,
+        CORRECTION_REQUIRED,
+        REMOVED
+    }
+}

@@ -1,12 +1,12 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.dto.notification.NotificationRequest;
-import com.shopmanagement.entity.LabourPost;
-import com.shopmanagement.entity.LabourPost.LabourCategory;
-import com.shopmanagement.entity.LabourPost.PostStatus;
+import com.shopmanagement.entity.ParcelServicePost;
+import com.shopmanagement.entity.ParcelServicePost.ServiceType;
+import com.shopmanagement.entity.ParcelServicePost.PostStatus;
 import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.User;
-import com.shopmanagement.repository.LabourPostRepository;
+import com.shopmanagement.repository.ParcelServicePostRepository;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class LabourPostService {
+public class ParcelServicePostService {
 
-    private final LabourPostRepository labourPostRepository;
+    private final ParcelServicePostRepository parcelServicePostRepository;
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
@@ -38,17 +38,18 @@ public class LabourPostService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public LabourPost createPost(String name, String phone, String categoryStr,
-                                  String experience, String location, String description,
-                                  List<MultipartFile> images, String username) throws IOException {
+    public ParcelServicePost createPost(String serviceName, String phone, String serviceTypeStr,
+                                         String fromLocation, String toLocation, String priceInfo,
+                                         String address, String timings, String description,
+                                         List<MultipartFile> images, String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        LabourCategory category;
+        ServiceType serviceType;
         try {
-            category = LabourCategory.valueOf(categoryStr.toUpperCase());
+            serviceType = ServiceType.valueOf(serviceTypeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid labour category: " + categoryStr);
+            throw new RuntimeException("Invalid service type: " + serviceTypeStr);
         }
 
         String imageUrls = null;
@@ -56,7 +57,7 @@ public class LabourPostService {
             List<String> uploadedUrls = new ArrayList<>();
             for (MultipartFile image : images) {
                 if (image != null && !image.isEmpty()) {
-                    uploadedUrls.add(fileUploadService.uploadFile(image, "labours"));
+                    uploadedUrls.add(fileUploadService.uploadFile(image, "parcels"));
                 }
             }
             if (!uploadedUrls.isEmpty()) {
@@ -65,14 +66,17 @@ public class LabourPostService {
         }
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("labours.post.auto_approve", "true"));
+                settingService.getSettingValue("parcels.post.auto_approve", "true"));
 
-        LabourPost post = LabourPost.builder()
-                .name(name)
+        ParcelServicePost post = ParcelServicePost.builder()
+                .serviceName(serviceName)
                 .phone(phone)
-                .category(category)
-                .experience(experience)
-                .location(location)
+                .serviceType(serviceType)
+                .fromLocation(fromLocation)
+                .toLocation(toLocation)
+                .priceInfo(priceInfo)
+                .address(address)
+                .timings(timings)
                 .description(description)
                 .imageUrls(imageUrls)
                 .sellerUserId(user.getId())
@@ -80,12 +84,12 @@ public class LabourPostService {
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .build();
 
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post created: id={}, name={}, category={}, poster={}, autoApproved={}",
-                saved.getId(), name, category, username, autoApprove);
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post created: id={}, serviceName={}, serviceType={}, poster={}, autoApproved={}",
+                saved.getId(), serviceName, serviceType, username, autoApprove);
 
         if (autoApprove) {
-            notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been auto-approved and is now visible to others.");
+            notifySellerPostStatus(saved, "Your parcel service listing for '" + saved.getServiceName() + "' has been auto-approved and is now visible to others.");
         } else {
             notifyAdminsNewPost(saved);
         }
@@ -94,86 +98,86 @@ public class LabourPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getApprovedPosts(Pageable pageable) {
+    public Page<ParcelServicePost> getApprovedPosts(Pageable pageable) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
         LocalDateTime cutoffDate = getCutoffDate();
 
         if (cutoffDate != null) {
-            return labourPostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
+            return parcelServicePostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
-        return labourPostRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
+        return parcelServicePostRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getApprovedPostsByCategory(String categoryStr, Pageable pageable) {
+    public Page<ParcelServicePost> getApprovedPostsByServiceType(String serviceTypeStr, Pageable pageable) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
         LocalDateTime cutoffDate = getCutoffDate();
 
-        LabourCategory category;
+        ServiceType serviceType;
         try {
-            category = LabourCategory.valueOf(categoryStr.toUpperCase());
+            serviceType = ServiceType.valueOf(serviceTypeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid labour category: " + categoryStr);
+            throw new RuntimeException("Invalid service type: " + serviceTypeStr);
         }
 
         if (cutoffDate != null) {
-            return labourPostRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
+            return parcelServicePostRepository.findByStatusInAndServiceTypeAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, serviceType, cutoffDate, pageable);
         }
-        return labourPostRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(visibleStatuses, category, pageable);
+        return parcelServicePostRepository.findByStatusInAndServiceTypeOrderByCreatedAtDesc(visibleStatuses, serviceType, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<LabourPost> getMyPosts(String username) {
+    public List<ParcelServicePost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return labourPostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return parcelServicePostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getPendingPosts(Pageable pageable) {
-        return labourPostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.PENDING_APPROVAL, pageable);
+    public Page<ParcelServicePost> getPendingPosts(Pageable pageable) {
+        return parcelServicePostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.PENDING_APPROVAL, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getReportedPosts(Pageable pageable) {
-        return labourPostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+    public Page<ParcelServicePost> getReportedPosts(Pageable pageable) {
+        return parcelServicePostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<ParcelServicePost> getAllPostsForAdmin(Pageable pageable) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
-        return labourPostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
+        return parcelServicePostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 
     @Transactional
-    public LabourPost approvePost(Long id) {
-        LabourPost post = labourPostRepository.findById(id)
+    public ParcelServicePost approvePost(Long id) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setStatus(PostStatus.APPROVED);
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post approved: id={}", id);
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post approved: id={}", id);
 
-        notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been approved and is now visible to others.");
+        notifySellerPostStatus(saved, "Your parcel service listing for '" + saved.getServiceName() + "' has been approved and is now visible to others.");
 
         return saved;
     }
 
     @Transactional
-    public LabourPost rejectPost(Long id) {
-        LabourPost post = labourPostRepository.findById(id)
+    public ParcelServicePost rejectPost(Long id) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setStatus(PostStatus.REJECTED);
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post rejected: id={}", id);
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post rejected: id={}", id);
 
-        notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been rejected by admin.");
+        notifySellerPostStatus(saved, "Your parcel service listing for '" + saved.getServiceName() + "' has been rejected by admin.");
 
         return saved;
     }
 
     @Transactional
-    public LabourPost changePostStatus(Long id, String statusStr) {
-        LabourPost post = labourPostRepository.findById(id)
+    public ParcelServicePost changePostStatus(Long id, String statusStr) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         PostStatus newStatus;
@@ -185,8 +189,8 @@ public class LabourPostService {
 
         PostStatus oldStatus = post.getStatus();
         post.setStatus(newStatus);
-        LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post status changed: id={}, {} -> {}", id, oldStatus, newStatus);
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post status changed: id={}, {} -> {}", id, oldStatus, newStatus);
 
         String message = getStatusChangeMessage(saved, newStatus);
         if (message != null) {
@@ -196,28 +200,28 @@ public class LabourPostService {
         return saved;
     }
 
-    private String getStatusChangeMessage(LabourPost post, PostStatus status) {
+    private String getStatusChangeMessage(ParcelServicePost post, PostStatus status) {
         switch (status) {
             case APPROVED:
-                return "Your labour listing for '" + post.getName() + "' has been approved and is now visible to others.";
+                return "Your parcel service listing for '" + post.getServiceName() + "' has been approved and is now visible to others.";
             case REJECTED:
-                return "Your labour listing for '" + post.getName() + "' has been rejected by admin.";
+                return "Your parcel service listing for '" + post.getServiceName() + "' has been rejected by admin.";
             case HOLD:
-                return "Your labour listing for '" + post.getName() + "' has been put on hold by admin.";
+                return "Your parcel service listing for '" + post.getServiceName() + "' has been put on hold by admin.";
             case HIDDEN:
-                return "Your labour listing for '" + post.getName() + "' has been hidden by admin.";
+                return "Your parcel service listing for '" + post.getServiceName() + "' has been hidden by admin.";
             case CORRECTION_REQUIRED:
-                return "Your labour listing for '" + post.getName() + "' needs correction. Please update and resubmit.";
+                return "Your parcel service listing for '" + post.getServiceName() + "' needs correction. Please update and resubmit.";
             case REMOVED:
-                return "Your labour listing for '" + post.getName() + "' has been removed by admin.";
+                return "Your parcel service listing for '" + post.getServiceName() + "' has been removed by admin.";
             default:
                 return null;
         }
     }
 
     @Transactional
-    public LabourPost markAsUnavailable(Long id, String username) {
-        LabourPost post = labourPostRepository.findById(id)
+    public ParcelServicePost markAsUnavailable(Long id, String username) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         User user = userRepository.findByUsername(username)
@@ -228,13 +232,13 @@ public class LabourPostService {
         }
 
         post.setStatus(PostStatus.SOLD);
-        log.info("Labour post marked as unavailable: id={}", id);
-        return labourPostRepository.save(post);
+        log.info("Parcel service post marked as unavailable: id={}", id);
+        return parcelServicePostRepository.save(post);
     }
 
     @Transactional
-    public LabourPost markAsAvailable(Long id, String username) {
-        LabourPost post = labourPostRepository.findById(id)
+    public ParcelServicePost markAsAvailable(Long id, String username) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         User user = userRepository.findByUsername(username)
@@ -245,13 +249,13 @@ public class LabourPostService {
         }
 
         post.setStatus(PostStatus.APPROVED);
-        log.info("Labour post marked as available: id={}", id);
-        return labourPostRepository.save(post);
+        log.info("Parcel service post marked as available: id={}", id);
+        return parcelServicePostRepository.save(post);
     }
 
     @Transactional
     public void deletePost(Long id, String username, boolean isAdmin) {
-        LabourPost post = labourPostRepository.findById(id)
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         if (!isAdmin) {
@@ -262,34 +266,34 @@ public class LabourPostService {
             }
         }
 
-        labourPostRepository.delete(post);
-        log.info("Labour post deleted: id={}", id);
+        parcelServicePostRepository.delete(post);
+        log.info("Parcel service post deleted: id={}", id);
     }
 
     @Transactional(readOnly = true)
-    public LabourPost getPostById(Long id) {
-        return labourPostRepository.findById(id)
+    public ParcelServicePost getPostById(Long id) {
+        return parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
     }
 
     @Transactional
     public void reportPost(Long postId, String reason, String details, String username) {
-        LabourPost post = labourPostRepository.findById(postId)
+        ParcelServicePost post = parcelServicePostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
         int newCount = (post.getReportCount() != null ? post.getReportCount() : 0) + 1;
         post.setReportCount(newCount);
 
         int reportThreshold = Integer.parseInt(
-                settingService.getSettingValue("labours.post.report_threshold", "3"));
+                settingService.getSettingValue("parcels.post.report_threshold", "3"));
         if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
-            log.warn("Labour post auto-flagged due to {} reports: id={}, name={}", newCount, postId, post.getName());
+            log.warn("Parcel service post auto-flagged due to {} reports: id={}, serviceName={}", newCount, postId, post.getServiceName());
             notifyAdminsFlaggedPost(post, newCount);
         }
 
-        labourPostRepository.save(post);
-        log.info("Labour post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
+        parcelServicePostRepository.save(post);
+        log.info("Parcel service post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
     }
 
     // ---- Notification helpers ----
@@ -303,106 +307,106 @@ public class LabourPostService {
         return adminIds;
     }
 
-    private void notifyAdminsNewPost(LabourPost post) {
+    private void notifyAdminsNewPost(ParcelServicePost post) {
         try {
             List<Long> adminIds = getAdminUserIds();
             if (adminIds.isEmpty()) return;
 
             NotificationRequest request = NotificationRequest.builder()
-                    .title("New Labour Listing")
-                    .message("'" + post.getName() + "' (" + post.getCategory() + ") by " + post.getSellerName() + " is pending approval.")
+                    .title("New Parcel Service Listing")
+                    .message("'" + post.getServiceName() + "' (" + post.getServiceType() + ") by " + post.getSellerName() + " is pending approval.")
                     .type(Notification.NotificationType.ANNOUNCEMENT)
                     .priority(Notification.NotificationPriority.HIGH)
                     .recipientIds(adminIds)
                     .recipientType(Notification.RecipientType.ADMIN)
                     .referenceId(post.getId())
-                    .referenceType("LABOUR_POST")
-                    .actionUrl("/admin/labours")
+                    .referenceType("PARCEL_SERVICE_POST")
+                    .actionUrl("/admin/parcels")
                     .actionText("Review Listing")
-                    .icon("construction")
-                    .category("LABOURS")
+                    .icon("local_shipping")
+                    .category("PARCELS")
                     .sendPush(true)
                     .build();
 
             notificationService.createNotification(request);
-            log.info("Admin notification sent for new labour post: id={}", post.getId());
+            log.info("Admin notification sent for new parcel service post: id={}", post.getId());
         } catch (Exception e) {
-            log.error("Failed to send admin notification for labour post: {}", post.getId(), e);
+            log.error("Failed to send admin notification for parcel service post: {}", post.getId(), e);
         }
     }
 
-    private void notifySellerPostStatus(LabourPost post, String message) {
+    private void notifySellerPostStatus(ParcelServicePost post, String message) {
         try {
             NotificationRequest request = NotificationRequest.builder()
-                    .title("Labour Listing Update")
+                    .title("Parcel Service Listing Update")
                     .message(message)
                     .type(Notification.NotificationType.INFO)
                     .priority(Notification.NotificationPriority.MEDIUM)
                     .recipientId(post.getSellerUserId())
                     .recipientType(Notification.RecipientType.USER)
                     .referenceId(post.getId())
-                    .referenceType("LABOUR_POST")
-                    .actionUrl("/labours/my-posts")
+                    .referenceType("PARCEL_SERVICE_POST")
+                    .actionUrl("/parcels/my-posts")
                     .actionText("View Listing")
-                    .icon("construction")
-                    .category("LABOURS")
+                    .icon("local_shipping")
+                    .category("PARCELS")
                     .sendPush(true)
                     .build();
 
             notificationService.createNotification(request);
-            log.info("Seller notification sent for labour post: id={}, seller={}", post.getId(), post.getSellerUserId());
+            log.info("Seller notification sent for parcel service post: id={}, seller={}", post.getId(), post.getSellerUserId());
         } catch (Exception e) {
-            log.error("Failed to send seller notification for labour post: {}", post.getId(), e);
+            log.error("Failed to send seller notification for parcel service post: {}", post.getId(), e);
         }
     }
 
     private List<PostStatus> getVisibleStatuses() {
-        String json = settingService.getSettingValue("labours.post.visible_statuses", "[\"APPROVED\"]");
+        String json = settingService.getSettingValue("parcels.post.visible_statuses", "[\"APPROVED\"]");
         try {
             List<String> statusStrings = objectMapper.readValue(json, new TypeReference<List<String>>() {});
             return statusStrings.stream()
                     .map(s -> PostStatus.valueOf(s.toUpperCase()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("Failed to parse labours visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
+            log.warn("Failed to parse parcels visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
             return List.of(PostStatus.APPROVED);
         }
     }
 
     private LocalDateTime getCutoffDate() {
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("labours.post.duration_days", "60"));
+                settingService.getSettingValue("parcels.post.duration_days", "60"));
         if (durationDays <= 0) {
             return null;
         }
         return LocalDateTime.now().minusDays(durationDays);
     }
 
-    private void notifyAdminsFlaggedPost(LabourPost post, int reportCount) {
+    private void notifyAdminsFlaggedPost(ParcelServicePost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();
             if (adminIds.isEmpty()) return;
 
             NotificationRequest request = NotificationRequest.builder()
-                    .title("Labour Listing Flagged")
-                    .message("'" + post.getName() + "' has been auto-flagged with " + reportCount + " reports. Please review.")
+                    .title("Parcel Service Listing Flagged")
+                    .message("'" + post.getServiceName() + "' has been auto-flagged with " + reportCount + " reports. Please review.")
                     .type(Notification.NotificationType.WARNING)
                     .priority(Notification.NotificationPriority.URGENT)
                     .recipientIds(adminIds)
                     .recipientType(Notification.RecipientType.ADMIN)
                     .referenceId(post.getId())
-                    .referenceType("LABOUR_POST")
-                    .actionUrl("/admin/labours")
+                    .referenceType("PARCEL_SERVICE_POST")
+                    .actionUrl("/admin/parcels")
                     .actionText("Review Listing")
                     .icon("alert-triangle")
-                    .category("LABOURS")
+                    .category("PARCELS")
                     .sendPush(true)
                     .build();
 
             notificationService.createNotification(request);
-            log.info("Admin notification sent for flagged labour post: id={}, reports={}", post.getId(), reportCount);
+            log.info("Admin notification sent for flagged parcel service post: id={}, reports={}", post.getId(), reportCount);
         } catch (Exception e) {
-            log.error("Failed to send admin notification for flagged labour post: {}", post.getId(), e);
+            log.error("Failed to send admin notification for flagged parcel service post: {}", post.getId(), e);
         }
     }
 }

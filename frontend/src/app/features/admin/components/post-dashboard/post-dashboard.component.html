@@ -1,0 +1,117 @@
+<div class="post-dashboard">
+  <div class="dashboard-header">
+    <h2>Post Dashboard</h2>
+    <button mat-icon-button (click)="loadStats()" matTooltip="Refresh">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading dashboard stats...</p>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-container">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ errorMessage }}</p>
+    <button mat-raised-button color="primary" (click)="loadStats()">Retry</button>
+  </div>
+
+  <div *ngIf="!isLoading && !errorMessage" class="stats-grid">
+    <!-- Labour Section -->
+    <div class="section labour-section">
+      <h3><mat-icon>construction</mat-icon> Labour Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/labours')">
+          <div class="stat-value">{{ labourStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/labours')">
+          <div class="stat-value">{{ labourStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/labours')">
+          <div class="stat-value">{{ labourStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/labours')">
+          <div class="stat-value">{{ labourStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/labours/reported')">
+          <div class="stat-value">{{ labourStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Travel Section -->
+    <div class="section travel-section">
+      <h3><mat-icon>directions_car</mat-icon> Travel Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/travels')">
+          <div class="stat-value">{{ travelStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/travels')">
+          <div class="stat-value">{{ travelStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/travels')">
+          <div class="stat-value">{{ travelStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/travels')">
+          <div class="stat-value">{{ travelStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/travels/reported')">
+          <div class="stat-value">{{ travelStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parcel Section -->
+    <div class="section parcel-section">
+      <h3><mat-icon>local_shipping</mat-icon> Parcel Service Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/parcels')">
+          <div class="stat-value">{{ parcelStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/parcels')">
+          <div class="stat-value">{{ parcelStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/parcels')">
+          <div class="stat-value">{{ parcelStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/parcels')">
+          <div class="stat-value">{{ parcelStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/parcels/reported')">
+          <div class="stat-value">{{ parcelStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

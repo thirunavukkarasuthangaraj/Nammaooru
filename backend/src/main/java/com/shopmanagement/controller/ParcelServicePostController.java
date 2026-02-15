@@ -2,8 +2,8 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
-import com.shopmanagement.entity.LabourPost;
-import com.shopmanagement.service.LabourPostService;
+import com.shopmanagement.entity.ParcelServicePost;
+import com.shopmanagement.service.ParcelServicePostService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,30 +20,34 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/labours")
+@RequestMapping("/api/parcels")
 @RequiredArgsConstructor
 @Slf4j
-public class LabourPostController {
+public class ParcelServicePostController {
 
-    private final LabourPostService labourPostService;
+    private final ParcelServicePostService parcelServicePostService;
 
     @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<LabourPost>> createPost(
-            @RequestParam("name") String name,
+    public ResponseEntity<ApiResponse<ParcelServicePost>> createPost(
+            @RequestParam("serviceName") String serviceName,
             @RequestParam("phone") String phone,
-            @RequestParam("category") String category,
-            @RequestParam(value = "experience", required = false) String experience,
-            @RequestParam(value = "location", required = false) String location,
+            @RequestParam("serviceType") String serviceType,
+            @RequestParam(value = "fromLocation", required = false) String fromLocation,
+            @RequestParam(value = "toLocation", required = false) String toLocation,
+            @RequestParam(value = "priceInfo", required = false) String priceInfo,
+            @RequestParam(value = "address", required = false) String address,
+            @RequestParam(value = "timings", required = false) String timings,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         try {
             String username = getCurrentUsername();
-            LabourPost post = labourPostService.createPost(
-                    name, phone, category, experience, location, description, images, username);
-            return ResponseUtil.created(post, "Labour listing submitted successfully");
+            ParcelServicePost post = parcelServicePostService.createPost(
+                    serviceName, phone, serviceType, fromLocation, toLocation, priceInfo,
+                    address, timings, description, images, username);
+            return ResponseUtil.created(post, "Parcel service listing submitted successfully");
         } catch (Exception e) {
-            log.error("Error creating labour post", e);
+            log.error("Error creating parcel service post", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -52,42 +56,42 @@ public class LabourPostController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String serviceType) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<LabourPost> posts;
-            if (category != null && !category.isEmpty()) {
-                posts = labourPostService.getApprovedPostsByCategory(category, pageable);
+            Page<ParcelServicePost> posts;
+            if (serviceType != null && !serviceType.isEmpty()) {
+                posts = parcelServicePostService.getApprovedPostsByServiceType(serviceType, pageable);
             } else {
-                posts = labourPostService.getApprovedPosts(pageable);
+                posts = parcelServicePostService.getApprovedPosts(pageable);
             }
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
-            log.error("Error fetching approved labour posts", e);
+            log.error("Error fetching approved parcel service posts", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<LabourPost>> getPostById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ParcelServicePost>> getPostById(@PathVariable Long id) {
         try {
-            LabourPost post = labourPostService.getPostById(id);
-            return ResponseUtil.success(post, "Labour post retrieved successfully");
+            ParcelServicePost post = parcelServicePostService.getPostById(id);
+            return ResponseUtil.success(post, "Parcel service post retrieved successfully");
         } catch (Exception e) {
-            log.error("Error fetching labour post", e);
+            log.error("Error fetching parcel service post", e);
             return ResponseUtil.notFound(e.getMessage());
         }
     }
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<LabourPost>>> getMyPosts() {
+    public ResponseEntity<ApiResponse<List<ParcelServicePost>>> getMyPosts() {
         try {
             String username = getCurrentUsername();
-            List<LabourPost> posts = labourPostService.getMyPosts(username);
-            return ResponseUtil.success(posts, "My labour listings retrieved successfully");
+            List<ParcelServicePost> posts = parcelServicePostService.getMyPosts(username);
+            return ResponseUtil.success(posts, "My parcel service listings retrieved successfully");
         } catch (Exception e) {
-            log.error("Error fetching my labour posts", e);
+            log.error("Error fetching my parcel service posts", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -99,10 +103,10 @@ public class LabourPostController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<LabourPost> posts = labourPostService.getPendingPosts(pageable);
+            Page<ParcelServicePost> posts = parcelServicePostService.getPendingPosts(pageable);
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
-            log.error("Error fetching pending labour posts", e);
+            log.error("Error fetching pending parcel service posts", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -114,10 +118,10 @@ public class LabourPostController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<LabourPost> posts = labourPostService.getReportedPosts(pageable);
+            Page<ParcelServicePost> posts = parcelServicePostService.getReportedPosts(pageable);
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
-            log.error("Error fetching reported labour posts", e);
+            log.error("Error fetching reported parcel service posts", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -129,41 +133,41 @@ public class LabourPostController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<LabourPost> posts = labourPostService.getAllPostsForAdmin(pageable);
+            Page<ParcelServicePost> posts = parcelServicePostService.getAllPostsForAdmin(pageable);
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
-            log.error("Error fetching all labour posts", e);
+            log.error("Error fetching all parcel service posts", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
 
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<LabourPost>> approvePost(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ParcelServicePost>> approvePost(@PathVariable Long id) {
         try {
-            LabourPost post = labourPostService.approvePost(id);
-            return ResponseUtil.success(post, "Labour listing approved successfully");
+            ParcelServicePost post = parcelServicePostService.approvePost(id);
+            return ResponseUtil.success(post, "Parcel service listing approved successfully");
         } catch (Exception e) {
-            log.error("Error approving labour post", e);
+            log.error("Error approving parcel service post", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
 
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<LabourPost>> rejectPost(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ParcelServicePost>> rejectPost(@PathVariable Long id) {
         try {
-            LabourPost post = labourPostService.rejectPost(id);
-            return ResponseUtil.success(post, "Labour listing rejected");
+            ParcelServicePost post = parcelServicePostService.rejectPost(id);
+            return ResponseUtil.success(post, "Parcel service listing rejected");
         } catch (Exception e) {
-            log.error("Error rejecting labour post", e);
+            log.error("Error rejecting parcel service post", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<LabourPost>> changePostStatus(
+    public ResponseEntity<ApiResponse<ParcelServicePost>> changePostStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> body) {
         try {
@@ -171,36 +175,36 @@ public class LabourPostController {
             if (status == null || status.isEmpty()) {
                 return ResponseUtil.error("Status is required");
             }
-            LabourPost post = labourPostService.changePostStatus(id, status);
-            return ResponseUtil.success(post, "Labour listing status updated to " + status);
+            ParcelServicePost post = parcelServicePostService.changePostStatus(id, status);
+            return ResponseUtil.success(post, "Parcel service listing status updated to " + status);
         } catch (Exception e) {
-            log.error("Error changing labour post status", e);
+            log.error("Error changing parcel service post status", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
 
     @PutMapping("/{id}/unavailable")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<LabourPost>> markAsUnavailable(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ParcelServicePost>> markAsUnavailable(@PathVariable Long id) {
         try {
             String username = getCurrentUsername();
-            LabourPost post = labourPostService.markAsUnavailable(id, username);
-            return ResponseUtil.success(post, "Labour listing marked as unavailable");
+            ParcelServicePost post = parcelServicePostService.markAsUnavailable(id, username);
+            return ResponseUtil.success(post, "Parcel service listing marked as unavailable");
         } catch (Exception e) {
-            log.error("Error marking labour post as unavailable", e);
+            log.error("Error marking parcel service post as unavailable", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
 
     @PutMapping("/{id}/available")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<LabourPost>> markAsAvailable(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ParcelServicePost>> markAsAvailable(@PathVariable Long id) {
         try {
             String username = getCurrentUsername();
-            LabourPost post = labourPostService.markAsAvailable(id, username);
-            return ResponseUtil.success(post, "Labour listing marked as available");
+            ParcelServicePost post = parcelServicePostService.markAsAvailable(id, username);
+            return ResponseUtil.success(post, "Parcel service listing marked as available");
         } catch (Exception e) {
-            log.error("Error marking labour post as available", e);
+            log.error("Error marking parcel service post as available", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -213,10 +217,10 @@ public class LabourPostController {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             boolean isAdmin = auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
-            labourPostService.deletePost(id, username, isAdmin);
+            parcelServicePostService.deletePost(id, username, isAdmin);
             return ResponseUtil.deleted();
         } catch (Exception e) {
-            log.error("Error deleting labour post", e);
+            log.error("Error deleting parcel service post", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -230,10 +234,10 @@ public class LabourPostController {
             String username = getCurrentUsername();
             String reason = body.getOrDefault("reason", "Other");
             String details = body.get("details");
-            labourPostService.reportPost(id, reason, details, username);
+            parcelServicePostService.reportPost(id, reason, details, username);
             return ResponseUtil.success(null, "Listing reported successfully. We will review it.");
         } catch (Exception e) {
-            log.error("Error reporting labour post", e);
+            log.error("Error reporting parcel service post", e);
             return ResponseUtil.error(e.getMessage());
         }
     }

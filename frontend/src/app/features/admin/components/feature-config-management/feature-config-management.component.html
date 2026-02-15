@@ -1,0 +1,168 @@
+<div class="feature-config-management">
+  <div class="page-header">
+    <h2>Feature Configuration</h2>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="openAddForm()" *ngIf="!showForm">
+        <mat-icon>add</mat-icon> Add Feature
+      </button>
+      <button mat-icon-button (click)="loadFeatures()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Form -->
+  <mat-card *ngIf="showForm" class="form-card">
+    <mat-card-content>
+      <h3>{{ editingId ? 'Edit Feature' : 'Add New Feature' }}</h3>
+      <form [formGroup]="featureForm" (ngSubmit)="saveFeature()" class="feature-form">
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Feature Name (key)</mat-label>
+            <input matInput formControlName="featureName" placeholder="e.g. GROCERY">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Display Name</mat-label>
+            <input matInput formControlName="displayName" placeholder="e.g. Grocery">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Display Name (Tamil)</mat-label>
+            <input matInput formControlName="displayNameTamil" placeholder="e.g. மளிகை">
+          </mat-form-field>
+        </div>
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Icon</mat-label>
+            <input matInput formControlName="icon" placeholder="e.g. shopping_basket_rounded">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Color</mat-label>
+            <input matInput formControlName="color" placeholder="e.g. #4CAF50">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Route</mat-label>
+            <input matInput formControlName="route" placeholder="e.g. /customer/shops?category=grocery">
+          </mat-form-field>
+        </div>
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Latitude</mat-label>
+            <input matInput type="number" formControlName="latitude" placeholder="12.4966">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Longitude</mat-label>
+            <input matInput type="number" formControlName="longitude" placeholder="78.5729">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Radius (km)</mat-label>
+            <input matInput type="number" formControlName="radiusKm" placeholder="50">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Display Order</mat-label>
+            <input matInput type="number" formControlName="displayOrder">
+          </mat-form-field>
+        </div>
+        <div class="form-actions">
+          <button mat-raised-button color="primary" type="submit" [disabled]="featureForm.invalid">
+            {{ editingId ? 'Update' : 'Create' }}
+          </button>
+          <button mat-button type="button" (click)="cancelForm()">Cancel</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading features...</p>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!isLoading" class="table-container">
+    <table mat-table [dataSource]="features" class="features-table">
+      <ng-container matColumnDef="displayOrder">
+        <th mat-header-cell *matHeaderCellDef>Order</th>
+        <td mat-cell *matCellDef="let f">{{ f.displayOrder }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="featureName">
+        <th mat-header-cell *matHeaderCellDef>Feature Key</th>
+        <td mat-cell *matCellDef="let f">
+          <code>{{ f.featureName }}</code>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="displayName">
+        <th mat-header-cell *matHeaderCellDef>Display Name</th>
+        <td mat-cell *matCellDef="let f">{{ f.displayName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="displayNameTamil">
+        <th mat-header-cell *matHeaderCellDef>Tamil</th>
+        <td mat-cell *matCellDef="let f">{{ f.displayNameTamil }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="icon">
+        <th mat-header-cell *matHeaderCellDef>Icon</th>
+        <td mat-cell *matCellDef="let f">
+          <mat-icon *ngIf="f.icon">{{ f.icon }}</mat-icon>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="color">
+        <th mat-header-cell *matHeaderCellDef>Color</th>
+        <td mat-cell *matCellDef="let f">
+          <span class="color-chip" [style.background]="f.color"></span>
+          <span class="color-text">{{ f.color }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="latitude">
+        <th mat-header-cell *matHeaderCellDef>Lat</th>
+        <td mat-cell *matCellDef="let f">{{ f.latitude | number:'1.4-4' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="longitude">
+        <th mat-header-cell *matHeaderCellDef>Lng</th>
+        <td mat-cell *matCellDef="let f">{{ f.longitude | number:'1.4-4' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="radiusKm">
+        <th mat-header-cell *matHeaderCellDef>Radius</th>
+        <td mat-cell *matCellDef="let f">{{ f.radiusKm }} km</td>
+      </ng-container>
+
+      <ng-container matColumnDef="active">
+        <th mat-header-cell *matHeaderCellDef>Active</th>
+        <td mat-cell *matCellDef="let f">
+          <mat-slide-toggle
+            [checked]="f.isActive"
+            (change)="toggleActive(f)"
+            color="primary">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let f">
+          <button mat-icon-button matTooltip="Edit" (click)="openEditForm(f)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteFeature(f)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <div *ngIf="features.length === 0" class="empty-state">
+      <mat-icon>settings_suggest</mat-icon>
+      <p>No feature configurations found.</p>
+    </div>
+  </div>
+</div>

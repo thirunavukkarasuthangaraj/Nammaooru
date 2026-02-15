@@ -1,0 +1,160 @@
+.post-dashboard {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #666;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #f44336;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin: 12px 0;
+  }
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.section {
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+}
+
+.labour-section h3 { color: #1565C0; }
+.travel-section h3 { color: #00897B; }
+.parcel-section h3 { color: #E65100; }
+
+.cards-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.stat-card {
+  position: relative;
+  padding: 20px;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.9;
+  }
+
+  .card-icon {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    font-size: 36px;
+    width: 36px;
+    height: 36px;
+    opacity: 0.2;
+  }
+}
+
+// Labour cards - blue gradient
+.labour-section {
+  .total { background: linear-gradient(135deg, #1565C0, #1976D2); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Travel cards - teal gradient
+.travel-section {
+  .total { background: linear-gradient(135deg, #00695C, #00897B); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Parcel cards - orange gradient
+.parcel-section {
+  .total { background: linear-gradient(135deg, #E65100, #EF6C00); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+@media (max-width: 900px) {
+  .cards-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .post-dashboard {
+    padding: 16px;
+  }
+
+  .cards-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-card .stat-value {
+    font-size: 22px;
+  }
+}
