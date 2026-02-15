@@ -1542,7 +1542,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           children: _dynamicFeatures.map((feature) {
-            final isTamil = Provider.of<LanguageProvider>(context, listen: false).isTamil;
+            final isTamil = Provider.of<LanguageProvider>(context, listen: false).currentLanguage == 'ta';
             final title = isTamil && feature['displayNameTamil'] != null && feature['displayNameTamil'].toString().isNotEmpty
                 ? feature['displayNameTamil']
                 : feature['displayName'] ?? '';
