@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Reported - NammaOoru</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #e74c3c;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .post-details {
+            background-color: #fff3cd;
+            padding: 20px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .post-details p {
+            margin: 8px 0;
+        }
+        .action-box {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .action-box h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .action-box ul {
+            padding-left: 20px;
+        }
+        .action-box li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #34495e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Post Reported</h1>
+            <p>Your post has received reports from users</p>
+        </div>
+
+        <div class="content">
+            <h2>Hello <span th:text="${ownerName}">User</span>,</h2>
+
+            <p>We wanted to let you know that your post has been reported by other users on NammaOoru.</p>
+
+            <div class="post-details">
+                <p><strong>Post Title:</strong> <span th:text="${postTitle}">Post Title</span></p>
+                <p><strong>Category:</strong> <span th:text="${category}">Category</span></p>
+                <p><strong>Report Count:</strong> <span class="highlight" th:text="${reportCount}">1</span></p>
+            </div>
+
+            <div class="action-box">
+                <h3>What should you do?</h3>
+                <ul>
+                    <li>Review your post content and ensure it follows our community guidelines</li>
+                    <li>Update or edit any content that may be misleading or inappropriate</li>
+                    <li>If your post receives too many reports, it may be temporarily hidden for admin review</li>
+                    <li>Contact our support team if you believe the reports are incorrect</li>
+                </ul>
+            </div>
+
+            <p>We want to keep NammaOoru a safe and trustworthy platform for everyone. Thank you for your cooperation!</p>
+
+            <p>Best regards,<br/>The NammaOoru Team</p>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2025 <span th:text="${companyName}">NammaOoru</span>. All rights reserved.</p>
+            <p>Need help? Contact us at <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}">support@nammaooru.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

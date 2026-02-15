@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/farmer_products_service.dart';
@@ -89,8 +91,31 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     final phone = LocalStorage.getString('phoneNumber');
     if (phone != null && phone.isNotEmpty) {
       _phoneController.text = phone;
+    } else {
+      _fetchPhoneFromProfile();
     }
     _getLocation();
+  }
+
+  Future<void> _fetchPhoneFromProfile() async {
+    try {
+      final response = await ApiClient.get('/users/me');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
+          final userData = data['data'];
+          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          if (phone.toString().isNotEmpty && mounted) {
+            setState(() {
+              _phoneController.text = phone.toString();
+            });
+            await LocalStorage.setString('phoneNumber', phone.toString());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching phone from profile: $e');
+    }
   }
 
   Future<void> _getLocation() async {
@@ -354,13 +379,16 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Product name is required', 'பொருள் பெயர் தேவை');
                   }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Must be at least 3 characters', 'குறைந்தது 3 எழுத்துகள் தேவை');
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
 
               // Description
-              _buildLabel(langProvider.getText('Description', 'விவரம்')),
+              _buildLabel(langProvider.getText('Description *', 'விவரம் *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _descriptionController,
@@ -370,11 +398,20 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('Describe your product...', 'உங்கள் பொருளை விவரிக்கவும்...'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Description is required', 'விவரம் தேவை');
+                  }
+                  if (value.trim().length < 10) {
+                    return langProvider.getText('Description must be at least 10 characters', 'விவரம் குறைந்தது 10 எழுத்துகள் இருக்க வேண்டும்');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // Price & Unit row
-              _buildLabel(langProvider.getText('Price per unit (optional)', 'ஒரு யூனிட் விலை (விரும்பினால்)')),
+              _buildLabel(langProvider.getText('Price per unit *', 'ஒரு யூனிட் விலை *')),
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -386,6 +423,22 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                       decoration: _inputDecoration('e.g., 50').copyWith(
                         prefixText: '\u20B9 ',
                       ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return langProvider.getText('Price is required', 'விலை தேவை');
+                        }
+                        final price = double.tryParse(value.trim());
+                        if (price == null) {
+                          return langProvider.getText('Enter a valid price', 'சரியான விலையை உள்ளிடவும்');
+                        }
+                        if (price <= 0) {
+                          return langProvider.getText('Price must be greater than 0', 'விலை 0-ஐ விட அதிகமாக இருக்க வேண்டும்');
+                        }
+                        if (price > 10000000) {
+                          return langProvider.getText('Price cannot exceed \u20B91,00,00,000', 'விலை \u20B91,00,00,000 மிகாமல் இருக்க வேண்டும்');
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -412,7 +465,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               const SizedBox(height: 12),
 
               // Category
-              _buildLabel(langProvider.getText('Category', 'வகை')),
+              _buildLabel(langProvider.getText('Category *', 'வகை *')),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
@@ -439,15 +492,24 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 decoration: _inputDecoration(
                   langProvider.getText('Your phone number', 'உங்கள் தொலைபேசி எண்'),
+                ).copyWith(
+                  prefixIcon: const Icon(Icons.phone, size: 20, color: Color(0xFF2E7D32)),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Phone number is required', 'தொலைபேசி எண் தேவை');
                   }
-                  if (value.trim().length < 10) {
-                    return langProvider.getText('Enter a valid phone number', 'சரியான தொலைபேசி எண்ணை உள்ளிடவும்');
+                  if (value.trim().length != 10) {
+                    return langProvider.getText('Enter valid 10-digit mobile number', 'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்');
+                  }
+                  if (!RegExp(r'^[6-9]').hasMatch(value.trim())) {
+                    return langProvider.getText('Must start with 6, 7, 8 or 9', '6, 7, 8 அல்லது 9 இல் தொடங்க வேண்டும்');
                   }
                   return null;
                 },
@@ -455,7 +517,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               const SizedBox(height: 12),
 
               // Location
-              _buildLabel('Location'),
+              _buildLabel('Location *'),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _locationController,
@@ -465,6 +527,15 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                     onPressed: _getLocation,
                   ),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Location is required', 'இடம் தேவை');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid location', 'சரியான இடத்தை உள்ளிடவும்');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
 

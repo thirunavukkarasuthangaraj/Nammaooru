@@ -2,12 +2,16 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.dto.combo.ComboResponse;
 import com.shopmanagement.dto.combo.CreateComboRequest;
+import com.shopmanagement.dto.notification.NotificationRequest;
 import com.shopmanagement.entity.ComboItem;
+import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.ProductCombo;
+import com.shopmanagement.entity.User;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.repository.ShopProductRepository;
 import com.shopmanagement.repository.ComboItemRepository;
 import com.shopmanagement.repository.ProductComboRepository;
+import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +35,9 @@ public class ComboService {
     private final ComboItemRepository comboItemRepository;
     private final ShopRepository shopRepository;
     private final ShopProductRepository shopProductRepository;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
+    private final SettingService settingService;
 
     /**
      * Create a new combo
@@ -112,6 +119,8 @@ public class ComboService {
 
         combo = comboRepository.save(combo);
         log.info("Created combo {} with {} items", combo.getId(), combo.getItemCount());
+
+        notifyCustomersNewCombo(combo, shop);
 
         return mapToResponse(combo, true);
     }
@@ -392,6 +401,41 @@ public class ComboService {
         }
 
         return builder.build();
+    }
+
+    private void notifyCustomersNewCombo(ProductCombo combo, Shop shop) {
+        try {
+            if (shop.getLatitude() == null || shop.getLongitude() == null) {
+                log.info("Skipping location-based notification for combo {}: shop has no location", combo.getId());
+                return;
+            }
+
+            double radiusKm = Double.parseDouble(
+                    settingService.getSettingValue("notification.radius_km", "50"));
+
+            List<User> nearbyCustomers = userRepository.findNearbyCustomers(
+                    shop.getLatitude().doubleValue(), shop.getLongitude().doubleValue(), radiusKm);
+            if (nearbyCustomers.isEmpty()) return;
+
+            List<Long> recipientIds = nearbyCustomers.stream()
+                    .map(User::getId).collect(Collectors.toList());
+
+            String savings = combo.getSavings() != null ? " - Save " + combo.getSavings() + "!" : "";
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("New Combo Deal from " + shop.getName() + "!")
+                    .message(combo.getName() + savings + " - Check it out on NammaOoru")
+                    .type(Notification.NotificationType.PROMOTION)
+                    .priority(Notification.NotificationPriority.MEDIUM)
+                    .recipientType(Notification.RecipientType.ALL_CUSTOMERS)
+                    .sendPush(true)
+                    .sendEmail(false)
+                    .build();
+
+            notificationService.sendNotificationToUsers(request, recipientIds);
+            log.info("New combo notification sent to {} nearby customers for combo: {}", recipientIds.size(), combo.getId());
+        } catch (Exception e) {
+            log.error("Failed to send new combo notification: {}", combo.getId(), e);
+        }
     }
 
     private ComboResponse.ComboItemResponse mapItemToResponse(ComboItem item) {

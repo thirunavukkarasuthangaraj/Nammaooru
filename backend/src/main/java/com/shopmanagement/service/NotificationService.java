@@ -119,6 +119,26 @@ public class NotificationService {
         return mapToResponse(savedNotifications.get(0));
     }
 
+    @Transactional
+    public void sendNotificationToUsers(NotificationRequest request, List<Long> recipientIds) {
+        if (recipientIds == null || recipientIds.isEmpty()) return;
+
+        log.info("Sending notification to {} users: {}", recipientIds.size(), request.getTitle());
+
+        List<Notification> notifications = new ArrayList<>();
+        for (Long recipientId : recipientIds) {
+            Notification notification = buildNotification(request, recipientId);
+            notifications.add(notification);
+        }
+        notificationRepository.saveAll(notifications);
+
+        if (request.getSendPush() != null && request.getSendPush()) {
+            sendBroadcastPushNotifications(request, recipientIds);
+        }
+
+        log.info("Notification sent to {} users", recipientIds.size());
+    }
+
     public void sendBroadcastPushNotifications(NotificationRequest request, List<Long> recipientIds) {
         try {
             log.info("📱 Sending FCM push notifications for broadcast to {} recipients", recipientIds.size());

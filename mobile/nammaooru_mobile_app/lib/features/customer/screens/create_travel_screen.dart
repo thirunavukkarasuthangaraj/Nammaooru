@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/travel_service.dart';
@@ -71,8 +72,31 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
     final phone = LocalStorage.getString('phoneNumber');
     if (phone != null && phone.isNotEmpty) {
       _phoneController.text = phone;
+    } else {
+      _fetchPhoneFromProfile();
     }
     _getLocation();
+  }
+
+  Future<void> _fetchPhoneFromProfile() async {
+    try {
+      final response = await ApiClient.get('/users/me');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
+          final userData = data['data'];
+          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          if (phone.toString().isNotEmpty && mounted) {
+            setState(() {
+              _phoneController.text = phone.toString();
+            });
+            await LocalStorage.setString('phoneNumber', phone.toString());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching phone from profile: $e');
+    }
   }
 
   Future<void> _getLocation() async {
@@ -345,6 +369,9 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Title is required', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0BA4\u0BC7\u0BB5\u0BC8');
                   }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Must be at least 3 characters', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 3 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
                   return null;
                 },
               ),
@@ -373,7 +400,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
               const SizedBox(height: 12),
 
               // From Location
-              _buildLabel(langProvider.getText('From Location', '\u0BAA\u0BC1\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD')),
+              _buildLabel(langProvider.getText('From Location *', '\u0BAA\u0BC1\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _fromLocationController,
@@ -385,22 +412,40 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                     onPressed: _getLocation,
                   ),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('From location is required', '\u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd \u0b87\u0b9f\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid from location', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // To Location
-              _buildLabel(langProvider.getText('To Location', '\u0B9A\u0BC7\u0BB0\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD')),
+              _buildLabel(langProvider.getText('To Location *', '\u0B9A\u0BC7\u0BB0\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _toLocationController,
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Tirupathi', '\u0B8E.\u0B95\u0BBE., \u0BA4\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BA4\u0BBF'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('To location is required', '\u0b9a\u0bc7\u0bb0\u0bc1\u0bae\u0bcd \u0b87\u0b9f\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid to location', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // Price
-              _buildLabel(langProvider.getText('Price', '\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD')),
+              _buildLabel(langProvider.getText('Price *', '\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _priceController,
@@ -408,19 +453,45 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., 500, Negotiable', '\u0B8E.\u0B95\u0BBE., 500, \u0BAA\u0BC7\u0B9A\u0BBF \u0BAE\u0BC1\u0B9F\u0BBF\u0BAF\u0BC1\u0BAE\u0BCD'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Price is required', '\u0b95\u0b9f\u0bcd\u0b9f\u0ba3\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 2) {
+                    return langProvider.getText('Enter valid price info', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b95\u0b9f\u0bcd\u0b9f\u0ba3\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // Seats Available
-              _buildLabel(langProvider.getText('Seats Available', '\u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BC8\u0B95\u0BB3\u0BCD')),
+              _buildLabel(langProvider.getText('Seats Available *', '\u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BC8\u0B95\u0BB3\u0BCD *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _seatsController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
+                ],
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., 4', '\u0B8E.\u0B95\u0BBE., 4'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Seats available is required', '\u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  final seats = int.tryParse(value.trim());
+                  if (seats == null) {
+                    return langProvider.getText('Enter a valid number', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  } else if (seats < 1) {
+                    return langProvider.getText('At least 1 seat required', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 1 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8 \u0ba4\u0bc7\u0bb5\u0bc8');
+                  } else if (seats > 60) {
+                    return langProvider.getText('Maximum 60 seats allowed', '\u0b85\u0ba4\u0bbf\u0b95\u0baa\u0b9f\u0bcd\u0b9a\u0bae\u0bcd 60 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bb3\u0bcd \u0b85\u0ba9\u0bc1\u0bae\u0ba4\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
@@ -429,20 +500,25 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
               const SizedBox(height: 6),
               TextFormField(
                 controller: _phoneController,
-                readOnly: true,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 decoration: _inputDecoration(
                   langProvider.getText('Contact phone number', '\u0BA4\u0BCA\u0B9F\u0BB0\u0BCD\u0BAA\u0BC1 \u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD'),
                 ).copyWith(
-                  fillColor: Colors.grey[100],
-                  suffixIcon: const Icon(Icons.lock_outline, size: 18, color: Colors.grey),
+                  prefixIcon: const Icon(Icons.phone, size: 20, color: _travelTeal),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Phone number is required', '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD \u0BA4\u0BC7\u0BB5\u0BC8');
                   }
-                  if (value.trim().length < 10) {
-                    return langProvider.getText('Enter a valid phone number', '\u0B9A\u0BB0\u0BBF\u0BAF\u0BBE\u0BA9 \u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD\u0BA3\u0BC8 \u0B89\u0BB3\u0BCD\u0BB3\u0BBF\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD');
+                  if (value.trim().length != 10) {
+                    return langProvider.getText('Enter valid 10-digit mobile number', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 10 \u0b87\u0bb2\u0b95\u0bcd\u0b95 \u0bae\u0bca\u0baa\u0bc8\u0bb2\u0bcd \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  if (!RegExp(r'^[6-9]').hasMatch(value.trim())) {
+                    return langProvider.getText('Must start with 6, 7, 8 or 9', '6, 7, 8 \u0b85\u0bb2\u0bcd\u0bb2\u0ba4\u0bc1 9 \u0b87\u0bb2\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
                   }
                   return null;
                 },
@@ -450,7 +526,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
               const SizedBox(height: 12),
 
               // Description
-              _buildLabel(langProvider.getText('Description', '\u0BB5\u0BBF\u0BB5\u0BB0\u0BAE\u0BCD')),
+              _buildLabel(langProvider.getText('Description *', '\u0BB5\u0BBF\u0BB5\u0BB0\u0BAE\u0BCD *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _descriptionController,
@@ -460,6 +536,15 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the travel...', '\u0BAA\u0BAF\u0BA3\u0BA4\u0BCD\u0BA4\u0BC8\u0BAA\u0BCD \u0BAA\u0BB1\u0BCD\u0BB1\u0BBF\u0BAF \u0B95\u0BC2\u0B9F\u0BC1\u0BA4\u0BB2\u0BCD \u0BB5\u0BBF\u0BB5\u0BB0\u0B99\u0BCD\u0B95\u0BB3\u0BCD...'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Description is required', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 10) {
+                    return langProvider.getText('Description must be at least 10 characters', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 10 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
 

@@ -10,6 +10,19 @@ class LocationService {
 
   final loc.Location _location = loc.Location();
 
+  // Cached position from last successful GPS fetch
+  static double? _cachedLatitude;
+  static double? _cachedLongitude;
+
+  /// Get cached latitude (set after first successful GPS fetch)
+  static double? get cachedLatitude => _cachedLatitude;
+
+  /// Get cached longitude (set after first successful GPS fetch)
+  static double? get cachedLongitude => _cachedLongitude;
+
+  /// Check if a cached position is available
+  static bool get hasCachedPosition => _cachedLatitude != null && _cachedLongitude != null;
+
   // Use your Google Maps API key from env config
   static const String _googleApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
 
@@ -201,6 +214,9 @@ class LocationService {
         },
       );
       print('✅ Location obtained: ${position.latitude}, ${position.longitude}');
+      // Cache for instant reuse in other screens
+      _cachedLatitude = position.latitude;
+      _cachedLongitude = position.longitude;
       return position;
     } catch (e) {
       print('❌ Error getting current position: $e');

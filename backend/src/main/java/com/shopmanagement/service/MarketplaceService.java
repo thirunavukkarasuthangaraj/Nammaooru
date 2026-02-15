@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +35,7 @@ public class MarketplaceService {
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
@@ -88,6 +90,7 @@ public class MarketplaceService {
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
+            notifyCustomersNewPost(saved);
         } else {
             // Notify admins about new post pending approval
             notifyAdminsNewPost(saved);
@@ -152,6 +155,7 @@ public class MarketplaceService {
 
         // Notify seller that their post is approved
         notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been approved and is now visible to others.");
+        notifyCustomersNewPost(saved);
 
         return saved;
     }
@@ -278,6 +282,8 @@ public class MarketplaceService {
 
         marketplacePostRepository.save(post);
         log.info("Marketplace post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
+
+        notifyOwnerPostReported(post, newCount);
     }
 
     // ---- Notification helpers ----
@@ -364,6 +370,76 @@ public class MarketplaceService {
             return null; // no expiry
         }
         return LocalDateTime.now().minusDays(durationDays);
+    }
+
+    private void notifyCustomersNewPost(MarketplacePost post) {
+        try {
+            // Use seller's location (MarketplacePost has no lat/lng)
+            User seller = userRepository.findById(post.getSellerUserId()).orElse(null);
+            if (seller == null || seller.getCurrentLatitude() == null || seller.getCurrentLongitude() == null) {
+                log.info("Skipping location-based notification for marketplace post {}: no seller location", post.getId());
+                return;
+            }
+
+            double radiusKm = Double.parseDouble(
+                    settingService.getSettingValue("notification.radius_km", "50"));
+
+            List<User> nearbyCustomers = userRepository.findNearbyCustomers(
+                    seller.getCurrentLatitude(), seller.getCurrentLongitude(), radiusKm);
+            if (nearbyCustomers.isEmpty()) {
+                log.info("No nearby customers found for marketplace post notification: id={}", post.getId());
+                return;
+            }
+
+            List<Long> recipientIds = nearbyCustomers.stream()
+                    .map(User::getId)
+                    .collect(Collectors.toList());
+
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("New Marketplace Listing!")
+                    .message(post.getTitle() + " - Check it out on NammaOoru")
+                    .type(Notification.NotificationType.PROMOTION)
+                    .priority(Notification.NotificationPriority.MEDIUM)
+                    .recipientType(Notification.RecipientType.ALL_CUSTOMERS)
+                    .sendPush(true)
+                    .sendEmail(false)
+                    .build();
+
+            notificationService.sendNotificationToUsers(request, recipientIds);
+            log.info("New marketplace post notification sent to {} nearby customers", recipientIds.size());
+        } catch (Exception e) {
+            log.error("Failed to send new post notification to customers for marketplace post: {}", post.getId(), e);
+        }
+    }
+
+    private void notifyOwnerPostReported(MarketplacePost post, int reportCount) {
+        try {
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("Your post has been reported")
+                    .message("Your post \"" + post.getTitle() + "\" has received " + reportCount + " report(s). Please review it.")
+                    .type(Notification.NotificationType.WARNING)
+                    .priority(Notification.NotificationPriority.HIGH)
+                    .recipientId(post.getSellerUserId())
+                    .recipientType(Notification.RecipientType.USER)
+                    .referenceId(post.getId())
+                    .referenceType("POST_REPORT")
+                    .sendPush(true)
+                    .sendEmail(false)
+                    .build();
+
+            notificationService.createNotification(request);
+
+            // Send email to post owner
+            User owner = userRepository.findById(post.getSellerUserId()).orElse(null);
+            if (owner != null && owner.getEmail() != null) {
+                emailService.sendPostReportedEmail(owner.getEmail(), owner.getFullName(),
+                        post.getTitle(), "Marketplace", reportCount);
+            }
+
+            log.info("Post owner notified about report for marketplace post: id={}", post.getId());
+        } catch (Exception e) {
+            log.error("Failed to notify post owner about report for marketplace post: {}", post.getId(), e);
+        }
     }
 
     private void notifyAdminsFlaggedPost(MarketplacePost post, int reportCount) {

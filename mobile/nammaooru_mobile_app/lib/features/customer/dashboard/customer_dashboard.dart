@@ -73,7 +73,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   bool _isLoadingMarketplace = false;
 
   List<Map<String, dynamic>> _dynamicFeatures = [];
-  bool _isLoadingFeatures = false;
+  bool _isLoadingFeatures = true;  // Start true so defaults don't flash before API responds
 
   // Featured posts from all categories for banner carousel
   List<Map<String, dynamic>> _featuredPosts = [];
@@ -95,10 +95,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Future<void> _initLocationThenLoadData() async {
-    // Get location first, then load dashboard data (so shops can be filtered by location)
+    // Load feature config immediately with default coordinates (don't wait for GPS)
+    _loadFeatureConfig();
+    // Get location, then load dashboard data (shops need location)
     await _getCurrentLocationOnStartup();
     _loadDashboardData();
-    _loadFeatureConfig();
+    // Refresh feature config with actual GPS coordinates if available
+    if (_userLatitude != null && _userLongitude != null) {
+      _loadFeatureConfig();
+    }
   }
 
   @override
@@ -1853,12 +1858,65 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildServiceCategories() {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
+        // Show loading shimmer while feature config API is pending
+        if (_isLoadingFeatures) {
+          return _buildCategoryLoadingShimmer();
+        }
         // Use dynamic features if available, otherwise fallback to hardcoded
         if (_dynamicFeatures.isNotEmpty) {
           return _buildDynamicCategories(languageProvider);
         }
         return _buildDefaultCategories(languageProvider);
       },
+    );
+  }
+
+  Widget _buildCategoryLoadingShimmer() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      childAspectRatio: 1.15,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      children: List.generate(4, (index) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 80, height: 14, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4))),
+                  const SizedBox(height: 4),
+                  Container(width: 60, height: 10, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4))),
+                ],
+              ),
+            ],
+          ),
+        ),
+      )),
     );
   }
 

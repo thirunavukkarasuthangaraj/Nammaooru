@@ -56,6 +56,16 @@
         <action android:name="android.intent.action.VIEW" />
         <data android:scheme="http" />
     </intent>
+    <!-- Required for url_launcher to make phone calls (tel:) -->
+    <intent>
+        <action android:name="android.intent.action.DIAL" />
+        <data android:scheme="tel" />
+    </intent>
+    <!-- Required for url_launcher to send SMS -->
+    <intent>
+        <action android:name="android.intent.action.SENDTO" />
+        <data android:scheme="sms" />
+    </intent>
 </queries>
 
 

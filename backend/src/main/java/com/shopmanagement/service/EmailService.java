@@ -609,6 +609,25 @@ public class EmailService {
     }
 
     @Async
+    public void sendPostReportedEmail(String to, String ownerName, String postTitle, String category, int reportCount) {
+        try {
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("ownerName", ownerName);
+            variables.put("postTitle", postTitle);
+            variables.put("category", category);
+            variables.put("reportCount", reportCount);
+            variables.put("supportEmail", emailProperties.getFrom());
+            variables.put("companyName", "NammaOoru");
+
+            String subject = "Your Post Has Been Reported - NammaOoru";
+            sendHtmlEmail(to, subject, "post-reported", variables);
+            log.info("Post reported email sent to: {} for post: {}", to, postTitle);
+        } catch (Exception e) {
+            log.error("Failed to send post reported email to: {} for post: {}", to, postTitle, e);
+        }
+    }
+
+    @Async
     public void sendDeliveryNotificationEmail(String customerEmail, String customerName,
                                             String orderNumber, String deliveryPartnerName, String shopName) {
         // Call the full method with no order items (backward compatibility)

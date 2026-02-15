@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/parcel_service.dart';
@@ -72,8 +74,32 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
     final phone = LocalStorage.getString('phoneNumber');
     if (phone != null && phone.isNotEmpty) {
       _phoneController.text = phone;
+    } else {
+      // Phone not in LocalStorage, fetch from profile API
+      _fetchPhoneFromProfile();
     }
     _getLocation();
+  }
+
+  Future<void> _fetchPhoneFromProfile() async {
+    try {
+      final response = await ApiClient.get('/users/me');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
+          final userData = data['data'];
+          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          if (phone.toString().isNotEmpty && mounted) {
+            setState(() {
+              _phoneController.text = phone.toString();
+            });
+            await LocalStorage.setString('phoneNumber', phone.toString());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching phone from profile: $e');
+    }
   }
 
   Future<void> _getLocation() async {
@@ -341,6 +367,9 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Service name is required', '\u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bc6\u0baf\u0bb0\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
                   }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Must be at least 3 characters', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 3 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
                   return null;
                 },
               ),
@@ -369,7 +398,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
               const SizedBox(height: 12),
 
               // From Location
-              _buildLabel(langProvider.getText('From Location', '\u0b8e\u0b99\u0bcd\u0b95\u0bbf\u0bb0\u0bc1\u0ba8\u0bcd\u0ba4\u0bc1')),
+              _buildLabel(langProvider.getText('From Location *', '\u0b8e\u0b99\u0bcd\u0b95\u0bbf\u0bb0\u0bc1\u0ba8\u0bcd\u0ba4\u0bc1 *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _fromLocationController,
@@ -379,11 +408,20 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Chennai', '\u0b8e.\u0b95\u0bbe., \u0b9a\u0bc6\u0ba9\u0bcd\u0ba9\u0bc8'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('From location is required', '\u0b8e\u0b99\u0bcd\u0b95\u0bbf\u0bb0\u0bc1\u0ba8\u0bcd\u0ba4\u0bc1 \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid from location', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // To Location
-              _buildLabel(langProvider.getText('To Location', '\u0b8e\u0b99\u0bcd\u0b95\u0bc1')),
+              _buildLabel(langProvider.getText('To Location *', '\u0b8e\u0b99\u0bcd\u0b95\u0bc1 *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _toLocationController,
@@ -393,11 +431,20 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Tirupattur', '\u0b8e.\u0b95\u0bbe., \u0ba4\u0bbf\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0ba4\u0bcd\u0ba4\u0bc2\u0bb0\u0bcd'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('To location is required', '\u0b8e\u0b99\u0bcd\u0b95\u0bc1 \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid to location', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // Price Info
-              _buildLabel(langProvider.getText('Price Info', '\u0bb5\u0bbf\u0bb2\u0bc8 \u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd')),
+              _buildLabel(langProvider.getText('Price Info *', '\u0bb5\u0bbf\u0bb2\u0bc8 \u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _priceInfoController,
@@ -407,11 +454,20 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Rs. 50 per kg, Rs. 200 per parcel', '\u0b8e.\u0b95\u0bbe., \u0bb0\u0bc2. 50 \u0b95\u0bbf\u0bb2\u0bcb\u0bb5\u0bc1\u0b95\u0bcd\u0b95\u0bc1, \u0bb0\u0bc2. 200 \u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bc1\u0b95\u0bcd\u0b95\u0bc1'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Price info is required', '\u0bb5\u0bbf\u0bb2\u0bc8 \u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 2) {
+                    return langProvider.getText('Enter valid price info', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0bb5\u0bbf\u0bb2\u0bc8 \u0bb5\u0bbf\u0bb5\u0bb0\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // Address / Location
-              _buildLabel(langProvider.getText('Address / Location', '\u0bae\u0bc1\u0b95\u0bb5\u0bb0\u0bbf / \u0b87\u0b9f\u0bae\u0bcd')),
+              _buildLabel(langProvider.getText('Address / Location *', '\u0bae\u0bc1\u0b95\u0bb5\u0bb0\u0bbf / \u0b87\u0b9f\u0bae\u0bcd *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _addressController,
@@ -421,11 +477,20 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                     onPressed: _getLocation,
                   ),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Address is required', '\u0bae\u0bc1\u0b95\u0bb5\u0bb0\u0bbf \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid address', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0bae\u0bc1\u0b95\u0bb5\u0bb0\u0bbf\u0baf\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
               // Timings
-              _buildLabel(langProvider.getText('Timings', '\u0ba8\u0bc7\u0bb0\u0bae\u0bcd')),
+              _buildLabel(langProvider.getText('Timings *', '\u0ba8\u0bc7\u0bb0\u0bae\u0bcd *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _timingsController,
@@ -435,28 +500,42 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., 9 AM - 6 PM, Daily', '\u0b8e.\u0b95\u0bbe., \u0b95\u0bbe\u0bb2\u0bc8 9 - \u0bae\u0bbe\u0bb2\u0bc8 6, \u0ba4\u0bbf\u0ba9\u0bae\u0bcd\u0ba4\u0bcb\u0bb1\u0bc1\u0bae\u0bcd'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Timings are required', '\u0ba8\u0bc7\u0bb0\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter valid timings', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0ba8\u0bc7\u0bb0\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
-              // Phone (auto-filled, read-only)
+              // Phone
               _buildLabel(langProvider.getText('Phone Number *', '\u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bc7\u0b9a\u0bbf \u0b8e\u0ba3\u0bcd *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _phoneController,
-                readOnly: true,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 decoration: _inputDecoration(
                   langProvider.getText('Contact phone number', '\u0ba4\u0bca\u0b9f\u0bb0\u0bcd\u0baa\u0bc1 \u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bc7\u0b9a\u0bbf \u0b8e\u0ba3\u0bcd'),
                 ).copyWith(
-                  fillColor: Colors.grey[100],
-                  suffixIcon: const Icon(Icons.lock_outline, size: 18, color: Colors.grey),
+                  prefixIcon: const Icon(Icons.phone, size: 20, color: Color(0xFFE65100)),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Phone number is required', '\u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bc7\u0b9a\u0bbf \u0b8e\u0ba3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
                   }
-                  if (value.trim().length < 10) {
-                    return langProvider.getText('Enter a valid phone number', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bc7\u0b9a\u0bbf \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  if (value.trim().length != 10) {
+                    return langProvider.getText('Enter valid 10-digit mobile number', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 10 \u0b87\u0bb2\u0b95\u0bcd\u0b95 \u0bae\u0bca\u0baa\u0bc8\u0bb2\u0bcd \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                  }
+                  if (!RegExp(r'^[6-9]').hasMatch(value.trim())) {
+                    return langProvider.getText('Must start with 6, 7, 8 or 9', '6, 7, 8 \u0b85\u0bb2\u0bcd\u0bb2\u0ba4\u0bc1 9 \u0b87\u0bb2\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
                   }
                   return null;
                 },
@@ -464,7 +543,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
               const SizedBox(height: 12),
 
               // Description
-              _buildLabel(langProvider.getText('Description', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd')),
+              _buildLabel(langProvider.getText('Description *', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _descriptionController,
@@ -474,6 +553,15 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the parcel service...', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bb1\u0bcd\u0bb1\u0bbf\u0baf \u0b95\u0bc2\u0b9f\u0bc1\u0ba4\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd...'),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Description is required', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().length < 10) {
+                    return langProvider.getText('Description must be at least 10 characters', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 10 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
 

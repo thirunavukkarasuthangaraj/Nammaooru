@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import 'package:geolocator/geolocator.dart';
+import '../../../core/services/location_service.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -61,80 +61,13 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Try to get user's location for nearby shops
-      Position? position;
-      try {
-        final permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          final requested = await Geolocator.requestPermission();
-          if (requested == LocationPermission.whileInUse ||
-              requested == LocationPermission.always) {
-            position = await Geolocator.getCurrentPosition(
-              locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.medium,
-                timeLimit: Duration(seconds: 10),
-              ),
-            );
-          }
-        } else if (permission == LocationPermission.whileInUse ||
-                   permission == LocationPermission.always) {
-          position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 10),
-            ),
-          );
-        }
-      } catch (e) {
-        // Location unavailable, will fall back to all shops
-        debugPrint('Location unavailable: $e');
-      }
-
-      Map<String, dynamic> response;
-      if (position != null) {
-        // Location available: fetch nearby shops
-        response = await _shopApi.getNearbyShops(
-          latitude: position.latitude,
-          longitude: position.longitude,
-          radius: _maxDistance,
-        );
-
-        if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
-          var shops = response['data']['shops'] ?? [];
-
-          // Client-side category filter (nearby API doesn't support category)
-          if (widget.category != null && widget.category!.isNotEmpty) {
-            final cat = widget.category!.toLowerCase();
-            shops = shops.where((shop) {
-              final shopType = (shop['businessType'] ?? '').toString().toLowerCase();
-              return shopType == cat || shopType.contains(cat);
-            }).toList();
-          }
-
-          setState(() {
-            _shops = shops;
-            _filteredShops = List.from(_shops);
-            _isLocationBased = true;
-            _applySortAndFilter();
-          });
-        }
+      // Use cached location from dashboard/login if available (instant, no GPS wait)
+      if (LocationService.hasCachedPosition) {
+        await _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
       } else {
-        // No location: fall back to all active shops
-        response = await _shopApi.getActiveShops(
-          page: 0,
-          size: 20,
-          sortBy: _sortBy,
-          category: widget.category,
-        );
-
-        if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
-          setState(() {
-            _shops = response['data']['content'] ?? [];
-            _filteredShops = List.from(_shops);
-            _isLocationBased = false;
-            _applySortAndFilter();
-          });
-        }
+        // No cached location — load without location first, then try GPS in background
+        await _loadShopsWithoutLocation();
+        _fetchLocationAndRefresh();
       }
     } catch (e) {
       if (mounted) {
@@ -144,6 +77,68 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  /// Load nearby shops using provided lat/lng (instant when cached)
+  Future<void> _loadNearbyShops(double latitude, double longitude) async {
+    final response = await _shopApi.getNearbyShops(
+      latitude: latitude,
+      longitude: longitude,
+      radius: _maxDistance,
+    );
+
+    if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
+      var shops = response['data']['shops'] ?? [];
+
+      // Client-side category filter (nearby API doesn't support category)
+      if (widget.category != null && widget.category!.isNotEmpty) {
+        final cat = widget.category!.toLowerCase();
+        shops = shops.where((shop) {
+          final shopType = (shop['businessType'] ?? '').toString().toLowerCase();
+          return shopType == cat || shopType.contains(cat);
+        }).toList();
+      }
+
+      setState(() {
+        _shops = shops;
+        _filteredShops = List.from(_shops);
+        _isLocationBased = true;
+        _applySortAndFilter();
+      });
+    }
+  }
+
+  /// Load shops without location — fallback when no cached position
+  Future<void> _loadShopsWithoutLocation() async {
+    final response = await _shopApi.getActiveShops(
+      page: 0,
+      size: 20,
+      sortBy: _sortBy,
+      category: widget.category,
+    );
+
+    if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
+      setState(() {
+        _shops = response['data']['content'] ?? [];
+        _filteredShops = List.from(_shops);
+        _isLocationBased = false;
+        _applySortAndFilter();
+      });
+    }
+  }
+
+  /// Fetch GPS in background and refresh with nearby shops
+  Future<void> _fetchLocationAndRefresh() async {
+    try {
+      final position = await LocationService.instance.getCurrentPosition();
+      if (position == null || position.latitude == null || position.longitude == null) return;
+      if (!mounted) return;
+
+      await _loadNearbyShops(position.latitude!, position.longitude!);
+    } catch (e) {
+      debugPrint('Location unavailable: $e');
+      // Keep showing non-location shops — no error to user
     }
   }
 

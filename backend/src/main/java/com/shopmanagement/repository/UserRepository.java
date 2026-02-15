@@ -139,4 +139,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findNearbyAvailableDrivers(@Param("lat") double latitude,
                                           @Param("lng") double longitude,
                                           @Param("radiusKm") double radiusKm);
+
+    // Find nearby customers (USER role) within radius using Haversine formula
+    @Query(value = "SELECT * FROM users u WHERE u.role = 'USER' " +
+           "AND u.is_active = true " +
+           "AND u.current_latitude IS NOT NULL AND u.current_longitude IS NOT NULL " +
+           "AND (6371 * acos(cos(radians(:lat)) * cos(radians(u.current_latitude)) * cos(radians(u.current_longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(u.current_latitude)))) < :radiusKm",
+           nativeQuery = true)
+    List<User> findNearbyCustomers(@Param("lat") double latitude,
+                                   @Param("lng") double longitude,
+                                   @Param("radiusKm") double radiusKm);
 }

@@ -35,6 +35,7 @@ public class FarmerProductService {
     private final UserRepository userRepository;
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
@@ -93,6 +94,7 @@ public class FarmerProductService {
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your farmer product '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
+            notifyCustomersNewPost(saved);
         } else {
             notifyAdminsNewPost(saved);
         }
@@ -155,6 +157,7 @@ public class FarmerProductService {
         log.info("Farmer product approved: id={}", id);
 
         notifySellerPostStatus(saved, "Your farmer product '" + saved.getTitle() + "' has been approved and is now visible to others.");
+        notifyCustomersNewPost(saved);
 
         return saved;
     }
@@ -291,6 +294,8 @@ public class FarmerProductService {
 
         farmerProductRepository.save(post);
         log.info("Farmer product reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
+
+        notifyOwnerPostReported(post, newCount);
     }
 
     // ---- Notification helpers ----
@@ -377,6 +382,70 @@ public class FarmerProductService {
             return null;
         }
         return LocalDateTime.now().minusDays(durationDays);
+    }
+
+    private void notifyCustomersNewPost(FarmerProduct post) {
+        try {
+            // Use seller's location (FarmerProduct has no lat/lng)
+            User seller = userRepository.findById(post.getSellerUserId()).orElse(null);
+            if (seller == null || seller.getCurrentLatitude() == null || seller.getCurrentLongitude() == null) {
+                log.info("Skipping location-based notification for farmer product {}: no seller location", post.getId());
+                return;
+            }
+
+            double radiusKm = Double.parseDouble(
+                    settingService.getSettingValue("notification.radius_km", "50"));
+
+            List<User> nearbyCustomers = userRepository.findNearbyCustomers(
+                    seller.getCurrentLatitude(), seller.getCurrentLongitude(), radiusKm);
+            if (nearbyCustomers.isEmpty()) return;
+
+            List<Long> recipientIds = nearbyCustomers.stream()
+                    .map(User::getId).collect(Collectors.toList());
+
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("Fresh Farm Product Available!")
+                    .message(post.getTitle() + " - Check it out on NammaOoru")
+                    .type(Notification.NotificationType.PROMOTION)
+                    .priority(Notification.NotificationPriority.MEDIUM)
+                    .recipientType(Notification.RecipientType.ALL_CUSTOMERS)
+                    .sendPush(true)
+                    .sendEmail(false)
+                    .build();
+
+            notificationService.sendNotificationToUsers(request, recipientIds);
+            log.info("New farmer product notification sent to {} nearby customers", recipientIds.size());
+        } catch (Exception e) {
+            log.error("Failed to send new post notification for farmer product: {}", post.getId(), e);
+        }
+    }
+
+    private void notifyOwnerPostReported(FarmerProduct post, int reportCount) {
+        try {
+            NotificationRequest request = NotificationRequest.builder()
+                    .title("Your post has been reported")
+                    .message("Your product \"" + post.getTitle() + "\" has received " + reportCount + " report(s). Please review it.")
+                    .type(Notification.NotificationType.WARNING)
+                    .priority(Notification.NotificationPriority.HIGH)
+                    .recipientId(post.getSellerUserId())
+                    .recipientType(Notification.RecipientType.USER)
+                    .referenceId(post.getId())
+                    .referenceType("POST_REPORT")
+                    .sendPush(true)
+                    .sendEmail(false)
+                    .build();
+
+            notificationService.createNotification(request);
+
+            User owner = userRepository.findById(post.getSellerUserId()).orElse(null);
+            if (owner != null && owner.getEmail() != null) {
+                emailService.sendPostReportedEmail(owner.getEmail(), owner.getFullName(),
+                        post.getTitle(), "Farmer Product", reportCount);
+            }
+            log.info("Post owner notified about report for farmer product: id={}", post.getId());
+        } catch (Exception e) {
+            log.error("Failed to notify post owner about report for farmer product: {}", post.getId(), e);
+        }
     }
 
     private void notifyAdminsFlaggedPost(FarmerProduct post, int reportCount) {
