@@ -52,15 +52,20 @@ public class NotificationService {
         if (request.getRecipientId() != null) {
             Notification notification = buildNotification(request, request.getRecipientId());
             Notification savedNotification = notificationRepository.save(notification);
-            
+
             // Send email if requested
             if (request.getSendEmail() != null && request.getSendEmail()) {
                 sendEmailNotification(savedNotification);
             }
-            
+
+            // Send push notification if requested
+            if (request.getSendPush() != null && request.getSendPush()) {
+                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage());
+            }
+
             return mapToResponse(savedNotification);
         }
-        
+
         // Handle multiple recipients
         if (request.getRecipientIds() != null && !request.getRecipientIds().isEmpty()) {
             List<Notification> notifications = new ArrayList<>();
@@ -68,16 +73,23 @@ public class NotificationService {
                 Notification notification = buildNotification(request, recipientId);
                 notifications.add(notification);
             }
-            
+
             List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
-            
+
             // Send emails if requested
             if (request.getSendEmail() != null && request.getSendEmail()) {
                 for (Notification notification : savedNotifications) {
                     sendEmailNotification(notification);
                 }
             }
-            
+
+            // Send push notifications if requested
+            if (request.getSendPush() != null && request.getSendPush()) {
+                for (Long recipientId : request.getRecipientIds()) {
+                    sendPushToUser(recipientId, request.getTitle(), request.getMessage());
+                }
+            }
+
             return mapToResponse(savedNotifications.get(0)); // Return first notification
         }
         
@@ -187,6 +199,30 @@ public class NotificationService {
 
         } catch (Exception e) {
             log.error("❌ Error sending broadcast push notifications", e);
+        }
+    }
+
+    @Async
+    public void sendPushToUser(Long userId, String title, String message) {
+        try {
+            List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
+            if (fcmTokens.isEmpty()) {
+                log.debug("No FCM tokens found for user {}", userId);
+                return;
+            }
+
+            for (UserFcmToken fcmToken : fcmTokens) {
+                try {
+                    firebaseNotificationService.sendPromotionalNotification(
+                            title, message, fcmToken.getFcmToken());
+                    log.info("Push notification sent to user {} on device {}", userId, fcmToken.getDeviceType());
+                } catch (Exception e) {
+                    log.error("Failed to send push to user {} token: {}...", userId,
+                            fcmToken.getFcmToken().substring(0, Math.min(20, fcmToken.getFcmToken().length())), e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error sending push notification to user {}", userId, e);
         }
     }
 
