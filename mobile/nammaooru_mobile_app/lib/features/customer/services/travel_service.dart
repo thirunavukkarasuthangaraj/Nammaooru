@@ -12,6 +12,9 @@ class TravelService {
     int page = 0,
     int size = 20,
     String? vehicleType,
+    double? latitude,
+    double? longitude,
+    double? radiusKm,
   }) async {
     try {
       Logger.api('Fetching travel posts - page: $page, size: $size, vehicleType: $vehicleType');
@@ -23,6 +26,13 @@ class TravelService {
 
       if (vehicleType != null && vehicleType.isNotEmpty) {
         queryParams['vehicleType'] = vehicleType;
+      }
+      if (latitude != null && longitude != null) {
+        queryParams['lat'] = latitude.toString();
+        queryParams['lng'] = longitude.toString();
+        if (radiusKm != null) {
+          queryParams['radius'] = radiusKm.toString();
+        }
       }
 
       final response = await _apiService.get(
@@ -66,6 +76,8 @@ class TravelService {
     int? seatsAvailable,
     String? description,
     List<String>? imagePaths,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       Logger.api('Creating travel post: $title ($vehicleType)');
@@ -90,6 +102,12 @@ class TravelService {
       }
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;
+      }
+      if (latitude != null) {
+        formMap['latitude'] = latitude.toString();
+      }
+      if (longitude != null) {
+        formMap['longitude'] = longitude.toString();
       }
 
       if (imagePaths != null && imagePaths.isNotEmpty) {

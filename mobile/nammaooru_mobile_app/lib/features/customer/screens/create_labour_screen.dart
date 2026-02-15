@@ -29,6 +29,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   final List<File> _selectedImages = [];
   static const int _maxImages = 3;
   bool _isSubmitting = false;
+  double? _latitude;
+  double? _longitude;
 
   static const Color _labourBlue = Color(0xFF1565C0);
 
@@ -100,6 +102,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     try {
       final position = await LocationService.instance.getCurrentPosition();
       if (position != null && position.latitude != null && position.longitude != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
         final address = await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
@@ -239,6 +243,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         imagePaths: _selectedImages.isNotEmpty
             ? _selectedImages.map((f) => f.path).toList()
             : null,
+        latitude: _latitude,
+        longitude: _longitude,
       );
 
       if (mounted) {
@@ -381,14 +387,18 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Phone
+              // Phone (auto-filled, read-only)
               _buildLabel(langProvider.getText('Phone Number *', 'தொலைபேசி எண் *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _phoneController,
+                readOnly: true,
                 keyboardType: TextInputType.phone,
                 decoration: _inputDecoration(
                   langProvider.getText('Worker\'s phone number', 'தொழிலாளர் தொலைபேசி எண்'),
+                ).copyWith(
+                  fillColor: Colors.grey[100],
+                  suffixIcon: const Icon(Icons.lock_outline, size: 18, color: Colors.grey),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

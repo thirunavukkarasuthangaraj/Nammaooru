@@ -6,6 +6,8 @@ import com.shopmanagement.entity.ParcelServicePost.PostStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -33,4 +35,63 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
     long countByStatus(PostStatus status);
 
     long countByReportCountGreaterThan(int count);
+
+    long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
+
+    // Haversine nearby queries - posts with NULL lat/lng are always included
+    @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "pp.latitude IS NULL OR pp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
+           "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ") ORDER BY pp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<ParcelServicePost> findNearbyPosts(@Param("statuses") String[] statuses,
+                                            @Param("lat") double lat,
+                                            @Param("lng") double lng,
+                                            @Param("radiusKm") double radiusKm,
+                                            @Param("limit") int limit,
+                                            @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "pp.latitude IS NULL OR pp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
+           "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPosts(@Param("statuses") String[] statuses,
+                          @Param("lat") double lat,
+                          @Param("lng") double lng,
+                          @Param("radiusKm") double radiusKm);
+
+    @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "pp.service_type = CAST(:serviceType AS text) AND (" +
+           "pp.latitude IS NULL OR pp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
+           "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ") ORDER BY pp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<ParcelServicePost> findNearbyPostsByServiceType(@Param("statuses") String[] statuses,
+                                                         @Param("serviceType") String serviceType,
+                                                         @Param("lat") double lat,
+                                                         @Param("lng") double lng,
+                                                         @Param("radiusKm") double radiusKm,
+                                                         @Param("limit") int limit,
+                                                         @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "pp.service_type = CAST(:serviceType AS text) AND (" +
+           "pp.latitude IS NULL OR pp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
+           "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPostsByServiceType(@Param("statuses") String[] statuses,
+                                       @Param("serviceType") String serviceType,
+                                       @Param("lat") double lat,
+                                       @Param("lng") double lng,
+                                       @Param("radiusKm") double radiusKm);
 }

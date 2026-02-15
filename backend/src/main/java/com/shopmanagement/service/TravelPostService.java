@@ -20,10 +20,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -41,9 +45,21 @@ public class TravelPostService {
     public TravelPost createPost(String title, String phone, String vehicleTypeStr,
                                   String fromLocation, String toLocation, String price,
                                   Integer seatsAvailable, String description,
-                                  List<MultipartFile> images, String username) throws IOException {
+                                  List<MultipartFile> images, String username,
+                                  BigDecimal latitude, BigDecimal longitude) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check post limit
+        int postLimit = Integer.parseInt(
+                settingService.getSettingValue("travels.post.user_limit", "0"));
+        if (postLimit > 0) {
+            List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = travelPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active travel listings");
+            }
+        }
 
         VehicleType vehicleType;
         try {
@@ -78,6 +94,8 @@ public class TravelPostService {
                 .seatsAvailable(seatsAvailable)
                 .description(description)
                 .imageUrls(imageUrls)
+                .latitude(latitude)
+                .longitude(longitude)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
@@ -97,10 +115,20 @@ public class TravelPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TravelPost> getApprovedPosts(Pageable pageable) {
+    public Page<TravelPost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<TravelPost> posts = travelPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
+            long total = travelPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return travelPostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
@@ -108,9 +136,8 @@ public class TravelPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TravelPost> getApprovedPostsByVehicleType(String vehicleTypeStr, Pageable pageable) {
+    public Page<TravelPost> getApprovedPostsByVehicleType(String vehicleTypeStr, Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
         VehicleType vehicleType;
         try {
@@ -119,6 +146,17 @@ public class TravelPostService {
             throw new RuntimeException("Invalid vehicle type: " + vehicleTypeStr);
         }
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<TravelPost> posts = travelPostRepository.findNearbyPostsByVehicleType(statuses, vehicleType.name(), lat, lng, radius, limit, offset);
+            long total = travelPostRepository.countNearbyPostsByVehicleType(statuses, vehicleType.name(), lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return travelPostRepository.findByStatusInAndVehicleTypeAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, vehicleType, cutoffDate, pageable);
         }

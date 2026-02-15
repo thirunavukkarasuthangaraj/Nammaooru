@@ -20,10 +20,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -41,9 +45,21 @@ public class ParcelServicePostService {
     public ParcelServicePost createPost(String serviceName, String phone, String serviceTypeStr,
                                          String fromLocation, String toLocation, String priceInfo,
                                          String address, String timings, String description,
-                                         List<MultipartFile> images, String username) throws IOException {
+                                         List<MultipartFile> images, String username,
+                                         BigDecimal latitude, BigDecimal longitude) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check post limit
+        int postLimit = Integer.parseInt(
+                settingService.getSettingValue("parcels.post.user_limit", "0"));
+        if (postLimit > 0) {
+            List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = parcelServicePostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active parcel service listings");
+            }
+        }
 
         ServiceType serviceType;
         try {
@@ -79,6 +95,8 @@ public class ParcelServicePostService {
                 .timings(timings)
                 .description(description)
                 .imageUrls(imageUrls)
+                .latitude(latitude)
+                .longitude(longitude)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
@@ -98,10 +116,20 @@ public class ParcelServicePostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ParcelServicePost> getApprovedPosts(Pageable pageable) {
+    public Page<ParcelServicePost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<ParcelServicePost> posts = parcelServicePostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
+            long total = parcelServicePostRepository.countNearbyPosts(statuses, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return parcelServicePostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
@@ -109,9 +137,8 @@ public class ParcelServicePostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ParcelServicePost> getApprovedPostsByServiceType(String serviceTypeStr, Pageable pageable) {
+    public Page<ParcelServicePost> getApprovedPostsByServiceType(String serviceTypeStr, Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
         ServiceType serviceType;
         try {
@@ -120,6 +147,17 @@ public class ParcelServicePostService {
             throw new RuntimeException("Invalid service type: " + serviceTypeStr);
         }
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<ParcelServicePost> posts = parcelServicePostRepository.findNearbyPostsByServiceType(statuses, serviceType.name(), lat, lng, radius, limit, offset);
+            long total = parcelServicePostRepository.countNearbyPostsByServiceType(statuses, serviceType.name(), lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return parcelServicePostRepository.findByStatusInAndServiceTypeAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, serviceType, cutoffDate, pageable);
         }

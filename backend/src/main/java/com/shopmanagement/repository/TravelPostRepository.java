@@ -6,6 +6,8 @@ import com.shopmanagement.entity.TravelPost.PostStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -33,4 +35,63 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
     long countByStatus(PostStatus status);
 
     long countByReportCountGreaterThan(int count);
+
+    long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
+
+    // Haversine nearby queries - posts with NULL lat/lng are always included
+    @Query(value = "SELECT * FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
+           "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ") ORDER BY tp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<TravelPost> findNearbyPosts(@Param("statuses") String[] statuses,
+                                     @Param("lat") double lat,
+                                     @Param("lng") double lng,
+                                     @Param("radiusKm") double radiusKm,
+                                     @Param("limit") int limit,
+                                     @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
+           "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPosts(@Param("statuses") String[] statuses,
+                          @Param("lat") double lat,
+                          @Param("lng") double lng,
+                          @Param("radiusKm") double radiusKm);
+
+    @Query(value = "SELECT * FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "tp.vehicle_type = CAST(:vehicleType AS text) AND (" +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
+           "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ") ORDER BY tp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<TravelPost> findNearbyPostsByVehicleType(@Param("statuses") String[] statuses,
+                                                   @Param("vehicleType") String vehicleType,
+                                                   @Param("lat") double lat,
+                                                   @Param("lng") double lng,
+                                                   @Param("radiusKm") double radiusKm,
+                                                   @Param("limit") int limit,
+                                                   @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "tp.vehicle_type = CAST(:vehicleType AS text) AND (" +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
+           "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPostsByVehicleType(@Param("statuses") String[] statuses,
+                                       @Param("vehicleType") String vehicleType,
+                                       @Param("lat") double lat,
+                                       @Param("lng") double lng,
+                                       @Param("radiusKm") double radiusKm);
 }

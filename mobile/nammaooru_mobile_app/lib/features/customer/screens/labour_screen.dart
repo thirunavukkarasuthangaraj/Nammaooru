@@ -9,6 +9,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../core/services/location_service.dart';
 import '../services/labour_service.dart';
 import 'create_labour_screen.dart';
 import 'labour_post_detail_screen.dart';
@@ -30,6 +31,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
+  double? _userLatitude;
+  double? _userLongitude;
 
   // My Posts tab
   late TabController _tabController;
@@ -135,11 +138,24 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       _currentPage = 0;
     });
 
+    // Get user location for nearby filtering
+    try {
+      final position = await LocationService.instance.getCurrentPosition();
+      if (position != null && position.latitude != null && position.longitude != null) {
+        _userLatitude = position.latitude;
+        _userLongitude = position.longitude;
+      }
+    } catch (e) {
+      // Location unavailable - will show all posts
+    }
+
     try {
       final response = await _labourService.getApprovedPosts(
         page: 0,
         size: 20,
         category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
       );
 
       if (mounted) {
@@ -166,6 +182,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         page: _currentPage,
         size: 20,
         category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
       );
 
       if (mounted) {

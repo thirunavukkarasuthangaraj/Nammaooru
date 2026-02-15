@@ -32,6 +32,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
   final List<File> _selectedImages = [];
   static const int _maxImages = 3;
   bool _isSubmitting = false;
+  double? _latitude;
+  double? _longitude;
 
   static const Color _travelTeal = Color(0xFF00897B);
 
@@ -77,6 +79,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
     try {
       final position = await LocationService.instance.getCurrentPosition();
       if (position != null && position.latitude != null && position.longitude != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
         final address = await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
@@ -224,6 +228,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         imagePaths: _selectedImages.isNotEmpty
             ? _selectedImages.map((f) => f.path).toList()
             : null,
+        latitude: _latitude,
+        longitude: _longitude,
       );
 
       if (mounted) {
@@ -418,14 +424,18 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Phone
+              // Phone (auto-filled, read-only)
               _buildLabel(langProvider.getText('Phone Number *', '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _phoneController,
+                readOnly: true,
                 keyboardType: TextInputType.phone,
                 decoration: _inputDecoration(
                   langProvider.getText('Contact phone number', '\u0BA4\u0BCA\u0B9F\u0BB0\u0BCD\u0BAA\u0BC1 \u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD'),
+                ).copyWith(
+                  fillColor: Colors.grey[100],
+                  suffixIcon: const Icon(Icons.lock_outline, size: 18, color: Colors.grey),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

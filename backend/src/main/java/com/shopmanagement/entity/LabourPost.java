@@ -9,6 +9,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,6 +46,12 @@ public class LabourPost {
 
     @Column(name = "image_urls", length = 1500)
     private String imageUrls;
+
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitude;
+
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitude;
 
     @Column(name = "seller_user_id", nullable = false)
     private Long sellerUserId;

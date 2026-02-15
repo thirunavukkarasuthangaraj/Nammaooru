@@ -12,6 +12,9 @@ class LabourService {
     int page = 0,
     int size = 20,
     String? category,
+    double? latitude,
+    double? longitude,
+    double? radiusKm,
   }) async {
     try {
       Logger.api('Fetching labour posts - page: $page, size: $size, category: $category');
@@ -23,6 +26,13 @@ class LabourService {
 
       if (category != null && category.isNotEmpty) {
         queryParams['category'] = category;
+      }
+      if (latitude != null && longitude != null) {
+        queryParams['lat'] = latitude.toString();
+        queryParams['lng'] = longitude.toString();
+        if (radiusKm != null) {
+          queryParams['radius'] = radiusKm.toString();
+        }
       }
 
       final response = await _apiService.get(
@@ -64,6 +74,8 @@ class LabourService {
     String? location,
     String? description,
     List<String>? imagePaths,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       Logger.api('Creating labour post: $name ($category)');
@@ -82,6 +94,12 @@ class LabourService {
       }
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;
+      }
+      if (latitude != null) {
+        formMap['latitude'] = latitude.toString();
+      }
+      if (longitude != null) {
+        formMap['longitude'] = longitude.toString();
       }
 
       if (imagePaths != null && imagePaths.isNotEmpty) {

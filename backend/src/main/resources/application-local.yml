@@ -18,8 +18,8 @@ app:
 spring:
   jpa:
     hibernate:
-      # Use 'update' for dev to auto-create missing tables
-      ddl-auto: update
+      # Use 'validate' - rely on Flyway migrations for schema changes
+      ddl-auto: validate
 
 file:
   upload:

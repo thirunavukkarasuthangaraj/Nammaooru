@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -36,11 +37,14 @@ public class LabourPostController {
             @RequestParam(value = "experience", required = false) String experience,
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "latitude", required = false) BigDecimal latitude,
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude) {
         try {
             String username = getCurrentUsername();
             LabourPost post = labourPostService.createPost(
-                    name, phone, category, experience, location, description, images, username);
+                    name, phone, category, experience, location, description, images, username,
+                    latitude, longitude);
             return ResponseUtil.created(post, "Labour listing submitted successfully");
         } catch (Exception e) {
             log.error("Error creating labour post", e);
@@ -52,14 +56,20 @@ public class LabourPostController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(defaultValue = "50") double radius) {
         try {
             Pageable pageable = PageRequest.of(page, size);
+            Double effectiveLat = lat;
+            Double effectiveLng = lng;
+            Double effectiveRadius = (lat != null && lng != null) ? radius : null;
             Page<LabourPost> posts;
             if (category != null && !category.isEmpty()) {
-                posts = labourPostService.getApprovedPostsByCategory(category, pageable);
+                posts = labourPostService.getApprovedPostsByCategory(category, pageable, effectiveLat, effectiveLng, effectiveRadius);
             } else {
-                posts = labourPostService.getApprovedPosts(pageable);
+                posts = labourPostService.getApprovedPosts(pageable, effectiveLat, effectiveLng, effectiveRadius);
             }
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {

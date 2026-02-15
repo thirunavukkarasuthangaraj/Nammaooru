@@ -6,6 +6,8 @@ import com.shopmanagement.entity.LabourPost.PostStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -33,4 +35,63 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
     long countByStatus(PostStatus status);
 
     long countByReportCountGreaterThan(int count);
+
+    long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
+
+    // Haversine nearby queries - posts with NULL lat/lng are always included
+    @Query(value = "SELECT * FROM labour_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "lp.latitude IS NULL OR lp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
+           "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(lp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ") ORDER BY lp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<LabourPost> findNearbyPosts(@Param("statuses") String[] statuses,
+                                     @Param("lat") double lat,
+                                     @Param("lng") double lng,
+                                     @Param("radiusKm") double radiusKm,
+                                     @Param("limit") int limit,
+                                     @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM labour_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "lp.latitude IS NULL OR lp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
+           "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(lp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPosts(@Param("statuses") String[] statuses,
+                          @Param("lat") double lat,
+                          @Param("lng") double lng,
+                          @Param("radiusKm") double radiusKm);
+
+    @Query(value = "SELECT * FROM labour_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "lp.category = CAST(:category AS text) AND (" +
+           "lp.latitude IS NULL OR lp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
+           "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(lp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ") ORDER BY lp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<LabourPost> findNearbyPostsByCategory(@Param("statuses") String[] statuses,
+                                               @Param("category") String category,
+                                               @Param("lat") double lat,
+                                               @Param("lng") double lng,
+                                               @Param("radiusKm") double radiusKm,
+                                               @Param("limit") int limit,
+                                               @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM labour_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "lp.category = CAST(:category AS text) AND (" +
+           "lp.latitude IS NULL OR lp.longitude IS NULL OR " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
+           "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(lp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPostsByCategory(@Param("statuses") String[] statuses,
+                                    @Param("category") String category,
+                                    @Param("lat") double lat,
+                                    @Param("lng") double lng,
+                                    @Param("radiusKm") double radiusKm);
 }

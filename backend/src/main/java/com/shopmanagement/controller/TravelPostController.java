@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -38,12 +39,15 @@ public class TravelPostController {
             @RequestParam(value = "price", required = false) String price,
             @RequestParam(value = "seatsAvailable", required = false) Integer seatsAvailable,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "latitude", required = false) BigDecimal latitude,
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude) {
         try {
             String username = getCurrentUsername();
             TravelPost post = travelPostService.createPost(
                     title, phone, vehicleType, fromLocation, toLocation, price,
-                    seatsAvailable, description, images, username);
+                    seatsAvailable, description, images, username,
+                    latitude, longitude);
             return ResponseUtil.created(post, "Travel listing submitted successfully");
         } catch (Exception e) {
             log.error("Error creating travel post", e);
@@ -55,14 +59,20 @@ public class TravelPostController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String vehicleType) {
+            @RequestParam(required = false) String vehicleType,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(defaultValue = "50") double radius) {
         try {
             Pageable pageable = PageRequest.of(page, size);
+            Double effectiveLat = lat;
+            Double effectiveLng = lng;
+            Double effectiveRadius = (lat != null && lng != null) ? radius : null;
             Page<TravelPost> posts;
             if (vehicleType != null && !vehicleType.isEmpty()) {
-                posts = travelPostService.getApprovedPostsByVehicleType(vehicleType, pageable);
+                posts = travelPostService.getApprovedPostsByVehicleType(vehicleType, pageable, effectiveLat, effectiveLng, effectiveRadius);
             } else {
-                posts = travelPostService.getApprovedPosts(pageable);
+                posts = travelPostService.getApprovedPosts(pageable, effectiveLat, effectiveLng, effectiveRadius);
             }
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {

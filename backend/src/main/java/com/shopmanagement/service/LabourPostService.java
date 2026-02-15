@@ -20,10 +20,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -40,9 +44,21 @@ public class LabourPostService {
     @Transactional
     public LabourPost createPost(String name, String phone, String categoryStr,
                                   String experience, String location, String description,
-                                  List<MultipartFile> images, String username) throws IOException {
+                                  List<MultipartFile> images, String username,
+                                  BigDecimal latitude, BigDecimal longitude) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check post limit
+        int postLimit = Integer.parseInt(
+                settingService.getSettingValue("labours.post.user_limit", "0"));
+        if (postLimit > 0) {
+            List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = labourPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active labour listings");
+            }
+        }
 
         LabourCategory category;
         try {
@@ -75,6 +91,8 @@ public class LabourPostService {
                 .location(location)
                 .description(description)
                 .imageUrls(imageUrls)
+                .latitude(latitude)
+                .longitude(longitude)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
@@ -94,10 +112,20 @@ public class LabourPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getApprovedPosts(Pageable pageable) {
+    public Page<LabourPost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<LabourPost> posts = labourPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
+            long total = labourPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return labourPostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
@@ -105,9 +133,8 @@ public class LabourPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getApprovedPostsByCategory(String categoryStr, Pageable pageable) {
+    public Page<LabourPost> getApprovedPostsByCategory(String categoryStr, Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
         LabourCategory category;
         try {
@@ -116,6 +143,17 @@ public class LabourPostService {
             throw new RuntimeException("Invalid labour category: " + categoryStr);
         }
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<LabourPost> posts = labourPostRepository.findNearbyPostsByCategory(statuses, category.name(), lat, lng, radius, limit, offset);
+            long total = labourPostRepository.countNearbyPostsByCategory(statuses, category.name(), lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return labourPostRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
         }
