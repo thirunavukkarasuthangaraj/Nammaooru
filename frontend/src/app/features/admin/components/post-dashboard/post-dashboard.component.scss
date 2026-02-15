@@ -67,6 +67,9 @@
 .labour-section h3 { color: #1565C0; }
 .travel-section h3 { color: #00897B; }
 .parcel-section h3 { color: #E65100; }
+.marketplace-section h3 { color: #4527A0; }
+.farmer-section h3 { color: #33691E; }
+.realestate-section h3 { color: #AD1457; }
 
 .cards-row {
   display: grid;
@@ -133,6 +136,33 @@
 // Parcel cards - orange gradient
 .parcel-section {
   .total { background: linear-gradient(135deg, #E65100, #EF6C00); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Marketplace cards - purple gradient
+.marketplace-section {
+  .total { background: linear-gradient(135deg, #4527A0, #5E35B1); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Farmer cards - green gradient
+.farmer-section {
+  .total { background: linear-gradient(135deg, #33691E, #558B2F); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Real Estate cards - pink gradient
+.realestate-section {
+  .total { background: linear-gradient(135deg, #AD1457, #C2185B); }
   .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
   .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
   .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
