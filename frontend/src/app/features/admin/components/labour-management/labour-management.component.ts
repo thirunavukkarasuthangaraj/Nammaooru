@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LabourAdminService } from '../../services/labour.service';
+import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 interface LabourPost {
@@ -42,7 +44,8 @@ export class LabourManagementComponent implements OnInit {
 
   constructor(
     private labourService: LabourAdminService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -115,6 +118,27 @@ export class LabourManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  editPost(post: LabourPost): void {
+    const dialogRef = this.dialog.open(PostEditDialogComponent, {
+      width: '600px',
+      maxHeight: '90vh',
+      data: { postType: 'labour', post: { ...post } }
+    });
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.labourService.adminUpdatePost(post.id, result).subscribe({
+          next: () => {
+            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.loadPosts();
+          },
+          error: () => {
+            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    });
   }
 
   getFirstImageUrl(imageUrls: string | null): string {

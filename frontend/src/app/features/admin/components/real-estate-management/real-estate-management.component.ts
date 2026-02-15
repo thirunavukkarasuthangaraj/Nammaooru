@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RealEstateAdminService } from '../../services/real-estate.service';
+import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 interface RealEstatePost {
@@ -48,7 +50,8 @@ export class RealEstateManagementComponent implements OnInit {
 
   constructor(
     private realEstateService: RealEstateAdminService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -121,6 +124,27 @@ export class RealEstateManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  editPost(post: RealEstatePost): void {
+    const dialogRef = this.dialog.open(PostEditDialogComponent, {
+      width: '600px',
+      maxHeight: '90vh',
+      data: { postType: 'realEstate', post: { ...post } }
+    });
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.realEstateService.adminUpdatePost(post.id, result).subscribe({
+          next: () => {
+            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.loadPosts();
+          },
+          error: () => {
+            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    });
   }
 
   getFirstImageUrl(imageUrls: string | null): string {

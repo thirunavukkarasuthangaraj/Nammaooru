@@ -253,6 +253,20 @@ public class FarmerProductController {
         }
     }
 
+    @PutMapping("/{id}/admin-update")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<FarmerProduct>> adminUpdatePost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            FarmerProduct post = farmerProductService.adminUpdatePost(id, updates);
+            return ResponseUtil.success(post, "Farmer product updated successfully");
+        } catch (Exception e) {
+            log.error("Error admin-updating farmer product", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

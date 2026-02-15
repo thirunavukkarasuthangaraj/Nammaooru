@@ -251,6 +251,20 @@ public class TravelPostController {
         }
     }
 
+    @PutMapping("/{id}/admin-update")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<TravelPost>> adminUpdatePost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            TravelPost post = travelPostService.adminUpdatePost(id, updates);
+            return ResponseUtil.success(post, "Travel listing updated successfully");
+        } catch (Exception e) {
+            log.error("Error admin-updating travel post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

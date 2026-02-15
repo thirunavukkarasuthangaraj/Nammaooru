@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TravelAdminService } from '../../services/travel.service';
+import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 interface TravelPost {
@@ -44,7 +46,8 @@ export class TravelManagementComponent implements OnInit {
 
   constructor(
     private travelService: TravelAdminService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -117,6 +120,27 @@ export class TravelManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  editPost(post: TravelPost): void {
+    const dialogRef = this.dialog.open(PostEditDialogComponent, {
+      width: '600px',
+      maxHeight: '90vh',
+      data: { postType: 'travel', post: { ...post } }
+    });
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.travelService.adminUpdatePost(post.id, result).subscribe({
+          next: () => {
+            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.loadPosts();
+          },
+          error: () => {
+            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    });
   }
 
   getFirstImageUrl(imageUrls: string | null): string {

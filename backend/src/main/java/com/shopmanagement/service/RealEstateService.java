@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -279,6 +280,38 @@ public class RealEstateService {
         log.info("Real estate post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
 
         notifyOwnerPostReported(post, newCount);
+    }
+
+    @Transactional
+    public RealEstatePost adminUpdatePost(Long id, Map<String, Object> updates) {
+        RealEstatePost post = realEstatePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+        if (updates.containsKey("propertyType")) {
+            try {
+                post.setPropertyType(RealEstatePost.PropertyType.valueOf(((String) updates.get("propertyType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid property type: " + updates.get("propertyType"));
+            }
+        }
+        if (updates.containsKey("listingType")) {
+            try {
+                post.setListingType(RealEstatePost.ListingType.valueOf(((String) updates.get("listingType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid listing type: " + updates.get("listingType"));
+            }
+        }
+        if (updates.containsKey("price")) post.setPrice(updates.get("price") != null ? new java.math.BigDecimal(updates.get("price").toString()) : null);
+        if (updates.containsKey("areaSqft")) post.setAreaSqft(updates.get("areaSqft") != null ? ((Number) updates.get("areaSqft")).intValue() : null);
+        if (updates.containsKey("bedrooms")) post.setBedrooms(updates.get("bedrooms") != null ? ((Number) updates.get("bedrooms")).intValue() : null);
+        if (updates.containsKey("bathrooms")) post.setBathrooms(updates.get("bathrooms") != null ? ((Number) updates.get("bathrooms")).intValue() : null);
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+
+        RealEstatePost saved = realEstatePostRepository.save(post);
+        log.info("Real estate post admin-updated: id={}", id);
+        return saved;
     }
 
     // ---- Notification helpers ----

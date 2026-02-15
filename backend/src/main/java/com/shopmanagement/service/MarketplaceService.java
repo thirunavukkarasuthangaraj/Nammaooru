@@ -286,6 +286,22 @@ public class MarketplaceService {
         notifyOwnerPostReported(post, newCount);
     }
 
+    @Transactional
+    public MarketplacePost adminUpdatePost(Long id, Map<String, Object> updates) {
+        MarketplacePost post = marketplacePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+        if (updates.containsKey("price")) post.setPrice(updates.get("price") != null ? new java.math.BigDecimal(updates.get("price").toString()) : null);
+        if (updates.containsKey("category")) post.setCategory((String) updates.get("category"));
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+
+        MarketplacePost saved = marketplacePostRepository.save(post);
+        log.info("Marketplace post admin-updated: id={}", id);
+        return saved;
+    }
+
     // ---- Notification helpers ----
 
     private List<Long> getAdminUserIds() {

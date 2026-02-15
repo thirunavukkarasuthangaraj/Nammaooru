@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageImpl;
@@ -337,6 +338,32 @@ public class ParcelServicePostService {
         log.info("Parcel service post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
 
         notifyOwnerPostReported(post, newCount);
+    }
+
+    @Transactional
+    public ParcelServicePost adminUpdatePost(Long id, Map<String, Object> updates) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (updates.containsKey("serviceName")) post.setServiceName((String) updates.get("serviceName"));
+        if (updates.containsKey("phone")) post.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("serviceType")) {
+            try {
+                post.setServiceType(ParcelServicePost.ServiceType.valueOf(((String) updates.get("serviceType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid service type: " + updates.get("serviceType"));
+            }
+        }
+        if (updates.containsKey("fromLocation")) post.setFromLocation((String) updates.get("fromLocation"));
+        if (updates.containsKey("toLocation")) post.setToLocation((String) updates.get("toLocation"));
+        if (updates.containsKey("priceInfo")) post.setPriceInfo((String) updates.get("priceInfo"));
+        if (updates.containsKey("address")) post.setAddress((String) updates.get("address"));
+        if (updates.containsKey("timings")) post.setTimings((String) updates.get("timings"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post admin-updated: id={}", id);
+        return saved;
     }
 
     // ---- Notification helpers ----

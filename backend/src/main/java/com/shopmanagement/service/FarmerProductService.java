@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -296,6 +297,23 @@ public class FarmerProductService {
         log.info("Farmer product reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
 
         notifyOwnerPostReported(post, newCount);
+    }
+
+    @Transactional
+    public FarmerProduct adminUpdatePost(Long id, Map<String, Object> updates) {
+        FarmerProduct post = farmerProductRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+        if (updates.containsKey("price")) post.setPrice(updates.get("price") != null ? new java.math.BigDecimal(updates.get("price").toString()) : null);
+        if (updates.containsKey("unit")) post.setUnit((String) updates.get("unit"));
+        if (updates.containsKey("category")) post.setCategory((String) updates.get("category"));
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+
+        FarmerProduct saved = farmerProductRepository.save(post);
+        log.info("Farmer product admin-updated: id={}", id);
+        return saved;
     }
 
     // ---- Notification helpers ----

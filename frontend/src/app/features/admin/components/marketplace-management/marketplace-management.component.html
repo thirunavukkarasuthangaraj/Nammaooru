@@ -120,6 +120,11 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef>Action</th>
         <td mat-cell *matCellDef="let post">
+          <button mat-icon-button color="primary"
+                  (click)="editPost(post)"
+                  matTooltip="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
           <button mat-stroked-button [matMenuTriggerFor]="statusMenu" class="action-dropdown">
             Change Status
             <mat-icon>arrow_drop_down</mat-icon>

@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MarketplaceAdminService } from '../../services/marketplace.service';
+import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 interface MarketplacePost {
@@ -52,7 +54,8 @@ export class MarketplaceManagementComponent implements OnInit {
 
   constructor(
     private marketplaceService: MarketplaceAdminService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -125,6 +128,27 @@ export class MarketplaceManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  editPost(post: MarketplacePost): void {
+    const dialogRef = this.dialog.open(PostEditDialogComponent, {
+      width: '600px',
+      maxHeight: '90vh',
+      data: { postType: 'marketplace', post: { ...post } }
+    });
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.marketplaceService.adminUpdatePost(post.id, result).subscribe({
+          next: () => {
+            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.loadPosts();
+          },
+          error: () => {
+            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    });
   }
 
   getImageUrl(path: string | null): string {

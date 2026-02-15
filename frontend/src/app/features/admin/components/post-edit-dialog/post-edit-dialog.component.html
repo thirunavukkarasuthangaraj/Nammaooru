@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="edit-form">
+    <ng-container *ngFor="let field of fields">
+
+      <mat-form-field appearance="outline" *ngIf="field.type === 'text'" class="full-width">
+        <mat-label>{{ field.label }}</mat-label>
+        <input matInput [formControlName]="field.key">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="field.type === 'number'" class="full-width">
+        <mat-label>{{ field.label }}</mat-label>
+        <input matInput type="number" [formControlName]="field.key">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="field.type === 'textarea'" class="full-width">
+        <mat-label>{{ field.label }}</mat-label>
+        <textarea matInput [formControlName]="field.key" rows="3"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="field.type === 'select'" class="full-width">
+        <mat-label>{{ field.label }}</mat-label>
+        <mat-select [formControlName]="field.key">
+          <mat-option *ngFor="let opt of field.options" [value]="opt.value">
+            {{ opt.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+    </ng-container>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-flat-button color="primary" (click)="onSave()">Save</button>
+</mat-dialog-actions>

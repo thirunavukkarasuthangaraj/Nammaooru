@@ -252,6 +252,20 @@ public class ParcelServicePostController {
         }
     }
 
+    @PutMapping("/{id}/admin-update")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<ParcelServicePost>> adminUpdatePost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            ParcelServicePost post = parcelServicePostService.adminUpdatePost(id, updates);
+            return ResponseUtil.success(post, "Parcel service listing updated successfully");
+        } catch (Exception e) {
+            log.error("Error admin-updating parcel service post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

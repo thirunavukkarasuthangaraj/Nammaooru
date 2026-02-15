@@ -48,4 +48,8 @@ export class FarmerProductsAdminService {
   toggleFeatured(id: number): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/featured`, {});
   }
+
+  adminUpdatePost(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/admin-update`, data);
+  }
 }

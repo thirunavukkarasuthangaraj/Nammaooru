@@ -118,6 +118,11 @@
         <td mat-cell *matCellDef="let post">
           <div class="action-buttons">
             <button mat-icon-button color="primary"
+                    (click)="editPost(post)"
+                    matTooltip="Edit">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="primary"
                     *ngIf="post.status === 'PENDING_APPROVAL'"
                     (click)="approvePost(post)"
                     matTooltip="Approve">

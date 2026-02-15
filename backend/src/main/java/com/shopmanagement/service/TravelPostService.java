@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageImpl;
@@ -336,6 +337,31 @@ public class TravelPostService {
         log.info("Travel post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
 
         notifyOwnerPostReported(post, newCount);
+    }
+
+    @Transactional
+    public TravelPost adminUpdatePost(Long id, Map<String, Object> updates) {
+        TravelPost post = travelPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("phone")) post.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("vehicleType")) {
+            try {
+                post.setVehicleType(TravelPost.VehicleType.valueOf(((String) updates.get("vehicleType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid vehicle type: " + updates.get("vehicleType"));
+            }
+        }
+        if (updates.containsKey("fromLocation")) post.setFromLocation((String) updates.get("fromLocation"));
+        if (updates.containsKey("toLocation")) post.setToLocation((String) updates.get("toLocation"));
+        if (updates.containsKey("price")) post.setPrice((String) updates.get("price"));
+        if (updates.containsKey("seatsAvailable")) post.setSeatsAvailable(updates.get("seatsAvailable") != null ? ((Number) updates.get("seatsAvailable")).intValue() : null);
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post admin-updated: id={}", id);
+        return saved;
     }
 
     // ---- Notification helpers ----

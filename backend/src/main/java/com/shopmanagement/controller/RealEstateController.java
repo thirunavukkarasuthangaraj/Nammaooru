@@ -259,6 +259,20 @@ public class RealEstateController {
         }
     }
 
+    @PutMapping("/{id}/admin-update")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<RealEstatePost>> adminUpdatePost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            RealEstatePost post = realEstateService.adminUpdatePost(id, updates);
+            return ResponseUtil.success(post, "Property listing updated successfully");
+        } catch (Exception e) {
+            log.error("Error admin-updating real estate post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

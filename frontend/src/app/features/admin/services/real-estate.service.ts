@@ -34,4 +34,8 @@ export class RealEstateAdminService {
   deletePost(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
+
+  adminUpdatePost(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/admin-update`, data);
+  }
 }

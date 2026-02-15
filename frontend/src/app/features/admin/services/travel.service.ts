@@ -44,4 +44,8 @@ export class TravelAdminService {
   changePostStatus(id: number, status: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/status`, { status });
   }
+
+  adminUpdatePost(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/admin-update`, data);
+  }
 }

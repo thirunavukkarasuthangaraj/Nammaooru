@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageImpl;
@@ -333,6 +334,29 @@ public class LabourPostService {
         log.info("Labour post reported: id={}, reason={}, reportCount={}", postId, reason, newCount);
 
         notifyOwnerPostReported(post, newCount);
+    }
+
+    @Transactional
+    public LabourPost adminUpdatePost(Long id, Map<String, Object> updates) {
+        LabourPost post = labourPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (updates.containsKey("name")) post.setName((String) updates.get("name"));
+        if (updates.containsKey("phone")) post.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("category")) {
+            try {
+                post.setCategory(LabourCategory.valueOf(((String) updates.get("category")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid labour category: " + updates.get("category"));
+            }
+        }
+        if (updates.containsKey("experience")) post.setExperience((String) updates.get("experience"));
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+
+        LabourPost saved = labourPostRepository.save(post);
+        log.info("Labour post admin-updated: id={}", id);
+        return saved;
     }
 
     // ---- Notification helpers ----
