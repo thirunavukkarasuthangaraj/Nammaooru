@@ -1,9 +1,52 @@
 <div class="post-dashboard">
   <div class="dashboard-header">
     <h2>Post Dashboard</h2>
-    <button mat-icon-button (click)="loadStats()" matTooltip="Refresh">
+    <button mat-icon-button (click)="loadStats(); loadFeaturedPosts()" matTooltip="Refresh">
       <mat-icon>refresh</mat-icon>
     </button>
+  </div>
+
+  <!-- Featured Posts Section -->
+  <div class="featured-section">
+    <div class="featured-header">
+      <h3><mat-icon>star</mat-icon> Featured Posts</h3>
+      <span class="featured-count" *ngIf="!featuredLoading">{{ getFeaturedCount() }} items</span>
+    </div>
+
+    <div *ngIf="featuredLoading" class="featured-loading">
+      <mat-spinner diameter="28"></mat-spinner>
+    </div>
+
+    <div *ngIf="featuredError" class="featured-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ featuredError }}</span>
+    </div>
+
+    <div *ngIf="!featuredLoading && !featuredError" class="featured-grid">
+      <ng-container *ngFor="let category of ['combos', 'marketplace', 'farmer', 'labour', 'travel', 'parcel', 'realEstate']">
+        <div class="featured-category" *ngIf="featuredPosts[category]?.length > 0">
+          <div class="category-header" (click)="navigateTo(getCategoryRoute(category))">
+            <mat-icon>{{ getCategoryIcon(category) }}</mat-icon>
+            <span class="category-name">{{ getCategoryLabel(category) }}</span>
+            <span class="category-count">{{ featuredPosts[category].length }}</span>
+          </div>
+          <div class="featured-items">
+            <div class="featured-item" *ngFor="let post of featuredPosts[category]" (click)="navigateTo(getCategoryRoute(category))">
+              <div class="item-title">{{ getPostTitle(post, category) }}</div>
+              <div class="item-subtitle">{{ getPostSubtitle(post, category) }}</div>
+              <div class="item-price" *ngIf="post.price || post.comboPrice || post.priceInfo">
+                {{ post.comboPrice ? '₹' + post.comboPrice : (post.price ? '₹' + post.price : post.priceInfo) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <div *ngIf="getFeaturedCount() === 0" class="no-featured">
+        <mat-icon>star_border</mat-icon>
+        <p>No featured posts available</p>
+      </div>
+    </div>
   </div>
 
   <div *ngIf="isLoading" class="loading-container">

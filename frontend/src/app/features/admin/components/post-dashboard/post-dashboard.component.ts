@@ -25,6 +25,11 @@ export class PostDashboardComponent implements OnInit {
   isLoading = true;
   errorMessage = '';
 
+  // Featured posts
+  featuredPosts: any = {};
+  featuredLoading = false;
+  featuredError = '';
+
   constructor(
     private dashboardService: PostDashboardService,
     private router: Router
@@ -32,6 +37,7 @@ export class PostDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadStats();
+    this.loadFeaturedPosts();
   }
 
   loadStats(): void {
@@ -56,7 +62,107 @@ export class PostDashboardComponent implements OnInit {
     });
   }
 
+  loadFeaturedPosts(): void {
+    this.featuredLoading = true;
+    this.featuredError = '';
+    this.dashboardService.getFeaturedPosts().subscribe({
+      next: (response: any) => {
+        this.featuredPosts = response.data || response || {};
+        this.featuredLoading = false;
+      },
+      error: (err) => {
+        this.featuredError = 'Failed to load featured posts';
+        this.featuredLoading = false;
+        console.error('Featured posts error:', err);
+      }
+    });
+  }
+
+  getFeaturedCount(): number {
+    let count = 0;
+    for (const key of Object.keys(this.featuredPosts)) {
+      const items = this.featuredPosts[key];
+      if (Array.isArray(items)) {
+        count += items.length;
+      }
+    }
+    return count;
+  }
+
+  getCategoryLabel(key: string): string {
+    const labels: { [key: string]: string } = {
+      'combos': 'Combos',
+      'marketplace': 'Marketplace',
+      'farmer': 'Farmer Products',
+      'labour': 'Labour',
+      'travel': 'Travel',
+      'parcel': 'Parcel Service',
+      'realEstate': 'Real Estate'
+    };
+    return labels[key] || key;
+  }
+
+  getCategoryIcon(key: string): string {
+    const icons: { [key: string]: string } = {
+      'combos': 'local_offer',
+      'marketplace': 'store',
+      'farmer': 'agriculture',
+      'labour': 'construction',
+      'travel': 'directions_car',
+      'parcel': 'local_shipping',
+      'realEstate': 'home'
+    };
+    return icons[key] || 'article';
+  }
+
+  getCategoryRoute(key: string): string {
+    const routes: { [key: string]: string } = {
+      'marketplace': '/admin/marketplace',
+      'farmer': '/admin/farmer-products',
+      'labour': '/admin/labours',
+      'travel': '/admin/travels',
+      'parcel': '/admin/parcels',
+      'realEstate': '/admin/real-estate'
+    };
+    return routes[key] || '';
+  }
+
+  getPostTitle(post: any, category: string): string {
+    if (category === 'combos') return post.name || 'Combo';
+    if (category === 'labour') return post.name || 'Labour Post';
+    if (category === 'parcel') return post.serviceName || 'Parcel Service';
+    return post.title || 'Post';
+  }
+
+  getPostSubtitle(post: any, category: string): string {
+    if (category === 'combos') return post.shopName ? `by ${post.shopName}` : '';
+    if (category === 'labour') {
+      const cat = post.category || '';
+      return this.formatEnumValue(cat);
+    }
+    if (category === 'travel') {
+      return [post.fromLocation, post.toLocation].filter(Boolean).join(' → ');
+    }
+    if (category === 'parcel') {
+      return [post.fromLocation, post.toLocation].filter(Boolean).join(' → ');
+    }
+    if (category === 'realEstate') {
+      const type = post.propertyType || '';
+      return this.formatEnumValue(type);
+    }
+    return post.category ? this.formatEnumValue(post.category) : (post.location || '');
+  }
+
+  formatEnumValue(val: string): string {
+    if (!val) return '';
+    return val.replaceAll('_', ' ').split(' ').map(w =>
+      w.length > 0 ? w[0].toUpperCase() + w.substring(1).toLowerCase() : w
+    ).join(' ');
+  }
+
   navigateTo(route: string): void {
-    this.router.navigate([route]);
+    if (route) {
+      this.router.navigate([route]);
+    }
   }
 }

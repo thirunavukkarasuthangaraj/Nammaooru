@@ -742,7 +742,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       children: [
         // Header with count badge
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          padding: const EdgeInsets.only(left: 4, right: 4, top: 8, bottom: 4),
           child: Row(
             children: [
               Text(
@@ -797,7 +797,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         // Page indicator dots
         if (totalItems > 1)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(totalItems > 10 ? 10 : totalItems, (index) {
@@ -1472,7 +1472,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           const SizedBox(height: 16),
                           // Special Offers Carousel (top)
                           _buildUnifiedOffersCarousel(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 12),
                         _buildServiceCategories(),
                         const SizedBox(height: 24),
                         _buildFeaturedShops(),

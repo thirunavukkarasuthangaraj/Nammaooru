@@ -342,6 +342,10 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       case 'SOLD': return 'Sold';
       case 'RENTED': return 'Rented';
       case 'FLAGGED': return 'Flagged';
+      case 'HOLD': return 'On Hold';
+      case 'HIDDEN': return 'Hidden';
+      case 'CORRECTION_REQUIRED': return 'Correction Required';
+      case 'REMOVED': return 'Removed';
       default: return status;
     }
   }
@@ -354,6 +358,10 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       case 'SOLD': return Colors.purple;
       case 'RENTED': return Colors.teal;
       case 'FLAGGED': return Colors.red[800]!;
+      case 'HOLD': return Colors.amber.shade700;
+      case 'HIDDEN': return Colors.grey;
+      case 'CORRECTION_REQUIRED': return Colors.deepOrange;
+      case 'REMOVED': return Colors.red[900]!;
       default: return Colors.grey;
     }
   }

@@ -1275,6 +1275,31 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         statusText = 'Rejected';
         statusIcon = Icons.cancel;
         break;
+      case 'FLAGGED':
+        statusColor = const Color(0xFFB71C1C);
+        statusText = 'Flagged';
+        statusIcon = Icons.flag;
+        break;
+      case 'HOLD':
+        statusColor = Colors.amber.shade700;
+        statusText = 'On Hold';
+        statusIcon = Icons.pause_circle;
+        break;
+      case 'HIDDEN':
+        statusColor = Colors.grey;
+        statusText = 'Hidden';
+        statusIcon = Icons.visibility_off;
+        break;
+      case 'CORRECTION_REQUIRED':
+        statusColor = Colors.deepOrange;
+        statusText = 'Correction Required';
+        statusIcon = Icons.edit;
+        break;
+      case 'REMOVED':
+        statusColor = const Color(0xFFB71C1C);
+        statusText = 'Removed';
+        statusIcon = Icons.remove_circle;
+        break;
       default:
         statusColor = Colors.orange;
         statusText = 'Pending Approval';

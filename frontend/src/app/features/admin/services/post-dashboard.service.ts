@@ -14,4 +14,8 @@ export class PostDashboardService {
   getStats(): Observable<any> {
     return this.http.get(`${this.apiUrl}/stats`);
   }
+
+  getFeaturedPosts(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/featured-posts`);
+  }
 }
