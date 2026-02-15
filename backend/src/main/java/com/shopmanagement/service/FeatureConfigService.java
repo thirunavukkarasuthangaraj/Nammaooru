@@ -44,6 +44,7 @@ public class FeatureConfigService {
         existing.setRadiusKm(updated.getRadiusKm());
         existing.setIsActive(updated.getIsActive());
         existing.setDisplayOrder(updated.getDisplayOrder());
+        existing.setMaxPostsPerUser(updated.getMaxPostsPerUser());
         return featureConfigRepository.save(existing);
     }
 

@@ -17,7 +17,7 @@ export class FeatureConfigManagementComponent implements OnInit {
 
   displayedColumns: string[] = [
     'displayOrder', 'featureName', 'displayName', 'displayNameTamil',
-    'icon', 'color', 'latitude', 'longitude', 'radiusKm', 'active', 'actions'
+    'icon', 'color', 'maxPostsPerUser', 'active', 'actions'
   ];
 
   constructor(
@@ -43,7 +43,8 @@ export class FeatureConfigManagementComponent implements OnInit {
       longitude: [null],
       radiusKm: [50],
       displayOrder: [0],
-      isActive: [true]
+      isActive: [true],
+      maxPostsPerUser: [0]
     });
   }
 
@@ -63,7 +64,7 @@ export class FeatureConfigManagementComponent implements OnInit {
 
   openAddForm(): void {
     this.editingId = null;
-    this.featureForm.reset({ radiusKm: 50, displayOrder: 0, isActive: true });
+    this.featureForm.reset({ radiusKm: 50, displayOrder: 0, isActive: true, maxPostsPerUser: 0 });
     this.showForm = true;
   }
 
@@ -80,7 +81,8 @@ export class FeatureConfigManagementComponent implements OnInit {
       longitude: feature.longitude,
       radiusKm: feature.radiusKm,
       displayOrder: feature.displayOrder,
-      isActive: feature.isActive
+      isActive: feature.isActive,
+      maxPostsPerUser: feature.maxPostsPerUser || 0
     });
     this.showForm = true;
   }

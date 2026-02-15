@@ -16,6 +16,7 @@ export interface FeatureConfig {
   radiusKm?: number;
   isActive?: boolean;
   displayOrder?: number;
+  maxPostsPerUser?: number;
   createdAt?: string;
   updatedAt?: string;
 }

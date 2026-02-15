@@ -35,6 +35,7 @@ public class MarketplaceService {
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
     private final SettingService settingService;
+    private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -44,6 +45,16 @@ public class MarketplaceService {
                                        String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "MARKETPLACE");
+        if (postLimit > 0) {
+            List<MarketplacePost.PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = marketplacePostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active marketplace listings");
+            }
+        }
 
         String imageUrl = null;
         if (image != null && !image.isEmpty()) {

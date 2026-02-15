@@ -36,6 +36,7 @@ public class FarmerProductService {
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
     private final SettingService settingService;
+    private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -45,6 +46,16 @@ public class FarmerProductService {
                                      String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "FARM_PRODUCTS");
+        if (postLimit > 0) {
+            List<FarmerProduct.PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = farmerProductRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active farmer product listings");
+            }
+        }
 
         // Upload images (up to 5)
         List<String> imageUrlList = new ArrayList<>();

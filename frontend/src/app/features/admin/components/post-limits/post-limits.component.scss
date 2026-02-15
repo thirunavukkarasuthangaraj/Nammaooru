@@ -1,6 +1,6 @@
-.feature-config-management {
+.post-limits-management {
   padding: 24px;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -8,6 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   margin-bottom: 20px;
 
   h2 {
@@ -15,6 +16,13 @@
     font-size: 24px;
     font-weight: 600;
     color: #1a1a2e;
+  }
+
+  .subtitle {
+    width: 100%;
+    margin: 4px 0 0 0;
+    font-size: 14px;
+    color: #666;
   }
 
   .header-actions {
@@ -34,7 +42,7 @@
   }
 }
 
-.feature-form {
+.limit-form {
   .form-row {
     display: flex;
     gap: 16px;
@@ -70,30 +78,8 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.features-table {
+.limits-table {
   width: 100%;
-
-  code {
-    font-size: 12px;
-    background: #f5f5f5;
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-}
-
-.color-chip {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  vertical-align: middle;
-  margin-right: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.color-text {
-  font-size: 12px;
-  color: #666;
 }
 
 .text-muted {
@@ -114,14 +100,19 @@
     height: 48px;
     margin-bottom: 12px;
   }
+
+  .hint {
+    font-size: 13px;
+    margin-top: 4px;
+  }
 }
 
 @media (max-width: 768px) {
-  .feature-config-management {
+  .post-limits-management {
     padding: 16px;
   }
 
-  .feature-form .form-row {
+  .limit-form .form-row {
     flex-direction: column;
   }
 }

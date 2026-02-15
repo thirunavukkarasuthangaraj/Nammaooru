@@ -50,6 +50,7 @@ import { ParcelManagementComponent } from './components/parcel-management/parcel
 import { ParcelReportedComponent } from './components/parcel-reported/parcel-reported.component';
 import { PostDashboardComponent } from './components/post-dashboard/post-dashboard.component';
 import { FeatureConfigManagementComponent } from './components/feature-config-management/feature-config-management.component';
+import { PostLimitsComponent } from './components/post-limits/post-limits.component';
 
 @NgModule({
   declarations: [
@@ -76,7 +77,8 @@ import { FeatureConfigManagementComponent } from './components/feature-config-ma
     ParcelManagementComponent,
     ParcelReportedComponent,
     PostDashboardComponent,
-    FeatureConfigManagementComponent
+    FeatureConfigManagementComponent,
+    PostLimitsComponent
   ],
   imports: [
     CommonModule,
@@ -202,6 +204,10 @@ import { FeatureConfigManagementComponent } from './components/feature-config-ma
       {
         path: 'feature-config',
         component: FeatureConfigManagementComponent
+      },
+      {
+        path: 'post-limits',
+        component: PostLimitsComponent
       },
       {
         path: 'shops',

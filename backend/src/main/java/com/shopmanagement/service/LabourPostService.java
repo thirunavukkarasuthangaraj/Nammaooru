@@ -39,6 +39,7 @@ public class LabourPostService {
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
     private final SettingService settingService;
+    private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -49,9 +50,8 @@ public class LabourPostService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Check post limit
-        int postLimit = Integer.parseInt(
-                settingService.getSettingValue("labours.post.user_limit", "0"));
+        // Check post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "LABOURS");
         if (postLimit > 0) {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = labourPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);

@@ -39,6 +39,7 @@ public class TravelPostService {
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
     private final SettingService settingService;
+    private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -50,9 +51,8 @@ public class TravelPostService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Check post limit
-        int postLimit = Integer.parseInt(
-                settingService.getSettingValue("travels.post.user_limit", "0"));
+        // Check post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "TRAVELS");
         if (postLimit > 0) {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = travelPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);

@@ -28,4 +28,10 @@ public interface MarketplacePostRepository extends JpaRepository<MarketplacePost
     Page<MarketplacePost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<MarketplacePost> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, String category, LocalDateTime after, Pageable pageable);
+
+    long countByStatus(PostStatus status);
+
+    long countByReportCountGreaterThan(int minReportCount);
+
+    long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 }

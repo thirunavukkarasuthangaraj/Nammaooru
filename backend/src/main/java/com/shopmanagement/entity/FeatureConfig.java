@@ -57,6 +57,10 @@ public class FeatureConfig {
     @Builder.Default
     private Integer displayOrder = 0;
 
+    @Column(name = "max_posts_per_user")
+    @Builder.Default
+    private Integer maxPostsPerUser = 0;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

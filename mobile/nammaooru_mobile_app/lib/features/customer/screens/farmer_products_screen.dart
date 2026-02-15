@@ -11,6 +11,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../services/farmer_products_service.dart';
+import '../services/feature_config_service.dart';
 import 'create_farmer_post_screen.dart';
 import 'farmer_post_detail_screen.dart';
 
@@ -326,12 +327,46 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
     return '\u20B9${numPrice.toStringAsFixed(0)}';
   }
 
-  void _navigateToCreatePost() {
+  void _navigateToCreatePost() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
       context.go('/login');
       return;
     }
+
+    // Check post limit
+    try {
+      final limit = await FeatureConfigService().getEffectiveLimit('FARM_PRODUCTS');
+      if (limit > 0) {
+        if (!_myPostsLoaded) {
+          final response = await _farmerService.getMyPosts();
+          _myPosts = response['data'] ?? [];
+          _myPostsLoaded = true;
+        }
+        final activeCount = _myPosts.where((p) {
+          final status = p['status']?.toString().toUpperCase() ?? '';
+          return status == 'PENDING_APPROVAL' || status == 'APPROVED';
+        }).length;
+        if (activeCount >= limit) {
+          if (mounted) {
+            final lang = Provider.of<LanguageProvider>(context, listen: false);
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(lang.currentLanguage == 'ta' ? 'வரம்பு எட்டியது' : 'Limit Reached'),
+                content: Text(lang.currentLanguage == 'ta'
+                    ? 'நீங்கள் அதிகபட்சமாக $limit செயலில் உள்ள விவசாய பொருள் பதிவுகளை எட்டிவிட்டீர்கள்.'
+                    : 'You have reached the maximum limit of $limit active farmer product listings.'),
+                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+              ),
+            );
+          }
+          return;
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreateFarmerPostScreen()),

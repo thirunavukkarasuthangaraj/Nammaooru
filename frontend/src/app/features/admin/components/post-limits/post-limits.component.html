@@ -1,0 +1,100 @@
+<div class="post-limits-management">
+  <div class="page-header">
+    <h2>User Post Limits</h2>
+    <p class="subtitle">Override the global post limit (set in Feature Config) for specific users.</p>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="openAddForm()" *ngIf="!showForm">
+        <mat-icon>add</mat-icon> Add Override
+      </button>
+      <button mat-icon-button (click)="loadLimits()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Add Form -->
+  <mat-card *ngIf="showForm" class="form-card">
+    <mat-card-content>
+      <h3>Add / Update User Post Limit</h3>
+      <form [formGroup]="limitForm" (ngSubmit)="saveLimit()" class="limit-form">
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>User ID</mat-label>
+            <input matInput type="number" formControlName="userId" placeholder="Enter user ID">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Feature</mat-label>
+            <mat-select formControlName="featureName">
+              <mat-option *ngFor="let f of featureNames" [value]="f.value">
+                {{ f.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Max Posts</mat-label>
+            <input matInput type="number" formControlName="maxPosts" placeholder="0 = unlimited">
+            <mat-hint>0 = unlimited, overrides the global limit</mat-hint>
+          </mat-form-field>
+        </div>
+        <div class="form-actions">
+          <button mat-raised-button color="primary" type="submit" [disabled]="limitForm.invalid">
+            Save
+          </button>
+          <button mat-button type="button" (click)="cancelForm()">Cancel</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading post limits...</p>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!isLoading" class="table-container">
+    <table mat-table [dataSource]="limits" class="limits-table">
+      <ng-container matColumnDef="userId">
+        <th mat-header-cell *matHeaderCellDef>User ID</th>
+        <td mat-cell *matCellDef="let l">{{ l.userId }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="featureName">
+        <th mat-header-cell *matHeaderCellDef>Feature</th>
+        <td mat-cell *matCellDef="let l">{{ getFeatureLabel(l.featureName) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="maxPosts">
+        <th mat-header-cell *matHeaderCellDef>Max Posts</th>
+        <td mat-cell *matCellDef="let l">
+          <span *ngIf="l.maxPosts === 0" class="text-muted">Unlimited</span>
+          <span *ngIf="l.maxPosts > 0"><strong>{{ l.maxPosts }}</strong></span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef>Created</th>
+        <td mat-cell *matCellDef="let l">{{ l.createdAt | date:'short' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let l">
+          <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteLimit(l)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <div *ngIf="limits.length === 0" class="empty-state">
+      <mat-icon>rule</mat-icon>
+      <p>No user-specific post limit overrides found.</p>
+      <p class="hint">All users are using the global limits from Feature Config.</p>
+    </div>
+  </div>
+</div>

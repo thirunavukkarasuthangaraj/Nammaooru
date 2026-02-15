@@ -39,6 +39,7 @@ public class ParcelServicePostService {
     private final FileUploadService fileUploadService;
     private final NotificationService notificationService;
     private final SettingService settingService;
+    private final UserPostLimitService userPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -50,9 +51,8 @@ public class ParcelServicePostService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Check post limit
-        int postLimit = Integer.parseInt(
-                settingService.getSettingValue("parcels.post.user_limit", "0"));
+        // Check post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "PARCEL_SERVICE");
         if (postLimit > 0) {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = parcelServicePostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);

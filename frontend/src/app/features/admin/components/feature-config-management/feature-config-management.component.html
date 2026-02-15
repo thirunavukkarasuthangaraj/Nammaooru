@@ -61,6 +61,11 @@
             <mat-label>Display Order</mat-label>
             <input matInput type="number" formControlName="displayOrder">
           </mat-form-field>
+          <mat-form-field>
+            <mat-label>Max Posts Per User</mat-label>
+            <input matInput type="number" formControlName="maxPostsPerUser" placeholder="0 = unlimited">
+            <mat-hint>0 = unlimited</mat-hint>
+          </mat-form-field>
         </div>
         <div class="form-actions">
           <button mat-raised-button color="primary" type="submit" [disabled]="featureForm.invalid">
@@ -118,19 +123,12 @@
         </td>
       </ng-container>
 
-      <ng-container matColumnDef="latitude">
-        <th mat-header-cell *matHeaderCellDef>Lat</th>
-        <td mat-cell *matCellDef="let f">{{ f.latitude | number:'1.4-4' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="longitude">
-        <th mat-header-cell *matHeaderCellDef>Lng</th>
-        <td mat-cell *matCellDef="let f">{{ f.longitude | number:'1.4-4' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="radiusKm">
-        <th mat-header-cell *matHeaderCellDef>Radius</th>
-        <td mat-cell *matCellDef="let f">{{ f.radiusKm }} km</td>
+      <ng-container matColumnDef="maxPostsPerUser">
+        <th mat-header-cell *matHeaderCellDef>Post Limit</th>
+        <td mat-cell *matCellDef="let f">
+          <span *ngIf="f.maxPostsPerUser === 0 || !f.maxPostsPerUser" class="text-muted">Unlimited</span>
+          <span *ngIf="f.maxPostsPerUser > 0">{{ f.maxPostsPerUser }}</span>
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="active">
