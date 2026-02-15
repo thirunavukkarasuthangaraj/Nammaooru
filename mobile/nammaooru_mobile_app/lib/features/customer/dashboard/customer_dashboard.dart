@@ -529,6 +529,29 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         },
       };
 
+      // Parse combos from API
+      final combos = data['combos'];
+      if (combos is List && combos.isNotEmpty) {
+        for (final combo in combos) {
+          final discount = combo['discountPercentage'];
+          final discountText = discount != null ? '${double.tryParse(discount.toString())?.toStringAsFixed(0) ?? ''}% OFF' : '';
+          allFeatured.add({
+            'type': 'combo',
+            'title': combo['name'] ?? 'Combo Offer',
+            'subtitle': '${combo['shopName'] ?? 'Shop'} • $discountText',
+            'image': (combo['bannerImageUrl'] ?? '').toString(),
+            'icon': Icons.local_offer_rounded,
+            'color': const Color(0xFFE91E63),
+            'label': combo['shopName'] ?? 'Combo',
+            'labelTamil': combo['shopName'] ?? 'காம்போ',
+            'screen': null, // Combos don't navigate to a screen
+            'comboPrice': combo['comboPrice'],
+            'originalPrice': combo['originalPrice'],
+          });
+        }
+      }
+
+      // Parse post categories
       for (final entry in configs.entries) {
         final key = entry.key;
         final cfg = entry.value;
@@ -793,10 +816,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final isTamil = Provider.of<LanguageProvider>(context, listen: false).currentLanguage == 'ta';
     final label = isTamil ? (post['labelTamil'] ?? post['label']) : post['label'];
 
+    final bool isCombo = post['type'] == 'combo';
+
     return GestureDetector(
       onTap: () {
-        final Widget screen = post['screen'] as Widget;
-        Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+        if (post['screen'] != null) {
+          final Widget screen = post['screen'] as Widget;
+          Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+        }
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -908,7 +935,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            isTamil ? 'மேலும் காண்க →' : 'View More →',
+                            isCombo
+                                ? '₹${post['comboPrice'] ?? ''} (was ₹${post['originalPrice'] ?? ''})'
+                                : (isTamil ? 'மேலும் காண்க →' : 'View More →'),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,

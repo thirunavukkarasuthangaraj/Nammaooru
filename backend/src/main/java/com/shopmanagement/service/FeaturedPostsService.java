@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -19,10 +20,20 @@ public class FeaturedPostsService {
     private final TravelPostRepository travelPostRepository;
     private final ParcelServicePostRepository parcelServicePostRepository;
     private final RealEstatePostRepository realEstatePostRepository;
+    private final ProductComboRepository productComboRepository;
 
     public Map<String, Object> getFeaturedPosts() {
         Map<String, Object> result = new LinkedHashMap<>();
         Pageable top2 = PageRequest.of(0, 2);
+
+        // Combos - active combos from all shops
+        try {
+            var combos = productComboRepository.findAllActiveCombos(LocalDate.now());
+            var limitedCombos = combos.size() > 4 ? combos.subList(0, 4) : combos;
+            result.put("combos", limitedCombos.stream().map(this::mapCombo).toList());
+        } catch (Exception e) {
+            result.put("combos", List.of());
+        }
 
         // Marketplace - 2 recent approved posts
         try {
@@ -160,6 +171,23 @@ public class FeaturedPostsService {
         m.put("price", p.getPrice());
         m.put("location", p.getLocation());
         m.put("ownerName", p.getOwnerName());
+        return m;
+    }
+
+    private Map<String, Object> mapCombo(ProductCombo c) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", c.getId());
+        m.put("name", c.getName());
+        m.put("nameTamil", c.getNameTamil());
+        m.put("description", c.getDescription());
+        m.put("bannerImageUrl", c.getBannerImageUrl());
+        m.put("comboPrice", c.getComboPrice());
+        m.put("originalPrice", c.getOriginalPrice());
+        m.put("discountPercentage", c.getDiscountPercentage());
+        m.put("shopName", c.getShop() != null ? c.getShop().getName() : null);
+        m.put("shopId", c.getShop() != null ? c.getShop().getId() : null);
+        m.put("itemCount", c.getItemCount());
+        m.put("endDate", c.getEndDate() != null ? c.getEndDate().toString() : null);
         return m;
     }
 }
