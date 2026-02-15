@@ -37,6 +37,11 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../services/marketplace_service.dart';
 import '../services/feature_config_service.dart';
+import '../services/farmer_products_service.dart';
+import '../services/labour_service.dart';
+import '../services/travel_service.dart';
+import '../services/parcel_service.dart';
+import '../services/real_estate_service.dart';
 import '../screens/marketplace_screen.dart';
 import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
@@ -74,11 +79,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   List<Map<String, dynamic>> _dynamicFeatures = [];
   bool _isLoadingFeatures = false;
 
+  // Featured posts from all categories for banner carousel
+  List<Map<String, dynamic>> _featuredPosts = [];
+
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
   final _promoService = PromoCodeService();
   final _marketplaceService = MarketplaceService();
   final _featureConfigService = FeatureConfigService();
+  final _farmerService = FarmerProductsService();
+  final _labourService = LabourService();
+  final _travelService = TravelService();
+  final _parcelService = ParcelService();
+  final _realEstateService = RealEstateService();
 
   @override
   void initState() {
@@ -447,8 +460,151 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       _loadCombos(),
       _loadPromos(),
       _loadMarketplacePosts(),
+      _loadFeaturedPosts(),
     ]);
     _startAutoSlideOffers();
+  }
+
+  Future<void> _loadFeaturedPosts() async {
+    try {
+      final List<Map<String, dynamic>> allFeatured = [];
+
+      // Load 1 recent post from each feature in parallel
+      final results = await Future.wait([
+        _marketplaceService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
+        _farmerService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
+        _labourService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
+        _travelService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
+        _parcelService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
+        _realEstateService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
+      ]);
+
+      // Marketplace
+      final mpData = results[0]['data'];
+      final mpContent = mpData is Map ? (mpData['content'] ?? []) : (mpData is List ? mpData : []);
+      if (mpContent is List && mpContent.isNotEmpty) {
+        final post = mpContent[0];
+        allFeatured.add({
+          'type': 'marketplace',
+          'title': post['title'] ?? 'Buy & Sell',
+          'subtitle': post['description'] ?? '',
+          'image': post['imageUrl'] ?? '',
+          'icon': Icons.storefront_rounded,
+          'color': const Color(0xFF4527A0),
+          'label': 'Marketplace',
+          'labelTamil': 'சந்தை',
+          'screen': const MarketplaceScreen(),
+        });
+      }
+
+      // Farmer Products
+      final fpData = results[1]['data'];
+      final fpContent = fpData is Map ? (fpData['content'] ?? []) : (fpData is List ? fpData : []);
+      if (fpContent is List && fpContent.isNotEmpty) {
+        final post = fpContent[0];
+        final imageUrls = (post['imageUrls'] ?? '').toString();
+        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
+        allFeatured.add({
+          'type': 'farmer',
+          'title': post['title'] ?? 'Farm Products',
+          'subtitle': post['description'] ?? '',
+          'image': firstImage,
+          'icon': Icons.eco_rounded,
+          'color': const Color(0xFF33691E),
+          'label': 'Farm Products',
+          'labelTamil': 'விவசாய பொருட்கள்',
+          'screen': const FarmerProductsScreen(),
+        });
+      }
+
+      // Labour
+      final lbData = results[2]['data'];
+      final lbContent = lbData is Map ? (lbData['content'] ?? []) : (lbData is List ? lbData : []);
+      if (lbContent is List && lbContent.isNotEmpty) {
+        final post = lbContent[0];
+        final imageUrls = (post['imageUrls'] ?? '').toString();
+        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
+        allFeatured.add({
+          'type': 'labour',
+          'title': post['name'] ?? 'Labour',
+          'subtitle': post['category'] ?? post['description'] ?? '',
+          'image': firstImage,
+          'icon': Icons.construction_rounded,
+          'color': const Color(0xFF1565C0),
+          'label': 'Labours',
+          'labelTamil': 'தொழிலாளர்',
+          'screen': const LabourScreen(),
+        });
+      }
+
+      // Travel
+      final tvData = results[3]['data'];
+      final tvContent = tvData is Map ? (tvData['content'] ?? []) : (tvData is List ? tvData : []);
+      if (tvContent is List && tvContent.isNotEmpty) {
+        final post = tvContent[0];
+        final imageUrls = (post['imageUrls'] ?? '').toString();
+        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
+        allFeatured.add({
+          'type': 'travel',
+          'title': post['title'] ?? 'Travel',
+          'subtitle': post['fromLocation'] != null ? '${post['fromLocation']} → ${post['toLocation'] ?? ''}' : (post['description'] ?? ''),
+          'image': firstImage,
+          'icon': Icons.directions_car_rounded,
+          'color': const Color(0xFF00897B),
+          'label': 'Travels',
+          'labelTamil': 'பயணங்கள்',
+          'screen': const TravelScreen(),
+        });
+      }
+
+      // Parcel
+      final pcData = results[4]['data'];
+      final pcContent = pcData is Map ? (pcData['content'] ?? []) : (pcData is List ? pcData : []);
+      if (pcContent is List && pcContent.isNotEmpty) {
+        final post = pcContent[0];
+        final imageUrls = (post['imageUrls'] ?? '').toString();
+        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
+        allFeatured.add({
+          'type': 'parcel',
+          'title': post['serviceName'] ?? 'Parcel Service',
+          'subtitle': post['fromLocation'] != null ? '${post['fromLocation']} → ${post['toLocation'] ?? ''}' : (post['description'] ?? ''),
+          'image': firstImage,
+          'icon': Icons.local_shipping_rounded,
+          'color': const Color(0xFFE65100),
+          'label': 'Parcel Service',
+          'labelTamil': 'பார்சல் சேவை',
+          'screen': const ParcelScreen(),
+        });
+      }
+
+      // Real Estate
+      final reData = results[5]['data'];
+      final reContent = reData is Map ? (reData['content'] ?? []) : (reData is List ? reData : []);
+      if (reContent is List && reContent.isNotEmpty) {
+        final post = reContent[0];
+        final imageUrls = (post['imageUrls'] ?? '').toString();
+        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
+        allFeatured.add({
+          'type': 'realEstate',
+          'title': post['title'] ?? 'Real Estate',
+          'subtitle': post['location'] ?? '',
+          'image': firstImage,
+          'icon': Icons.home_rounded,
+          'color': const Color(0xFFAD1457),
+          'label': 'Real Estate',
+          'labelTamil': 'ரியல் எஸ்டேட்',
+          'screen': const MarketplaceScreen(),
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _featuredPosts = allFeatured;
+        });
+      }
+    } catch (e) {
+      print('Error loading featured posts: $e');
+    }
   }
 
   Future<void> _loadMarketplacePosts() async {
@@ -488,7 +644,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   void _startAutoSlideOffers() {
-    final totalItems = _promos.length + _combos.length;
+    final totalItems = _promos.length + _combos.length + _featuredPosts.length;
     if (totalItems <= 1) return;
 
     _autoSlideTimer?.cancel();
@@ -571,7 +727,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildUnifiedOffersCarousel() {
-    final totalItems = _promos.length + _combos.length;
+    final totalItems = _promos.length + _combos.length + _featuredPosts.length;
 
     if (totalItems == 0) {
       return const SizedBox.shrink();
@@ -585,9 +741,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
             children: [
-              const Text(
-                'SPECIAL OFFERS',
-                style: TextStyle(
+              Text(
+                _featuredPosts.isNotEmpty ? 'FEATURED & OFFERS' : 'SPECIAL OFFERS',
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -623,11 +779,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               setState(() => _currentOfferPage = index);
             },
             itemBuilder: (context, index) {
-              // First show combos, then promos
-              if (index < _combos.length) {
-                return _buildComboCard(_combos[index]);
+              // Order: featured posts first, then combos, then promos
+              if (index < _featuredPosts.length) {
+                return _buildFeaturedPostCard(_featuredPosts[index]);
+              } else if (index < _featuredPosts.length + _combos.length) {
+                return _buildComboCard(_combos[index - _featuredPosts.length]);
               } else {
-                return _buildPromoCard(_promos[index - _combos.length]);
+                return _buildPromoCard(_promos[index - _featuredPosts.length - _combos.length]);
               }
             },
           ),
@@ -638,7 +796,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             padding: const EdgeInsets.only(top: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(totalItems, (index) {
+              children: List.generate(totalItems > 10 ? 10 : totalItems, (index) {
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   width: _currentOfferPage == index ? 16 : 8,
@@ -654,6 +812,174 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildFeaturedPostCard(Map<String, dynamic> post) {
+    final Color color = post['color'] as Color;
+    final IconData icon = post['icon'] as IconData;
+    final String imageUrl = post['image'] ?? '';
+    final bool hasImage = imageUrl.isNotEmpty;
+    final isTamil = Provider.of<LanguageProvider>(context, listen: false).currentLanguage == 'ta';
+    final label = isTamil ? (post['labelTamil'] ?? post['label']) : post['label'];
+
+    return GestureDetector(
+      onTap: () {
+        final Widget screen = post['screen'] as Widget;
+        Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, color.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Decorative circles
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 30,
+              bottom: -30,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Category badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 14, color: color),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          post['title'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          post['subtitle'] ?? '',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isTamil ? 'மேலும் காண்க →' : 'View More →',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (hasImage)
+                    Expanded(
+                      flex: 2,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          ImageUrlHelper.getFullImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          height: 140,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(icon, size: 50, color: Colors.white.withOpacity(0.5)),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      flex: 2,
+                      child: Icon(icon, size: 80, color: Colors.white.withOpacity(0.3)),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1444,22 +1770,29 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Future<void> _loadFeatureConfig() async {
-    if (_userLatitude == null || _userLongitude == null) return;
+    // Use user location if available, otherwise default to Tirupattur
+    final lat = _userLatitude ?? 12.4966;
+    final lng = _userLongitude ?? 78.5729;
+    print('🟢 _loadFeatureConfig called with lat=$lat, lng=$lng');
     setState(() => _isLoadingFeatures = true);
     try {
-      final features = await _featureConfigService.getVisibleFeatures(
-        _userLatitude!,
-        _userLongitude!,
-      );
+      final features = await _featureConfigService.getVisibleFeatures(lat, lng);
+      print('🟢 Feature config API returned ${features.length} features');
+      for (var f in features) {
+        print('🟢 Feature: ${f['featureName']} - ${f['displayName']} - active: ${f['isActive']}');
+      }
       if (mounted && features.isNotEmpty) {
         setState(() {
           _dynamicFeatures = features;
           _isLoadingFeatures = false;
         });
+        print('🟢 Using DYNAMIC categories from API (${features.length} items)');
       } else {
         setState(() => _isLoadingFeatures = false);
+        print('🔴 Features empty or not mounted, using DEFAULT hardcoded categories');
       }
     } catch (e) {
+      print('🔴 Feature config API FAILED: $e');
       if (mounted) setState(() => _isLoadingFeatures = false);
     }
   }
