@@ -405,6 +405,76 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                   if (post['address'] != null && post['address'].toString().isNotEmpty)
                     _buildDetailRow(Icons.location_on, langProvider.getText('Address', '\u0bae\u0bc1\u0b95\u0bb5\u0bb0\u0bbf'), post['address']),
 
+                  // View on Map button
+                  if (post['latitude'] != null && post['longitude'] != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: InkWell(
+                        onTap: () async {
+                          final lat = post['latitude'];
+                          final lng = post['longitude'];
+                          final label = Uri.encodeComponent(post['serviceName'] ?? 'Parcel Service');
+                          final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _parcelOrange.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.map, size: 20, color: _parcelOrange),
+                              const SizedBox(width: 12),
+                              Text(
+                                langProvider.getText('View on Map', '\u0bae\u0bc7\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95'),
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _parcelOrange),
+                              ),
+                              const Spacer(),
+                              const Icon(Icons.open_in_new, size: 16, color: _parcelOrange),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (post['address'] != null && post['address'].toString().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: InkWell(
+                        onTap: () async {
+                          final query = Uri.encodeComponent(post['address']);
+                          final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _parcelOrange.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.map, size: 20, color: _parcelOrange),
+                              const SizedBox(width: 12),
+                              Text(
+                                langProvider.getText('View on Map', '\u0bae\u0bc7\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95'),
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _parcelOrange),
+                              ),
+                              const Spacer(),
+                              const Icon(Icons.open_in_new, size: 16, color: _parcelOrange),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                   if (post['timings'] != null && post['timings'].toString().isNotEmpty)
                     _buildDetailRow(Icons.access_time, langProvider.getText('Timings', '\u0ba8\u0bc7\u0bb0\u0bae\u0bcd'), post['timings']),
 
