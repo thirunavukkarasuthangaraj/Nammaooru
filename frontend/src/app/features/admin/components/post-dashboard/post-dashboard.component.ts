@@ -19,6 +19,9 @@ export class PostDashboardComponent implements OnInit {
   labourStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   travelStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   parcelStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
+  marketplaceStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
+  farmerStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
+  realEstateStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   isLoading = true;
   errorMessage = '';
 
@@ -40,6 +43,9 @@ export class PostDashboardComponent implements OnInit {
         this.labourStats = data.labour || this.labourStats;
         this.travelStats = data.travel || this.travelStats;
         this.parcelStats = data.parcel || this.parcelStats;
+        this.marketplaceStats = data.marketplace || this.marketplaceStats;
+        this.farmerStats = data.farmer || this.farmerStats;
+        this.realEstateStats = data.realEstate || this.realEstateStats;
         this.isLoading = false;
       },
       error: (err) => {

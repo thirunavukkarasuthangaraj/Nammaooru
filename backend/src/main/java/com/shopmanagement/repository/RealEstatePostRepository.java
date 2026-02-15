@@ -48,4 +48,6 @@ public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, 
 
     // Count by status
     long countByStatus(PostStatus status);
+
+    long countByReportCountGreaterThan(int minReportCount);
 }

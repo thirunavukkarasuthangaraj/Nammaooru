@@ -113,5 +113,101 @@
         </div>
       </div>
     </div>
+
+    <!-- Marketplace Section -->
+    <div class="section marketplace-section">
+      <h3><mat-icon>store</mat-icon> Marketplace Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/marketplace')">
+          <div class="stat-value">{{ marketplaceStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/marketplace')">
+          <div class="stat-value">{{ marketplaceStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/marketplace')">
+          <div class="stat-value">{{ marketplaceStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/marketplace')">
+          <div class="stat-value">{{ marketplaceStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/marketplace/reported')">
+          <div class="stat-value">{{ marketplaceStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Farmer Products Section -->
+    <div class="section farmer-section">
+      <h3><mat-icon>agriculture</mat-icon> Farmer Product Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/farmer-products')">
+          <div class="stat-value">{{ farmerStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/farmer-products')">
+          <div class="stat-value">{{ farmerStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/farmer-products')">
+          <div class="stat-value">{{ farmerStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/farmer-products')">
+          <div class="stat-value">{{ farmerStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/farmer-products/reported')">
+          <div class="stat-value">{{ farmerStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real Estate Section -->
+    <div class="section realestate-section">
+      <h3><mat-icon>home</mat-icon> Real Estate Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/real-estate')">
+          <div class="stat-value">{{ realEstateStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/real-estate')">
+          <div class="stat-value">{{ realEstateStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/real-estate')">
+          <div class="stat-value">{{ realEstateStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/real-estate')">
+          <div class="stat-value">{{ realEstateStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/real-estate/reported')">
+          <div class="stat-value">{{ realEstateStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
