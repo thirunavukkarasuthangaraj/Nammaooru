@@ -40,6 +40,7 @@ import '../screens/marketplace_screen.dart';
 import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
 import '../screens/farmer_products_screen.dart';
+import '../screens/labour_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -1503,7 +1504,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     MaterialPageRoute(builder: (context) => const FarmerProductsScreen()),
                   ),
                 ),
-                // 5. Bus Timing
+                // 5. Labours
+                _buildModernCategoryTile(
+                  icon: Icons.construction_rounded,
+                  title: languageProvider.getText('Labours', 'தொழிலாளர்'),
+                  subtitle: languageProvider.getText('Find local workers', 'தொழிலாளர் தேடுக'),
+                  color: const Color(0xFF1565C0),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LabourScreen()),
+                  ),
+                ),
+                // 6. Bus Timing
                 _buildModernCategoryTile(
                   icon: Icons.directions_bus_rounded,
                   title: languageProvider.getText('Bus Timing', 'பேருந்து நேரம்'),

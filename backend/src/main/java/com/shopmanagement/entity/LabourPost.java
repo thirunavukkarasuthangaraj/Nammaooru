@@ -1,0 +1,103 @@
+package com.shopmanagement.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "labour_posts")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+public class LabourPost {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(nullable = false, length = 20)
+    private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private LabourCategory category;
+
+    @Column(length = 100)
+    private String experience;
+
+    @Column(length = 200)
+    private String location;
+
+    @Column(length = 1000)
+    private String description;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "seller_user_id", nullable = false)
+    private Long sellerUserId;
+
+    @Column(name = "seller_name", length = 200)
+    private String sellerName;
+
+    @Column(name = "report_count")
+    @Builder.Default
+    private Integer reportCount = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    @Builder.Default
+    private PostStatus status = PostStatus.PENDING_APPROVAL;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public enum LabourCategory {
+        PAINTER,
+        CARPENTER,
+        ELECTRICIAN,
+        PLUMBER,
+        CONTRACTOR,
+        MASON,
+        DRIVER,
+        WELDER,
+        MECHANIC,
+        TAILOR,
+        AC_TECHNICIAN,
+        HELPER,
+        BIKE_REPAIR,
+        CAR_REPAIR,
+        TYRE_PUNCTURE,
+        GENERAL_LABOUR,
+        OTHER
+    }
+
+    public enum PostStatus {
+        PENDING_APPROVAL,
+        APPROVED,
+        REJECTED,
+        SOLD,
+        FLAGGED,
+        HOLD,
+        HIDDEN,
+        CORRECTION_REQUIRED,
+        REMOVED
+    }
+}

@@ -20,6 +20,8 @@ import '../features/customer/screens/marketplace_screen.dart';
 import '../features/customer/screens/create_post_screen.dart';
 import '../features/customer/screens/farmer_products_screen.dart';
 import '../features/customer/screens/create_farmer_post_screen.dart';
+import '../features/customer/screens/labour_screen.dart';
+import '../features/customer/screens/create_labour_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -131,6 +133,14 @@ class AppRouter {
           GoRoute(
             path: '/customer/farmer-products/create',
             builder: (context, state) => const CreateFarmerPostScreen(),
+          ),
+          GoRoute(
+            path: '/customer/labours',
+            builder: (context, state) => const LabourScreen(),
+          ),
+          GoRoute(
+            path: '/customer/labours/create',
+            builder: (context, state) => const CreateLabourScreen(),
           ),
         ],
       ),
