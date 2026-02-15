@@ -20,6 +20,7 @@ interface ParcelPost {
   sellerUserId: number;
   sellerName: string;
   reportCount: number;
+  featured: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -140,6 +141,24 @@ export class ParcelManagementComponent implements OnInit {
             this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
           }
         });
+      }
+    });
+  }
+
+  toggleFeatured(post: ParcelPost): void {
+    this.parcelService.toggleFeatured(post.id).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        const isFeatured = updated?.featured;
+        post.featured = isFeatured;
+        this.snackBar.open(
+          isFeatured ? `"${post.serviceName}" marked as featured` : `"${post.serviceName}" removed from featured`,
+          'OK',
+          { duration: 3000 }
+        );
+      },
+      error: () => {
+        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
       }
     });
   }

@@ -522,6 +522,16 @@ public class TravelPostService {
         }
     }
 
+    @Transactional
+    public TravelPost toggleFeatured(Long postId) {
+        TravelPost post = travelPostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setFeatured(!Boolean.TRUE.equals(post.getFeatured()));
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post featured toggled: id={}, featured={}", postId, saved.getFeatured());
+        return saved;
+    }
+
     private void notifyAdminsFlaggedPost(TravelPost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();

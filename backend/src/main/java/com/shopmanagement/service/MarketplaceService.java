@@ -458,6 +458,16 @@ public class MarketplaceService {
         }
     }
 
+    @Transactional
+    public MarketplacePost toggleFeatured(Long postId) {
+        MarketplacePost post = marketplacePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setFeatured(!Boolean.TRUE.equals(post.getFeatured()));
+        MarketplacePost saved = marketplacePostRepository.save(post);
+        log.info("Marketplace post featured toggled: id={}, featured={}", postId, saved.getFeatured());
+        return saved;
+    }
+
     private void notifyAdminsFlaggedPost(MarketplacePost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();

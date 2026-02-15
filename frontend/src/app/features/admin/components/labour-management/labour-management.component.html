@@ -109,6 +109,20 @@
         </td>
       </ng-container>
 
+      <!-- Featured Column -->
+      <ng-container matColumnDef="featured">
+        <th mat-header-cell *matHeaderCellDef>Featured</th>
+        <td mat-cell *matCellDef="let post">
+          <button mat-icon-button
+                  class="featured-toggle"
+                  [class.is-featured]="post.featured"
+                  (click)="toggleFeatured(post)"
+                  [matTooltip]="post.featured ? 'Remove from featured' : 'Mark as featured'">
+            <mat-icon>{{ post.featured ? 'star' : 'star_border' }}</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
       <!-- Date Column -->
       <ng-container matColumnDef="date">
         <th mat-header-cell *matHeaderCellDef>Date</th>
@@ -148,8 +162,8 @@
         </td>
       </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="['image', 'name', 'category', 'experience', 'phone', 'location', 'status', 'date', 'actions']"></tr>
-      <tr mat-row *matRowDef="let row; columns: ['image', 'name', 'category', 'experience', 'phone', 'location', 'status', 'date', 'actions']"></tr>
+      <tr mat-header-row *matHeaderRowDef="['image', 'name', 'category', 'experience', 'phone', 'location', 'status', 'featured', 'date', 'actions']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['image', 'name', 'category', 'experience', 'phone', 'location', 'status', 'featured', 'date', 'actions']"></tr>
     </table>
 
     <!-- Pagination -->

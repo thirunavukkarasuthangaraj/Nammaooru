@@ -17,6 +17,7 @@ interface MarketplacePost {
   sellerPhone: string;
   category: string;
   location: string;
+  featured: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -158,6 +159,24 @@ export class MarketplaceManagementComponent implements OnInit {
   getVoiceUrl(path: string | null): string {
     if (!path) return '';
     return getImageUrl(path);
+  }
+
+  toggleFeatured(post: MarketplacePost): void {
+    this.marketplaceService.toggleFeatured(post.id).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        const isFeatured = updated?.featured;
+        post.featured = isFeatured;
+        this.snackBar.open(
+          isFeatured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
+          'OK',
+          { duration: 3000 }
+        );
+      },
+      error: () => {
+        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onStatusChange(post: MarketplacePost, newStatus: string): void {

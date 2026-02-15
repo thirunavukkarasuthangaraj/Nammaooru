@@ -83,7 +83,16 @@ export class PostEditDialogComponent implements OnInit {
     marketplace: [
       { key: 'title', label: 'Title', type: 'text' },
       { key: 'price', label: 'Price', type: 'number' },
-      { key: 'category', label: 'Category', type: 'text' },
+      { key: 'category', label: 'Category', type: 'select', options: [
+        { value: 'Electronics', label: 'Electronics' },
+        { value: 'Furniture', label: 'Furniture' },
+        { value: 'Vehicles', label: 'Vehicles' },
+        { value: 'Agriculture', label: 'Agriculture' },
+        { value: 'Clothing', label: 'Clothing' },
+        { value: 'Food', label: 'Food' },
+        { value: 'Finance', label: 'Finance' },
+        { value: 'Other', label: 'Other' }
+      ]},
       { key: 'location', label: 'Location', type: 'text' },
       { key: 'description', label: 'Description', type: 'textarea' }
     ],
@@ -91,7 +100,18 @@ export class PostEditDialogComponent implements OnInit {
       { key: 'title', label: 'Title', type: 'text' },
       { key: 'price', label: 'Price', type: 'number' },
       { key: 'unit', label: 'Unit', type: 'text' },
-      { key: 'category', label: 'Category', type: 'text' },
+      { key: 'category', label: 'Category', type: 'select', options: [
+        { value: 'Vegetables', label: 'Vegetables' },
+        { value: 'Fruits', label: 'Fruits' },
+        { value: 'Grains & Pulses', label: 'Grains & Pulses' },
+        { value: 'Dairy', label: 'Dairy' },
+        { value: 'Spices', label: 'Spices' },
+        { value: 'Flowers', label: 'Flowers' },
+        { value: 'Organic', label: 'Organic' },
+        { value: 'Seeds & Plants', label: 'Seeds & Plants' },
+        { value: 'Honey & Jaggery', label: 'Honey & Jaggery' },
+        { value: 'Other', label: 'Other' }
+      ]},
       { key: 'location', label: 'Location', type: 'text' },
       { key: 'description', label: 'Description', type: 'textarea' }
     ],

@@ -448,6 +448,16 @@ public class RealEstateService {
         }
     }
 
+    @Transactional
+    public RealEstatePost toggleFeatured(Long postId) {
+        RealEstatePost post = realEstatePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setIsFeatured(!Boolean.TRUE.equals(post.getIsFeatured()));
+        RealEstatePost saved = realEstatePostRepository.save(post);
+        log.info("Real estate post featured toggled: id={}, featured={}", postId, saved.getIsFeatured());
+        return saved;
+    }
+
     private void notifyAdminsFlaggedPost(RealEstatePost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();

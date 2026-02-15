@@ -19,6 +19,7 @@ interface TravelPost {
   sellerUserId: number;
   sellerName: string;
   reportCount: number;
+  featured: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -139,6 +140,24 @@ export class TravelManagementComponent implements OnInit {
             this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
           }
         });
+      }
+    });
+  }
+
+  toggleFeatured(post: TravelPost): void {
+    this.travelService.toggleFeatured(post.id).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        const isFeatured = updated?.featured;
+        post.featured = isFeatured;
+        this.snackBar.open(
+          isFeatured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
+          'OK',
+          { duration: 3000 }
+        );
+      },
+      error: () => {
+        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
       }
     });
   }

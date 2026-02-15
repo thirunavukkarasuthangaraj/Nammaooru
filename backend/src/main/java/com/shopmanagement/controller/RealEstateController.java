@@ -273,6 +273,19 @@ public class RealEstateController {
         }
     }
 
+    @PutMapping("/{id}/featured")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<RealEstatePost>> toggleFeatured(@PathVariable Long id) {
+        try {
+            RealEstatePost post = realEstateService.toggleFeatured(id);
+            String msg = Boolean.TRUE.equals(post.getIsFeatured()) ? "Post marked as featured" : "Post removed from featured";
+            return ResponseUtil.success(post, msg);
+        } catch (Exception e) {
+            log.error("Error toggling featured status for real estate post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

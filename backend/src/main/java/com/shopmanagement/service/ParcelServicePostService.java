@@ -524,6 +524,16 @@ public class ParcelServicePostService {
         }
     }
 
+    @Transactional
+    public ParcelServicePost toggleFeatured(Long postId) {
+        ParcelServicePost post = parcelServicePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setFeatured(!Boolean.TRUE.equals(post.getFeatured()));
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post featured toggled: id={}, featured={}", postId, saved.getFeatured());
+        return saved;
+    }
+
     private void notifyAdminsFlaggedPost(ParcelServicePost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();

@@ -38,4 +38,8 @@ export class RealEstateAdminService {
   adminUpdatePost(id: number, data: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/admin-update`, data);
   }
+
+  toggleFeatured(id: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/featured`, {});
+  }
 }

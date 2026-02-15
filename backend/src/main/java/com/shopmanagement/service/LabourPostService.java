@@ -517,6 +517,16 @@ public class LabourPostService {
         }
     }
 
+    @Transactional
+    public LabourPost toggleFeatured(Long postId) {
+        LabourPost post = labourPostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setFeatured(!Boolean.TRUE.equals(post.getFeatured()));
+        LabourPost saved = labourPostRepository.save(post);
+        log.info("Labour post featured toggled: id={}, featured={}", postId, saved.getFeatured());
+        return saved;
+    }
+
     private void notifyAdminsFlaggedPost(LabourPost post, int reportCount) {
         try {
             List<Long> adminIds = getAdminUserIds();

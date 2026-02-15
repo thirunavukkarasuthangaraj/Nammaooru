@@ -17,6 +17,7 @@ interface LabourPost {
   sellerUserId: number;
   sellerName: string;
   reportCount: number;
+  featured: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -137,6 +138,24 @@ export class LabourManagementComponent implements OnInit {
             this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
           }
         });
+      }
+    });
+  }
+
+  toggleFeatured(post: LabourPost): void {
+    this.labourService.toggleFeatured(post.id).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        const isFeatured = updated?.featured;
+        post.featured = isFeatured;
+        this.snackBar.open(
+          isFeatured ? `"${post.name}" marked as featured` : `"${post.name}" removed from featured`,
+          'OK',
+          { duration: 3000 }
+        );
+      },
+      error: () => {
+        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
       }
     });
   }

@@ -241,6 +241,19 @@ public class MarketplaceController {
         }
     }
 
+    @PutMapping("/{id}/featured")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<MarketplacePost>> toggleFeatured(@PathVariable Long id) {
+        try {
+            MarketplacePost post = marketplaceService.toggleFeatured(id);
+            String msg = Boolean.TRUE.equals(post.getFeatured()) ? "Post marked as featured" : "Post removed from featured";
+            return ResponseUtil.success(post, msg);
+        } catch (Exception e) {
+            log.error("Error toggling featured status for marketplace post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

@@ -147,6 +147,24 @@ export class RealEstateManagementComponent implements OnInit {
     });
   }
 
+  toggleFeatured(post: RealEstatePost): void {
+    this.realEstateService.toggleFeatured(post.id).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        const featured = updated?.isFeatured;
+        post.isFeatured = featured;
+        this.snackBar.open(
+          featured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
+          'OK',
+          { duration: 3000 }
+        );
+      },
+      error: () => {
+        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
   getFirstImageUrl(imageUrls: string | null): string {
     if (!imageUrls) return '';
     const first = imageUrls.split(',')[0]?.trim();

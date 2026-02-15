@@ -59,6 +59,10 @@ public class LabourPost {
     @Column(name = "seller_name", length = 200)
     private String sellerName;
 
+    @Column(name = "featured")
+    @Builder.Default
+    private Boolean featured = false;
+
     @Column(name = "report_count")
     @Builder.Default
     private Integer reportCount = 0;
