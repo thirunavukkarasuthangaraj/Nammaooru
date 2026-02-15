@@ -81,7 +81,7 @@ public class LabourPostService {
         }
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("labours.post.auto_approve", "true"));
+                settingService.getSettingValue("labours.post.auto_approve", "false"));
 
         LabourPost post = LabourPost.builder()
                 .name(name)

@@ -82,7 +82,7 @@ public class TravelPostService {
         }
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("travels.post.auto_approve", "true"));
+                settingService.getSettingValue("travels.post.auto_approve", "false"));
 
         TravelPost post = TravelPost.builder()
                 .title(title)

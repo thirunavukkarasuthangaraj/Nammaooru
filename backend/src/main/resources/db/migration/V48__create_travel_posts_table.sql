@@ -32,7 +32,7 @@ VALUES ('travels.post.duration_days', '60', 'Number of days a travel listing sta
 ON CONFLICT (setting_key) DO NOTHING;
 
 INSERT INTO settings (setting_key, setting_value, description, category, setting_type, scope, is_active, is_required, is_read_only, default_value, created_by, updated_by, created_at, updated_at)
-VALUES ('travels.post.auto_approve', 'true', 'Auto-approve new travel listings without admin review', 'TRAVELS', 'BOOLEAN', 'GLOBAL', true, true, false, 'true', 'system', 'system', NOW(), NOW())
+VALUES ('travels.post.auto_approve', 'false', 'Auto-approve new travel listings without admin review', 'TRAVELS', 'BOOLEAN', 'GLOBAL', true, true, false, 'false', 'system', 'system', NOW(), NOW())
 ON CONFLICT (setting_key) DO NOTHING;
 
 INSERT INTO settings (setting_key, setting_value, description, category, setting_type, scope, is_active, is_required, is_read_only, default_value, created_by, updated_by, created_at, updated_at)

@@ -138,15 +138,14 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       _currentPage = 0;
     });
 
-    // Get user location for nearby filtering
-    try {
-      final position = await LocationService.instance.getCurrentPosition();
-      if (position != null && position.latitude != null && position.longitude != null) {
-        _userLatitude = position.latitude;
-        _userLongitude = position.longitude;
-      }
-    } catch (e) {
-      // Location unavailable - will show all posts
+    // Fetch GPS in background (don't block the API call)
+    if (_userLatitude == null || _userLongitude == null) {
+      LocationService.instance.getCurrentPosition().then((position) {
+        if (position != null && position.latitude != null && position.longitude != null) {
+          _userLatitude = position.latitude;
+          _userLongitude = position.longitude;
+        }
+      }).catchError((_) {});
     }
 
     try {
