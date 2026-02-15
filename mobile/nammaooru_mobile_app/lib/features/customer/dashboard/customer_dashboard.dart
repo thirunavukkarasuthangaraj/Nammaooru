@@ -37,11 +37,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../services/marketplace_service.dart';
 import '../services/feature_config_service.dart';
-import '../services/farmer_products_service.dart';
-import '../services/labour_service.dart';
-import '../services/travel_service.dart';
-import '../services/parcel_service.dart';
-import '../services/real_estate_service.dart';
+import '../../../core/services/api_service.dart';
 import '../screens/marketplace_screen.dart';
 import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
@@ -87,11 +83,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   final _promoService = PromoCodeService();
   final _marketplaceService = MarketplaceService();
   final _featureConfigService = FeatureConfigService();
-  final _farmerService = FarmerProductsService();
-  final _labourService = LabourService();
-  final _travelService = TravelService();
-  final _parcelService = ParcelService();
-  final _realEstateService = RealEstateService();
+  final _apiService = ApiService();
 
   @override
   void initState() {
@@ -467,134 +459,112 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Future<void> _loadFeaturedPosts() async {
     try {
+      final response = await _apiService.get('/featured-posts', includeAuth: false);
+      if (response['success'] != true || response['data'] == null) return;
+
+      final data = response['data'] as Map<String, dynamic>;
       final List<Map<String, dynamic>> allFeatured = [];
 
-      // Load 1 recent post from each feature in parallel
-      final results = await Future.wait([
-        _marketplaceService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
-        _farmerService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
-        _labourService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
-        _travelService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
-        _parcelService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
-        _realEstateService.getApprovedPosts(page: 0, size: 1).catchError((_) => <String, dynamic>{}),
-      ]);
-
-      // Marketplace
-      final mpData = results[0]['data'];
-      final mpContent = mpData is Map ? (mpData['content'] ?? []) : (mpData is List ? mpData : []);
-      if (mpContent is List && mpContent.isNotEmpty) {
-        final post = mpContent[0];
-        allFeatured.add({
-          'type': 'marketplace',
-          'title': post['title'] ?? 'Buy & Sell',
-          'subtitle': post['description'] ?? '',
-          'image': post['imageUrl'] ?? '',
+      // Config: type -> display properties
+      final configs = <String, Map<String, dynamic>>{
+        'marketplace': {
           'icon': Icons.storefront_rounded,
           'color': const Color(0xFF4527A0),
           'label': 'Marketplace',
           'labelTamil': 'சந்தை',
           'screen': const MarketplaceScreen(),
-        });
-      }
-
-      // Farmer Products
-      final fpData = results[1]['data'];
-      final fpContent = fpData is Map ? (fpData['content'] ?? []) : (fpData is List ? fpData : []);
-      if (fpContent is List && fpContent.isNotEmpty) {
-        final post = fpContent[0];
-        final imageUrls = (post['imageUrls'] ?? '').toString();
-        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
-        allFeatured.add({
-          'type': 'farmer',
-          'title': post['title'] ?? 'Farm Products',
-          'subtitle': post['description'] ?? '',
-          'image': firstImage,
+          'titleKey': 'title',
+          'subtitleKey': 'description',
+          'imageKey': 'imageUrl',
+        },
+        'farmer': {
           'icon': Icons.eco_rounded,
           'color': const Color(0xFF33691E),
           'label': 'Farm Products',
           'labelTamil': 'விவசாய பொருட்கள்',
           'screen': const FarmerProductsScreen(),
-        });
-      }
-
-      // Labour
-      final lbData = results[2]['data'];
-      final lbContent = lbData is Map ? (lbData['content'] ?? []) : (lbData is List ? lbData : []);
-      if (lbContent is List && lbContent.isNotEmpty) {
-        final post = lbContent[0];
-        final imageUrls = (post['imageUrls'] ?? '').toString();
-        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
-        allFeatured.add({
-          'type': 'labour',
-          'title': post['name'] ?? 'Labour',
-          'subtitle': post['category'] ?? post['description'] ?? '',
-          'image': firstImage,
+          'titleKey': 'title',
+          'subtitleKey': 'description',
+          'imageKey': 'imageUrls',
+        },
+        'labour': {
           'icon': Icons.construction_rounded,
           'color': const Color(0xFF1565C0),
           'label': 'Labours',
           'labelTamil': 'தொழிலாளர்',
           'screen': const LabourScreen(),
-        });
-      }
-
-      // Travel
-      final tvData = results[3]['data'];
-      final tvContent = tvData is Map ? (tvData['content'] ?? []) : (tvData is List ? tvData : []);
-      if (tvContent is List && tvContent.isNotEmpty) {
-        final post = tvContent[0];
-        final imageUrls = (post['imageUrls'] ?? '').toString();
-        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
-        allFeatured.add({
-          'type': 'travel',
-          'title': post['title'] ?? 'Travel',
-          'subtitle': post['fromLocation'] != null ? '${post['fromLocation']} → ${post['toLocation'] ?? ''}' : (post['description'] ?? ''),
-          'image': firstImage,
+          'titleKey': 'name',
+          'subtitleKey': 'category',
+          'imageKey': 'imageUrls',
+        },
+        'travel': {
           'icon': Icons.directions_car_rounded,
           'color': const Color(0xFF00897B),
           'label': 'Travels',
           'labelTamil': 'பயணங்கள்',
           'screen': const TravelScreen(),
-        });
-      }
-
-      // Parcel
-      final pcData = results[4]['data'];
-      final pcContent = pcData is Map ? (pcData['content'] ?? []) : (pcData is List ? pcData : []);
-      if (pcContent is List && pcContent.isNotEmpty) {
-        final post = pcContent[0];
-        final imageUrls = (post['imageUrls'] ?? '').toString();
-        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
-        allFeatured.add({
-          'type': 'parcel',
-          'title': post['serviceName'] ?? 'Parcel Service',
-          'subtitle': post['fromLocation'] != null ? '${post['fromLocation']} → ${post['toLocation'] ?? ''}' : (post['description'] ?? ''),
-          'image': firstImage,
+          'titleKey': 'title',
+          'subtitleKey': 'fromLocation',
+          'imageKey': 'imageUrls',
+        },
+        'parcel': {
           'icon': Icons.local_shipping_rounded,
           'color': const Color(0xFFE65100),
           'label': 'Parcel Service',
           'labelTamil': 'பார்சல் சேவை',
           'screen': const ParcelScreen(),
-        });
-      }
-
-      // Real Estate
-      final reData = results[5]['data'];
-      final reContent = reData is Map ? (reData['content'] ?? []) : (reData is List ? reData : []);
-      if (reContent is List && reContent.isNotEmpty) {
-        final post = reContent[0];
-        final imageUrls = (post['imageUrls'] ?? '').toString();
-        final firstImage = imageUrls.isNotEmpty ? imageUrls.split(',').first.trim() : '';
-        allFeatured.add({
-          'type': 'realEstate',
-          'title': post['title'] ?? 'Real Estate',
-          'subtitle': post['location'] ?? '',
-          'image': firstImage,
+          'titleKey': 'serviceName',
+          'subtitleKey': 'fromLocation',
+          'imageKey': 'imageUrls',
+        },
+        'realEstate': {
           'icon': Icons.home_rounded,
           'color': const Color(0xFFAD1457),
           'label': 'Real Estate',
           'labelTamil': 'ரியல் எஸ்டேட்',
           'screen': const MarketplaceScreen(),
-        });
+          'titleKey': 'title',
+          'subtitleKey': 'location',
+          'imageKey': 'imageUrls',
+        },
+      };
+
+      for (final entry in configs.entries) {
+        final key = entry.key;
+        final cfg = entry.value;
+        final posts = data[key];
+        if (posts is List && posts.isNotEmpty) {
+          for (final post in posts) {
+            // Get image - handle both single imageUrl and comma-separated imageUrls
+            String image = '';
+            final imgField = cfg['imageKey'] as String;
+            final imgValue = (post[imgField] ?? '').toString();
+            if (imgValue.isNotEmpty) {
+              image = imgValue.split(',').first.trim();
+            }
+
+            // Build subtitle
+            String subtitle = '';
+            final subtitleKey = cfg['subtitleKey'] as String;
+            if (subtitleKey == 'fromLocation' && post['fromLocation'] != null) {
+              subtitle = '${post['fromLocation']} → ${post['toLocation'] ?? ''}';
+            } else {
+              subtitle = (post[subtitleKey] ?? post['description'] ?? '').toString();
+            }
+
+            allFeatured.add({
+              'type': key,
+              'title': (post[cfg['titleKey']] ?? cfg['label']).toString(),
+              'subtitle': subtitle,
+              'image': image,
+              'icon': cfg['icon'],
+              'color': cfg['color'],
+              'label': cfg['label'],
+              'labelTamil': cfg['labelTamil'],
+              'screen': cfg['screen'],
+            });
+          }
+        }
       }
 
       if (mounted) {
