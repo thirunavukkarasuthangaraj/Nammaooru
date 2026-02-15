@@ -11,6 +11,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../services/labour_service.dart';
 import 'create_labour_screen.dart';
+import 'labour_post_detail_screen.dart';
 
 class LabourScreen extends StatefulWidget {
   const LabourScreen({super.key});
@@ -505,16 +506,33 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     );
   }
 
+  static String? _getFirstImageUrl(Map<String, dynamic> post) {
+    final imageUrls = post['imageUrls'];
+    if (imageUrls != null && imageUrls.toString().isNotEmpty) {
+      final first = imageUrls.toString().split(',').first.trim();
+      if (first.isNotEmpty) return ImageUrlHelper.getFullImageUrl(first);
+    }
+    return null;
+  }
+
+  void _navigateToDetail(Map<String, dynamic> post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LabourPostDetailScreen(post: post),
+      ),
+    );
+  }
+
   Widget _buildPostCard(Map<String, dynamic> post) {
     final isUnavailable = post['status'] == 'SOLD';
-    final imageUrl = post['imageUrl'];
-    final fullImageUrl = imageUrl != null && imageUrl.toString().isNotEmpty
-        ? ImageUrlHelper.getFullImageUrl(imageUrl.toString())
-        : null;
+    final fullImageUrl = _getFirstImageUrl(post);
     final category = post['category']?.toString() ?? '';
     final categoryIcon = _categoryIcons[category] ?? Icons.work;
 
-    return Card(
+    return GestureDetector(
+      onTap: () => _navigateToDetail(post),
+      child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -708,6 +726,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
             ),
         ],
       ),
+    ),
     );
   }
 
@@ -780,10 +799,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
 
   Widget _buildMyPostCard(Map<String, dynamic> post) {
     final status = post['status'] ?? 'PENDING_APPROVAL';
-    final imageUrl = post['imageUrl'];
-    final fullImageUrl = imageUrl != null && imageUrl.toString().isNotEmpty
-        ? ImageUrlHelper.getFullImageUrl(imageUrl.toString())
-        : null;
+    final fullImageUrl = _getFirstImageUrl(post);
     final category = post['category']?.toString() ?? '';
     final categoryIcon = _categoryIcons[category] ?? Icons.work;
 

@@ -40,7 +40,7 @@ public class LabourPostService {
     @Transactional
     public LabourPost createPost(String name, String phone, String categoryStr,
                                   String experience, String location, String description,
-                                  MultipartFile image, String username) throws IOException {
+                                  List<MultipartFile> images, String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -51,9 +51,17 @@ public class LabourPostService {
             throw new RuntimeException("Invalid labour category: " + categoryStr);
         }
 
-        String imageUrl = null;
-        if (image != null && !image.isEmpty()) {
-            imageUrl = fileUploadService.uploadFile(image, "labours");
+        String imageUrls = null;
+        if (images != null && !images.isEmpty()) {
+            List<String> uploadedUrls = new ArrayList<>();
+            for (MultipartFile image : images) {
+                if (image != null && !image.isEmpty()) {
+                    uploadedUrls.add(fileUploadService.uploadFile(image, "labours"));
+                }
+            }
+            if (!uploadedUrls.isEmpty()) {
+                imageUrls = String.join(",", uploadedUrls);
+            }
         }
 
         boolean autoApprove = Boolean.parseBoolean(
@@ -66,7 +74,7 @@ public class LabourPostService {
                 .experience(experience)
                 .location(location)
                 .description(description)
-                .imageUrl(imageUrl)
+                .imageUrls(imageUrls)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)

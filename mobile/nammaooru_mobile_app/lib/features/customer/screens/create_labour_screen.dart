@@ -26,7 +26,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   final LabourService _labourService = LabourService();
 
   String _selectedCategory = 'GENERAL_LABOUR';
-  File? _selectedImage;
+  final List<File> _selectedImages = [];
+  static const int _maxImages = 3;
   bool _isSubmitting = false;
 
   static const Color _labourBlue = Color(0xFF1565C0);
@@ -121,6 +122,10 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   }
 
   Future<void> _pickImageFromCamera() async {
+    if (_selectedImages.length >= _maxImages) {
+      _showMaxImagesMessage();
+      return;
+    }
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
@@ -131,7 +136,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
       );
       if (pickedFile != null && mounted) {
         setState(() {
-          _selectedImage = File(pickedFile.path);
+          _selectedImages.add(File(pickedFile.path));
         });
       }
     } catch (e) {
@@ -143,27 +148,48 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     }
   }
 
-  Future<void> _pickImageFromGallery() async {
+  Future<void> _pickImagesFromGallery() async {
+    if (_selectedImages.length >= _maxImages) {
+      _showMaxImagesMessage();
+      return;
+    }
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
+      final remaining = _maxImages - _selectedImages.length;
+      final pickedFiles = await picker.pickMultiImage(
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 70,
       );
-      if (pickedFile != null && mounted) {
+      if (pickedFiles.isNotEmpty && mounted) {
         setState(() {
-          _selectedImage = File(pickedFile.path);
+          final toAdd = pickedFiles.take(remaining).map((f) => File(f.path)).toList();
+          _selectedImages.addAll(toAdd);
         });
+        if (pickedFiles.length > remaining) {
+          _showMaxImagesMessage();
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e')),
+          SnackBar(content: Text('Error picking images: $e')),
         );
       }
     }
+  }
+
+  void _showMaxImagesMessage() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(langProvider.getText(
+          'Maximum $_maxImages images allowed',
+          'அதிகபட்சம் $_maxImages புகைப்படங்கள் அனுமதிக்கப்படும்',
+        )),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   void _showImageSourceDialog() {
@@ -186,7 +212,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
               title: Text(langProvider.getText('Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
               onTap: () {
                 Navigator.pop(context);
-                _pickImageFromGallery();
+                _pickImagesFromGallery();
               },
             ),
           ],
@@ -210,7 +236,9 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         experience: _experienceController.text.trim(),
         location: _locationController.text.trim(),
         description: _descriptionController.text.trim(),
-        imagePath: _selectedImage?.path,
+        imagePaths: _selectedImages.isNotEmpty
+            ? _selectedImages.map((f) => f.path).toList()
+            : null,
       );
 
       if (mounted) {
@@ -488,63 +516,107 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel(langProvider.getText('Photo (optional)', 'புகைப்படம் (விரும்பினால்)')),
+        Row(
+          children: [
+            _buildLabel(langProvider.getText('Photos (optional)', 'புகைப்படங்கள் (விரும்பினால்)')),
+            const SizedBox(width: 8),
+            Text(
+              '${_selectedImages.length}/$_maxImages',
+              style: TextStyle(
+                fontSize: 13,
+                color: _selectedImages.length >= _maxImages ? Colors.orange : Colors.grey[500],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _showImageSourceDialog,
-          child: _selectedImage != null
-              ? Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        _selectedImage!,
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedImage = null;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+        SizedBox(
+          height: 120,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              ..._selectedImages.asMap().entries.map((entry) {
+                final index = entry.key;
+                final image = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          image,
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
                         ),
                       ),
-                    ),
-                  ],
-                )
-              : Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.grey[400]),
-                      const SizedBox(height: 6),
-                      Text(
-                        langProvider.getText('Add Photo', 'புகைப்படம்'),
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedImages.removeAt(index);
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
                       ),
+                      if (_selectedImages.length > 1)
+                        Positioned(
+                          bottom: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
+                );
+              }),
+              if (_selectedImages.length < _maxImages)
+                GestureDetector(
+                  onTap: _showImageSourceDialog,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.grey[400]),
+                        const SizedBox(height: 6),
+                        Text(
+                          langProvider.getText('Add Photo', 'புகைப்படம்'),
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
+            ],
+          ),
         ),
       ],
     );

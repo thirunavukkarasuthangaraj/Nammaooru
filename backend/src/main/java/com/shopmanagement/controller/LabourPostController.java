@@ -36,11 +36,11 @@ public class LabourPostController {
             @RequestParam(value = "experience", required = false) String experience,
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "image", required = false) MultipartFile image) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         try {
             String username = getCurrentUsername();
             LabourPost post = labourPostService.createPost(
-                    name, phone, category, experience, location, description, image, username);
+                    name, phone, category, experience, location, description, images, username);
             return ResponseUtil.created(post, "Labour listing submitted successfully");
         } catch (Exception e) {
             log.error("Error creating labour post", e);

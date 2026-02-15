@@ -43,8 +43,8 @@ public class LabourPost {
     @Column(length = 1000)
     private String description;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
+    @Column(name = "image_urls", length = 1500)
+    private String imageUrls;
 
     @Column(name = "seller_user_id", nullable = false)
     private Long sellerUserId;

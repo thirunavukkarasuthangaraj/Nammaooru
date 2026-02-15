@@ -55,7 +55,7 @@ class LabourService {
     }
   }
 
-  /// Create a new labour post with optional image
+  /// Create a new labour post with optional images (up to 3)
   Future<Map<String, dynamic>> createPost({
     required String name,
     required String phone,
@@ -63,7 +63,7 @@ class LabourService {
     String? experience,
     String? location,
     String? description,
-    String? imagePath,
+    List<String>? imagePaths,
   }) async {
     try {
       Logger.api('Creating labour post: $name ($category)');
@@ -83,12 +83,23 @@ class LabourService {
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;
       }
-      if (imagePath != null && imagePath.isNotEmpty) {
-        final imageFileName = imagePath.split('/').last;
-        formMap['image'] = await MultipartFile.fromFile(
-          imagePath,
-          filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
-        );
+
+      if (imagePaths != null && imagePaths.isNotEmpty) {
+        final List<MultipartFile> imageFiles = [];
+        for (final imagePath in imagePaths) {
+          if (imagePath.isNotEmpty) {
+            final imageFileName = imagePath.split('/').last;
+            imageFiles.add(await MultipartFile.fromFile(
+              imagePath,
+              filename: imageFileName.isNotEmpty ? imageFileName : 'image.jpg',
+            ));
+          }
+        }
+        if (imageFiles.length == 1) {
+          formMap['images'] = imageFiles.first;
+        } else if (imageFiles.isNotEmpty) {
+          formMap['images'] = imageFiles;
+        }
       }
 
       final formData = FormData.fromMap(formMap);
