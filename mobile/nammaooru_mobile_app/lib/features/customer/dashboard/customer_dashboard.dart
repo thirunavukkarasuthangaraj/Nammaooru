@@ -579,6 +579,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             } else {
               subtitle = (post[subtitleKey] ?? post['description'] ?? '').toString();
             }
+            // Format UPPERCASE enum values (e.g. GENERAL_LABOUR → General Labour)
+            if (subtitle.contains('_') || subtitle == subtitle.toUpperCase() && subtitle.length > 1) {
+              subtitle = subtitle.replaceAll('_', ' ').split(' ').map((w) =>
+                w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : w
+              ).join(' ');
+            }
 
             allFeatured.add({
               'type': key,
