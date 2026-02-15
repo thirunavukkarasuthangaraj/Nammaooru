@@ -48,6 +48,9 @@ public class NotificationService {
     public NotificationResponse createNotification(NotificationRequest request) {
         log.info("Creating notification: {}", request.getTitle());
         
+        // Build data payload for push notification routing
+        java.util.Map<String, String> pushData = buildPushData(request);
+
         // Handle single recipient
         if (request.getRecipientId() != null) {
             Notification notification = buildNotification(request, request.getRecipientId());
@@ -60,7 +63,7 @@ public class NotificationService {
 
             // Send push notification if requested
             if (request.getSendPush() != null && request.getSendPush()) {
-                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage());
+                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage(), pushData);
             }
 
             return mapToResponse(savedNotification);
@@ -86,7 +89,7 @@ public class NotificationService {
             // Send push notifications if requested
             if (request.getSendPush() != null && request.getSendPush()) {
                 for (Long recipientId : request.getRecipientIds()) {
-                    sendPushToUser(recipientId, request.getTitle(), request.getMessage());
+                    sendPushToUser(recipientId, request.getTitle(), request.getMessage(), pushData);
                 }
             }
 
@@ -204,6 +207,11 @@ public class NotificationService {
 
     @Async
     public void sendPushToUser(Long userId, String title, String message) {
+        sendPushToUser(userId, title, message, null);
+    }
+
+    @Async
+    public void sendPushToUser(Long userId, String title, String message, java.util.Map<String, String> data) {
         try {
             List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
             if (fcmTokens.isEmpty()) {
@@ -213,8 +221,13 @@ public class NotificationService {
 
             for (UserFcmToken fcmToken : fcmTokens) {
                 try {
-                    firebaseNotificationService.sendPromotionalNotification(
-                            title, message, fcmToken.getFcmToken());
+                    if (data != null && !data.isEmpty()) {
+                        firebaseNotificationService.sendNotificationWithData(
+                                title, message, fcmToken.getFcmToken(), data);
+                    } else {
+                        firebaseNotificationService.sendPromotionalNotification(
+                                title, message, fcmToken.getFcmToken());
+                    }
                     log.info("Push notification sent to user {} on device {}", userId, fcmToken.getDeviceType());
                 } catch (Exception e) {
                     log.error("Failed to send push to user {} token: {}...", userId,
@@ -467,6 +480,24 @@ public class NotificationService {
     }
     
     // Helper methods
+    private java.util.Map<String, String> buildPushData(NotificationRequest request) {
+        java.util.Map<String, String> data = new java.util.HashMap<>();
+        if (request.getCategory() != null) {
+            data.put("type", request.getCategory().toLowerCase());
+            data.put("category", request.getCategory());
+        }
+        if (request.getReferenceType() != null) {
+            data.put("referenceType", request.getReferenceType());
+        }
+        if (request.getReferenceId() != null) {
+            data.put("referenceId", String.valueOf(request.getReferenceId()));
+        }
+        if (request.getActionUrl() != null) {
+            data.put("actionUrl", request.getActionUrl());
+        }
+        return data;
+    }
+
     private Notification buildNotification(NotificationRequest request, Long recipientId) {
         return Notification.builder()
                 .title(request.getTitle())

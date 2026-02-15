@@ -67,21 +67,46 @@ class LocalNotificationService {
 
       // Parse payload and navigate accordingly
       if (payload.startsWith('order/')) {
-        // Navigate to orders screen
         AppRouter.router.go('/customer/orders');
       } else if (payload.startsWith('delivery/')) {
-        // Navigate to orders/tracking screen
         AppRouter.router.go('/customer/orders');
+      } else if (payload.startsWith('post/')) {
+        // Post notification: payload format is "post/CATEGORY/referenceId"
+        final parts = payload.split('/');
+        final category = parts.length > 1 ? parts[1].toUpperCase() : '';
+        final route = _getRouteForCategory(category);
+        if (route != null) {
+          AppRouter.router.go(route);
+        } else {
+          AppRouter.router.go('/notifications');
+        }
       } else if (payload == 'promotions') {
-        // Navigate to notifications screen for promotions
         AppRouter.router.go('/notifications');
       } else {
-        // Default: navigate to notifications screen
         AppRouter.router.go('/notifications');
       }
     } else {
-      // No payload, go to notifications screen
       AppRouter.router.go('/notifications');
+    }
+  }
+
+  /// Get route from notification category
+  String? _getRouteForCategory(String category) {
+    switch (category) {
+      case 'MARKETPLACE':
+        return '/customer/marketplace';
+      case 'FARMER_PRODUCTS':
+        return '/customer/farmer-products';
+      case 'LABOURS':
+        return '/customer/labours';
+      case 'TRAVELS':
+        return '/customer/travels';
+      case 'PARCELS':
+        return '/customer/parcels';
+      case 'REAL_ESTATE':
+        return '/customer/marketplace';
+      default:
+        return null;
     }
   }
 

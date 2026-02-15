@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/models/notification_model.dart';
 import '../../../services/notification_api_service.dart';
@@ -391,6 +392,73 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  void _onNotificationTap(NotificationModel notification) {
+    // Mark as read first
+    _markAsRead(notification);
+
+    // Navigate based on notification data
+    final category = notification.data?['category']?.toString().toUpperCase() ?? '';
+    final route = _getRouteForCategory(category);
+
+    if (route != null) {
+      context.go(route);
+      return;
+    }
+
+    // Fallback: navigate based on notification type
+    final type = notification.type.toLowerCase();
+    switch (type) {
+      case 'order':
+        context.go('/customer/orders');
+        break;
+      case 'delivery':
+        context.go('/customer/orders');
+        break;
+      case 'marketplace':
+        context.go('/customer/marketplace');
+        break;
+      case 'farmer_products':
+        context.go('/customer/farmer-products');
+        break;
+      case 'labours':
+        context.go('/customer/labours');
+        break;
+      case 'travels':
+        context.go('/customer/travels');
+        break;
+      case 'parcels':
+        context.go('/customer/parcels');
+        break;
+      case 'real_estate':
+        context.go('/customer/marketplace');
+        break;
+      default:
+        // Stay on notifications screen (just mark as read)
+        break;
+    }
+  }
+
+  String? _getRouteForCategory(String category) {
+    switch (category) {
+      case 'MARKETPLACE':
+        return '/customer/marketplace';
+      case 'FARMER_PRODUCTS':
+        return '/customer/farmer-products';
+      case 'LABOURS':
+        return '/customer/labours';
+      case 'TRAVELS':
+        return '/customer/travels';
+      case 'PARCELS':
+        return '/customer/parcels';
+      case 'REAL_ESTATE':
+        return '/customer/marketplace';
+      case 'ORDER':
+        return '/customer/orders';
+      default:
+        return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final unreadCount = _notifications.where((n) => !n.isRead).length;
@@ -537,7 +605,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _markAsRead(notification),
+          onTap: () => _onNotificationTap(notification),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -675,6 +743,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return '💳';
       case 'review':
         return '⭐';
+      case 'info':
+      case 'announcement':
+        return '📢';
       default:
         return '🔔';
     }
@@ -696,6 +767,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return [const Color(0xFF607D8B), const Color(0xFF90A4AE)];
       case 'review':
         return [const Color(0xFFFF9800), const Color(0xFFFFB74D)];
+      case 'info':
+      case 'announcement':
+        return [const Color(0xFF00BCD4), const Color(0xFF4DD0E1)];
       default:
         return [const Color(0xFF757575), const Color(0xFFBDBDBD)];
     }
@@ -717,6 +791,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return 'PAYMENT';
       case 'review':
         return 'REVIEW';
+      case 'info':
+        return 'UPDATE';
+      case 'announcement':
+        return 'UPDATE';
       default:
         return 'GENERAL';
     }

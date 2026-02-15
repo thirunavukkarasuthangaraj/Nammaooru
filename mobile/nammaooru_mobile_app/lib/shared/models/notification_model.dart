@@ -41,6 +41,20 @@ class NotificationModel {
       createdTime = DateTime.now();
     }
 
+    // Build data map from backend fields for routing
+    Map<String, dynamic>? dataMap;
+    if (json['data'] is Map<String, dynamic>) {
+      dataMap = json['data'];
+    } else {
+      dataMap = {};
+    }
+    // Capture category, referenceType, referenceId from backend response
+    if (json['category'] != null) dataMap?['category'] = json['category'];
+    if (json['referenceType'] != null) dataMap?['referenceType'] = json['referenceType'];
+    if (json['referenceId'] != null) dataMap?['referenceId'] = json['referenceId'].toString();
+    if (json['actionUrl'] != null) dataMap?['actionUrl'] = json['actionUrl'];
+    if (dataMap != null && dataMap.isEmpty) dataMap = null;
+
     return NotificationModel(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? '',
@@ -48,7 +62,7 @@ class NotificationModel {
       type: typeStr,
       createdAt: createdTime,
       isRead: isReadStatus,
-      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
+      data: dataMap,
     );
   }
 

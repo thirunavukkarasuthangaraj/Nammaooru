@@ -75,6 +75,20 @@ public class FirebaseNotificationService {
         }
     }
 
+    public void sendNotificationWithData(String title, String message, String token, Map<String, String> data) {
+        try {
+            if (data == null) {
+                data = new HashMap<>();
+            }
+            if (!data.containsKey("timestamp")) {
+                data.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            }
+            sendPushNotification(token, title, message, data);
+        } catch (Exception e) {
+            log.error("Error sending notification with data", e);
+        }
+    }
+
     /**
      * Send order assignment notification to delivery partner
      */

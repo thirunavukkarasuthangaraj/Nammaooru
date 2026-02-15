@@ -143,6 +143,10 @@ class FirebaseNotificationService {
       final body = message.notification?.body ?? notification.body;
       final type = notification.type.toLowerCase();
 
+      // Build payload for routing on tap
+      final category = message.data['category'] ?? '';
+      final referenceId = message.data['referenceId'] ?? '';
+
       // Determine which type of notification to show based on the type
       switch (type) {
         case 'order':
@@ -165,18 +169,49 @@ class FirebaseNotificationService {
 
         case 'promotion':
         case 'promo':
-          await LocalNotificationService.instance.showPromotionNotification(
+          // Check if this is actually a post notification with category data
+          if (category.isNotEmpty && category != 'PROMOTION') {
+            await LocalNotificationService.instance.showGeneralNotification(
+              title: title,
+              message: body,
+              payload: 'post/$category/$referenceId',
+            );
+          } else {
+            await LocalNotificationService.instance.showPromotionNotification(
+              title: title,
+              message: body,
+            );
+          }
+          break;
+
+        case 'marketplace':
+        case 'farmer_products':
+        case 'labours':
+        case 'travels':
+        case 'parcels':
+        case 'real_estate':
+          await LocalNotificationService.instance.showGeneralNotification(
             title: title,
             message: body,
+            payload: 'post/$category/$referenceId',
           );
           break;
 
         default:
-          await LocalNotificationService.instance.showGeneralNotification(
-            title: title,
-            message: body,
-            payload: type,
-          );
+          // Check if category data is present for routing
+          if (category.isNotEmpty) {
+            await LocalNotificationService.instance.showGeneralNotification(
+              title: title,
+              message: body,
+              payload: 'post/$category/$referenceId',
+            );
+          } else {
+            await LocalNotificationService.instance.showGeneralNotification(
+              title: title,
+              message: body,
+              payload: type,
+            );
+          }
           break;
       }
 
@@ -223,6 +258,7 @@ class FirebaseNotificationService {
   /// Handle notification tap actions
   static void _handleNotificationTap(NotificationModel notification) {
     debugPrint('🔔 Handling notification tap: ${notification.type}');
+    debugPrint('🔔 Notification data: ${notification.data}');
 
     // Get the navigator context
     final navigatorState = AppRouter.navigatorKey.currentState;
@@ -231,22 +267,28 @@ class FirebaseNotificationService {
       return;
     }
 
+    // Try to get the route from notification data category first
+    final category = notification.data?['category']?.toString().toUpperCase() ?? '';
+    final route = _getRouteForCategory(category);
+    if (route != null) {
+      debugPrint('Navigate to post listing: $route (category=$category)');
+      AppRouter.router.go(route);
+      return;
+    }
+
     // Navigate based on notification type
     switch (notification.type.toLowerCase()) {
       case 'order':
       case 'order_update':
-        // Navigate to orders screen
         debugPrint('Navigate to orders: ${notification.data?['orderId']}');
         AppRouter.router.go('/customer/orders');
         break;
       case 'delivery':
       case 'delivery_update':
-        // Navigate to orders/tracking
         debugPrint('Navigate to delivery: ${notification.data?['deliveryId']}');
         AppRouter.router.go('/customer/orders');
         break;
       case 'shop':
-        // Navigate to shop details
         debugPrint('Navigate to shop: ${notification.data?['shopId']}');
         final shopId = notification.data?['shopId'];
         if (shopId != null) {
@@ -255,17 +297,53 @@ class FirebaseNotificationService {
           AppRouter.router.go('/notifications');
         }
         break;
+      case 'marketplace':
+        AppRouter.router.go('/customer/marketplace');
+        break;
+      case 'farmer_products':
+        AppRouter.router.go('/customer/farmer-products');
+        break;
+      case 'labours':
+        AppRouter.router.go('/customer/labours');
+        break;
+      case 'travels':
+        AppRouter.router.go('/customer/travels');
+        break;
+      case 'parcels':
+        AppRouter.router.go('/customer/parcels');
+        break;
+      case 'real_estate':
+        AppRouter.router.go('/customer/marketplace');
+        break;
       case 'promotion':
       case 'promo':
-        // Navigate to notifications to see the promo
         debugPrint('Navigate to promotions');
         AppRouter.router.go('/notifications');
         break;
       default:
-        // Navigate to notifications screen for all other types
         debugPrint('Navigate to notifications list');
         AppRouter.router.go('/notifications');
         break;
+    }
+  }
+
+  /// Get route from notification category
+  static String? _getRouteForCategory(String category) {
+    switch (category) {
+      case 'MARKETPLACE':
+        return '/customer/marketplace';
+      case 'FARMER_PRODUCTS':
+        return '/customer/farmer-products';
+      case 'LABOURS':
+        return '/customer/labours';
+      case 'TRAVELS':
+        return '/customer/travels';
+      case 'PARCELS':
+        return '/customer/parcels';
+      case 'REAL_ESTATE':
+        return '/customer/marketplace';
+      default:
+        return null;
     }
   }
 
