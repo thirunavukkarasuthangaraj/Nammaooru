@@ -42,6 +42,24 @@ public class PostPaymentService {
 
     private static final double PROCESSING_FEE_PERCENT = 2.36; // Razorpay 2% + 18% GST
 
+    private static final Map<String, String> DURATION_SETTING_KEYS = Map.of(
+            "MARKETPLACE", "marketplace.post.duration_days",
+            "FARM_PRODUCTS", "farm_products.post.duration_days",
+            "LABOURS", "labours.post.duration_days",
+            "TRAVELS", "travels.post.duration_days",
+            "PARCEL_SERVICE", "parcel_service.post.duration_days",
+            "REAL_ESTATE", "real_estate.post.duration_days"
+    );
+
+    private static final Map<String, String> DURATION_DEFAULTS = Map.of(
+            "MARKETPLACE", "30",
+            "FARM_PRODUCTS", "60",
+            "LABOURS", "60",
+            "TRAVELS", "30",
+            "PARCEL_SERVICE", "60",
+            "REAL_ESTATE", "90"
+    );
+
     public Map<String, Object> getPaymentConfig(String postType) {
         boolean enabled = Boolean.parseBoolean(
                 settingService.getSettingValue("paid_post.enabled", "true"));
@@ -60,6 +78,14 @@ public class PostPaymentService {
         int processingFeePaise = (int) Math.ceil(price * PROCESSING_FEE_PERCENT);
         int totalAmountPaise = (price * 100) + processingFeePaise;
 
+        // Per-type post duration
+        int durationDays = 30; // default
+        if (postType != null && !postType.isEmpty()) {
+            String durationKey = DURATION_SETTING_KEYS.getOrDefault(postType, "marketplace.post.duration_days");
+            String durationDefault = DURATION_DEFAULTS.getOrDefault(postType, "30");
+            durationDays = Integer.parseInt(settingService.getSettingValue(durationKey, durationDefault));
+        }
+
         Map<String, Object> config = new HashMap<>();
         config.put("enabled", enabled);
         config.put("price", price);
@@ -68,6 +94,7 @@ public class PostPaymentService {
         config.put("currency", currency);
         config.put("razorpayKeyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
         config.put("testMode", isTestMode());
+        config.put("durationDays", durationDays);
         return config;
     }
 

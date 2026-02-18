@@ -11,6 +11,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/travel_service.dart';
 import '../widgets/post_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 
 class CreateTravelScreen extends StatefulWidget {
   const CreateTravelScreen({super.key});
@@ -558,6 +559,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the travel...', '\u0BAA\u0BAF\u0BA3\u0BA4\u0BCD\u0BA4\u0BC8\u0BAA\u0BCD \u0BAA\u0BB1\u0BCD\u0BB1\u0BBF\u0BAF \u0B95\u0BC2\u0B9F\u0BC1\u0BA4\u0BB2\u0BCD \u0BB5\u0BBF\u0BB5\u0BB0\u0B99\u0BCD\u0B95\u0BB3\u0BCD...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

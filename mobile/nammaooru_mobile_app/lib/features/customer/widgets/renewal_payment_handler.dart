@@ -59,6 +59,7 @@ class RenewalPaymentHandler {
     final int pricePerPost = config['price'] ?? 10;
     final String currency = config['currency'] ?? 'INR';
     final String keyId = config['razorpayKeyId'] ?? '';
+    final int durationDays = config['durationDays'] ?? 30;
 
     if (!enabled || keyId.isEmpty) {
       _showError(lang.getText(
@@ -110,7 +111,34 @@ class RenewalPaymentHandler {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 15),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.timer_outlined, size: 18, color: Colors.green.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    lang.getText(
+                      'Renewed for $durationDays days',
+                      '$durationDays நாட்களுக்கு புதுப்பிக்கப்படும்',
+                    ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(

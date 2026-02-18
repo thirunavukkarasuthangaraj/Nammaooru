@@ -11,6 +11,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/labour_service.dart';
 import '../widgets/post_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 
 class CreateLabourScreen extends StatefulWidget {
   const CreateLabourScreen({super.key});
@@ -514,6 +515,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the worker...', 'தொழிலாளரைப் பற்றிய கூடுதல் விவரங்கள்...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

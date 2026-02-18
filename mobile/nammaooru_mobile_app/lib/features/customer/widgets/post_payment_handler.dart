@@ -58,6 +58,7 @@ class PostPaymentHandler {
     final int totalAmountPaise = config['totalAmountPaise'] ?? (price * 100 + processingFeePaise);
     final String currency = config['currency'] ?? 'INR';
     final String keyId = config['razorpayKeyId'] ?? '';
+    final int durationDays = config['durationDays'] ?? 30;
 
     // Format amounts for display
     final String feeDisplay = (processingFeePaise / 100.0).toStringAsFixed(2);
@@ -100,7 +101,34 @@ class PostPaymentHandler {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 15),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.timer_outlined, size: 18, color: Colors.blue.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    lang.getText(
+                      'Post will be active for $durationDays days',
+                      'பதிவு $durationDays நாட்கள் செயலில் இருக்கும்',
+                    ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(

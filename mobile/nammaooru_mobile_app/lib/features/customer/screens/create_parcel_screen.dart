@@ -11,6 +11,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/parcel_service.dart';
 import '../widgets/post_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 
 class CreateParcelScreen extends StatefulWidget {
   const CreateParcelScreen({super.key});
@@ -575,6 +576,8 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the parcel service...', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bb1\u0bcd\u0bb1\u0bbf\u0baf \u0b95\u0bc2\u0b9f\u0bc1\u0ba4\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

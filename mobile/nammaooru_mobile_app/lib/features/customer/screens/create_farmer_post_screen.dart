@@ -11,6 +11,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/farmer_products_service.dart';
 import '../widgets/post_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 
 class CreateFarmerPostScreen extends StatefulWidget {
   const CreateFarmerPostScreen({super.key});
@@ -426,6 +427,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Describe your product...', 'உங்கள் பொருளை விவரிக்கவும்...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

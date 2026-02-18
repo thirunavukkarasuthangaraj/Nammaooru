@@ -11,6 +11,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/marketplace_service.dart';
 import '../widgets/post_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -359,6 +360,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Describe your item...', 'உங்கள் பொருளை விவரிக்கவும்...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {

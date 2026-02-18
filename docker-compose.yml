@@ -7,6 +7,8 @@ services:
       context: ./backend
     # REMOVED container_name to allow multiple instances
     environment:
+      # JVM memory limits (prevent swap on 4GB server)
+      - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseG1GC -XX:MaxMetaspaceSize=128m
       # Database configuration
       - DB_URL=${DB_URL:-jdbc:postgresql://host.docker.internal:5432/shop_management_db}
       - DB_USERNAME=${DB_USERNAME:-postgres}
