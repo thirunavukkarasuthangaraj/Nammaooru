@@ -239,6 +239,41 @@ class MarketplaceService {
     }
   }
 
+  /// Renew an expired/expiring post
+  Future<Map<String, dynamic>> renewPost(int postId, {int? paidTokenId}) async {
+    try {
+      Logger.api('Renewing marketplace post: $postId, paidTokenId: $paidTokenId');
+
+      final queryParams = <String, dynamic>{};
+      if (paidTokenId != null) {
+        queryParams['paidTokenId'] = paidTokenId;
+      }
+
+      final response = await ApiClient.put(
+        '/marketplace/$postId/renew',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Post renewed successfully',
+      };
+    } on DioException catch (e) {
+      Logger.e('Failed to renew marketplace post', 'MARKETPLACE', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to renew post',
+      };
+    } catch (e) {
+      Logger.e('Failed to renew marketplace post', 'MARKETPLACE', e);
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
   /// Report a post as fake/stolen/inappropriate
   Future<Map<String, dynamic>> reportPost(int postId, String reason, {String? details}) async {
     try {

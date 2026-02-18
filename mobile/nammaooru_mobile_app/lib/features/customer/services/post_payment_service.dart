@@ -82,6 +82,60 @@ class PostPaymentService {
     }
   }
 
+  /// Create bulk Razorpay order for renewing multiple posts
+  static Future<Map<String, dynamic>> createBulkOrder(String postType, int count) async {
+    try {
+      final response = await ApiClient.post(
+        '/post-payments/create-bulk-order',
+        data: {'postType': postType, 'count': count},
+      );
+      if (_isSuccess(response.data)) {
+        return {
+          'success': true,
+          'data': response.data['data'],
+        };
+      }
+      return {'success': false, 'message': response.data?['message'] ?? 'Failed to create bulk order'};
+    } on DioException catch (e) {
+      Logger.e('Failed to create bulk payment order', 'POST_PAYMENT', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to create bulk order',
+      };
+    }
+  }
+
+  /// Verify bulk payment and get list of paid token IDs
+  static Future<Map<String, dynamic>> verifyBulkPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+  }) async {
+    try {
+      final response = await ApiClient.post(
+        '/post-payments/verify-bulk',
+        data: {
+          'razorpay_order_id': razorpayOrderId,
+          'razorpay_payment_id': razorpayPaymentId,
+          'razorpay_signature': razorpaySignature,
+        },
+      );
+      if (_isSuccess(response.data)) {
+        return {
+          'success': true,
+          'data': response.data['data'],
+        };
+      }
+      return {'success': false, 'message': response.data?['message'] ?? 'Bulk payment verification failed'};
+    } on DioException catch (e) {
+      Logger.e('Failed to verify bulk payment', 'POST_PAYMENT', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Bulk payment verification failed',
+      };
+    }
+  }
+
   /// Verify payment and get paid token ID
   static Future<Map<String, dynamic>> verifyPayment({
     required String razorpayOrderId,

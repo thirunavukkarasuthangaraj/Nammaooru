@@ -11,6 +11,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../services/labour_service.dart';
+import '../widgets/renewal_payment_handler.dart';
 import 'create_labour_screen.dart';
 import 'labour_post_detail_screen.dart';
 
@@ -39,6 +40,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   List<dynamic> _myPosts = [];
   bool _isLoadingMyPosts = false;
   bool _myPostsLoaded = false;
+  Set<int> _selectedForRenewal = {};
+  bool _isRenewing = false;
 
   static const Color _labourBlue = Color(0xFF1565C0);
 
@@ -800,18 +803,81 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       );
     }
 
+    // Count expired/expiring posts for bulk selection
+    final expiredPostIds = _myPosts.where((p) {
+      final vTo = p['validTo'] != null ? DateTime.tryParse(p['validTo'].toString()) : null;
+      if (vTo == null) return false;
+      final now = DateTime.now();
+      return vTo.isBefore(now) || (vTo.isAfter(now) && vTo.difference(now).inDays <= 3);
+    }).map((p) => p['id'] as int).toList();
+
     return RefreshIndicator(
       onRefresh: () async {
         _myPostsLoaded = false;
+        setState(() => _selectedForRenewal.clear());
         await _loadMyPosts();
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _myPosts.length,
-        itemBuilder: (context, index) {
-          final post = _myPosts[index];
-          return _buildMyPostCard(post);
-        },
+      child: Column(
+        children: [
+          if (expiredPostIds.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _selectedForRenewal.length == expiredPostIds.length && expiredPostIds.isNotEmpty,
+                      tristate: true,
+                      onChanged: (val) {
+                        setState(() {
+                          if (_selectedForRenewal.length == expiredPostIds.length) {
+                            _selectedForRenewal.clear();
+                          } else {
+                            _selectedForRenewal = expiredPostIds.toSet();
+                          }
+                        });
+                      },
+                      activeColor: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _selectedForRenewal.isEmpty
+                        ? 'Select expired posts to renew'
+                        : '${_selectedForRenewal.length} selected',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  ),
+                  const Spacer(),
+                  if (_selectedForRenewal.isNotEmpty)
+                    ElevatedButton.icon(
+                      onPressed: _isRenewing ? null : _renewSelectedPosts,
+                      icon: _isRenewing
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.refresh, size: 16),
+                      label: Text(_isRenewing ? 'Renewing...' : 'Renew All (${_selectedForRenewal.length})'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        textStyle: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: _myPosts.length,
+              itemBuilder: (context, index) {
+                final post = _myPosts[index];
+                return _buildMyPostCard(post);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -873,6 +939,13 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         statusIcon = Icons.hourglass_empty;
     }
 
+    // Validity dates and expiry status
+    final validFrom = post['validFrom'] != null ? DateTime.tryParse(post['validFrom'].toString()) : null;
+    final validTo = post['validTo'] != null ? DateTime.tryParse(post['validTo'].toString()) : null;
+    final now = DateTime.now();
+    final bool isExpiringSoon = validTo != null && validTo.isAfter(now) && validTo.difference(now).inDays <= 3;
+    final bool isExpired = validTo != null && validTo.isBefore(now);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -896,6 +969,36 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
               ],
             ),
           ),
+          // Validity & expiry info
+          if (validTo != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: isExpired ? Colors.red.withOpacity(0.08) : isExpiringSoon ? Colors.orange.withOpacity(0.08) : Colors.grey.withOpacity(0.05),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 13, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Valid: ${validFrom != null ? "${validFrom.day}/${validFrom.month}/${validFrom.year}" : "—"} - ${validTo.day}/${validTo.month}/${validTo.year}',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                  const Spacer(),
+                  if (isExpired)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                      child: const Text('EXPIRED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    )
+                  else if (isExpiringSoon)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(4)),
+                      child: const Text('EXPIRING SOON', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+            ),
           // Content
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -955,6 +1058,39 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                       if (post['experience'] != null && post['experience'].toString().isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(post['experience'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                      ],
+                      if (isExpiringSoon || isExpired) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: _selectedForRenewal.contains(post['id']),
+                                onChanged: (val) {
+                                  setState(() {
+                                    if (val == true) {
+                                      _selectedForRenewal.add(post['id']);
+                                    } else {
+                                      _selectedForRenewal.remove(post['id']);
+                                    }
+                                  });
+                                },
+                                activeColor: Colors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _isRenewing ? null : () => _renewSinglePost(post['id']),
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Renew Post'),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                       if (status == 'APPROVED') ...[
                         const SizedBox(height: 8),
@@ -1063,6 +1199,57 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           ),
         ],
       ),
+    );
+  }
+
+  void _renewSinglePost(int postId) {
+    final handler = RenewalPaymentHandler(context: context, postType: 'LABOURS');
+    handler.renewSingle(
+      onTokenReceived: (paidTokenId) async {
+        final result = await _labourService.renewPost(postId, paidTokenId: paidTokenId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+          );
+          if (result['success'] == true) {
+            setState(() { _myPostsLoaded = false; _selectedForRenewal.remove(postId); });
+            _loadMyPosts();
+          }
+        }
+        handler.dispose();
+      },
+      onCancelled: () => handler.dispose(),
+    );
+  }
+
+  void _renewSelectedPosts() {
+    if (_selectedForRenewal.isEmpty) return;
+    final selectedIds = _selectedForRenewal.toList();
+    final count = selectedIds.length;
+
+    setState(() => _isRenewing = true);
+    final handler = RenewalPaymentHandler(context: context, postType: 'LABOURS');
+    handler.renewBulk(
+      count: count,
+      onTokensReceived: (paidTokenIds) async {
+        int successCount = 0;
+        for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
+          final result = await _labourService.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);
+          if (result['success'] == true) successCount++;
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$successCount of $count posts renewed successfully'), backgroundColor: successCount > 0 ? Colors.green : Colors.red),
+          );
+          setState(() { _isRenewing = false; _selectedForRenewal.clear(); _myPostsLoaded = false; });
+          _loadMyPosts();
+        }
+        handler.dispose();
+      },
+      onCancelled: () {
+        setState(() => _isRenewing = false);
+        handler.dispose();
+      },
     );
   }
 }

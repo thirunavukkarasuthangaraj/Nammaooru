@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -81,6 +82,54 @@ public class PostPaymentController {
             return ResponseUtil.success(result, "Payment verified successfully");
         } catch (Exception e) {
             log.error("Error verifying payment", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/create-bulk-order")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createBulkOrder(
+            @RequestBody Map<String, Object> request) {
+        try {
+            User user = getCurrentUser();
+            String postType = (String) request.get("postType");
+            int count = ((Number) request.get("count")).intValue();
+            if (postType == null || postType.isEmpty()) {
+                return ResponseUtil.badRequest("postType is required");
+            }
+            if (count < 1) {
+                return ResponseUtil.badRequest("count must be at least 1");
+            }
+            Map<String, Object> order = postPaymentService.createBulkOrder(user.getId(), postType, count);
+            return ResponseUtil.success(order, "Bulk order created");
+        } catch (Exception e) {
+            log.error("Error creating bulk payment order", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/verify-bulk")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyBulkPayment(
+            @RequestBody Map<String, String> request) {
+        try {
+            String orderId = request.get("razorpay_order_id");
+            String paymentId = request.get("razorpay_payment_id");
+            String signature = request.get("razorpay_signature");
+
+            if (orderId == null || paymentId == null || signature == null) {
+                return ResponseUtil.badRequest("razorpay_order_id, razorpay_payment_id, and razorpay_signature are required");
+            }
+
+            List<Long> tokenIds = postPaymentService.verifyBulkPayment(orderId, paymentId, signature);
+
+            Map<String, Object> result = Map.of(
+                    "paidTokenIds", tokenIds,
+                    "count", tokenIds.size()
+            );
+            return ResponseUtil.success(result, "Bulk payment verified successfully");
+        } catch (Exception e) {
+            log.error("Error verifying bulk payment", e);
             return ResponseUtil.error(e.getMessage());
         }
     }

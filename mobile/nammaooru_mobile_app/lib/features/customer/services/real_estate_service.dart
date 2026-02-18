@@ -323,6 +323,35 @@ class RealEstateService {
     }
   }
 
+  /// Renew an expired/expiring post
+  Future<Map<String, dynamic>> renewPost(int postId) async {
+    try {
+      Logger.api('Renewing real estate post: $postId');
+
+      final response = await ApiClient.put(
+        '/real-estate/$postId/renew',
+      );
+
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Property renewed successfully',
+      };
+    } on DioException catch (e) {
+      Logger.e('Failed to renew real estate post', 'REAL_ESTATE', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to renew property',
+      };
+    } catch (e) {
+      Logger.e('Failed to renew real estate post', 'REAL_ESTATE', e);
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
   /// Report a property as fake/inappropriate
   Future<Map<String, dynamic>> reportPost(int postId, String reason, {String? details}) async {
     try {

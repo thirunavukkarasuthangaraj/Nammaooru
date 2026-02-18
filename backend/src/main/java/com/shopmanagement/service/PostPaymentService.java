@@ -161,6 +161,112 @@ public class PostPaymentService {
     }
 
     @Transactional
+    public Map<String, Object> createBulkOrder(Long userId, String postType, int count) throws RazorpayException {
+        if (count < 1 || count > 50) {
+            throw new RuntimeException("Count must be between 1 and 50");
+        }
+
+        String globalDefault = settingService.getSettingValue("paid_post.price", "10");
+        int pricePerPost = Integer.parseInt(
+                settingService.getSettingValue("paid_post.price." + postType, globalDefault));
+        String currency = settingService.getSettingValue("paid_post.currency", "INR");
+
+        int totalBaseAmount = pricePerPost * count;
+        int processingFeePaise = (int) Math.ceil(totalBaseAmount * PROCESSING_FEE_PERCENT);
+        int totalAmountPaise = (totalBaseAmount * 100) + processingFeePaise;
+
+        String orderId;
+        if (isTestMode()) {
+            orderId = "test_bulk_" + userId + "_" + System.currentTimeMillis();
+            log.info("TEST MODE: Created mock bulk order: {}, count: {}", orderId, count);
+        } else {
+            JSONObject orderRequest = new JSONObject();
+            orderRequest.put("amount", totalAmountPaise);
+            orderRequest.put("currency", currency);
+            orderRequest.put("receipt", "bulk_" + userId + "_" + System.currentTimeMillis());
+
+            Order razorpayOrder = razorpayClient.orders.create(orderRequest);
+            orderId = razorpayOrder.get("id");
+        }
+
+        // Create N PostPayment records sharing the same Razorpay orderId
+        List<Long> tokenIds = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            PostPayment payment = PostPayment.builder()
+                    .userId(userId)
+                    .razorpayOrderId(orderId)
+                    .amount(pricePerPost)
+                    .processingFee((int) Math.ceil(pricePerPost * PROCESSING_FEE_PERCENT))
+                    .totalAmount((pricePerPost * 100) + (int) Math.ceil(pricePerPost * PROCESSING_FEE_PERCENT))
+                    .currency(currency)
+                    .postType(postType)
+                    .build();
+            PostPayment saved = postPaymentRepository.save(payment);
+            tokenIds.add(saved.getId());
+        }
+
+        log.info("Created bulk order: orderId={}, userId={}, postType={}, count={}, total={}p",
+                orderId, userId, postType, count, totalAmountPaise);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("orderId", orderId);
+        result.put("amount", totalAmountPaise);
+        result.put("basePrice", totalBaseAmount);
+        result.put("pricePerPost", pricePerPost);
+        result.put("count", count);
+        result.put("processingFeePaise", processingFeePaise);
+        result.put("currency", currency);
+        result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
+        result.put("testMode", isTestMode());
+        result.put("tokenIds", tokenIds);
+        return result;
+    }
+
+    @Transactional
+    public List<Long> verifyBulkPayment(String razorpayOrderId, String razorpayPaymentId,
+                                         String razorpaySignature) throws RazorpayException {
+        List<PostPayment> payments = postPaymentRepository.findAllByRazorpayOrderId(razorpayOrderId);
+        if (payments.isEmpty()) {
+            throw new RuntimeException("Payment order not found: " + razorpayOrderId);
+        }
+
+        // Check if already verified
+        if (payments.stream().allMatch(p -> p.getStatus() == PostPayment.PaymentStatus.PAID)) {
+            return payments.stream().map(PostPayment::getId).toList();
+        }
+
+        if (isTestMode()) {
+            log.info("TEST MODE: Auto-verifying bulk payment for order: {}", razorpayOrderId);
+        } else {
+            JSONObject attributes = new JSONObject();
+            attributes.put("razorpay_order_id", razorpayOrderId);
+            attributes.put("razorpay_payment_id", razorpayPaymentId);
+            attributes.put("razorpay_signature", razorpaySignature);
+
+            boolean isValid = Utils.verifyPaymentSignature(attributes, razorpayKeySecret);
+            if (!isValid) {
+                payments.forEach(p -> p.setStatus(PostPayment.PaymentStatus.FAILED));
+                postPaymentRepository.saveAll(payments);
+                throw new RuntimeException("Payment signature verification failed");
+            }
+        }
+
+        List<Long> tokenIds = new ArrayList<>();
+        for (PostPayment payment : payments) {
+            payment.setRazorpayPaymentId(razorpayPaymentId != null ? razorpayPaymentId : "test_pay_" + System.currentTimeMillis());
+            payment.setRazorpaySignature(razorpaySignature != null ? razorpaySignature : "test_sig");
+            payment.setStatus(PostPayment.PaymentStatus.PAID);
+            payment.setPaidAt(LocalDateTime.now());
+            postPaymentRepository.save(payment);
+            tokenIds.add(payment.getId());
+        }
+
+        log.info("Bulk payment verified: orderId={}, count={}, testMode={}",
+                razorpayOrderId, tokenIds.size(), isTestMode());
+        return tokenIds;
+    }
+
+    @Transactional
     public boolean consumeToken(Long tokenId, Long userId, Long postId) {
         PostPayment payment = postPaymentRepository.findById(tokenId).orElse(null);
         if (payment == null) return false;

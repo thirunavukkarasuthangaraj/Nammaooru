@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/theme/village_theme.dart';
-import '../../../core/config/api_config.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/config/env_config.dart';
 import '../services/real_estate_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -291,6 +289,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   bool _myPostsLoading = false;
   String? _myPostsError;
   bool _myPostsLoaded = false;
+  Set<int> _selectedForRenewal = {};
+  bool _isRenewing = false;
 
   Future<void> _fetchMyPosts() async {
     setState(() {
@@ -314,6 +314,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         final posts = content.map<Map<String, dynamic>>((item) {
           final mapped = _mapApiToLocal(item as Map<String, dynamic>);
           mapped['status'] = item['status'] ?? 'PENDING_APPROVAL';
+          mapped['validFrom'] = item['validFrom'];
+          mapped['validTo'] = item['validTo'];
           return mapped;
         }).toList();
 
@@ -415,17 +417,71 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       );
     }
 
+    final expiredPostIds = _myPosts.where((p) {
+      final vTo = p['validTo'] != null ? DateTime.tryParse(p['validTo'].toString()) : null;
+      if (vTo == null) return false;
+      final now = DateTime.now();
+      return vTo.isBefore(now) || (vTo.isAfter(now) && vTo.difference(now).inDays <= 3);
+    }).map((p) => p['id'] as int).toList();
+
     return RefreshIndicator(
       onRefresh: () async {
         _myPostsLoaded = false;
         await _fetchMyPosts();
       },
-      child: ListView.builder(
+      child: Column(
+        children: [
+          if (expiredPostIds.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.orange.shade50,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _selectedForRenewal.length == expiredPostIds.length && expiredPostIds.isNotEmpty,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedForRenewal = expiredPostIds.toSet();
+                          } else {
+                            _selectedForRenewal.clear();
+                          }
+                        });
+                      },
+                      activeColor: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Select All (${expiredPostIds.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Spacer(),
+                  if (_selectedForRenewal.isNotEmpty)
+                    ElevatedButton.icon(
+                      onPressed: _isRenewing ? null : _renewSelectedPosts,
+                      icon: _isRenewing
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.refresh, size: 16),
+                      label: Text('Renew All (${_selectedForRenewal.length})'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                    ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _myPosts.length,
         itemBuilder: (context, index) {
           final post = _myPosts[index];
           final status = post['status'] ?? 'PENDING_APPROVAL';
+          // Validity dates and expiry status
+          final validFrom = post['validFrom'] != null ? DateTime.tryParse(post['validFrom'].toString()) : null;
+          final validTo = post['validTo'] != null ? DateTime.tryParse(post['validTo'].toString()) : null;
+          final now = DateTime.now();
+          final bool isExpiringSoon = validTo != null && validTo.isAfter(now) && validTo.difference(now).inDays <= 3;
+          final bool isExpired = validTo != null && validTo.isBefore(now);
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -465,6 +521,33 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                         ),
                       ],
                     ),
+                    // Validity & expiry info
+                    if (validTo != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 13, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Valid: ${validFrom != null ? "${validFrom.day}/${validFrom.month}/${validFrom.year}" : "—"} - ${validTo.day}/${validTo.month}/${validTo.year}',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          ),
+                          const Spacer(),
+                          if (isExpired)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                              child: const Text('EXPIRED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            )
+                          else if (isExpiringSoon)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(4)),
+                              child: const Text('EXPIRING SOON', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -498,6 +581,39 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                         ),
                       ],
                     ),
+                    if (isExpiringSoon || isExpired) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _selectedForRenewal.contains(post['id']),
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selectedForRenewal.add(post['id']);
+                                  } else {
+                                    _selectedForRenewal.remove(post['id']);
+                                  }
+                                });
+                              },
+                              activeColor: Colors.green,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _isRenewing ? null : () => _renewSinglePost(post['id']),
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Renew Post'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     // Action buttons: Mark Sold/Rented, Delete
                     Row(
@@ -518,6 +634,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
             ),
           );
         },
+      ),
+          ),
+        ],
       ),
     );
   }
@@ -621,6 +740,39 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         );
         if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
       }
+    }
+  }
+
+  void _renewSinglePost(int postId) async {
+    final result = await _realEstateService.renewPost(postId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+      );
+      if (result['success'] == true) {
+        setState(() { _myPostsLoaded = false; _selectedForRenewal.remove(postId); });
+        _fetchMyPosts();
+      }
+    }
+  }
+
+  void _renewSelectedPosts() async {
+    if (_selectedForRenewal.isEmpty) return;
+    final selectedIds = _selectedForRenewal.toList();
+    final count = selectedIds.length;
+
+    setState(() => _isRenewing = true);
+    int successCount = 0;
+    for (final id in selectedIds) {
+      final result = await _realEstateService.renewPost(id);
+      if (result['success'] == true) successCount++;
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$successCount of $count posts renewed successfully'), backgroundColor: successCount > 0 ? Colors.green : Colors.red),
+      );
+      setState(() { _isRenewing = false; _selectedForRenewal.clear(); _myPostsLoaded = false; });
+      _fetchMyPosts();
     }
   }
 

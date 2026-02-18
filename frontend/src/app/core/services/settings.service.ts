@@ -19,7 +19,7 @@ export interface Setting {
   providedIn: 'root'
 })
 export class SettingsService {
-  private readonly API_URL = API_ENDPOINTS.BASE_URL + '/api/settings';
+  private readonly API_URL = API_ENDPOINTS.BASE_URL + '/settings';
 
   constructor(private http: HttpClient) {}
 

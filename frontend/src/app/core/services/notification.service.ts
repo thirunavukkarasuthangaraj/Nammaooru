@@ -24,7 +24,7 @@ export interface Notification {
   providedIn: 'root'
 })
 export class NotificationService {
-  private readonly API_URL = API_ENDPOINTS.BASE_URL + '/api/notifications';
+  private readonly API_URL = API_ENDPOINTS.BASE_URL + '/notifications';
 
   constructor(private http: HttpClient) {}
 

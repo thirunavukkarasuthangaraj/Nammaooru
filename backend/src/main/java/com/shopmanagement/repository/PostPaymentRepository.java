@@ -15,6 +15,8 @@ public interface PostPaymentRepository extends JpaRepository<PostPayment, Long> 
 
     Optional<PostPayment> findByRazorpayOrderId(String razorpayOrderId);
 
+    List<PostPayment> findAllByRazorpayOrderId(String razorpayOrderId);
+
     List<PostPayment> findByUserIdAndStatusAndConsumedFalse(Long userId, PostPayment.PaymentStatus status);
 
     Page<PostPayment> findAllByOrderByCreatedAtDesc(Pageable pageable);

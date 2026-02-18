@@ -276,6 +276,41 @@ class ParcelService {
     }
   }
 
+  /// Renew an expired/expiring post
+  Future<Map<String, dynamic>> renewPost(int postId, {int? paidTokenId}) async {
+    try {
+      Logger.api('Renewing parcel post: $postId, paidTokenId: $paidTokenId');
+
+      final queryParams = <String, dynamic>{};
+      if (paidTokenId != null) {
+        queryParams['paidTokenId'] = paidTokenId;
+      }
+
+      final response = await ApiClient.put(
+        '/parcels/$postId/renew',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Listing renewed successfully',
+      };
+    } on DioException catch (e) {
+      Logger.e('Failed to renew parcel post', 'PARCELS', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to renew listing',
+      };
+    } catch (e) {
+      Logger.e('Failed to renew parcel post', 'PARCELS', e);
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
   /// Report a listing
   Future<Map<String, dynamic>> reportPost(int postId, String reason, {String? details}) async {
     try {
