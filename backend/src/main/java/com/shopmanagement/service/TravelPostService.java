@@ -42,6 +42,7 @@ public class TravelPostService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
+    private final PostPaymentService postPaymentService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -50,6 +51,15 @@ public class TravelPostService {
                                   Integer seatsAvailable, String description,
                                   List<MultipartFile> images, String username,
                                   BigDecimal latitude, BigDecimal longitude) throws IOException {
+        return createPost(title, phone, vehicleTypeStr, fromLocation, toLocation, price, seatsAvailable, description, images, username, latitude, longitude, null);
+    }
+
+    @Transactional
+    public TravelPost createPost(String title, String phone, String vehicleTypeStr,
+                                  String fromLocation, String toLocation, String price,
+                                  Integer seatsAvailable, String description,
+                                  List<MultipartFile> images, String username,
+                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -59,7 +69,12 @@ public class TravelPostService {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = travelPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
             if (activeCount >= postLimit) {
-                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active travel listings");
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
             }
         }
 
@@ -104,8 +119,14 @@ public class TravelPostService {
                 .build();
 
         TravelPost saved = travelPostRepository.save(post);
-        log.info("Travel post created: id={}, title={}, vehicleType={}, poster={}, autoApproved={}",
-                saved.getId(), title, vehicleType, username, autoApprove);
+
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Travel post created: id={}, title={}, vehicleType={}, poster={}, autoApproved={}, paid={}",
+                saved.getId(), title, vehicleType, username, autoApprove, paidTokenId != null);
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your travel listing for '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");

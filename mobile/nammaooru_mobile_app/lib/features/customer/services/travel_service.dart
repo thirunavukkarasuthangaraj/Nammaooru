@@ -78,15 +78,20 @@ class TravelService {
     List<String>? imagePaths,
     double? latitude,
     double? longitude,
+    int? paidTokenId,
   }) async {
     try {
-      Logger.api('Creating travel post: $title ($vehicleType)');
+      Logger.api('Creating travel post: $title ($vehicleType), paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'title': title,
         'phone': phone,
         'vehicleType': vehicleType,
       };
+
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
 
       if (fromLocation != null && fromLocation.isNotEmpty) {
         formMap['fromLocation'] = fromLocation;
@@ -153,12 +158,15 @@ class TravelService {
       };
     } on DioException catch (e) {
       Logger.e('Failed to create travel post', 'TRAVELS', e);
+      final errorCode = e.response?.data?['statusCode'] ?? '';
       final errorMessage = e.response?.data?['message'] ??
                           e.response?.data?['error'] ??
                           'Failed to create listing. Please try again.';
       return {
         'success': false,
         'message': errorMessage,
+        'statusCode': errorCode,
+        'httpStatus': e.response?.statusCode,
       };
     } catch (e) {
       Logger.e('Failed to create travel post', 'TRAVELS', e);

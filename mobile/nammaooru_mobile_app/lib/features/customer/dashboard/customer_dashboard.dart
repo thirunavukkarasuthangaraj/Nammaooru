@@ -742,7 +742,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       children: [
         // Header with count badge
         Padding(
-          padding: const EdgeInsets.only(left: 4, right: 4, top: 8, bottom: 4),
+          padding: const EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 2),
           child: Row(
             children: [
               Text(
@@ -1469,10 +1469,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           // Special Offers Carousel (top)
                           _buildUnifiedOffersCarousel(),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4),
                         _buildServiceCategories(),
                         const SizedBox(height: 24),
                         _buildFeaturedShops(),

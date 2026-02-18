@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -38,14 +39,20 @@ public class MarketplaceController {
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "image", required = false) MultipartFile image,
-            @RequestParam(value = "voice", required = false) MultipartFile voice) {
+            @RequestParam(value = "voice", required = false) MultipartFile voice,
+            @RequestParam(value = "latitude", required = false) BigDecimal latitude,
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude,
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
         try {
             String username = getCurrentUsername();
             MarketplacePost post = marketplaceService.createPost(
-                    title, description, price, phone, category, location, image, voice, username);
+                    title, description, price, phone, category, location, image, voice, username, latitude, longitude, paidTokenId);
             return ResponseUtil.created(post, "Post submitted for approval");
         } catch (Exception e) {
             log.error("Error creating marketplace post", e);
+            if ("LIMIT_REACHED".equals(e.getMessage())) {
+                return ResponseUtil.error(HttpStatus.PAYMENT_REQUIRED, "LIMIT_REACHED", "Post limit reached. Payment required to post.");
+            }
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -54,14 +61,17 @@ public class MarketplaceController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(defaultValue = "50") double radius) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<MarketplacePost> posts;
             if (category != null && !category.isEmpty()) {
-                posts = marketplaceService.getApprovedPostsByCategory(category, pageable);
+                posts = marketplaceService.getApprovedPostsByCategory(category, pageable, lat, lng, radius);
             } else {
-                posts = marketplaceService.getApprovedPosts(pageable);
+                posts = marketplaceService.getApprovedPosts(pageable, lat, lng, radius);
             }
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {

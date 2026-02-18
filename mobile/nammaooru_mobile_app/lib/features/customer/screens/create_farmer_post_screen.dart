@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/farmer_products_service.dart';
+import '../widgets/post_payment_handler.dart';
 
 class CreateFarmerPostScreen extends StatefulWidget {
   const CreateFarmerPostScreen({super.key});
@@ -32,6 +33,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
   final List<File> _selectedImages = [];
   static const int _maxImages = 5;
   bool _isSubmitting = false;
+  double? _latitude;
+  double? _longitude;
 
   final List<String> _categories = [
     'Vegetables',
@@ -122,6 +125,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     try {
       final position = await LocationService.instance.getCurrentPosition();
       if (position != null && position.latitude != null && position.longitude != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
         final address = await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
@@ -243,7 +248,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     );
   }
 
-  Future<void> _submitPost() async {
+  Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -264,11 +269,17 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         imagePaths: _selectedImages.isNotEmpty
             ? _selectedImages.map((f) => f.path).toList()
             : null,
+        paidTokenId: paidTokenId,
+        latitude: _latitude,
+        longitude: _longitude,
       );
 
       if (mounted) {
         if (result['success'] == true) {
           _showSuccessDialog();
+        } else if (PostPaymentHandler.isLimitReached(result)) {
+          setState(() { _isSubmitting = false; });
+          _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -294,6 +305,19 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         });
       }
     }
+  }
+
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'FARM_PRODUCTS',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _submitPost(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment();
   }
 
   void _showSuccessDialog() {

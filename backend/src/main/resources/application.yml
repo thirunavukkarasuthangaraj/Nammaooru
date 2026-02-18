@@ -209,6 +209,11 @@ app:
   #   allowed-headers: ${CORS_ALLOWED_HEADERS:*}
   #   allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
 
+# Razorpay Payment Gateway
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:rzp_test_SHVPTn816jIgxJ}
+  key-secret: ${RAZORPAY_KEY_SECRET:QH8RzVz0FRZqvwdDyqJ49LqK}
+
 msg91:
   auth:
     key: ${MSG91_AUTH_KEY:463859A66N4Ih6468c48e0dP1}

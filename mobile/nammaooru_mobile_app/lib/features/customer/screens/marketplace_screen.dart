@@ -12,9 +12,9 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../core/services/location_service.dart';
 import '../services/marketplace_service.dart';
 import '../services/real_estate_service.dart';
-import '../services/feature_config_service.dart';
 import 'create_post_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
@@ -34,6 +34,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
+  double? _userLatitude;
+  double? _userLongitude;
 
   // My Posts tab
   late TabController _tabController;
@@ -107,11 +109,23 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       _currentPage = 0;
     });
 
+    // Fetch GPS in background (don't block the API call)
+    if (_userLatitude == null || _userLongitude == null) {
+      LocationService.instance.getCurrentPosition().then((position) {
+        if (position != null && position.latitude != null && position.longitude != null) {
+          _userLatitude = position.latitude;
+          _userLongitude = position.longitude;
+        }
+      }).catchError((_) {});
+    }
+
     try {
       final response = await _marketplaceService.getApprovedPosts(
         page: 0,
         size: 20,
         category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
       );
 
       if (mounted) {
@@ -138,6 +152,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         page: _currentPage,
         size: 20,
         category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
       );
 
       if (mounted) {
@@ -1432,38 +1448,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       context.go('/login');
       return;
     }
-
-    // Check post limit
-    try {
-      final limit = await FeatureConfigService().getEffectiveLimit('MARKETPLACE');
-      if (limit > 0) {
-        if (!_myPostsLoaded) {
-          final response = await _marketplaceService.getMyPosts();
-          _myPosts = response['data'] ?? [];
-          _myPostsLoaded = true;
-        }
-        final activeCount = _myPosts.where((p) {
-          final status = p['status']?.toString().toUpperCase() ?? '';
-          return status == 'PENDING_APPROVAL' || status == 'APPROVED';
-        }).length;
-        if (activeCount >= limit) {
-          if (mounted) {
-            final lang = Provider.of<LanguageProvider>(context, listen: false);
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(lang.currentLanguage == 'ta' ? 'வரம்பு எட்டியது' : 'Limit Reached'),
-                content: Text(lang.currentLanguage == 'ta'
-                    ? 'நீங்கள் அதிகபட்சமாக $limit செயலில் உள்ள சந்தை பதிவுகளை எட்டிவிட்டீர்கள்.'
-                    : 'You have reached the maximum limit of $limit active marketplace listings.'),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-              ),
-            );
-          }
-          return;
-        }
-      }
-    } catch (_) {}
 
     if (!mounted) return;
     Navigator.push(

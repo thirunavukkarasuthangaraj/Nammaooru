@@ -40,10 +40,12 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
 
     // Haversine nearby queries - posts with NULL lat/lng are always included
     @Query(value = "SELECT * FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND (" +
-           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR (" +
+           "tp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "tp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
            "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
            ") ORDER BY tp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<TravelPost> findNearbyPosts(@Param("statuses") String[] statuses,
@@ -54,10 +56,12 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
                                      @Param("offset") int offset);
 
     @Query(value = "SELECT COUNT(*) FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND (" +
-           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR (" +
+           "tp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "tp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
            "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
            ")",
            nativeQuery = true)
     long countNearbyPosts(@Param("statuses") String[] statuses,
@@ -67,10 +71,12 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
 
     @Query(value = "SELECT * FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND " +
            "tp.vehicle_type = CAST(:vehicleType AS text) AND (" +
-           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR (" +
+           "tp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "tp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
            "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
            ") ORDER BY tp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<TravelPost> findNearbyPostsByVehicleType(@Param("statuses") String[] statuses,
@@ -83,10 +89,12 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM travel_posts tp WHERE tp.status = ANY(CAST(:statuses AS text[])) AND " +
            "tp.vehicle_type = CAST(:vehicleType AS text) AND (" +
-           "tp.latitude IS NULL OR tp.longitude IS NULL OR " +
+           "tp.latitude IS NULL OR tp.longitude IS NULL OR (" +
+           "tp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "tp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(tp.latitude AS double precision))) * " +
            "cos(radians(CAST(tp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)" +
+           "sin(radians(CAST(tp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
            ")",
            nativeQuery = true)
     long countNearbyPostsByVehicleType(@Param("statuses") String[] statuses,

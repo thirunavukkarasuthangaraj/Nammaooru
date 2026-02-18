@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -38,14 +39,20 @@ public class FarmerProductController {
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "unit", required = false) String unit,
-            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "latitude", required = false) BigDecimal latitude,
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude,
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
         try {
             String username = getCurrentUsername();
             FarmerProduct post = farmerProductService.createPost(
-                    title, description, price, phone, category, location, unit, images, username);
+                    title, description, price, phone, category, location, unit, images, username, latitude, longitude, paidTokenId);
             return ResponseUtil.created(post, "Farmer product submitted for approval");
         } catch (Exception e) {
             log.error("Error creating farmer product post", e);
+            if ("LIMIT_REACHED".equals(e.getMessage())) {
+                return ResponseUtil.error(HttpStatus.PAYMENT_REQUIRED, "LIMIT_REACHED", "Post limit reached. Payment required to post.");
+            }
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -54,14 +61,17 @@ public class FarmerProductController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getApprovedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(defaultValue = "50") double radius) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<FarmerProduct> posts;
             if (category != null && !category.isEmpty()) {
-                posts = farmerProductService.getApprovedPostsByCategory(category, pageable);
+                posts = farmerProductService.getApprovedPostsByCategory(category, pageable, lat, lng, radius);
             } else {
-                posts = farmerProductService.getApprovedPosts(pageable);
+                posts = farmerProductService.getApprovedPosts(pageable, lat, lng, radius);
             }
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {

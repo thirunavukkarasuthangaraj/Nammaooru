@@ -1,0 +1,161 @@
+<div class="payment-history">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2>Payment History</h2>
+    <p class="subtitle">View all paid post payments, fees, and transaction details.</p>
+    <div class="header-actions">
+      <button mat-icon-button (click)="refresh()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div *ngIf="statsLoading" class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading payment stats...</p>
+  </div>
+
+  <div *ngIf="!statsLoading" class="stats-grid">
+    <!-- Total Collected -->
+    <div class="stat-card collected">
+      <div class="stat-icon">
+        <mat-icon>payment</mat-icon>
+      </div>
+      <div class="stat-info">
+        <h3>&#8377;{{ totalCollected | number:'1.2-2' }}</h3>
+        <p>Total Collected</p>
+      </div>
+    </div>
+
+    <!-- Net Amount -->
+    <div class="stat-card net">
+      <div class="stat-icon">
+        <mat-icon>account_balance</mat-icon>
+      </div>
+      <div class="stat-info">
+        <h3>&#8377;{{ netAmount | number:'1.2-2' }}</h3>
+        <p>Net Amount (after fees)</p>
+      </div>
+    </div>
+
+    <!-- Razorpay Fee -->
+    <div class="stat-card fees">
+      <div class="stat-icon">
+        <mat-icon>receipt</mat-icon>
+      </div>
+      <div class="stat-info">
+        <h3>&#8377;{{ razorpayFee + gstOnFee | number:'1.2-2' }}</h3>
+        <p>Razorpay Fee + GST</p>
+        <small>2% + 18% GST</small>
+      </div>
+    </div>
+
+    <!-- Counts -->
+    <div class="stat-card counts">
+      <div class="stat-icon">
+        <mat-icon>bar_chart</mat-icon>
+      </div>
+      <div class="stat-info">
+        <h3>{{ successfulPayments }} / {{ failedPayments }} / {{ pendingPayments }}</h3>
+        <p>Successful / Failed / Pending</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post Type Breakdown -->
+  <div *ngIf="!statsLoading && postTypeEntries.length > 0" class="post-type-breakdown">
+    <div class="type-chip" *ngFor="let entry of postTypeEntries">
+      {{ getPostTypeLabel(entry.type) }}:
+      <span class="amount">&#8377;{{ entry.amount | number:'1.2-2' }}</span>
+    </div>
+  </div>
+
+  <!-- Payments Table -->
+  <div *ngIf="paymentsLoading" class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading payments...</p>
+  </div>
+
+  <div *ngIf="!paymentsLoading" class="table-container">
+    <table mat-table [dataSource]="payments" class="payments-table">
+      <!-- ID Column -->
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let p">{{ p.id }}</td>
+      </ng-container>
+
+      <!-- User Column -->
+      <ng-container matColumnDef="user">
+        <th mat-header-cell *matHeaderCellDef>User</th>
+        <td mat-cell *matCellDef="let p">{{ p.userId }}</td>
+      </ng-container>
+
+      <!-- Post Type Column -->
+      <ng-container matColumnDef="postType">
+        <th mat-header-cell *matHeaderCellDef>Post Type</th>
+        <td mat-cell *matCellDef="let p">{{ getPostTypeLabel(p.postType) }}</td>
+      </ng-container>
+
+      <!-- Amount Column -->
+      <ng-container matColumnDef="amount">
+        <th mat-header-cell *matHeaderCellDef>Amount</th>
+        <td mat-cell *matCellDef="let p">
+          <span class="amount-cell">&#8377;{{ p.amount | number:'1.2-2' }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let p">
+          <span class="status-chip" [ngClass]="getStatusChipClass(p.status)">{{ p.status }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Razorpay Payment ID Column -->
+      <ng-container matColumnDef="razorpayPaymentId">
+        <th mat-header-cell *matHeaderCellDef>Razorpay ID</th>
+        <td mat-cell *matCellDef="let p">
+          <span *ngIf="p.razorpayPaymentId">{{ p.razorpayPaymentId }}</span>
+          <span *ngIf="!p.razorpayPaymentId" class="text-muted">-</span>
+        </td>
+      </ng-container>
+
+      <!-- Created At Column -->
+      <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef>Created</th>
+        <td mat-cell *matCellDef="let p">{{ p.createdAt | date:'medium' }}</td>
+      </ng-container>
+
+      <!-- Paid At Column -->
+      <ng-container matColumnDef="paidAt">
+        <th mat-header-cell *matHeaderCellDef>Paid At</th>
+        <td mat-cell *matCellDef="let p">
+          <span *ngIf="p.paidAt">{{ p.paidAt | date:'medium' }}</span>
+          <span *ngIf="!p.paidAt" class="text-muted">-</span>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="payments.length === 0" class="empty-state">
+      <mat-icon>receipt_long</mat-icon>
+      <p>No payment records found.</p>
+    </div>
+
+    <!-- Paginator -->
+    <mat-paginator
+      *ngIf="payments.length > 0"
+      [length]="totalElements"
+      [pageSize]="pageSize"
+      [pageIndex]="pageIndex"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPageChange($event)"
+      showFirstLastButtons>
+    </mat-paginator>
+  </div>
+</div>

@@ -79,15 +79,20 @@ class ParcelService {
     List<String>? imagePaths,
     double? latitude,
     double? longitude,
+    int? paidTokenId,
   }) async {
     try {
-      Logger.api('Creating parcel post: $serviceName ($serviceType)');
+      Logger.api('Creating parcel post: $serviceName ($serviceType), paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'serviceName': serviceName,
         'phone': phone,
         'serviceType': serviceType,
       };
+
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
 
       if (fromLocation != null && fromLocation.isNotEmpty) {
         formMap['fromLocation'] = fromLocation;
@@ -157,12 +162,15 @@ class ParcelService {
       };
     } on DioException catch (e) {
       Logger.e('Failed to create parcel post', 'PARCELS', e);
+      final errorCode = e.response?.data?['statusCode'] ?? '';
       final errorMessage = e.response?.data?['message'] ??
                           e.response?.data?['error'] ??
                           'Failed to create listing. Please try again.';
       return {
         'success': false,
         'message': errorMessage,
+        'statusCode': errorCode,
+        'httpStatus': e.response?.statusCode,
       };
     } catch (e) {
       Logger.e('Failed to create parcel post', 'PARCELS', e);

@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/parcel_service.dart';
+import '../widgets/post_payment_handler.dart';
 
 class CreateParcelScreen extends StatefulWidget {
   const CreateParcelScreen({super.key});
@@ -229,7 +230,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
     );
   }
 
-  Future<void> _submitPost() async {
+  Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -252,11 +253,15 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
             : null,
         latitude: _latitude,
         longitude: _longitude,
+        paidTokenId: paidTokenId,
       );
 
       if (mounted) {
         if (result['success'] == true) {
           _showSuccessDialog();
+        } else if (PostPaymentHandler.isLimitReached(result)) {
+          setState(() { _isSubmitting = false; });
+          _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -282,6 +287,19 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
         });
       }
     }
+  }
+
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'PARCEL_SERVICE',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _submitPost(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment();
   }
 
   void _showSuccessDialog() {

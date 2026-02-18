@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -41,16 +42,20 @@ public class TravelPostController {
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "latitude", required = false) BigDecimal latitude,
-            @RequestParam(value = "longitude", required = false) BigDecimal longitude) {
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude,
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
         try {
             String username = getCurrentUsername();
             TravelPost post = travelPostService.createPost(
                     title, phone, vehicleType, fromLocation, toLocation, price,
                     seatsAvailable, description, images, username,
-                    latitude, longitude);
+                    latitude, longitude, paidTokenId);
             return ResponseUtil.created(post, "Travel listing submitted successfully");
         } catch (Exception e) {
             log.error("Error creating travel post", e);
+            if ("LIMIT_REACHED".equals(e.getMessage())) {
+                return ResponseUtil.error(HttpStatus.PAYMENT_REQUIRED, "LIMIT_REACHED", "Post limit reached. Payment required to post.");
+            }
             return ResponseUtil.error(e.getMessage());
         }
     }

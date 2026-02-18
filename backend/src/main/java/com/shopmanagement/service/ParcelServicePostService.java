@@ -42,6 +42,7 @@ public class ParcelServicePostService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
+    private final PostPaymentService postPaymentService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -50,6 +51,15 @@ public class ParcelServicePostService {
                                          String address, String timings, String description,
                                          List<MultipartFile> images, String username,
                                          BigDecimal latitude, BigDecimal longitude) throws IOException {
+        return createPost(serviceName, phone, serviceTypeStr, fromLocation, toLocation, priceInfo, address, timings, description, images, username, latitude, longitude, null);
+    }
+
+    @Transactional
+    public ParcelServicePost createPost(String serviceName, String phone, String serviceTypeStr,
+                                         String fromLocation, String toLocation, String priceInfo,
+                                         String address, String timings, String description,
+                                         List<MultipartFile> images, String username,
+                                         BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -59,7 +69,12 @@ public class ParcelServicePostService {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = parcelServicePostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
             if (activeCount >= postLimit) {
-                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active parcel service listings");
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
             }
         }
 
@@ -105,8 +120,14 @@ public class ParcelServicePostService {
                 .build();
 
         ParcelServicePost saved = parcelServicePostRepository.save(post);
-        log.info("Parcel service post created: id={}, serviceName={}, serviceType={}, poster={}, autoApproved={}",
-                saved.getId(), serviceName, serviceType, username, autoApprove);
+
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Parcel service post created: id={}, serviceName={}, serviceType={}, poster={}, autoApproved={}, paid={}",
+                saved.getId(), serviceName, serviceType, username, autoApprove, paidTokenId != null);
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your parcel service listing for '" + saved.getServiceName() + "' has been auto-approved and is now visible to others.");

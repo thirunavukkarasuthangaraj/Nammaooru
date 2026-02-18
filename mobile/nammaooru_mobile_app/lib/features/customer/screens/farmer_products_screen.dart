@@ -10,8 +10,8 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../core/services/location_service.dart';
 import '../services/farmer_products_service.dart';
-import '../services/feature_config_service.dart';
 import 'create_farmer_post_screen.dart';
 import 'farmer_post_detail_screen.dart';
 
@@ -32,6 +32,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
+  double? _userLatitude;
+  double? _userLongitude;
 
   // My Posts tab
   late TabController _tabController;
@@ -89,11 +91,23 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       _currentPage = 0;
     });
 
+    // Fetch GPS in background (don't block the API call)
+    if (_userLatitude == null || _userLongitude == null) {
+      LocationService.instance.getCurrentPosition().then((position) {
+        if (position != null && position.latitude != null && position.longitude != null) {
+          _userLatitude = position.latitude;
+          _userLongitude = position.longitude;
+        }
+      }).catchError((_) {});
+    }
+
     try {
       final response = await _farmerService.getApprovedPosts(
         page: 0,
         size: 20,
         category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
       );
 
       if (mounted) {
@@ -120,6 +134,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
         page: _currentPage,
         size: 20,
         category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
       );
 
       if (mounted) {
@@ -333,38 +349,6 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       context.go('/login');
       return;
     }
-
-    // Check post limit
-    try {
-      final limit = await FeatureConfigService().getEffectiveLimit('FARM_PRODUCTS');
-      if (limit > 0) {
-        if (!_myPostsLoaded) {
-          final response = await _farmerService.getMyPosts();
-          _myPosts = response['data'] ?? [];
-          _myPostsLoaded = true;
-        }
-        final activeCount = _myPosts.where((p) {
-          final status = p['status']?.toString().toUpperCase() ?? '';
-          return status == 'PENDING_APPROVAL' || status == 'APPROVED';
-        }).length;
-        if (activeCount >= limit) {
-          if (mounted) {
-            final lang = Provider.of<LanguageProvider>(context, listen: false);
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(lang.currentLanguage == 'ta' ? 'வரம்பு எட்டியது' : 'Limit Reached'),
-                content: Text(lang.currentLanguage == 'ta'
-                    ? 'நீங்கள் அதிகபட்சமாக $limit செயலில் உள்ள விவசாய பொருள் பதிவுகளை எட்டிவிட்டீர்கள்.'
-                    : 'You have reached the maximum limit of $limit active farmer product listings.'),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-              ),
-            );
-          }
-          return;
-        }
-      }
-    } catch (_) {}
 
     if (!mounted) return;
     Navigator.push(

@@ -11,7 +11,6 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../services/parcel_service.dart';
-import '../services/feature_config_service.dart';
 import 'create_parcel_screen.dart';
 import 'parcel_post_detail_screen.dart';
 
@@ -325,39 +324,6 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
       context.go('/login');
       return;
     }
-
-    // Check post limit
-    try {
-      final limit = await FeatureConfigService().getEffectiveLimit('PARCEL_SERVICE');
-      if (limit > 0) {
-        // Load my posts if not loaded yet
-        if (!_myPostsLoaded) {
-          final response = await _parcelService.getMyPosts();
-          _myPosts = response['data'] ?? [];
-          _myPostsLoaded = true;
-        }
-        final activeCount = _myPosts.where((p) {
-          final status = p['status']?.toString().toUpperCase() ?? '';
-          return status == 'PENDING_APPROVAL' || status == 'APPROVED';
-        }).length;
-        if (activeCount >= limit) {
-          if (mounted) {
-            final lang = Provider.of<LanguageProvider>(context, listen: false);
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(lang.currentLanguage == 'ta' ? 'வரம்பு எட்டியது' : 'Limit Reached'),
-                content: Text(lang.currentLanguage == 'ta'
-                    ? 'நீங்கள் அதிகபட்சமாக $limit செயலில் உள்ள பார்சல் சேவை பதிவுகளை எட்டிவிட்டீர்கள்.'
-                    : 'You have reached the maximum limit of $limit active parcel service listings.'),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-              ),
-            );
-          }
-          return;
-        }
-      }
-    } catch (_) {}
 
     if (!mounted) return;
     Navigator.push(

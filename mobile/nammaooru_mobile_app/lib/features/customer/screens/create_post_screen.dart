@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/marketplace_service.dart';
+import '../widgets/post_payment_handler.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -30,6 +31,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _selectedCategory = 'Other';
   File? _selectedImage;
   bool _isSubmitting = false;
+  double? _latitude;
+  double? _longitude;
 
   final List<String> _categories = [
     'Electronics',
@@ -107,6 +110,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     try {
       final position = await LocationService.instance.getCurrentPosition();
       if (position != null && position.latitude != null && position.longitude != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
         final address = await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
@@ -181,7 +186,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 
-  Future<void> _submitPost() async {
+  Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -199,11 +204,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         category: _selectedCategory,
         location: _locationController.text.trim(),
         imagePath: _selectedImage?.path,
+        paidTokenId: paidTokenId,
+        latitude: _latitude,
+        longitude: _longitude,
       );
 
       if (mounted) {
         if (result['success'] == true) {
           _showSuccessDialog();
+        } else if (PostPaymentHandler.isLimitReached(result)) {
+          setState(() { _isSubmitting = false; });
+          _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -229,6 +240,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         });
       }
     }
+  }
+
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'MARKETPLACE',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _submitPost(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment();
   }
 
   void _showSuccessDialog() {

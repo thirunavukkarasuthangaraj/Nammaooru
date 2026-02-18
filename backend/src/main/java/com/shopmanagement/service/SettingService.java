@@ -296,6 +296,16 @@ public class SettingService {
         createDefaultSettingIfNotExists("farmer_products.post.report_threshold", "3",
                 "Number of reports needed before auto-flagging a farmer product post", "FARMER_PRODUCTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
+        // Paid Posts settings
+        createDefaultSettingIfNotExists("paid_post.enabled", "true",
+                "Enable pay-per-post when limit is reached", "PAID_POSTS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("paid_post.price", "10",
+                "Price per paid post in INR", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("paid_post.currency", "INR",
+                "Currency for paid posts", "PAID_POSTS", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     

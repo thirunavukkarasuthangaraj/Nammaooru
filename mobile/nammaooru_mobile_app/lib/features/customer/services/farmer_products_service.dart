@@ -12,6 +12,9 @@ class FarmerProductsService {
     int page = 0,
     int size = 20,
     String? category,
+    double? latitude,
+    double? longitude,
+    double? radiusKm,
   }) async {
     try {
       Logger.api('Fetching farmer products - page: $page, size: $size, category: $category');
@@ -23,6 +26,14 @@ class FarmerProductsService {
 
       if (category != null && category.isNotEmpty) {
         queryParams['category'] = category;
+      }
+
+      if (latitude != null && longitude != null) {
+        queryParams['lat'] = latitude.toString();
+        queryParams['lng'] = longitude.toString();
+        if (radiusKm != null) {
+          queryParams['radius'] = radiusKm.toString();
+        }
       }
 
       final response = await _apiService.get(
@@ -65,14 +76,27 @@ class FarmerProductsService {
     String? location,
     String? unit,
     List<String>? imagePaths,
+    int? paidTokenId,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
-      Logger.api('Creating farmer product post: $title');
+      Logger.api('Creating farmer product post: $title, paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'title': title,
         'phone': phone,
       };
+
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (latitude != null) {
+        formMap['latitude'] = latitude.toString();
+      }
+      if (longitude != null) {
+        formMap['longitude'] = longitude.toString();
+      }
 
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;
@@ -134,12 +158,15 @@ class FarmerProductsService {
       };
     } on DioException catch (e) {
       Logger.e('Failed to create farmer product post', 'FARMER_PRODUCTS', e);
+      final errorCode = e.response?.data?['statusCode'] ?? '';
       final errorMessage = e.response?.data?['message'] ??
                           e.response?.data?['error'] ??
                           'Failed to create post. Please try again.';
       return {
         'success': false,
         'message': errorMessage,
+        'statusCode': errorCode,
+        'httpStatus': e.response?.statusCode,
       };
     } catch (e) {
       Logger.e('Failed to create farmer product post', 'FARMER_PRODUCTS', e);

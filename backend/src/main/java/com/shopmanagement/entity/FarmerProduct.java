@@ -56,6 +56,12 @@ public class FarmerProduct {
     @Column(length = 200)
     private String location;
 
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitude;
+
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitude;
+
     @Column(name = "featured")
     @Builder.Default
     private Boolean featured = false;

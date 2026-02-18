@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/labour_service.dart';
+import '../widgets/post_payment_handler.dart';
 
 class CreateLabourScreen extends StatefulWidget {
   const CreateLabourScreen({super.key});
@@ -250,7 +251,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     );
   }
 
-  Future<void> _submitPost() async {
+  Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -270,11 +271,15 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
             : null,
         latitude: _latitude,
         longitude: _longitude,
+        paidTokenId: paidTokenId,
       );
 
       if (mounted) {
         if (result['success'] == true) {
           _showSuccessDialog();
+        } else if (PostPaymentHandler.isLimitReached(result)) {
+          setState(() { _isSubmitting = false; });
+          _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -300,6 +305,19 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         });
       }
     }
+  }
+
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'LABOURS',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _submitPost(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment();
   }
 
   void _showSuccessDialog() {

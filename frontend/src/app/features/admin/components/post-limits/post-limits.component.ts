@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PostLimitsService, UserPostLimit } from '../../services/post-limits.service';
 import { FeatureConfigService, FeatureConfig } from '../../services/feature-config.service';
+import { SettingsService } from '../../../../core/services/settings.service';
 
 @Component({
   selector: 'app-post-limits',
@@ -33,12 +34,20 @@ export class PostLimitsComponent implements OnInit {
     { value: 'TRAVELS', label: 'Travels' }
   ];
 
+  // Paid post config
+  paidPostEnabled = false;
+  paidPostPrice = 10;
+  paidPostCurrency = 'INR';
+  paidPostLoading = true;
+  paidPostSaving = false;
+
   displayedColumns: string[] = ['userInfo', 'featureName', 'maxPosts', 'createdAt', 'actions'];
   globalDisplayedColumns: string[] = ['featureName', 'maxPosts', 'actions'];
 
   constructor(
     private postLimitsService: PostLimitsService,
     private featureConfigService: FeatureConfigService,
+    private settingsService: SettingsService,
     private fb: FormBuilder,
     private snackBar: MatSnackBar
   ) {}
@@ -47,6 +56,7 @@ export class PostLimitsComponent implements OnInit {
     this.initForm();
     this.loadGlobalLimits();
     this.loadLimits();
+    this.loadPaidPostConfig();
   }
 
   initForm(): void {
@@ -189,5 +199,44 @@ export class PostLimitsComponent implements OnInit {
   getFeatureLabel(featureName: string): string {
     const feature = this.featureNames.find(f => f.value === featureName);
     return feature ? feature.label : featureName;
+  }
+
+  // ===== Paid Post Config =====
+
+  loadPaidPostConfig(): void {
+    this.paidPostLoading = true;
+    this.settingsService.getAllSettings().subscribe({
+      next: (settings) => {
+        for (const s of settings) {
+          if (s.key === 'paid_post.enabled') this.paidPostEnabled = s.value === 'true';
+          if (s.key === 'paid_post.price') this.paidPostPrice = parseInt(s.value, 10) || 10;
+          if (s.key === 'paid_post.currency') this.paidPostCurrency = s.value || 'INR';
+        }
+        this.paidPostLoading = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to load paid post config', 'Close', { duration: 3000 });
+        this.paidPostLoading = false;
+      }
+    });
+  }
+
+  savePaidPostConfig(): void {
+    this.paidPostSaving = true;
+    const settings: { [key: string]: string } = {
+      'paid_post.enabled': String(this.paidPostEnabled),
+      'paid_post.price': String(this.paidPostPrice),
+      'paid_post.currency': this.paidPostCurrency
+    };
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.snackBar.open('Paid post config saved successfully', 'Close', { duration: 3000 });
+        this.paidPostSaving = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to save paid post config', 'Close', { duration: 3000 });
+        this.paidPostSaving = false;
+      }
+    });
   }
 }

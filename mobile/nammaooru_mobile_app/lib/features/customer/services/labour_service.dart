@@ -76,15 +76,20 @@ class LabourService {
     List<String>? imagePaths,
     double? latitude,
     double? longitude,
+    int? paidTokenId,
   }) async {
     try {
-      Logger.api('Creating labour post: $name ($category)');
+      Logger.api('Creating labour post: $name ($category), paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'name': name,
         'phone': phone,
         'category': category,
       };
+
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
 
       if (experience != null && experience.isNotEmpty) {
         formMap['experience'] = experience;
@@ -145,12 +150,15 @@ class LabourService {
       };
     } on DioException catch (e) {
       Logger.e('Failed to create labour post', 'LABOURS', e);
+      final errorCode = e.response?.data?['statusCode'] ?? '';
       final errorMessage = e.response?.data?['message'] ??
                           e.response?.data?['error'] ??
                           'Failed to create listing. Please try again.';
       return {
         'success': false,
         'message': errorMessage,
+        'statusCode': errorCode,
+        'httpStatus': e.response?.statusCode,
       };
     } catch (e) {
       Logger.e('Failed to create labour post', 'LABOURS', e);

@@ -10,6 +10,7 @@ import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,13 +39,22 @@ public class MarketplaceService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
+    private final PostPaymentService postPaymentService;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public MarketplacePost createPost(String title, String description, BigDecimal price,
                                        String phone, String category, String location,
                                        MultipartFile image, MultipartFile voice,
-                                       String username) throws IOException {
+                                       String username, BigDecimal latitude, BigDecimal longitude) throws IOException {
+        return createPost(title, description, price, phone, category, location, image, voice, username, latitude, longitude, null);
+    }
+
+    @Transactional
+    public MarketplacePost createPost(String title, String description, BigDecimal price,
+                                       String phone, String category, String location,
+                                       MultipartFile image, MultipartFile voice,
+                                       String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -54,7 +64,12 @@ public class MarketplaceService {
             List<MarketplacePost.PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = marketplacePostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
             if (activeCount >= postLimit) {
-                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active marketplace listings");
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
             }
         }
 
@@ -82,11 +97,20 @@ public class MarketplaceService {
                 .sellerPhone(phone)
                 .category(category)
                 .location(location)
+                .latitude(latitude)
+                .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .build();
 
         MarketplacePost saved = marketplacePostRepository.save(post);
-        log.info("Marketplace post created: id={}, title={}, seller={}, autoApproved={}", saved.getId(), title, username, autoApprove);
+
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Marketplace post created: id={}, title={}, seller={}, autoApproved={}, paid={}",
+                saved.getId(), title, username, autoApprove, paidTokenId != null);
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
@@ -100,10 +124,20 @@ public class MarketplaceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MarketplacePost> getApprovedPosts(Pageable pageable) {
+    public Page<MarketplacePost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<MarketplacePost> posts = marketplacePostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
+            long total = marketplacePostRepository.countNearbyPosts(statuses, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return marketplacePostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
@@ -111,10 +145,20 @@ public class MarketplaceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MarketplacePost> getApprovedPostsByCategory(String category, Pageable pageable) {
+    public Page<MarketplacePost> getApprovedPostsByCategory(String category, Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<MarketplacePost> posts = marketplacePostRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radius, limit, offset);
+            long total = marketplacePostRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return marketplacePostRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
         }
@@ -390,10 +434,19 @@ public class MarketplaceService {
 
     private void notifyCustomersNewPost(MarketplacePost post) {
         try {
-            // Use seller's location (MarketplacePost has no lat/lng)
-            User seller = userRepository.findById(post.getSellerUserId()).orElse(null);
-            if (seller == null || seller.getCurrentLatitude() == null || seller.getCurrentLongitude() == null) {
-                log.info("Skipping location-based notification for marketplace post {}: no seller location", post.getId());
+            Double lat = null, lng = null;
+            if (post.getLatitude() != null && post.getLongitude() != null) {
+                lat = post.getLatitude().doubleValue();
+                lng = post.getLongitude().doubleValue();
+            } else {
+                User seller = userRepository.findById(post.getSellerUserId()).orElse(null);
+                if (seller != null && seller.getCurrentLatitude() != null && seller.getCurrentLongitude() != null) {
+                    lat = seller.getCurrentLatitude();
+                    lng = seller.getCurrentLongitude();
+                }
+            }
+            if (lat == null || lng == null) {
+                log.info("Skipping location-based notification for marketplace post {}: no location", post.getId());
                 return;
             }
 
@@ -401,7 +454,7 @@ public class MarketplaceService {
                     settingService.getSettingValue("notification.radius_km", "50"));
 
             List<User> nearbyCustomers = userRepository.findNearbyCustomers(
-                    seller.getCurrentLatitude(), seller.getCurrentLongitude(), radiusKm);
+                    lat, lng, radiusKm);
             if (nearbyCustomers.isEmpty()) {
                 log.info("No nearby customers found for marketplace post notification: id={}", post.getId());
                 return;

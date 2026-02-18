@@ -12,6 +12,9 @@ class MarketplaceService {
     int page = 0,
     int size = 20,
     String? category,
+    double? latitude,
+    double? longitude,
+    double? radiusKm,
   }) async {
     try {
       Logger.api('Fetching marketplace posts - page: $page, size: $size, category: $category');
@@ -23,6 +26,14 @@ class MarketplaceService {
 
       if (category != null && category.isNotEmpty) {
         queryParams['category'] = category;
+      }
+
+      if (latitude != null && longitude != null) {
+        queryParams['lat'] = latitude.toString();
+        queryParams['lng'] = longitude.toString();
+        if (radiusKm != null) {
+          queryParams['radius'] = radiusKm.toString();
+        }
       }
 
       final response = await _apiService.get(
@@ -65,9 +76,12 @@ class MarketplaceService {
     String? location,
     String? imagePath,
     String? voicePath,
+    int? paidTokenId,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
-      Logger.api('Creating marketplace post: $title');
+      Logger.api('Creating marketplace post: $title, paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'title': title,
@@ -85,6 +99,15 @@ class MarketplaceService {
       }
       if (location != null && location.isNotEmpty) {
         formMap['location'] = location;
+      }
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (latitude != null) {
+        formMap['latitude'] = latitude.toString();
+      }
+      if (longitude != null) {
+        formMap['longitude'] = longitude.toString();
       }
       if (imagePath != null && imagePath.isNotEmpty) {
         // Get proper filename with extension from the actual file path
@@ -130,12 +153,16 @@ class MarketplaceService {
       };
     } on DioException catch (e) {
       Logger.e('Failed to create marketplace post', 'MARKETPLACE', e);
+      final statusCode = e.response?.statusCode;
+      final errorCode = e.response?.data?['statusCode'] ?? '';
       final errorMessage = e.response?.data?['message'] ??
                           e.response?.data?['error'] ??
                           'Failed to create post. Please try again.';
       return {
         'success': false,
         'message': errorMessage,
+        'statusCode': errorCode,
+        'httpStatus': statusCode,
       };
     } catch (e) {
       Logger.e('Failed to create marketplace post', 'MARKETPLACE', e);

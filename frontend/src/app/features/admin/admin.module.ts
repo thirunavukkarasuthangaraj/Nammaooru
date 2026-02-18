@@ -52,6 +52,7 @@ import { PostDashboardComponent } from './components/post-dashboard/post-dashboa
 import { FeatureConfigManagementComponent } from './components/feature-config-management/feature-config-management.component';
 import { PostLimitsComponent } from './components/post-limits/post-limits.component';
 import { PostEditDialogComponent } from './components/post-edit-dialog/post-edit-dialog.component';
+import { PaymentHistoryComponent } from './components/payment-history/payment-history.component';
 
 @NgModule({
   declarations: [
@@ -80,7 +81,8 @@ import { PostEditDialogComponent } from './components/post-edit-dialog/post-edit
     PostDashboardComponent,
     FeatureConfigManagementComponent,
     PostLimitsComponent,
-    PostEditDialogComponent
+    PostEditDialogComponent,
+    PaymentHistoryComponent
   ],
   imports: [
     CommonModule,
@@ -210,6 +212,10 @@ import { PostEditDialogComponent } from './components/post-edit-dialog/post-edit
       {
         path: 'post-limits',
         component: PostLimitsComponent
+      },
+      {
+        path: 'payment-history',
+        component: PaymentHistoryComponent
       },
       {
         path: 'shops',

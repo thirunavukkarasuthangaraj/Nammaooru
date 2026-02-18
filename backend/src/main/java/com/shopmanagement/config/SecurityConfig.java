@@ -100,6 +100,7 @@ public class SecurityConfig {
                                 "/api/delivery/confirmation/**",  // Allow OTP verification
                                 "/api/customer/shops/**",
                                 "/api/featured-posts",  // Public: Get featured posts for mobile banner
+                                "/api/post-payments/config",  // Public: Get payment config for mobile
                                 "/api/feature-config/visible",  // Public: Get visible features for mobile
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
                                 "/uploads/**",

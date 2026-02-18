@@ -71,7 +71,55 @@
     </div>
   </div>
 
-  <!-- ===== SECTION 2: User-Specific Overrides ===== -->
+  <!-- ===== SECTION 2: Paid Posts Config ===== -->
+  <div class="section-header paid-section">
+    <h3><mat-icon>payment</mat-icon> Paid Posts Config</h3>
+    <p class="section-subtitle">When users exceed their free post limit, they can pay to create additional posts.</p>
+  </div>
+
+  <div *ngIf="paidPostLoading" class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading paid post config...</p>
+  </div>
+
+  <mat-card *ngIf="!paidPostLoading" class="paid-post-card">
+    <mat-card-content>
+      <div class="paid-post-form">
+        <div class="paid-post-toggle">
+          <mat-slide-toggle [(ngModel)]="paidPostEnabled" color="primary">
+            Enable Paid Posts
+          </mat-slide-toggle>
+          <span class="toggle-hint" *ngIf="paidPostEnabled">Users can pay to post beyond their free limit</span>
+          <span class="toggle-hint" *ngIf="!paidPostEnabled">Users will be blocked when they reach their free limit</span>
+        </div>
+
+        <div class="paid-post-fields" *ngIf="paidPostEnabled">
+          <mat-form-field>
+            <mat-label>Price per Post</mat-label>
+            <input matInput type="number" [(ngModel)]="paidPostPrice" min="1" placeholder="10">
+            <span matPrefix class="currency-prefix">&#8377;&nbsp;</span>
+            <mat-hint>Amount charged for each paid post</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Currency</mat-label>
+            <mat-select [(ngModel)]="paidPostCurrency">
+              <mat-option value="INR">INR (Indian Rupee)</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="paid-post-actions">
+          <button mat-raised-button color="primary" (click)="savePaidPostConfig()" [disabled]="paidPostSaving">
+            <mat-icon>save</mat-icon>
+            {{ paidPostSaving ? 'Saving...' : 'Save Config' }}
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ===== SECTION 3: User-Specific Overrides ===== -->
   <div class="section-header user-section">
     <h3><mat-icon>person</mat-icon> User-Specific Overrides</h3>
     <p class="section-subtitle">Override the global limit for specific users. These take priority over global limits.</p>

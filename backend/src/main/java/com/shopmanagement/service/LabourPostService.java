@@ -42,6 +42,7 @@ public class LabourPostService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
+    private final PostPaymentService postPaymentService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -49,6 +50,14 @@ public class LabourPostService {
                                   String experience, String location, String description,
                                   List<MultipartFile> images, String username,
                                   BigDecimal latitude, BigDecimal longitude) throws IOException {
+        return createPost(name, phone, categoryStr, experience, location, description, images, username, latitude, longitude, null);
+    }
+
+    @Transactional
+    public LabourPost createPost(String name, String phone, String categoryStr,
+                                  String experience, String location, String description,
+                                  List<MultipartFile> images, String username,
+                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -58,7 +67,12 @@ public class LabourPostService {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = labourPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
             if (activeCount >= postLimit) {
-                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active labour listings");
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
             }
         }
 
@@ -101,8 +115,14 @@ public class LabourPostService {
                 .build();
 
         LabourPost saved = labourPostRepository.save(post);
-        log.info("Labour post created: id={}, name={}, category={}, poster={}, autoApproved={}",
-                saved.getId(), name, category, username, autoApprove);
+
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Labour post created: id={}, name={}, category={}, poster={}, autoApproved={}, paid={}",
+                saved.getId(), name, category, username, autoApprove, paidTokenId != null);
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been auto-approved and is now visible to others.");

@@ -5,6 +5,8 @@ import com.shopmanagement.entity.FarmerProduct.PostStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -34,4 +36,69 @@ public interface FarmerProductRepository extends JpaRepository<FarmerProduct, Lo
     long countByReportCountGreaterThan(int minReportCount);
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
+
+    // Haversine nearby queries - posts with NULL lat/lng are always included
+    @Query(value = "SELECT * FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "fp.latitude IS NULL OR fp.longitude IS NULL OR (" +
+           "fp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "fp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(fp.latitude AS double precision))) * " +
+           "cos(radians(CAST(fp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(fp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
+           ") ORDER BY fp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<FarmerProduct> findNearbyPosts(@Param("statuses") String[] statuses,
+                                     @Param("lat") double lat,
+                                     @Param("lng") double lng,
+                                     @Param("radiusKm") double radiusKm,
+                                     @Param("limit") int limit,
+                                     @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) AND (" +
+           "fp.latitude IS NULL OR fp.longitude IS NULL OR (" +
+           "fp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "fp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(fp.latitude AS double precision))) * " +
+           "cos(radians(CAST(fp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(fp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPosts(@Param("statuses") String[] statuses,
+                          @Param("lat") double lat,
+                          @Param("lng") double lng,
+                          @Param("radiusKm") double radiusKm);
+
+    @Query(value = "SELECT * FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "fp.category = CAST(:category AS text) AND (" +
+           "fp.latitude IS NULL OR fp.longitude IS NULL OR (" +
+           "fp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "fp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(fp.latitude AS double precision))) * " +
+           "cos(radians(CAST(fp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(fp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
+           ") ORDER BY fp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<FarmerProduct> findNearbyPostsByCategory(@Param("statuses") String[] statuses,
+                                               @Param("category") String category,
+                                               @Param("lat") double lat,
+                                               @Param("lng") double lng,
+                                               @Param("radiusKm") double radiusKm,
+                                               @Param("limit") int limit,
+                                               @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "fp.category = CAST(:category AS text) AND (" +
+           "fp.latitude IS NULL OR fp.longitude IS NULL OR (" +
+           "fp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "fp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(fp.latitude AS double precision))) * " +
+           "cos(radians(CAST(fp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(fp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
+           ")",
+           nativeQuery = true)
+    long countNearbyPostsByCategory(@Param("statuses") String[] statuses,
+                                    @Param("category") String category,
+                                    @Param("lat") double lat,
+                                    @Param("lng") double lng,
+                                    @Param("radiusKm") double radiusKm);
 }

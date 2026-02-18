@@ -10,6 +10,7 @@ import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,13 +40,22 @@ public class FarmerProductService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
+    private final PostPaymentService postPaymentService;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public FarmerProduct createPost(String title, String description, BigDecimal price,
                                      String phone, String category, String location,
                                      String unit, List<MultipartFile> images,
-                                     String username) throws IOException {
+                                     String username, BigDecimal latitude, BigDecimal longitude) throws IOException {
+        return createPost(title, description, price, phone, category, location, unit, images, username, latitude, longitude, null);
+    }
+
+    @Transactional
+    public FarmerProduct createPost(String title, String description, BigDecimal price,
+                                     String phone, String category, String location,
+                                     String unit, List<MultipartFile> images,
+                                     String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -55,7 +65,12 @@ public class FarmerProductService {
             List<FarmerProduct.PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = farmerProductRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
             if (activeCount >= postLimit) {
-                throw new RuntimeException("You have reached the maximum limit of " + postLimit + " active farmer product listings");
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
             }
         }
 
@@ -87,11 +102,20 @@ public class FarmerProductService {
                 .sellerPhone(phone)
                 .category(category)
                 .location(location)
+                .latitude(latitude)
+                .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .build();
 
         FarmerProduct saved = farmerProductRepository.save(post);
-        log.info("Farmer product created: id={}, title={}, seller={}, autoApproved={}", saved.getId(), title, username, autoApprove);
+
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Farmer product created: id={}, title={}, seller={}, autoApproved={}, paid={}",
+                saved.getId(), title, username, autoApprove, paidTokenId != null);
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your farmer product '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
@@ -104,10 +128,20 @@ public class FarmerProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FarmerProduct> getApprovedPosts(Pageable pageable) {
+    public Page<FarmerProduct> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<FarmerProduct> posts = farmerProductRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
+            long total = farmerProductRepository.countNearbyPosts(statuses, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return farmerProductRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
         }
@@ -115,10 +149,20 @@ public class FarmerProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FarmerProduct> getApprovedPostsByCategory(String category, Pageable pageable) {
+    public Page<FarmerProduct> getApprovedPostsByCategory(String category, Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        LocalDateTime cutoffDate = getCutoffDate();
 
+        if (lat != null && lng != null) {
+            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            List<FarmerProduct> posts = farmerProductRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radius, limit, offset);
+            long total = farmerProductRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radius);
+            return new PageImpl<>(posts, pageable, total);
+        }
+
+        LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
             return farmerProductRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
         }
@@ -404,10 +448,19 @@ public class FarmerProductService {
 
     private void notifyCustomersNewPost(FarmerProduct post) {
         try {
-            // Use seller's location (FarmerProduct has no lat/lng)
-            User seller = userRepository.findById(post.getSellerUserId()).orElse(null);
-            if (seller == null || seller.getCurrentLatitude() == null || seller.getCurrentLongitude() == null) {
-                log.info("Skipping location-based notification for farmer product {}: no seller location", post.getId());
+            Double lat = null, lng = null;
+            if (post.getLatitude() != null && post.getLongitude() != null) {
+                lat = post.getLatitude().doubleValue();
+                lng = post.getLongitude().doubleValue();
+            } else {
+                User seller = userRepository.findById(post.getSellerUserId()).orElse(null);
+                if (seller != null && seller.getCurrentLatitude() != null && seller.getCurrentLongitude() != null) {
+                    lat = seller.getCurrentLatitude();
+                    lng = seller.getCurrentLongitude();
+                }
+            }
+            if (lat == null || lng == null) {
+                log.info("Skipping location-based notification for farmer product {}: no location", post.getId());
                 return;
             }
 
@@ -415,7 +468,7 @@ public class FarmerProductService {
                     settingService.getSettingValue("notification.radius_km", "50"));
 
             List<User> nearbyCustomers = userRepository.findNearbyCustomers(
-                    seller.getCurrentLatitude(), seller.getCurrentLongitude(), radiusKm);
+                    lat, lng, radiusKm);
             if (nearbyCustomers.isEmpty()) return;
 
             List<Long> recipientIds = nearbyCustomers.stream()
