@@ -110,27 +110,27 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Delivery Management',
+      category: 'Delivery App',
       items: [
         { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: null },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
         { title: 'Live Tracking', icon: 'gps_fixed', route: '/delivery/admin/tracking', badge: null },
-        { title: 'Delivery Zones', icon: 'map', route: '/delivery/zones', badge: null },
-        { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null }
+        { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
+        { title: 'Partner Payments', icon: 'account_balance_wallet', route: '/delivery/partner-payments', badge: null },
+        { title: 'Partner Payouts', icon: 'account_balance', route: '/finance/payouts', badge: null },
+        { title: 'Commission Settings', icon: 'percent', route: '/finance/commission', badge: null }
       ]
     },
     {
-      category: 'Financial Management',
+      category: 'Payments & Finance',
       items: [
         { title: 'Revenue Overview', icon: 'payments', route: '/finance/revenue', badge: null },
-        { title: 'Partner Payments', icon: 'account_balance_wallet', route: '/delivery/partner-payments', badge: null },
-        { title: 'Partner Payouts', icon: 'account_balance', route: '/finance/payouts', badge: null },
-        { title: 'Commission Settings', icon: 'percent', route: '/finance/commission', badge: null },
+        { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
         { title: 'Financial Reports', icon: 'assessment', route: '/finance/reports', badge: null }
       ]
     },
     {
-      category: 'Marketplace',
+      category: 'Posts - Listings',
       items: [
         { title: 'Post Dashboard', icon: 'dashboard', route: '/admin/post-dashboard', badge: null },
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
@@ -138,12 +138,23 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
-        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
+        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null }
+      ]
+    },
+    {
+      category: 'Posts - Reports',
+      items: [
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
         { title: 'Labour Reports', icon: 'report_problem', route: '/admin/labours/reported', badge: null },
         { title: 'Travel Reports', icon: 'report_problem', route: '/admin/travels/reported', badge: null },
-        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null },
-        { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null }
+        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null }
+      ]
+    },
+    {
+      category: 'Posts - Config',
+      items: [
+        { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null },
+        { title: 'Post Limits & Pricing', icon: 'rule', route: '/admin/post-limits', badge: null }
       ]
     },
     {
@@ -161,18 +172,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'System Administration',
+      category: 'System Config',
       items: [
         { title: 'System Settings', icon: 'settings', route: '/settings', badge: null },
-        { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
         { title: 'Feature Config', icon: 'toggle_on', route: '/admin/feature-config', badge: null },
-        { title: 'Post Limits', icon: 'rule', route: '/admin/post-limits', badge: null },
-        { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
         { title: 'Menu Permissions', icon: 'menu_open', route: '/admin/menu-permissions', badge: null },
-        { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
-        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null },
-        { title: 'Audit Logs', icon: 'history', route: '/admin/audit', badge: null },
-        { title: 'Backup & Restore', icon: 'backup', route: '/admin/backup', badge: null }
+        { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null }
       ]
     }
   ];
@@ -180,9 +185,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   // ADMIN - Standard admin access
   adminMenuItems = [
     {
-      category: 'Order Management',
+      category: 'User Management',
       items: [
-        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null }
+        { title: 'Users', icon: 'people', route: '/users', badge: null },
+        { title: 'Customers', icon: 'person', route: '/admin/customers', badge: null }
       ]
     },
     {
@@ -201,14 +207,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'User Management',
+      category: 'Order Management',
       items: [
-        { title: 'Users', icon: 'people', route: '/users', badge: null },
-        { title: 'Customers', icon: 'person', route: '/admin/customers', badge: null }
+        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null }
       ]
     },
     {
-      category: 'Delivery Management',
+      category: 'Delivery App',
       items: [
         { title: 'Delivery Partners', icon: 'delivery_dining', route: '/delivery/admin/partners', badge: null },
         { title: 'Order Assignments', icon: 'assignment', route: '/delivery/admin/assignments', badge: null },
@@ -216,7 +221,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'Marketplace',
+      category: 'Payments & Finance',
+      items: [
+        { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null }
+      ]
+    },
+    {
+      category: 'Posts - Listings',
       items: [
         { title: 'Post Dashboard', icon: 'dashboard', route: '/admin/post-dashboard', badge: null },
         { title: 'Buy & Sell Posts', icon: 'storefront', route: '/admin/marketplace', badge: null },
@@ -224,12 +235,23 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
-        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
+        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null }
+      ]
+    },
+    {
+      category: 'Posts - Reports',
+      items: [
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
         { title: 'Labour Reports', icon: 'report_problem', route: '/admin/labours/reported', badge: null },
         { title: 'Travel Reports', icon: 'report_problem', route: '/admin/travels/reported', badge: null },
-        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null },
-        { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null }
+        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null }
+      ]
+    },
+    {
+      category: 'Posts - Config',
+      items: [
+        { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null },
+        { title: 'Post Limits & Pricing', icon: 'rule', route: '/admin/post-limits', badge: null }
       ]
     },
     {
@@ -247,12 +269,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      category: 'System',
+      category: 'System Config',
       items: [
         { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
         { title: 'Feature Config', icon: 'toggle_on', route: '/admin/feature-config', badge: null },
-        { title: 'Post Limits', icon: 'rule', route: '/admin/post-limits', badge: null },
-        { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null }
       ]
     }

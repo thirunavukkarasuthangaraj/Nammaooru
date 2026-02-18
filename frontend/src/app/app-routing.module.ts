@@ -99,7 +99,7 @@ const routes: Routes = [
         loadChildren: () => import('./features/delivery/delivery.module').then(m => m.DeliveryModule)
       },
       {
-        path: 'financial',
+        path: 'finance',
         loadChildren: () => import('./features/financial-management/financial-management.module').then(m => m.FinancialManagementModule),
         canActivate: [RoleGuard],
         data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
