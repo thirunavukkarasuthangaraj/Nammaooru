@@ -285,10 +285,18 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 
   Widget _buildPaymentCard(dynamic payment, LanguageProvider lang) {
     final postType = payment['postType'] as String?;
-    final amount = payment['amount'];
+    final baseAmount = payment['amount'] ?? 0;
+    final processingFeePaise = payment['processingFee'] ?? 0;
+    final totalAmountPaise = payment['totalAmount'];
     final status = payment['status'] as String?;
     final createdAt = payment['createdAt'] as String?;
     final razorpayOrderId = payment['razorpayOrderId'] as String?;
+
+    // Calculate display amounts
+    final double feeRupees = processingFeePaise / 100.0;
+    final double totalRupees = totalAmountPaise != null
+        ? totalAmountPaise / 100.0
+        : baseAmount.toDouble();
 
     final statusColor = _getStatusColor(status);
 
@@ -300,74 +308,61 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(VillageTheme.spacingM),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            // Post type icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _getPostTypeIcon(postType),
-                color: VillageTheme.primaryGreen,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: VillageTheme.spacingS),
-            // Payment details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Post type label
-                  Text(
-                    _getPostTypeLabel(postType, lang),
-                    style: VillageTheme.textLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  // Date
-                  Text(
-                    _formatDate(createdAt),
-                    style: VillageTheme.bodySmall.copyWith(
-                      color: VillageTheme.modernGray,
-                    ),
-                  ),
-                  if (razorpayOrderId != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      razorpayOrderId,
-                      style: VillageTheme.bodySmall.copyWith(
-                        color: VillageTheme.modernLight,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: VillageTheme.spacingS),
-            // Amount and status
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '\u20B9${_formatAmount(amount)}',
-                  style: VillageTheme.headingSmall.copyWith(
-                    fontWeight: FontWeight.bold,
+                // Post type icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: VillageTheme.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _getPostTypeIcon(postType),
+                    color: VillageTheme.primaryGreen,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                const SizedBox(width: VillageTheme.spacingS),
+                // Payment details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getPostTypeLabel(postType, lang),
+                        style: VillageTheme.textLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatDate(createdAt),
+                        style: VillageTheme.bodySmall.copyWith(
+                          color: VillageTheme.modernGray,
+                        ),
+                      ),
+                      if (razorpayOrderId != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          razorpayOrderId,
+                          style: VillageTheme.bodySmall.copyWith(
+                            color: VillageTheme.modernLight,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
+                ),
+                const SizedBox(width: VillageTheme.spacingS),
+                // Status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
@@ -387,9 +382,64 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 ),
               ],
             ),
+            // Fee breakdown
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  _buildAmountRow(
+                    lang.getText('Post Fee', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD'),
+                    '\u20B9$baseAmount.00',
+                  ),
+                  if (feeRupees > 0) ...[
+                    const SizedBox(height: 4),
+                    _buildAmountRow(
+                      lang.getText('Transaction Fee', '\u0BAA\u0BB0\u0BBF\u0BB5\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BA9\u0BC8 \u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD'),
+                      '\u20B9${feeRupees.toStringAsFixed(2)}',
+                      isSmall: true,
+                    ),
+                  ],
+                  Divider(height: 12, color: Colors.grey.shade300),
+                  _buildAmountRow(
+                    lang.getText('Total', '\u0BAE\u0BCA\u0BA4\u0BCD\u0BA4\u0BAE\u0BCD'),
+                    '\u20B9${totalRupees.toStringAsFixed(2)}',
+                    isBold: true,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAmountRow(String label, String amount, {bool isBold = false, bool isSmall = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isSmall ? 12 : 13,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            color: isSmall ? Colors.grey.shade600 : Colors.grey.shade700,
+          ),
+        ),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: isBold ? 16 : (isSmall ? 12 : 13),
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            color: isBold ? VillageTheme.primaryGreen : Colors.grey.shade800,
+          ),
+        ),
+      ],
     );
   }
 

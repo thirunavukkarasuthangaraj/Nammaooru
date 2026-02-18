@@ -12,6 +12,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../shared/widgets/language_selector.dart';
 import '../../../core/api/api_client.dart';
 import '../../../shared/services/location_service.dart';
+import 'payment_history_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -556,6 +557,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       [
         _buildActionRow('Manage Addresses', Icons.location_on_outlined, () {
           context.push('/customer/addresses');
+        }),
+        _buildActionRow('Payment History', Icons.payment_outlined, () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => const PaymentHistoryScreen(),
+          ));
         }),
       ],
     );
