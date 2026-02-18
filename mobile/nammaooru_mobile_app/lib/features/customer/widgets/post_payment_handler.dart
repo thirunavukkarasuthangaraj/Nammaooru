@@ -54,8 +54,14 @@ class PostPaymentHandler {
     final config = configResult['data'];
     final bool enabled = config['enabled'] == true;
     final int price = config['price'] ?? 10;
+    final int processingFeePaise = config['processingFeePaise'] ?? 24;
+    final int totalAmountPaise = config['totalAmountPaise'] ?? (price * 100 + processingFeePaise);
     final String currency = config['currency'] ?? 'INR';
     final String keyId = config['razorpayKeyId'] ?? '';
+
+    // Format amounts for display
+    final String feeDisplay = (processingFeePaise / 100.0).toStringAsFixed(2);
+    final String totalDisplay = (totalAmountPaise / 100.0).toStringAsFixed(2);
 
     if (!enabled || keyId.isEmpty) {
       _showError(lang.getText(
@@ -65,7 +71,7 @@ class PostPaymentHandler {
       return;
     }
 
-    // Show confirmation dialog
+    // Show confirmation dialog with fee breakdown
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -88,31 +94,44 @@ class PostPaymentHandler {
           children: [
             Text(
               lang.getText(
-                'You have reached your free post limit. Pay \u20B9$price to publish this post.',
-                'உங்கள் இலவச பதிவு வரம்பை எட்டிவிட்டீர்கள். இந்தப் பதிவை வெளியிட \u20B9$price செலுத்தவும்.',
+                'You have reached your free post limit. Pay to publish this post.',
+                'உங்கள் இலவச பதிவு வரம்பை எட்டிவிட்டீர்கள். பதிவை வெளியிட செலுத்தவும்.',
               ),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 15),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  const Icon(Icons.payment, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Text(
-                    '\u20B9$price',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
+                  _buildPriceRow(
+                    lang.getText('Post Fee', 'பதிவு கட்டணம்'),
+                    '\u20B9$price.00',
+                    isBold: false,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildPriceRow(
+                    lang.getText('Processing Fee + GST', 'செயலாக்கக் கட்டணம் + GST'),
+                    '\u20B9$feeDisplay',
+                    isBold: false,
+                    color: Colors.orange.shade700,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(height: 1, color: Colors.grey.shade300),
+                  ),
+                  _buildPriceRow(
+                    lang.getText('Total', 'மொத்தம்'),
+                    '\u20B9$totalDisplay',
+                    isBold: true,
+                    color: Colors.green.shade700,
+                    fontSize: 20,
                   ),
                 ],
               ),
@@ -130,7 +149,7 @@ class PostPaymentHandler {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(lang.getText('Pay \u20B9$price', '\u20B9$price செலுத்து')),
+            child: Text(lang.getText('Pay \u20B9$totalDisplay', '\u20B9$totalDisplay செலுத்து')),
           ),
         ],
       ),
@@ -272,6 +291,34 @@ class PostPaymentHandler {
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     Logger.i('External wallet selected: ${response.walletName}', 'POST_PAYMENT');
+  }
+
+  Widget _buildPriceRow(String label, String amount, {
+    bool isBold = false,
+    Color? color,
+    double fontSize = 15,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isBold ? 16 : 14,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            color: isBold ? Colors.black87 : Colors.grey.shade700,
+          ),
+        ),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            color: color ?? (isBold ? Colors.black87 : Colors.grey.shade800),
+          ),
+        ),
+      ],
+    );
   }
 
   void _showError(String message) {

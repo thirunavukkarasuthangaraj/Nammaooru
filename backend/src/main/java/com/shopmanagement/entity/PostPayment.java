@@ -35,6 +35,13 @@ public class PostPayment {
     @Column(nullable = false)
     private Integer amount;
 
+    @Column(name = "processing_fee")
+    @Builder.Default
+    private Integer processingFee = 0;
+
+    @Column(name = "total_amount")
+    private Integer totalAmount;
+
     @Column(nullable = false, length = 10)
     @Builder.Default
     private String currency = "INR";

@@ -40,6 +40,8 @@ public class PostPaymentService {
         return razorpayKeyId == null || razorpayKeyId.isEmpty() || razorpayClient == null;
     }
 
+    private static final double PROCESSING_FEE_PERCENT = 2.36; // Razorpay 2% + 18% GST
+
     public Map<String, Object> getPaymentConfig() {
         boolean enabled = Boolean.parseBoolean(
                 settingService.getSettingValue("paid_post.enabled", "true"));
@@ -47,9 +49,15 @@ public class PostPaymentService {
                 settingService.getSettingValue("paid_post.price", "10"));
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
 
+        // Calculate processing fee in paise, then convert to rupees
+        int processingFeePaise = (int) Math.ceil(price * PROCESSING_FEE_PERCENT);
+        int totalAmountPaise = (price * 100) + processingFeePaise;
+
         Map<String, Object> config = new HashMap<>();
         config.put("enabled", enabled);
         config.put("price", price);
+        config.put("processingFeePaise", processingFeePaise);
+        config.put("totalAmountPaise", totalAmountPaise);
         config.put("currency", currency);
         config.put("razorpayKeyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
         config.put("testMode", isTestMode());
@@ -60,17 +68,19 @@ public class PostPaymentService {
     public Map<String, Object> createOrder(Long userId, String postType) throws RazorpayException {
         int priceInRupees = Integer.parseInt(
                 settingService.getSettingValue("paid_post.price", "10"));
-        int amountInPaise = priceInRupees * 100;
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
+
+        // Calculate processing fee and total
+        int processingFeePaise = (int) Math.ceil(priceInRupees * PROCESSING_FEE_PERCENT);
+        int totalAmountPaise = (priceInRupees * 100) + processingFeePaise;
 
         String orderId;
         if (isTestMode()) {
-            // Test mode: generate fake order ID
             orderId = "test_order_" + userId + "_" + System.currentTimeMillis();
             log.info("TEST MODE: Created mock order: {}", orderId);
         } else {
             JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", amountInPaise);
+            orderRequest.put("amount", totalAmountPaise);
             orderRequest.put("currency", currency);
             orderRequest.put("receipt", "post_" + userId + "_" + System.currentTimeMillis());
 
@@ -82,17 +92,21 @@ public class PostPaymentService {
                 .userId(userId)
                 .razorpayOrderId(orderId)
                 .amount(priceInRupees)
+                .processingFee(processingFeePaise)
+                .totalAmount(totalAmountPaise)
                 .currency(currency)
                 .postType(postType)
                 .build();
 
         postPaymentRepository.save(payment);
-        log.info("Created order: orderId={}, userId={}, postType={}, amount={}, testMode={}",
-                orderId, userId, postType, priceInRupees, isTestMode());
+        log.info("Created order: orderId={}, userId={}, postType={}, base={}, fee={}p, total={}p, testMode={}",
+                orderId, userId, postType, priceInRupees, processingFeePaise, totalAmountPaise, isTestMode());
 
         Map<String, Object> result = new HashMap<>();
         result.put("orderId", orderId);
-        result.put("amount", amountInPaise);
+        result.put("amount", totalAmountPaise);
+        result.put("basePrice", priceInRupees);
+        result.put("processingFeePaise", processingFeePaise);
         result.put("currency", currency);
         result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
         result.put("testMode", isTestMode());
@@ -177,17 +191,16 @@ public class PostPaymentService {
         long totalPaid = postPaymentRepository.countByStatus(PostPayment.PaymentStatus.PAID);
         long totalFailed = postPaymentRepository.countByStatus(PostPayment.PaymentStatus.FAILED);
         long totalCreated = postPaymentRepository.countByStatus(PostPayment.PaymentStatus.CREATED);
-        long totalCollected = postPaymentRepository.sumAmountByStatusPaid();
-        long totalConsumed = postPaymentRepository.sumAmountByStatusPaidAndConsumed();
+        long totalCollected = postPaymentRepository.sumTotalAmountByStatusPaid();
+        long baseAmountCollected = postPaymentRepository.sumAmountByStatusPaid();
+        long processingFeeCollected = postPaymentRepository.sumProcessingFeeByStatusPaid();
 
-        // Razorpay fee: ~2% + GST (18% on fee) = ~2.36% total
-        double razorpayFeePercent = 2.36;
-        long razorpayFee = Math.round(totalCollected * razorpayFeePercent / 100.0);
-        long netAmount = totalCollected - razorpayFee;
-
-        // GST on Razorpay fee (18% of the 2% base fee)
-        long baseFee = Math.round(totalCollected * 2.0 / 100.0);
-        long gstOnFee = Math.round(baseFee * 18.0 / 100.0);
+        // Processing fee covers Razorpay's cut, so net = base amount
+        // Razorpay fee breakdown: 2% base fee + 18% GST on fee
+        long razorpayBaseFee = Math.round(totalCollected * 2.0 / 100.0);
+        long gstOnFee = Math.round(razorpayBaseFee * 18.0 / 100.0);
+        long totalRazorpayFee = razorpayBaseFee + gstOnFee;
+        long netAmount = totalCollected - totalRazorpayFee;
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalPayments", totalPaid + totalFailed + totalCreated);
@@ -195,8 +208,9 @@ public class PostPaymentService {
         stats.put("failedPayments", totalFailed);
         stats.put("pendingPayments", totalCreated);
         stats.put("totalCollected", totalCollected);
-        stats.put("totalConsumed", totalConsumed);
-        stats.put("razorpayFee", razorpayFee);
+        stats.put("baseAmountCollected", baseAmountCollected);
+        stats.put("processingFeeCollected", processingFeeCollected);
+        stats.put("razorpayFee", totalRazorpayFee);
         stats.put("gstOnFee", gstOnFee);
         stats.put("netAmount", netAmount);
 

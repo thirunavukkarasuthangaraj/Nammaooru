@@ -31,6 +31,12 @@ public interface PostPaymentRepository extends JpaRepository<PostPayment, Long> 
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM PostPayment p WHERE p.status = 'PAID' AND p.consumed = true")
     long sumAmountByStatusPaidAndConsumed();
 
-    @Query("SELECT p.postType, COUNT(p), COALESCE(SUM(p.amount), 0) FROM PostPayment p WHERE p.status = 'PAID' GROUP BY p.postType")
+    @Query("SELECT COALESCE(SUM(p.totalAmount), 0) FROM PostPayment p WHERE p.status = 'PAID'")
+    long sumTotalAmountByStatusPaid();
+
+    @Query("SELECT COALESCE(SUM(p.processingFee), 0) FROM PostPayment p WHERE p.status = 'PAID'")
+    long sumProcessingFeeByStatusPaid();
+
+    @Query("SELECT p.postType, COUNT(p), COALESCE(SUM(p.totalAmount), 0) FROM PostPayment p WHERE p.status = 'PAID' GROUP BY p.postType")
     List<Object[]> getStatsByPostType();
 }
