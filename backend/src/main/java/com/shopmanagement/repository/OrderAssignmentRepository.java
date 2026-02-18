@@ -25,8 +25,9 @@ public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment
     // Count assignments by delivery partner created after a specific time (for fair distribution)
     Long countByDeliveryPartnerAndCreatedAtAfter(User deliveryPartner, LocalDateTime createdAt);
 
-    // Find assignments by delivery partner and status
-    List<OrderAssignment> findByDeliveryPartnerAndStatus(User deliveryPartner, AssignmentStatus status);
+    // Find assignments by delivery partner and status (with eager order loading)
+    @Query("SELECT oa FROM OrderAssignment oa JOIN FETCH oa.order WHERE oa.deliveryPartner = :partner AND oa.status = :status")
+    List<OrderAssignment> findByDeliveryPartnerAndStatus(@Param("partner") User deliveryPartner, @Param("status") AssignmentStatus status);
     Page<OrderAssignment> findByDeliveryPartnerAndStatus(User deliveryPartner, AssignmentStatus status, Pageable pageable);
 
     // Find assignments by delivery partner and multiple statuses
