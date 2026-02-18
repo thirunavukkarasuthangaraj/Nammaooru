@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -50,4 +51,11 @@ public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, 
     long countByStatus(PostStatus status);
 
     long countByReportCountGreaterThan(int minReportCount);
+
+    // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
+    List<RealEstatePost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
+            LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);
+
+    // Expired posts: valid_to before cutoff, in active statuses
+    List<RealEstatePost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
 }

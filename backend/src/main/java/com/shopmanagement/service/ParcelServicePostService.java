@@ -121,6 +121,14 @@ public class ParcelServicePostService {
                 .featured(paidTokenId != null)
                 .build();
 
+        // Set validity dates
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("parcel_service.post.duration_days", "60"));
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+
         ParcelServicePost saved = parcelServicePostRepository.save(post);
 
         // Consume paid token if used
@@ -128,8 +136,8 @@ public class ParcelServicePostService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
         }
 
-        log.info("Parcel service post created: id={}, serviceName={}, serviceType={}, poster={}, autoApproved={}, paid={}",
-                saved.getId(), serviceName, serviceType, username, autoApprove, paidTokenId != null);
+        log.info("Parcel service post created: id={}, serviceName={}, serviceType={}, poster={}, autoApproved={}, paid={}, validTo={}",
+                saved.getId(), serviceName, serviceType, username, autoApprove, paidTokenId != null, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your parcel service listing for '" + saved.getServiceName() + "' has been auto-approved and is now visible to others.");
@@ -386,6 +394,40 @@ public class ParcelServicePostService {
 
         ParcelServicePost saved = parcelServicePostRepository.save(post);
         log.info("Parcel service post admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public ParcelServicePost renewPost(Long postId, Long paidTokenId, String username) {
+        ParcelServicePost post = parcelServicePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the seller can renew a post");
+        }
+
+        if (paidTokenId != null) {
+            if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                throw new RuntimeException("Invalid or expired payment token");
+            }
+            postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
+        }
+
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("parcel_service.post.duration_days", "60"));
+
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+        post.setExpiryReminderSent(false);
+        post.setStatus(PostStatus.APPROVED);
+
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post renewed: id={}, newValidTo={}", postId, saved.getValidTo());
         return saved;
     }
 

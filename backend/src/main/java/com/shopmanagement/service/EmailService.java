@@ -609,6 +609,25 @@ public class EmailService {
     }
 
     @Async
+    public void sendPostExpiryReminderEmail(String to, String ownerName, String postTitle, String category, String expiryDate) {
+        try {
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("ownerName", ownerName);
+            variables.put("postTitle", postTitle);
+            variables.put("category", category);
+            variables.put("expiryDate", expiryDate);
+            variables.put("supportEmail", emailProperties.getFrom());
+            variables.put("companyName", "NammaOoru");
+
+            String subject = "Your Post is Expiring Soon - NammaOoru";
+            sendHtmlEmail(to, subject, "post-expiry-reminder", variables);
+            log.info("Post expiry reminder email sent to: {} for post: {}", to, postTitle);
+        } catch (Exception e) {
+            log.error("Failed to send post expiry reminder email to: {} for post: {}", to, postTitle, e);
+        }
+    }
+
+    @Async
     public void sendPostReportedEmail(String to, String ownerName, String postTitle, String category, int reportCount) {
         try {
             java.util.Map<String, Object> variables = new java.util.HashMap<>();

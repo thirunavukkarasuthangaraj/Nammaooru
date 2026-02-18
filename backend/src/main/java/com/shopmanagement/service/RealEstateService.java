@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -89,9 +90,17 @@ public class RealEstateService {
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .build();
 
+        // Set validity dates
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("real_estate.post.duration_days", "90"));
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+
         RealEstatePost saved = realEstatePostRepository.save(post);
-        log.info("Real estate post created: id={}, title={}, type={}, owner={}, autoApproved={}",
-                saved.getId(), title, propertyType, username, autoApprove);
+        log.info("Real estate post created: id={}, title={}, type={}, owner={}, autoApproved={}, validTo={}",
+                saved.getId(), title, propertyType, username, autoApprove, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your property listing '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
@@ -311,6 +320,33 @@ public class RealEstateService {
 
         RealEstatePost saved = realEstatePostRepository.save(post);
         log.info("Real estate post admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public RealEstatePost renewPost(Long postId, String username) {
+        RealEstatePost post = realEstatePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getOwnerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the owner can renew a post");
+        }
+
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("real_estate.post.duration_days", "90"));
+
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+        post.setExpiryReminderSent(false);
+        post.setStatus(PostStatus.APPROVED);
+
+        RealEstatePost saved = realEstatePostRepository.save(post);
+        log.info("Real estate post renewed: id={}, newValidTo={}", postId, saved.getValidTo());
         return saved;
     }
 

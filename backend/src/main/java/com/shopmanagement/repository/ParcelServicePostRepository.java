@@ -102,4 +102,11 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
                                        @Param("lat") double lat,
                                        @Param("lng") double lng,
                                        @Param("radiusKm") double radiusKm);
+
+    // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
+    List<ParcelServicePost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
+            LocalDateTime from, LocalDateTime to, List<ParcelServicePost.PostStatus> statuses);
+
+    // Expired posts: valid_to before cutoff, in active statuses
+    List<ParcelServicePost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<ParcelServicePost.PostStatus> statuses);
 }

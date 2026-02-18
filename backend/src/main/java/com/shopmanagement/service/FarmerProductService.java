@@ -109,6 +109,14 @@ public class FarmerProductService {
                 .featured(paidTokenId != null)
                 .build();
 
+        // Set validity dates
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("farm_products.post.duration_days", "60"));
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+
         FarmerProduct saved = farmerProductRepository.save(post);
 
         // Consume paid token if used
@@ -116,8 +124,8 @@ public class FarmerProductService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
         }
 
-        log.info("Farmer product created: id={}, title={}, seller={}, autoApproved={}, paid={}",
-                saved.getId(), title, username, autoApprove, paidTokenId != null);
+        log.info("Farmer product created: id={}, title={}, seller={}, autoApproved={}, paid={}, validTo={}",
+                saved.getId(), title, username, autoApprove, paidTokenId != null, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your farmer product '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
@@ -359,6 +367,40 @@ public class FarmerProductService {
 
         FarmerProduct saved = farmerProductRepository.save(post);
         log.info("Farmer product admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public FarmerProduct renewPost(Long postId, Long paidTokenId, String username) {
+        FarmerProduct post = farmerProductRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the seller can renew a post");
+        }
+
+        if (paidTokenId != null) {
+            if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                throw new RuntimeException("Invalid or expired payment token");
+            }
+            postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
+        }
+
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("farm_products.post.duration_days", "60"));
+
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+        post.setExpiryReminderSent(false);
+        post.setStatus(PostStatus.APPROVED);
+
+        FarmerProduct saved = farmerProductRepository.save(post);
+        log.info("Farmer product renewed: id={}, newValidTo={}", postId, saved.getValidTo());
         return saved;
     }
 

@@ -1,0 +1,271 @@
+{
+  "generated_at": "2026-02-16T02:16:16.318702",
+  "tests": [
+    {
+      "concurrent_users": 10,
+      "total_time_seconds": 57.12,
+      "total_requests": 750,
+      "endpoints": {
+        "Health Check": {
+          "total_requests": 50,
+          "successful": 0,
+          "failed": 50,
+          "success_rate": 0.0,
+          "avg_ms": 785.41,
+          "min_ms": 646.01,
+          "max_ms": 1963.39,
+          "median_ms": 701.01,
+          "p95_ms": 1445.52,
+          "p99_ms": 1963.39,
+          "status_codes": {
+            "403": 50
+          },
+          "errors": {
+            "HTTP 403: ": 50
+          },
+          "total_bytes": 0
+        },
+        "Health Ping": {
+          "total_requests": 50,
+          "successful": 0,
+          "failed": 50,
+          "success_rate": 0.0,
+          "avg_ms": 698.48,
+          "min_ms": 648.39,
+          "max_ms": 828.7,
+          "median_ms": 690.25,
+          "p95_ms": 763.33,
+          "p99_ms": 828.7,
+          "status_codes": {
+            "403": 50
+          },
+          "errors": {
+            "HTTP 403: ": 50
+          },
+          "total_bytes": 0
+        },
+        "Active Shops": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 734.69,
+          "min_ms": 663.15,
+          "max_ms": 993.82,
+          "median_ms": 719.29,
+          "p95_ms": 910.91,
+          "p99_ms": 993.82,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 193695
+        },
+        "Nearby Shops": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 706.0,
+          "min_ms": 659.1,
+          "max_ms": 770.09,
+          "median_ms": 702.82,
+          "p95_ms": 759.05,
+          "p99_ms": 770.09,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 9793
+        },
+        "Featured Shops": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 697.41,
+          "min_ms": 654.24,
+          "max_ms": 775.44,
+          "median_ms": 692.84,
+          "p95_ms": 751.1,
+          "p99_ms": 775.44,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 7245
+        },
+        "Featured Posts": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 740.67,
+          "min_ms": 685.96,
+          "max_ms": 830.44,
+          "median_ms": 735.41,
+          "p95_ms": 818.55,
+          "p99_ms": 830.44,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 120941
+        },
+        "Active Promotions": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 691.55,
+          "min_ms": 645.3,
+          "max_ms": 733.44,
+          "median_ms": 693.68,
+          "p95_ms": 731.89,
+          "p99_ms": 733.44,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 4700
+        },
+        "My Profile": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 703.48,
+          "min_ms": 654.51,
+          "max_ms": 793.9,
+          "median_ms": 697.17,
+          "p95_ms": 771.57,
+          "p99_ms": 793.9,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 49239
+        },
+        "Dashboard Summary": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 710.5,
+          "min_ms": 653.83,
+          "max_ms": 813.88,
+          "median_ms": 709.22,
+          "p95_ms": 776.71,
+          "p99_ms": 813.88,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 5041
+        },
+        "All Users (page 0)": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 754.28,
+          "min_ms": 672.38,
+          "max_ms": 1083.71,
+          "median_ms": 734.11,
+          "p95_ms": 883.39,
+          "p99_ms": 1083.71,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 421744
+        },
+        "All Shops (page 0)": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 765.58,
+          "min_ms": 666.78,
+          "max_ms": 1110.3,
+          "median_ms": 728.61,
+          "p95_ms": 1085.33,
+          "p99_ms": 1110.3,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 184197
+        },
+        "All Orders (page 0)": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 1121.29,
+          "min_ms": 917.28,
+          "max_ms": 1563.87,
+          "median_ms": 1049.47,
+          "p95_ms": 1500.44,
+          "p99_ms": 1563.87,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 1734644
+        },
+        "All Products (page 0)": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 737.39,
+          "min_ms": 670.41,
+          "max_ms": 842.89,
+          "median_ms": 731.2,
+          "p95_ms": 832.78,
+          "p99_ms": 842.89,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 10942
+        },
+        "Notifications (user 1)": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 780.95,
+          "min_ms": 707.95,
+          "max_ms": 950.86,
+          "median_ms": 763.45,
+          "p95_ms": 934.24,
+          "p99_ms": 950.86,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 558000
+        },
+        "Shop Statistics": {
+          "total_requests": 50,
+          "successful": 50,
+          "failed": 0,
+          "success_rate": 100.0,
+          "avg_ms": 713.31,
+          "min_ms": 662.6,
+          "max_ms": 772.85,
+          "median_ms": 716.43,
+          "p95_ms": 762.61,
+          "p99_ms": 772.85,
+          "status_codes": {
+            "200": 50
+          },
+          "errors": {},
+          "total_bytes": 10395
+        }
+      }
+    }
+  ]
+}

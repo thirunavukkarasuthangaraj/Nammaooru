@@ -283,6 +283,21 @@ public class TravelPostController {
         }
     }
 
+    @PutMapping("/{id}/renew")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TravelPost>> renewPost(
+            @PathVariable Long id,
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+        try {
+            String username = getCurrentUsername();
+            TravelPost post = travelPostService.renewPost(id, paidTokenId, username);
+            return ResponseUtil.success(post, "Post renewed successfully");
+        } catch (Exception e) {
+            log.error("Error renewing travel post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

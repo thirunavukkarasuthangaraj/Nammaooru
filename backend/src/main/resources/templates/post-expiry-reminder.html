@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Expiring Soon - NammaOoru</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #f39c12;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .post-details {
+            background-color: #fff3cd;
+            padding: 20px;
+            border-left: 4px solid #f39c12;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .post-details p {
+            margin: 8px 0;
+        }
+        .action-box {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .action-box h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .renew-btn {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .highlight {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #34495e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Post Expiring Soon</h1>
+            <p>Your post will expire and be removed automatically</p>
+        </div>
+
+        <div class="content">
+            <h2>Hello <span th:text="${ownerName}">User</span>,</h2>
+
+            <p>We wanted to let you know that your post on NammaOoru is expiring soon. After expiry, the post will no longer be visible and will be automatically deleted.</p>
+
+            <div class="post-details">
+                <p><strong>Post Title:</strong> <span th:text="${postTitle}">Post Title</span></p>
+                <p><strong>Category:</strong> <span th:text="${category}">Category</span></p>
+                <p><strong>Expires On:</strong> <span class="highlight" th:text="${expiryDate}">01 Jan 2026</span></p>
+            </div>
+
+            <div class="action-box">
+                <h3>Want to keep your post visible?</h3>
+                <p>Open the NammaOoru app and tap "Renew" on your post to extend its validity.</p>
+            </div>
+
+            <p>If you no longer need this post, no action is required. It will be automatically removed after the grace period.</p>
+
+            <p>Best regards,<br/>The NammaOoru Team</p>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2025 <span th:text="${companyName}">NammaOoru</span>. All rights reserved.</p>
+            <p>Need help? Contact us at <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}">support@nammaooru.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -104,6 +104,14 @@ public class MarketplaceService {
                 .featured(paidTokenId != null)
                 .build();
 
+        // Set validity dates
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("marketplace.post.duration_days", "30"));
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+
         MarketplacePost saved = marketplacePostRepository.save(post);
 
         // Consume paid token if used
@@ -111,8 +119,8 @@ public class MarketplaceService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
         }
 
-        log.info("Marketplace post created: id={}, title={}, seller={}, autoApproved={}, paid={}",
-                saved.getId(), title, username, autoApprove, paidTokenId != null);
+        log.info("Marketplace post created: id={}, title={}, seller={}, autoApproved={}, paid={}, validTo={}",
+                saved.getId(), title, username, autoApprove, paidTokenId != null, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your post '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
@@ -345,6 +353,41 @@ public class MarketplaceService {
 
         MarketplacePost saved = marketplacePostRepository.save(post);
         log.info("Marketplace post admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public MarketplacePost renewPost(Long postId, Long paidTokenId, String username) {
+        MarketplacePost post = marketplacePostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the seller can renew a post");
+        }
+
+        // Validate paid token if provided
+        if (paidTokenId != null) {
+            if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                throw new RuntimeException("Invalid or expired payment token");
+            }
+            postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
+        }
+
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("marketplace.post.duration_days", "30"));
+
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+        post.setExpiryReminderSent(false);
+        post.setStatus(PostStatus.APPROVED);
+
+        MarketplacePost saved = marketplacePostRepository.save(post);
+        log.info("Marketplace post renewed: id={}, newValidTo={}", postId, saved.getValidTo());
         return saved;
     }
 

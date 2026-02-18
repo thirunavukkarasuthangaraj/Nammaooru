@@ -101,4 +101,11 @@ public interface MarketplacePostRepository extends JpaRepository<MarketplacePost
                                     @Param("lat") double lat,
                                     @Param("lng") double lng,
                                     @Param("radiusKm") double radiusKm);
+
+    // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
+    List<MarketplacePost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
+            LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);
+
+    // Expired posts: valid_to before cutoff, in active statuses
+    List<MarketplacePost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
 }

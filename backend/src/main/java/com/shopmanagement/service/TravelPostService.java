@@ -120,6 +120,14 @@ public class TravelPostService {
                 .featured(paidTokenId != null)
                 .build();
 
+        // Set validity dates
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("travels.post.duration_days", "30"));
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+
         TravelPost saved = travelPostRepository.save(post);
 
         // Consume paid token if used
@@ -127,8 +135,8 @@ public class TravelPostService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
         }
 
-        log.info("Travel post created: id={}, title={}, vehicleType={}, poster={}, autoApproved={}, paid={}",
-                saved.getId(), title, vehicleType, username, autoApprove, paidTokenId != null);
+        log.info("Travel post created: id={}, title={}, vehicleType={}, poster={}, autoApproved={}, paid={}, validTo={}",
+                saved.getId(), title, vehicleType, username, autoApprove, paidTokenId != null, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your travel listing for '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");
@@ -384,6 +392,40 @@ public class TravelPostService {
 
         TravelPost saved = travelPostRepository.save(post);
         log.info("Travel post admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public TravelPost renewPost(Long postId, Long paidTokenId, String username) {
+        TravelPost post = travelPostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the seller can renew a post");
+        }
+
+        if (paidTokenId != null) {
+            if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                throw new RuntimeException("Invalid or expired payment token");
+            }
+            postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
+        }
+
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("travels.post.duration_days", "30"));
+
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+        post.setExpiryReminderSent(false);
+        post.setStatus(PostStatus.APPROVED);
+
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post renewed: id={}, newValidTo={}", postId, saved.getValidTo());
         return saved;
     }
 

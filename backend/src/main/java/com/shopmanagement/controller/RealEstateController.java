@@ -286,6 +286,19 @@ public class RealEstateController {
         }
     }
 
+    @PutMapping("/{id}/renew")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<RealEstatePost>> renewPost(@PathVariable Long id) {
+        try {
+            String username = getCurrentUsername();
+            RealEstatePost post = realEstateService.renewPost(id, username);
+            return ResponseUtil.success(post, "Property listing renewed successfully");
+        } catch (Exception e) {
+            log.error("Error renewing real estate post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

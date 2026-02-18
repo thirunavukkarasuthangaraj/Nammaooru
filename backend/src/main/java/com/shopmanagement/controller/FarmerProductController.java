@@ -277,6 +277,21 @@ public class FarmerProductController {
         }
     }
 
+    @PutMapping("/{id}/renew")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<FarmerProduct>> renewPost(
+            @PathVariable Long id,
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+        try {
+            String username = getCurrentUsername();
+            FarmerProduct post = farmerProductService.renewPost(id, paidTokenId, username);
+            return ResponseUtil.success(post, "Post renewed successfully");
+        } catch (Exception e) {
+            log.error("Error renewing farmer product post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

@@ -82,6 +82,16 @@ public class TravelPost {
     @Builder.Default
     private Boolean isPaid = false;
 
+    @Column(name = "valid_from")
+    private LocalDateTime validFrom;
+
+    @Column(name = "valid_to")
+    private LocalDateTime validTo;
+
+    @Column(name = "expiry_reminder_sent")
+    @Builder.Default
+    private Boolean expiryReminderSent = false;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

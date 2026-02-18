@@ -116,6 +116,14 @@ public class LabourPostService {
                 .featured(paidTokenId != null)
                 .build();
 
+        // Set validity dates
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("labours.post.duration_days", "60"));
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+
         LabourPost saved = labourPostRepository.save(post);
 
         // Consume paid token if used
@@ -123,8 +131,8 @@ public class LabourPostService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
         }
 
-        log.info("Labour post created: id={}, name={}, category={}, poster={}, autoApproved={}, paid={}",
-                saved.getId(), name, category, username, autoApprove, paidTokenId != null);
+        log.info("Labour post created: id={}, name={}, category={}, poster={}, autoApproved={}, paid={}, validTo={}",
+                saved.getId(), name, category, username, autoApprove, paidTokenId != null, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your labour listing for '" + saved.getName() + "' has been auto-approved and is now visible to others.");
@@ -378,6 +386,40 @@ public class LabourPostService {
 
         LabourPost saved = labourPostRepository.save(post);
         log.info("Labour post admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public LabourPost renewPost(Long postId, Long paidTokenId, String username) {
+        LabourPost post = labourPostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the seller can renew a post");
+        }
+
+        if (paidTokenId != null) {
+            if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                throw new RuntimeException("Invalid or expired payment token");
+            }
+            postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
+        }
+
+        int durationDays = Integer.parseInt(
+                settingService.getSettingValue("labours.post.duration_days", "60"));
+
+        post.setValidFrom(LocalDateTime.now());
+        if (durationDays > 0) {
+            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
+        }
+        post.setExpiryReminderSent(false);
+        post.setStatus(PostStatus.APPROVED);
+
+        LabourPost saved = labourPostRepository.save(post);
+        log.info("Labour post renewed: id={}, newValidTo={}", postId, saved.getValidTo());
         return saved;
     }
 
