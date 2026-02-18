@@ -1,5 +1,7 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.dto.setting.SettingRequest;
 import com.shopmanagement.dto.setting.SettingResponse;
 import com.shopmanagement.entity.Setting;
@@ -64,6 +66,14 @@ public class SettingController {
         return ResponseEntity.ok(value);
     }
     
+    @PutMapping("/bulk")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<List<SettingResponse>>> bulkUpdateSettings(@RequestBody Map<String, String> settings) {
+        log.info("Bulk updating {} settings", settings.size());
+        List<SettingResponse> responses = settingService.bulkUpdateSettings(settings);
+        return ResponseUtil.success(responses, "Settings updated successfully");
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<SettingResponse> updateSetting(@PathVariable Long id, @Valid @RequestBody SettingRequest request) {
@@ -104,6 +114,14 @@ public class SettingController {
         return ResponseEntity.ok().build();
     }
     
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<List<SettingResponse>>> getAllSettingsFlat() {
+        log.info("Fetching all settings (flat list)");
+        List<SettingResponse> response = settingService.getAllSettingsFlat();
+        return ResponseUtil.success(response, "Settings retrieved successfully");
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<Page<SettingResponse>> getAllSettings(

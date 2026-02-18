@@ -176,6 +176,47 @@ public class SettingService {
         return mapToResponse(updatedSetting);
     }
     
+    @Transactional
+    public List<SettingResponse> bulkUpdateSettings(Map<String, String> settings) {
+        log.info("Bulk updating {} settings", settings.size());
+        String username = getCurrentUsername();
+        return settings.entrySet().stream().map(entry -> {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            Setting setting = settingRepository.findBySettingKey(key).orElse(null);
+            if (setting == null) {
+                // Create new setting if it doesn't exist
+                setting = new Setting();
+                setting.setSettingKey(key);
+                setting.setSettingValue(value);
+                setting.setDescription("Auto-created via bulk update");
+                setting.setCategory("PAYMENT");
+                setting.setSettingType(Setting.SettingType.STRING);
+                setting.setScope(Setting.SettingScope.GLOBAL);
+                setting.setIsActive(true);
+                setting.setIsRequired(false);
+                setting.setIsReadOnly(false);
+                setting.setDefaultValue(value);
+                setting.setDisplayOrder(0);
+                setting.setCreatedBy(username);
+                setting.setUpdatedBy(username);
+            } else {
+                if (setting.getIsReadOnly()) {
+                    log.warn("Skipping read-only setting: {}", key);
+                    return mapToResponse(setting);
+                }
+                setting.setSettingValue(value);
+                setting.setUpdatedBy(username);
+            }
+            return mapToResponse(settingRepository.save(setting));
+        }).collect(Collectors.toList());
+    }
+
+    public List<SettingResponse> getAllSettingsFlat() {
+        List<Setting> settings = settingRepository.findAll(Sort.by(Sort.Direction.ASC, "category", "settingKey"));
+        return settings.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     public Page<SettingResponse> getAllSettings(int page, int size, String sortBy, String sortDirection) {
         Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
