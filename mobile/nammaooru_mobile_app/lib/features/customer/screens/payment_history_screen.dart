@@ -443,16 +443,4 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     );
   }
 
-  String _formatAmount(dynamic amount) {
-    if (amount == null) return '0';
-    if (amount is int) return amount.toString();
-    if (amount is double) {
-      // Show decimals only if they are non-zero
-      if (amount == amount.truncateToDouble()) {
-        return amount.toInt().toString();
-      }
-      return amount.toStringAsFixed(2);
-    }
-    return amount.toString();
-  }
 }

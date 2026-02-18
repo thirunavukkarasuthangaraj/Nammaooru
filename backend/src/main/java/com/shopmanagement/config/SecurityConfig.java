@@ -95,8 +95,8 @@ public class SecurityConfig {
                                 "/api/labours/*",  // Public: View single labour post by ID
                                 "/api/travels",  // Public: View approved travel posts
                                 "/api/travels/*",  // Public: View single travel post by ID
-                                "/api/parcel-services",  // Public: View approved parcel posts
-                                "/api/parcel-services/*",  // Public: View single parcel post by ID
+                                "/api/parcels",  // Public: View approved parcel posts
+                                "/api/parcels/*",  // Public: View single parcel post by ID
                                 "/api/delivery/confirmation/**",  // Allow OTP verification
                                 "/api/customer/shops/**",
                                 "/api/featured-posts",  // Public: Get featured posts for mobile banner

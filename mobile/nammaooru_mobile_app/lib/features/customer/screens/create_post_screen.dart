@@ -31,6 +31,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _selectedCategory = 'Other';
   File? _selectedImage;
   bool _isSubmitting = false;
+  int? _paidTokenId;
   double? _latitude;
   double? _longitude;
 
@@ -189,6 +190,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Use stored token if available (retry after failed post creation)
+    final tokenToUse = paidTokenId ?? _paidTokenId;
+
     setState(() {
       _isSubmitting = true;
     });
@@ -204,13 +208,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         category: _selectedCategory,
         location: _locationController.text.trim(),
         imagePath: _selectedImage?.path,
-        paidTokenId: paidTokenId,
+        paidTokenId: tokenToUse,
         latitude: _latitude,
         longitude: _longitude,
       );
 
       if (mounted) {
         if (result['success'] == true) {
+          _paidTokenId = null; // Clear token after successful post
           _showSuccessDialog();
         } else if (PostPaymentHandler.isLimitReached(result)) {
           setState(() { _isSubmitting = false; });
@@ -248,6 +253,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       postType: 'MARKETPLACE',
       onPaymentSuccess: () {},
       onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId; // Store token for retry if post creation fails
         _submitPost(paidTokenId: tokenId);
       },
       onPaymentCancelled: () {},

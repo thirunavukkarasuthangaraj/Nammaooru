@@ -32,6 +32,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   final List<File> _selectedImages = [];
   static const int _maxImages = 3;
   bool _isSubmitting = false;
+  int? _paidTokenId;
   double? _latitude;
   double? _longitude;
 
@@ -254,6 +255,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
 
+    final tokenToUse = paidTokenId ?? _paidTokenId;
+
     setState(() {
       _isSubmitting = true;
     });
@@ -271,11 +274,12 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
             : null,
         latitude: _latitude,
         longitude: _longitude,
-        paidTokenId: paidTokenId,
+        paidTokenId: tokenToUse,
       );
 
       if (mounted) {
         if (result['success'] == true) {
+          _paidTokenId = null;
           _showSuccessDialog();
         } else if (PostPaymentHandler.isLimitReached(result)) {
           setState(() { _isSubmitting = false; });
@@ -313,6 +317,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
       postType: 'LABOURS',
       onPaymentSuccess: () {},
       onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId);
       },
       onPaymentCancelled: () {},
