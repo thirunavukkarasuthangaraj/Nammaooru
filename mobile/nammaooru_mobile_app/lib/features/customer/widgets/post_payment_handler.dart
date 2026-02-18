@@ -117,7 +117,7 @@ class PostPaymentHandler {
                   ),
                   const SizedBox(height: 8),
                   _buildPriceRow(
-                    lang.getText('Processing Fee + GST', 'செயலாக்கக் கட்டணம் + GST'),
+                    lang.getText('Transaction Fee', 'பரிவர்த்தனை கட்டணம்'),
                     '\u20B9$feeDisplay',
                     isBold: false,
                     color: Colors.orange.shade700,

@@ -167,6 +167,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'App Configuration', icon: 'tune', route: '/admin/config', badge: null },
         { title: 'Feature Config', icon: 'toggle_on', route: '/admin/feature-config', badge: null },
         { title: 'Post Limits', icon: 'rule', route: '/admin/post-limits', badge: null },
+        { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
         { title: 'Menu Permissions', icon: 'menu_open', route: '/admin/menu-permissions', badge: null },
         { title: 'Delivery Fee Management', icon: 'local_shipping', route: '/admin/delivery-fees', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null },
@@ -251,6 +252,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Settings', icon: 'settings', route: '/settings', badge: null },
         { title: 'Feature Config', icon: 'toggle_on', route: '/admin/feature-config', badge: null },
         { title: 'Post Limits', icon: 'rule', route: '/admin/post-limits', badge: null },
+        { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
         { title: 'Notifications', icon: 'notifications', route: '/notifications', badge: null }
       ]
     }

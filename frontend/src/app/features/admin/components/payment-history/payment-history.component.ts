@@ -10,6 +10,8 @@ import { PaymentService } from '../../services/payment.service';
 export class PaymentHistoryComponent implements OnInit {
   // Stats
   totalCollected = 0;
+  baseAmountCollected = 0;
+  processingFeeCollected = 0;
   successfulPayments = 0;
   failedPayments = 0;
   pendingPayments = 0;
@@ -23,7 +25,7 @@ export class PaymentHistoryComponent implements OnInit {
   totalElements = 0;
   pageSize = 20;
   pageIndex = 0;
-  displayedColumns: string[] = ['id', 'user', 'postType', 'amount', 'status', 'razorpayPaymentId', 'createdAt', 'paidAt'];
+  displayedColumns: string[] = ['id', 'user', 'postType', 'amount', 'processingFee', 'totalAmount', 'status', 'createdAt', 'paidAt'];
 
   // Loading states
   statsLoading = true;
@@ -44,6 +46,8 @@ export class PaymentHistoryComponent implements OnInit {
       next: (response: any) => {
         const data = response.data || response;
         this.totalCollected = data.totalCollected || 0;
+        this.baseAmountCollected = data.baseAmountCollected || 0;
+        this.processingFeeCollected = data.processingFeeCollected || 0;
         this.successfulPayments = data.successfulPayments || 0;
         this.failedPayments = data.failedPayments || 0;
         this.pendingPayments = data.pendingPayments || 0;

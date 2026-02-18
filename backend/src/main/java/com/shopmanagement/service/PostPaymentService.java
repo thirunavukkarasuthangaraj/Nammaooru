@@ -191,37 +191,42 @@ public class PostPaymentService {
         long totalPaid = postPaymentRepository.countByStatus(PostPayment.PaymentStatus.PAID);
         long totalFailed = postPaymentRepository.countByStatus(PostPayment.PaymentStatus.FAILED);
         long totalCreated = postPaymentRepository.countByStatus(PostPayment.PaymentStatus.CREATED);
-        long totalCollected = postPaymentRepository.sumTotalAmountByStatusPaid();
-        long baseAmountCollected = postPaymentRepository.sumAmountByStatusPaid();
-        long processingFeeCollected = postPaymentRepository.sumProcessingFeeByStatusPaid();
+        // totalAmount and processingFee are stored in paise, amount in rupees
+        long totalCollectedPaise = postPaymentRepository.sumTotalAmountByStatusPaid();
+        long baseAmountRupees = postPaymentRepository.sumAmountByStatusPaid();
+        long processingFeePaise = postPaymentRepository.sumProcessingFeeByStatusPaid();
 
-        // Processing fee covers Razorpay's cut, so net = base amount
+        // Convert to rupees for display
+        double totalCollected = totalCollectedPaise / 100.0;
+        double processingFeeCollected = processingFeePaise / 100.0;
+
         // Razorpay fee breakdown: 2% base fee + 18% GST on fee
-        long razorpayBaseFee = Math.round(totalCollected * 2.0 / 100.0);
-        long gstOnFee = Math.round(razorpayBaseFee * 18.0 / 100.0);
-        long totalRazorpayFee = razorpayBaseFee + gstOnFee;
-        long netAmount = totalCollected - totalRazorpayFee;
+        double razorpayBaseFee = totalCollected * 2.0 / 100.0;
+        double gstOnFee = razorpayBaseFee * 18.0 / 100.0;
+        double totalRazorpayFee = razorpayBaseFee + gstOnFee;
+        double netAmount = totalCollected - totalRazorpayFee;
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalPayments", totalPaid + totalFailed + totalCreated);
         stats.put("successfulPayments", totalPaid);
         stats.put("failedPayments", totalFailed);
         stats.put("pendingPayments", totalCreated);
-        stats.put("totalCollected", totalCollected);
-        stats.put("baseAmountCollected", baseAmountCollected);
-        stats.put("processingFeeCollected", processingFeeCollected);
-        stats.put("razorpayFee", totalRazorpayFee);
-        stats.put("gstOnFee", gstOnFee);
-        stats.put("netAmount", netAmount);
+        stats.put("totalCollected", Math.round(totalCollected * 100.0) / 100.0);
+        stats.put("baseAmountCollected", baseAmountRupees);
+        stats.put("processingFeeCollected", Math.round(processingFeeCollected * 100.0) / 100.0);
+        stats.put("razorpayFee", Math.round(totalRazorpayFee * 100.0) / 100.0);
+        stats.put("gstOnFee", Math.round(gstOnFee * 100.0) / 100.0);
+        stats.put("netAmount", Math.round(netAmount * 100.0) / 100.0);
 
-        // Breakdown by post type
+        // Breakdown by post type (totalAmount is in paise, convert to rupees)
         List<Object[]> byPostType = postPaymentRepository.getStatsByPostType();
         List<Map<String, Object>> postTypeStats = new ArrayList<>();
         for (Object[] row : byPostType) {
             Map<String, Object> pt = new HashMap<>();
             pt.put("postType", row[0]);
             pt.put("count", row[1]);
-            pt.put("amount", row[2]);
+            long amountPaise = ((Number) row[2]).longValue();
+            pt.put("amount", Math.round(amountPaise / 100.0 * 100.0) / 100.0);
             postTypeStats.add(pt);
         }
         stats.put("byPostType", postTypeStats);
