@@ -41,8 +41,8 @@ cd $PROJECT_DIR
 
 # Step 1: Build new image
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-log_step "Building new backend image..."
-docker-compose -f $COMPOSE_FILE build backend
+log_step "Building new backend image (no cache)..."
+docker-compose -f $COMPOSE_FILE build --no-cache backend
 
 # Step 2: Get current backend
 OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
