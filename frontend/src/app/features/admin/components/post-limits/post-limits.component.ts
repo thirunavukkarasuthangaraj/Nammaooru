@@ -21,6 +21,9 @@ export class PostLimitsComponent implements OnInit {
   isLoading = true;
   showForm = false;
   limitForm!: FormGroup;
+  lookupResult: any = null;
+  lookupError: string = '';
+  lookupLoading = false;
 
   featureNames = [
     { value: 'PARCEL_SERVICE', label: 'Parcel Service' },
@@ -30,7 +33,7 @@ export class PostLimitsComponent implements OnInit {
     { value: 'TRAVELS', label: 'Travels' }
   ];
 
-  displayedColumns: string[] = ['userId', 'featureName', 'maxPosts', 'createdAt', 'actions'];
+  displayedColumns: string[] = ['userInfo', 'featureName', 'maxPosts', 'createdAt', 'actions'];
   globalDisplayedColumns: string[] = ['featureName', 'maxPosts', 'actions'];
 
   constructor(
@@ -48,7 +51,7 @@ export class PostLimitsComponent implements OnInit {
 
   initForm(): void {
     this.limitForm = this.fb.group({
-      userId: [null, [Validators.required, Validators.min(1)]],
+      userIdentifier: ['', [Validators.required]],
       featureName: ['', Validators.required],
       maxPosts: [5, [Validators.required, Validators.min(0)]]
     });
@@ -117,24 +120,57 @@ export class PostLimitsComponent implements OnInit {
 
   openAddForm(): void {
     this.limitForm.reset({ maxPosts: 5 });
+    this.lookupResult = null;
+    this.lookupError = '';
     this.showForm = true;
   }
 
   cancelForm(): void {
     this.showForm = false;
+    this.lookupResult = null;
+    this.lookupError = '';
+  }
+
+  lookupUser(): void {
+    const query = this.limitForm.get('userIdentifier')?.value?.trim();
+    if (!query) return;
+
+    this.lookupLoading = true;
+    this.lookupResult = null;
+    this.lookupError = '';
+
+    this.postLimitsService.lookupUser(query).subscribe({
+      next: (response: any) => {
+        this.lookupResult = response.data;
+        this.lookupLoading = false;
+      },
+      error: () => {
+        this.lookupError = 'No user found with this mobile number or email';
+        this.lookupLoading = false;
+      }
+    });
   }
 
   saveLimit(): void {
     if (this.limitForm.invalid) return;
 
-    const limit: UserPostLimit = this.limitForm.value;
-    this.postLimitsService.createOrUpdate(limit).subscribe({
+    const formValue = this.limitForm.value;
+    this.postLimitsService.createOrUpdate({
+      userIdentifier: formValue.userIdentifier.trim(),
+      featureName: formValue.featureName,
+      maxPosts: formValue.maxPosts
+    }).subscribe({
       next: () => {
         this.snackBar.open('User override saved successfully', 'Close', { duration: 3000 });
         this.showForm = false;
+        this.lookupResult = null;
+        this.lookupError = '';
         this.loadLimits();
       },
-      error: () => this.snackBar.open('Failed to save user override', 'Close', { duration: 3000 })
+      error: (err: any) => {
+        const msg = err?.error?.message || 'Failed to save user override';
+        this.snackBar.open(msg, 'Close', { duration: 4000 });
+      }
     });
   }
 

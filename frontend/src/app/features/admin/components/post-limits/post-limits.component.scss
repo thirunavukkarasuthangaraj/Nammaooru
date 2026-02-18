@@ -171,6 +171,61 @@
   }
 }
 
+.user-lookup-field {
+  ::ng-deep .mat-mdc-form-field-icon-suffix {
+    padding: 0;
+  }
+}
+
+.lookup-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.lookup-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+
+  &.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+
+    mat-icon {
+      color: #4caf50;
+    }
+  }
+
+  &.error {
+    background: #fbe9e7;
+    color: #c62828;
+
+    mat-icon {
+      color: #e53935;
+    }
+  }
+}
+
+.user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+
+  small {
+    font-size: 12px;
+    color: #666;
+  }
+}
+
 @media (max-width: 768px) {
   .post-limits-management {
     padding: 16px;

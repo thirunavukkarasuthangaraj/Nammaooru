@@ -33,10 +33,27 @@ public class UserPostLimitController {
 
     @GetMapping("/api/admin/post-limits")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<List<UserPostLimit>>> getAllLimits() {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllLimits() {
         try {
             List<UserPostLimit> limits = userPostLimitService.getAllLimits();
-            return ResponseUtil.success(limits, "Post limits retrieved successfully");
+            List<Map<String, Object>> enrichedLimits = limits.stream().map(limit -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", limit.getId());
+                map.put("userId", limit.getUserId());
+                map.put("featureName", limit.getFeatureName());
+                map.put("maxPosts", limit.getMaxPosts());
+                map.put("createdAt", limit.getCreatedAt());
+                map.put("updatedAt", limit.getUpdatedAt());
+                // Enrich with user info
+                userRepository.findById(limit.getUserId()).ifPresent(user -> {
+                    map.put("userName", (user.getFirstName() != null ? user.getFirstName() : "") +
+                            (user.getLastName() != null ? " " + user.getLastName() : ""));
+                    map.put("mobileNumber", user.getMobileNumber());
+                    map.put("email", user.getEmail());
+                });
+                return map;
+            }).collect(java.util.stream.Collectors.toList());
+            return ResponseUtil.success(enrichedLimits, "Post limits retrieved successfully");
         } catch (Exception e) {
             log.error("Error fetching post limits", e);
             return ResponseUtil.error(e.getMessage());
@@ -57,10 +74,27 @@ public class UserPostLimitController {
 
     @PostMapping("/api/admin/post-limits")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<UserPostLimit>> createOrUpdateLimit(@RequestBody UserPostLimit request) {
+    public ResponseEntity<ApiResponse<UserPostLimit>> createOrUpdateLimit(@RequestBody Map<String, Object> request) {
         try {
-            UserPostLimit limit = userPostLimitService.createOrUpdate(
-                    request.getUserId(), request.getFeatureName(), request.getMaxPosts());
+            Long userId;
+            String userIdentifier = request.get("userIdentifier") != null ? request.get("userIdentifier").toString().trim() : null;
+
+            if (userIdentifier != null && !userIdentifier.isEmpty()) {
+                // Look up user by mobile number or email
+                User user = userRepository.findByMobileNumber(userIdentifier)
+                        .or(() -> userRepository.findByEmail(userIdentifier))
+                        .orElseThrow(() -> new RuntimeException("No user found with mobile number or email: " + userIdentifier));
+                userId = user.getId();
+            } else if (request.get("userId") != null) {
+                userId = Long.parseLong(request.get("userId").toString());
+            } else {
+                throw new RuntimeException("Please provide mobile number or email");
+            }
+
+            String featureName = request.get("featureName").toString();
+            Integer maxPosts = Integer.parseInt(request.get("maxPosts").toString());
+
+            UserPostLimit limit = userPostLimitService.createOrUpdate(userId, featureName, maxPosts);
             return ResponseUtil.success(limit, "Post limit saved successfully");
         } catch (Exception e) {
             log.error("Error saving post limit", e);
@@ -76,6 +110,28 @@ public class UserPostLimitController {
             return ResponseUtil.success(null, "Post limit deleted successfully");
         } catch (Exception e) {
             log.error("Error deleting post limit: {}", id, e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/api/admin/post-limits/lookup-user")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> lookupUser(@RequestParam String query) {
+        try {
+            String trimmedQuery = query.trim();
+            User user = userRepository.findByMobileNumber(trimmedQuery)
+                    .or(() -> userRepository.findByEmail(trimmedQuery))
+                    .orElseThrow(() -> new RuntimeException("No user found with mobile number or email: " + trimmedQuery));
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", user.getId());
+            result.put("firstName", user.getFirstName());
+            result.put("lastName", user.getLastName());
+            result.put("mobileNumber", user.getMobileNumber());
+            result.put("email", user.getEmail());
+            return ResponseUtil.success(result, "User found");
+        } catch (Exception e) {
+            log.error("Error looking up user: {}", query, e);
             return ResponseUtil.error(e.getMessage());
         }
     }

@@ -10,6 +10,9 @@ export interface UserPostLimit {
   maxPosts: number;
   createdAt?: string;
   updatedAt?: string;
+  userName?: string;
+  mobileNumber?: string;
+  email?: string;
 }
 
 @Injectable({
@@ -28,8 +31,12 @@ export class PostLimitsService {
     return this.http.get(`${this.apiUrl}/user/${userId}`);
   }
 
-  createOrUpdate(limit: UserPostLimit): Observable<any> {
-    return this.http.post(this.apiUrl, limit);
+  createOrUpdate(data: { userIdentifier: string; featureName: string; maxPosts: number }): Observable<any> {
+    return this.http.post(this.apiUrl, data);
+  }
+
+  lookupUser(query: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/lookup-user`, { params: { query } });
   }
 
   deleteLimit(id: number): Observable<any> {
