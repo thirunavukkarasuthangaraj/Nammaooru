@@ -5,7 +5,16 @@ services:
   backend:
     build:
       context: ./backend
+      # Limit build memory so it doesn't kill running app
+      args:
+        - MAVEN_OPTS=-Xmx512m
     # REMOVED container_name to allow multiple instances
+    # Limit runtime CPU/memory
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 512M
     environment:
       # JVM memory limits (prevent swap on 4GB server)
       - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseG1GC -XX:MaxMetaspaceSize=128m

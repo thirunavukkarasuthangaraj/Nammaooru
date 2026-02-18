@@ -1,6 +1,10 @@
 # Multi-stage build for Spring Boot application
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 
+# Limit Maven memory during build
+ARG MAVEN_OPTS=-Xmx512m
+ENV MAVEN_OPTS=${MAVEN_OPTS}
+
 # Set working directory
 WORKDIR /app
 
