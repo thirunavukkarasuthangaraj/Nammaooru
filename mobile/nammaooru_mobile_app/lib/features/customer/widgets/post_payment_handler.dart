@@ -42,7 +42,7 @@ class PostPaymentHandler {
     final lang = Provider.of<LanguageProvider>(context, listen: false);
 
     // Get config first
-    final configResult = await PostPaymentService.getConfig();
+    final configResult = await PostPaymentService.getConfig(postType: postType);
     if (configResult['success'] != true) {
       _showError(lang.getText(
         'Unable to load payment config. Please try again.',

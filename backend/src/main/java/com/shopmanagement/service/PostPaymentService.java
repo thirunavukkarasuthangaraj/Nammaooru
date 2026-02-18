@@ -42,14 +42,21 @@ public class PostPaymentService {
 
     private static final double PROCESSING_FEE_PERCENT = 2.36; // Razorpay 2% + 18% GST
 
-    public Map<String, Object> getPaymentConfig() {
+    public Map<String, Object> getPaymentConfig(String postType) {
         boolean enabled = Boolean.parseBoolean(
                 settingService.getSettingValue("paid_post.enabled", "true"));
-        int price = Integer.parseInt(
-                settingService.getSettingValue("paid_post.price", "10"));
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
 
-        // Calculate processing fee in paise, then convert to rupees
+        // Per-type price with global fallback
+        String globalDefault = settingService.getSettingValue("paid_post.price", "10");
+        int price;
+        if (postType != null && !postType.isEmpty()) {
+            price = Integer.parseInt(
+                    settingService.getSettingValue("paid_post.price." + postType, globalDefault));
+        } else {
+            price = Integer.parseInt(globalDefault);
+        }
+
         int processingFeePaise = (int) Math.ceil(price * PROCESSING_FEE_PERCENT);
         int totalAmountPaise = (price * 100) + processingFeePaise;
 
@@ -66,8 +73,9 @@ public class PostPaymentService {
 
     @Transactional
     public Map<String, Object> createOrder(Long userId, String postType) throws RazorpayException {
+        String globalDefault = settingService.getSettingValue("paid_post.price", "10");
         int priceInRupees = Integer.parseInt(
-                settingService.getSettingValue("paid_post.price", "10"));
+                settingService.getSettingValue("paid_post.price." + postType, globalDefault));
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
 
         // Calculate processing fee and total

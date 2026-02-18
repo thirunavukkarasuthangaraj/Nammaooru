@@ -18,6 +18,7 @@ interface MarketplacePost {
   category: string;
   location: string;
   featured: boolean;
+  isPaid: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;

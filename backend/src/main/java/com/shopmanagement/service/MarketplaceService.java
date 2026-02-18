@@ -100,6 +100,7 @@ public class MarketplaceService {
                 .latitude(latitude)
                 .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .isPaid(paidTokenId != null)
                 .build();
 
         MarketplacePost saved = marketplacePostRepository.save(post);

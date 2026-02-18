@@ -23,6 +23,7 @@ interface RealEstatePost {
   ownerPhone: string;
   viewsCount: number;
   isFeatured: boolean;
+  isPaid: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;

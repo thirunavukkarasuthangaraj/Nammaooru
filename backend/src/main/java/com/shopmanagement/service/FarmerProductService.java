@@ -105,6 +105,7 @@ public class FarmerProductService {
                 .latitude(latitude)
                 .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .isPaid(paidTokenId != null)
                 .build();
 
         FarmerProduct saved = farmerProductRepository.save(post);

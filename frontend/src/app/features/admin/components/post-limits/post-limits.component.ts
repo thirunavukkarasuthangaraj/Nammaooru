@@ -36,10 +36,21 @@ export class PostLimitsComponent implements OnInit {
 
   // Paid post config
   paidPostEnabled = false;
-  paidPostPrice = 10;
   paidPostCurrency = 'INR';
   paidPostLoading = true;
   paidPostSaving = false;
+
+  // Per-type pricing
+  postTypePrices: { [key: string]: number } = {};
+  savingPrices = false;
+  postTypes = [
+    { key: 'MARKETPLACE', label: 'Marketplace (Buy & Sell)' },
+    { key: 'FARM_PRODUCTS', label: 'Farmer Products' },
+    { key: 'LABOURS', label: 'Labours' },
+    { key: 'TRAVELS', label: 'Travels' },
+    { key: 'PARCEL_SERVICE', label: 'Parcel Services' },
+    { key: 'REAL_ESTATE', label: 'Real Estate' },
+  ];
 
   displayedColumns: string[] = ['userInfo', 'featureName', 'maxPosts', 'createdAt', 'actions'];
   globalDisplayedColumns: string[] = ['featureName', 'maxPosts', 'actions'];
@@ -209,8 +220,28 @@ export class PostLimitsComponent implements OnInit {
       next: (settings) => {
         for (const s of settings) {
           if (s.key === 'paid_post.enabled') this.paidPostEnabled = s.value === 'true';
-          if (s.key === 'paid_post.price') this.paidPostPrice = parseInt(s.value, 10) || 10;
           if (s.key === 'paid_post.currency') this.paidPostCurrency = s.value || 'INR';
+          // Load per-type prices (e.g. paid_post.price.MARKETPLACE)
+          const pricePrefix = 'paid_post.price.';
+          if (s.key.startsWith(pricePrefix)) {
+            const postType = s.key.substring(pricePrefix.length);
+            this.postTypePrices[postType] = parseInt(s.value, 10) || 10;
+          }
+          // Fallback: use flat price as default for types not yet set
+          if (s.key === 'paid_post.price') {
+            const fallbackPrice = parseInt(s.value, 10) || 10;
+            for (const pt of this.postTypes) {
+              if (this.postTypePrices[pt.key] === undefined) {
+                this.postTypePrices[pt.key] = fallbackPrice;
+              }
+            }
+          }
+        }
+        // Ensure all post types have a default price
+        for (const pt of this.postTypes) {
+          if (this.postTypePrices[pt.key] === undefined) {
+            this.postTypePrices[pt.key] = 10;
+          }
         }
         this.paidPostLoading = false;
       },
@@ -225,7 +256,6 @@ export class PostLimitsComponent implements OnInit {
     this.paidPostSaving = true;
     const settings: { [key: string]: string } = {
       'paid_post.enabled': String(this.paidPostEnabled),
-      'paid_post.price': String(this.paidPostPrice),
       'paid_post.currency': this.paidPostCurrency
     };
     this.settingsService.updateMultipleSettings(settings).subscribe({
@@ -236,6 +266,24 @@ export class PostLimitsComponent implements OnInit {
       error: () => {
         this.snackBar.open('Failed to save paid post config', 'Close', { duration: 3000 });
         this.paidPostSaving = false;
+      }
+    });
+  }
+
+  savePostTypePrices(): void {
+    this.savingPrices = true;
+    const settings: { [key: string]: string } = {};
+    for (const pt of this.postTypes) {
+      settings[`paid_post.price.${pt.key}`] = String(this.postTypePrices[pt.key] || 10);
+    }
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.snackBar.open('Post type prices saved successfully', 'Close', { duration: 3000 });
+        this.savingPrices = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to save post type prices', 'Close', { duration: 3000 });
+        this.savingPrices = false;
       }
     });
   }

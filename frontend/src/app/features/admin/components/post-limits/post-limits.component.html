@@ -95,13 +95,6 @@
 
         <div class="paid-post-fields" *ngIf="paidPostEnabled">
           <mat-form-field>
-            <mat-label>Price per Post</mat-label>
-            <input matInput type="number" [(ngModel)]="paidPostPrice" min="1" placeholder="10">
-            <span matPrefix class="currency-prefix">&#8377;&nbsp;</span>
-            <mat-hint>Amount charged for each paid post</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field>
             <mat-label>Currency</mat-label>
             <mat-select [(ngModel)]="paidPostCurrency">
               <mat-option value="INR">INR (Indian Rupee)</mat-option>
@@ -118,6 +111,35 @@
       </div>
     </mat-card-content>
   </mat-card>
+
+  <!-- Per-Type Pricing Section -->
+  <div class="config-section" *ngIf="paidPostEnabled">
+    <h3>Paid Post Pricing</h3>
+    <p class="section-subtitle">Set different prices for each post type</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-row pricing-header">
+        <span class="pricing-label">Post Type</span>
+        <span class="pricing-value">Price (&#8377;)</span>
+      </div>
+      <div class="pricing-row" *ngFor="let type of postTypes">
+        <span class="pricing-label">{{ type.label }}</span>
+        <div class="pricing-input">
+          <span class="currency-prefix">&#8377;</span>
+          <input type="number"
+                 [(ngModel)]="postTypePrices[type.key]"
+                 min="1" max="1000"
+                 class="price-input">
+        </div>
+      </div>
+    </div>
+
+    <div class="config-actions">
+      <button mat-raised-button color="primary" (click)="savePostTypePrices()" [disabled]="savingPrices">
+        {{ savingPrices ? 'Saving...' : 'Save Prices' }}
+      </button>
+    </div>
+  </div>
 
   <!-- ===== SECTION 3: User-Specific Overrides ===== -->
   <div class="section-header user-section">

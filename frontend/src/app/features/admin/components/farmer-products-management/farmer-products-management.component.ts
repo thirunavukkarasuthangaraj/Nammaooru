@@ -19,6 +19,7 @@ interface FarmerProduct {
   location: string;
   status: string;
   featured: boolean;
+  isPaid: boolean;
   createdAt: string;
   updatedAt: string;
 }

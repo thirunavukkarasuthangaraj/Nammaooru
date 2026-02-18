@@ -21,6 +21,7 @@ interface ParcelPost {
   sellerName: string;
   reportCount: number;
   featured: boolean;
+  isPaid: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;

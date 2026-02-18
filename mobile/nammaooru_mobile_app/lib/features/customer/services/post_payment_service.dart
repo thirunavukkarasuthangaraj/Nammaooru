@@ -1,19 +1,32 @@
 import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class PostPaymentService {
+  /// Check if raw API response is successful (statusCode == '0000')
+  static bool _isSuccess(dynamic data) {
+    return data is Map && data['statusCode'] == AppConstants.successCode;
+  }
+
   /// Get payment config (price, enabled, razorpay key)
-  static Future<Map<String, dynamic>> getConfig() async {
+  static Future<Map<String, dynamic>> getConfig({String? postType}) async {
     try {
-      final response = await ApiClient.get('/post-payments/config');
-      if (response.data?['success'] == true) {
+      final queryParams = <String, dynamic>{};
+      if (postType != null && postType.isNotEmpty) {
+        queryParams['postType'] = postType;
+      }
+      final response = await ApiClient.get(
+        '/post-payments/config',
+        queryParameters: queryParams,
+      );
+      if (_isSuccess(response.data)) {
         return {
           'success': true,
           'data': response.data['data'],
         };
       }
-      return {'success': false, 'message': 'Failed to get config'};
+      return {'success': false, 'message': response.data?['message'] ?? 'Failed to get config'};
     } on DioException catch (e) {
       Logger.e('Failed to get payment config', 'POST_PAYMENT', e);
       return {
@@ -30,13 +43,13 @@ class PostPaymentService {
         '/post-payments/create-order',
         data: {'postType': postType},
       );
-      if (response.data?['success'] == true) {
+      if (_isSuccess(response.data)) {
         return {
           'success': true,
           'data': response.data['data'],
         };
       }
-      return {'success': false, 'message': 'Failed to create order'};
+      return {'success': false, 'message': response.data?['message'] ?? 'Failed to create order'};
     } on DioException catch (e) {
       Logger.e('Failed to create payment order', 'POST_PAYMENT', e);
       return {
@@ -53,13 +66,13 @@ class PostPaymentService {
         '/post-payments/my',
         queryParameters: {'page': page, 'size': size},
       );
-      if (response.data?['success'] == true) {
+      if (_isSuccess(response.data)) {
         return {
           'success': true,
           'data': response.data['data'],
         };
       }
-      return {'success': false, 'message': 'Failed to get payment history'};
+      return {'success': false, 'message': response.data?['message'] ?? 'Failed to get payment history'};
     } on DioException catch (e) {
       Logger.e('Failed to get payment history', 'POST_PAYMENT', e);
       return {
@@ -84,13 +97,13 @@ class PostPaymentService {
           'razorpay_signature': razorpaySignature,
         },
       );
-      if (response.data?['success'] == true) {
+      if (_isSuccess(response.data)) {
         return {
           'success': true,
           'data': response.data['data'],
         };
       }
-      return {'success': false, 'message': 'Payment verification failed'};
+      return {'success': false, 'message': response.data?['message'] ?? 'Payment verification failed'};
     } on DioException catch (e) {
       Logger.e('Failed to verify payment', 'POST_PAYMENT', e);
       return {

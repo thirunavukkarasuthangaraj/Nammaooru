@@ -117,6 +117,7 @@ public class ParcelServicePostService {
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .isPaid(paidTokenId != null)
                 .build();
 
         ParcelServicePost saved = parcelServicePostRepository.save(post);

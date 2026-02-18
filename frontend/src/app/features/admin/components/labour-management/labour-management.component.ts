@@ -18,6 +18,7 @@ interface LabourPost {
   sellerName: string;
   reportCount: number;
   featured: boolean;
+  isPaid: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;

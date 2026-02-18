@@ -116,6 +116,7 @@ public class TravelPostService {
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .isPaid(paidTokenId != null)
                 .build();
 
         TravelPost saved = travelPostRepository.save(post);

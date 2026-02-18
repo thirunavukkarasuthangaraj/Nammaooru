@@ -30,9 +30,10 @@ public class PostPaymentController {
 
     @GetMapping("/config")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getConfig() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getConfig(
+            @RequestParam(required = false) String postType) {
         try {
-            Map<String, Object> config = postPaymentService.getPaymentConfig();
+            Map<String, Object> config = postPaymentService.getPaymentConfig(postType);
             return ResponseUtil.success(config, "Payment config retrieved");
         } catch (Exception e) {
             log.error("Error getting payment config", e);

@@ -74,6 +74,10 @@ public class MarketplacePost {
     @Builder.Default
     private PostStatus status = PostStatus.PENDING_APPROVAL;
 
+    @Column(name = "is_paid")
+    @Builder.Default
+    private Boolean isPaid = false;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
