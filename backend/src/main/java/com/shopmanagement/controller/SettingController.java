@@ -42,7 +42,7 @@ public class SettingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<SettingResponse> getSettingById(@PathVariable Long id) {
         log.info("Fetching setting with ID: {}", id);
@@ -74,7 +74,7 @@ public class SettingController {
         return ResponseUtil.success(responses, "Settings updated successfully");
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<SettingResponse> updateSetting(@PathVariable Long id, @Valid @RequestBody SettingRequest request) {
         log.info("Updating setting: {}", id);
@@ -90,7 +90,7 @@ public class SettingController {
         return ResponseEntity.ok(response);
     }
     
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> deleteSetting(@PathVariable Long id) {
         log.info("Deleting setting: {}", id);
