@@ -113,6 +113,7 @@ public class LabourPostService {
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
+                .featured(paidTokenId != null)
                 .build();
 
         LabourPost saved = labourPostRepository.save(post);

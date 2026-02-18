@@ -1,7 +1,18 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { environment } from '../../../../../environments/environment';
+import { SettingsService } from '../../../../core/services/settings.service';
+
+interface PostTypeConfig {
+  key: string;
+  prefix: string;
+  label: string;
+  icon: string;
+  color: string;
+  durationDays: number;
+  autoApprove: boolean;
+  visibleStatuses: string[];
+  reportThreshold: number;
+}
 
 @Component({
   selector: 'app-marketplace-config',
@@ -9,15 +20,24 @@ import { environment } from '../../../../../environments/environment';
   styleUrls: ['./marketplace-config.component.scss']
 })
 export class MarketplaceConfigComponent implements OnInit {
-  private settingsUrl = `${environment.apiUrl}/settings`;
-
   loading = false;
-  saving = false;
+  savingType: string | null = null;
+  selectedTabIndex = 0;
 
-  durationDays = 30;
-  autoApprove = false;
-  visibleStatuses: string[] = ['APPROVED'];
-  reportThreshold = 3;
+  // Paid post config
+  paidPostEnabled = false;
+  paidPostSaving = false;
+  savingPrices = false;
+  postTypePrices: { [key: string]: number } = {};
+
+  postTypes: PostTypeConfig[] = [
+    { key: 'MARKETPLACE', prefix: 'marketplace', label: 'Marketplace', icon: 'storefront', color: '#4527A0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'FARM_PRODUCTS', prefix: 'farmer', label: 'Farmer Products', icon: 'agriculture', color: '#33691E', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'LABOURS', prefix: 'labour', label: 'Labours', icon: 'engineering', color: '#1565C0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'TRAVELS', prefix: 'travel', label: 'Travels', icon: 'directions_car', color: '#00897B', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'PARCEL_SERVICE', prefix: 'parcel', label: 'Parcel Services', icon: 'local_shipping', color: '#E65100', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'REAL_ESTATE', prefix: 'realestate', label: 'Real Estate', icon: 'apartment', color: '#AD1457', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+  ];
 
   durationOptions = [
     { label: '1 Month', value: 30 },
@@ -28,15 +48,7 @@ export class MarketplaceConfigComponent implements OnInit {
     { label: 'No Expiry', value: 0 }
   ];
 
-  allStatuses = [
-    'APPROVED',
-    'PENDING_APPROVAL',
-    'SOLD',
-    'FLAGGED',
-    'HOLD',
-    'HIDDEN',
-    'CORRECTION_REQUIRED'
-  ];
+  allStatuses = ['APPROVED', 'PENDING_APPROVAL', 'SOLD', 'FLAGGED', 'HOLD', 'HIDDEN', 'CORRECTION_REQUIRED'];
 
   statusLabels: { [key: string]: string } = {
     'APPROVED': 'Approved',
@@ -49,123 +61,133 @@ export class MarketplaceConfigComponent implements OnInit {
   };
 
   constructor(
-    private http: HttpClient,
+    private settingsService: SettingsService,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
-    this.loadSettings();
+    this.loadAllSettings();
   }
 
-  loadSettings(): void {
+  loadAllSettings(): void {
     this.loading = true;
-    const keys = [
-      'marketplace.post.duration_days',
-      'marketplace.post.auto_approve',
-      'marketplace.post.visible_statuses',
-      'marketplace.post.report_threshold'
-    ];
 
-    let loaded = 0;
-    const total = keys.length;
+    this.settingsService.getAllSettings().subscribe({
+      next: (settings) => {
+        for (const s of settings) {
+          if (s.key === 'paid_post.enabled') this.paidPostEnabled = s.value === 'true';
 
-    keys.forEach(key => {
-      this.http.get(`${this.settingsUrl}/key/${key}`).subscribe({
-        next: (response: any) => {
-          const value = response?.settingValue;
-          if (value !== undefined && value !== null) {
-            this.applySettingValue(key, value);
+          const pricePrefix = 'paid_post.price.';
+          if (s.key.startsWith(pricePrefix)) {
+            const postType = s.key.substring(pricePrefix.length);
+            this.postTypePrices[postType] = parseInt(s.value, 10) || 10;
           }
-          loaded++;
-          if (loaded >= total) this.loading = false;
-        },
-        error: () => {
-          loaded++;
-          if (loaded >= total) this.loading = false;
+          if (s.key === 'paid_post.price') {
+            const fallback = parseInt(s.value, 10) || 10;
+            for (const pt of this.postTypes) {
+              if (this.postTypePrices[pt.key] === undefined) {
+                this.postTypePrices[pt.key] = fallback;
+              }
+            }
+          }
+
+          for (const pt of this.postTypes) {
+            if (s.key === `${pt.prefix}.post.duration_days`) pt.durationDays = parseInt(s.value, 10) || 30;
+            if (s.key === `${pt.prefix}.post.auto_approve`) pt.autoApprove = s.value === 'true';
+            if (s.key === `${pt.prefix}.post.visible_statuses`) {
+              try { pt.visibleStatuses = JSON.parse(s.value); } catch { pt.visibleStatuses = ['APPROVED']; }
+            }
+            if (s.key === `${pt.prefix}.post.report_threshold`) pt.reportThreshold = parseInt(s.value, 10) || 3;
+          }
         }
-      });
+
+        for (const pt of this.postTypes) {
+          if (this.postTypePrices[pt.key] === undefined) {
+            this.postTypePrices[pt.key] = 10;
+          }
+        }
+
+        this.loading = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to load settings', 'OK', { duration: 3000 });
+        this.loading = false;
+      }
     });
   }
 
-  private applySettingValue(key: string, value: string): void {
-    switch (key) {
-      case 'marketplace.post.duration_days':
-        this.durationDays = parseInt(value, 10) || 30;
-        break;
-      case 'marketplace.post.auto_approve':
-        this.autoApprove = value === 'true';
-        break;
-      case 'marketplace.post.visible_statuses':
-        try {
-          this.visibleStatuses = JSON.parse(value);
-        } catch {
-          this.visibleStatuses = ['APPROVED'];
-        }
-        break;
-      case 'marketplace.post.report_threshold':
-        this.reportThreshold = parseInt(value, 10) || 3;
-        break;
-    }
+  isStatusChecked(pt: PostTypeConfig, status: string): boolean {
+    return pt.visibleStatuses.includes(status);
   }
 
-  isStatusChecked(status: string): boolean {
-    return this.visibleStatuses.includes(status);
-  }
-
-  toggleStatus(status: string): void {
-    const idx = this.visibleStatuses.indexOf(status);
+  toggleStatus(pt: PostTypeConfig, status: string): void {
+    const idx = pt.visibleStatuses.indexOf(status);
     if (idx >= 0) {
-      if (this.visibleStatuses.length > 1) {
-        this.visibleStatuses.splice(idx, 1);
+      if (pt.visibleStatuses.length > 1) {
+        pt.visibleStatuses.splice(idx, 1);
       } else {
         this.snackBar.open('At least one status must be selected', 'OK', { duration: 3000 });
       }
     } else {
-      this.visibleStatuses.push(status);
+      pt.visibleStatuses.push(status);
     }
   }
 
-  saveSettings(): void {
-    this.saving = true;
-
+  savePostTypeSettings(pt: PostTypeConfig): void {
+    this.savingType = pt.key;
     const settings: { [key: string]: string } = {
-      'marketplace.post.duration_days': String(this.durationDays),
-      'marketplace.post.auto_approve': String(this.autoApprove),
-      'marketplace.post.visible_statuses': JSON.stringify(this.visibleStatuses),
-      'marketplace.post.report_threshold': String(this.reportThreshold)
+      [`${pt.prefix}.post.duration_days`]: String(pt.durationDays),
+      [`${pt.prefix}.post.auto_approve`]: String(pt.autoApprove),
+      [`${pt.prefix}.post.visible_statuses`]: JSON.stringify(pt.visibleStatuses),
+      [`${pt.prefix}.post.report_threshold`]: String(pt.reportThreshold)
     };
 
-    const keys = Object.keys(settings);
-    let saved = 0;
-    let hasError = false;
-
-    keys.forEach(key => {
-      this.http.put(`${this.settingsUrl}/value/${key}`, settings[key], {
-        headers: { 'Content-Type': 'text/plain' }
-      }).subscribe({
-        next: () => {
-          saved++;
-          if (saved >= keys.length) {
-            this.saving = false;
-            if (!hasError) {
-              this.snackBar.open('Settings saved successfully', 'OK', { duration: 3000 });
-            }
-          }
-        },
-        error: (err) => {
-          hasError = true;
-          saved++;
-          if (saved >= keys.length) {
-            this.saving = false;
-          }
-          this.snackBar.open('Error saving setting: ' + key, 'OK', { duration: 5000 });
-        }
-      });
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.savingType = null;
+        this.snackBar.open(`${pt.label} settings saved`, 'OK', { duration: 3000 });
+      },
+      error: () => {
+        this.savingType = null;
+        this.snackBar.open(`Failed to save ${pt.label} settings`, 'OK', { duration: 3000 });
+      }
     });
   }
 
-  getDurationLabel(): string {
-    const opt = this.durationOptions.find(o => o.value === this.durationDays);
-    return opt ? opt.label : this.durationDays + ' days';
+  savePaidPostConfig(): void {
+    this.paidPostSaving = true;
+    const settings: { [key: string]: string } = {
+      'paid_post.enabled': String(this.paidPostEnabled)
+    };
+
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.paidPostSaving = false;
+        this.snackBar.open('Paid post config saved', 'OK', { duration: 3000 });
+      },
+      error: () => {
+        this.paidPostSaving = false;
+        this.snackBar.open('Failed to save config', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  saveAllPrices(): void {
+    this.savingPrices = true;
+    const settings: { [key: string]: string } = {};
+    for (const pt of this.postTypes) {
+      settings[`paid_post.price.${pt.key}`] = String(this.postTypePrices[pt.key] || 10);
+    }
+
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.savingPrices = false;
+        this.snackBar.open('Prices saved successfully', 'OK', { duration: 3000 });
+      },
+      error: () => {
+        this.savingPrices = false;
+        this.snackBar.open('Failed to save prices', 'OK', { duration: 3000 });
+      }
+    });
   }
 }

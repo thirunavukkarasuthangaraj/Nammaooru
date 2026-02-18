@@ -153,7 +153,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Posts - Config',
       items: [
-        { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null },
+        { title: 'Post Configuration', icon: 'tune', route: '/admin/marketplace-config', badge: null },
         { title: 'Post Limits & Pricing', icon: 'rule', route: '/admin/post-limits', badge: null }
       ]
     },
@@ -250,7 +250,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Posts - Config',
       items: [
-        { title: 'Post Settings', icon: 'tune', route: '/admin/marketplace-config', badge: null },
+        { title: 'Post Configuration', icon: 'tune', route: '/admin/marketplace-config', badge: null },
         { title: 'Post Limits & Pricing', icon: 'rule', route: '/admin/post-limits', badge: null }
       ]
     },

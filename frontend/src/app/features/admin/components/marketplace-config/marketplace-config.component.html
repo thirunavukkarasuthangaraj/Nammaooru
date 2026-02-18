@@ -1,7 +1,12 @@
-<div class="config-container">
-  <div class="config-header">
-    <h2>Marketplace Post Settings</h2>
-    <p class="subtitle">Configure marketplace post behavior</p>
+<div class="post-config-container">
+  <div class="page-header">
+    <div>
+      <h2>Post Configuration</h2>
+      <p class="subtitle">Configure settings and pricing for all post types</p>
+    </div>
+    <button mat-icon-button (click)="loadAllSettings()" matTooltip="Refresh">
+      <mat-icon>refresh</mat-icon>
+    </button>
   </div>
 
   <div *ngIf="loading" class="loading-container">
@@ -9,77 +14,124 @@
     <p>Loading settings...</p>
   </div>
 
-  <div *ngIf="!loading" class="config-form">
-    <!-- Post Duration -->
-    <mat-card class="setting-card">
-      <mat-card-content>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Post Visibility Duration</div>
-            <div class="setting-desc">How long posts remain visible in the marketplace</div>
+  <div *ngIf="!loading" class="config-content">
+
+    <!-- ===== Pricing Section ===== -->
+    <div class="config-section">
+      <div class="section-title">
+        <mat-icon>payments</mat-icon>
+        <h3>Paid Post Pricing</h3>
+      </div>
+
+      <div class="paid-toggle-row">
+        <mat-slide-toggle [(ngModel)]="paidPostEnabled" color="primary">
+          Enable Paid Posts
+        </mat-slide-toggle>
+        <span class="toggle-hint">{{ paidPostEnabled ? 'Users pay to post beyond free limit' : 'Users blocked at free limit' }}</span>
+        <button mat-flat-button color="primary" class="save-toggle-btn" (click)="savePaidPostConfig()" [disabled]="paidPostSaving">
+          {{ paidPostSaving ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+
+      <div class="pricing-table" *ngIf="paidPostEnabled">
+        <div class="pricing-header-row">
+          <span>Post Type</span>
+          <span>Price per Post</span>
+        </div>
+        <div class="pricing-row" *ngFor="let pt of postTypes">
+          <div class="type-label">
+            <mat-icon [style.color]="pt.color">{{ pt.icon }}</mat-icon>
+            <span>{{ pt.label }}</span>
           </div>
-          <mat-form-field appearance="outline" class="setting-control">
-            <mat-select [(value)]="durationDays">
-              <mat-option *ngFor="let opt of durationOptions" [value]="opt.value">
-                {{ opt.label }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Auto Approve -->
-    <mat-card class="setting-card">
-      <mat-card-content>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Auto Approve Posts</div>
-            <div class="setting-desc">New posts will be approved automatically without admin review</div>
+          <div class="price-input-wrap">
+            <span class="rupee">&#8377;</span>
+            <input type="number" [(ngModel)]="postTypePrices[pt.key]" min="1" max="1000">
           </div>
-          <mat-slide-toggle [(ngModel)]="autoApprove" color="primary"></mat-slide-toggle>
         </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Visible Statuses -->
-    <mat-card class="setting-card">
-      <mat-card-content>
-        <div class="setting-label" style="margin-bottom: 8px;">Visible Statuses</div>
-        <div class="setting-desc" style="margin-bottom: 16px;">Select which post statuses are visible to the public</div>
-        <div class="status-checkboxes">
-          <mat-checkbox *ngFor="let status of allStatuses"
-            [checked]="isStatusChecked(status)"
-            (change)="toggleStatus(status)"
-            color="primary">
-            {{ statusLabels[status] }}
-          </mat-checkbox>
+        <div class="pricing-actions">
+          <button mat-raised-button color="primary" (click)="saveAllPrices()" [disabled]="savingPrices">
+            <mat-icon>save</mat-icon>
+            {{ savingPrices ? 'Saving...' : 'Save All Prices' }}
+          </button>
         </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Report Threshold -->
-    <mat-card class="setting-card">
-      <mat-card-content>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label">Report Threshold</div>
-            <div class="setting-desc">Number of reports needed before a post is auto-flagged</div>
-          </div>
-          <mat-form-field appearance="outline" class="setting-control threshold-input">
-            <input matInput type="number" [(ngModel)]="reportThreshold" min="1" max="50">
-          </mat-form-field>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Save Button -->
-    <div class="actions">
-      <button mat-raised-button color="primary" (click)="saveSettings()" [disabled]="saving">
-        <mat-icon *ngIf="!saving">save</mat-icon>
-        <mat-spinner *ngIf="saving" diameter="20" class="btn-spinner"></mat-spinner>
-        {{ saving ? 'Saving...' : 'Save Settings' }}
-      </button>
+      </div>
     </div>
+
+    <!-- ===== Post Type Settings ===== -->
+    <div class="config-section">
+      <div class="section-title">
+        <mat-icon>tune</mat-icon>
+        <h3>Post Type Settings</h3>
+      </div>
+
+      <div class="type-tabs">
+        <button *ngFor="let pt of postTypes; let i = index"
+                class="type-tab"
+                [class.active]="selectedTabIndex === i"
+                [style.--tab-color]="pt.color"
+                (click)="selectedTabIndex = i">
+          <mat-icon>{{ pt.icon }}</mat-icon>
+          <span class="tab-label">{{ pt.label }}</span>
+        </button>
+      </div>
+
+      <ng-container *ngFor="let pt of postTypes; let i = index">
+        <div *ngIf="selectedTabIndex === i" class="settings-card" [style.border-top-color]="pt.color">
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Post Visibility Duration</div>
+              <div class="setting-desc">How long posts remain visible to users</div>
+            </div>
+            <mat-form-field appearance="outline" class="setting-control">
+              <mat-select [(value)]="pt.durationDays">
+                <mat-option *ngFor="let opt of durationOptions" [value]="opt.value">
+                  {{ opt.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Auto Approve Posts</div>
+              <div class="setting-desc">New posts will be approved automatically without admin review</div>
+            </div>
+            <mat-slide-toggle [(ngModel)]="pt.autoApprove" color="primary"></mat-slide-toggle>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Report Threshold</div>
+              <div class="setting-desc">Number of reports needed to auto-flag a post</div>
+            </div>
+            <mat-form-field appearance="outline" class="setting-control small">
+              <input matInput type="number" [(ngModel)]="pt.reportThreshold" min="1" max="50">
+            </mat-form-field>
+          </div>
+
+          <div class="setting-block">
+            <div class="setting-label">Visible Statuses</div>
+            <div class="setting-desc">Select which post statuses are visible to the public</div>
+            <div class="status-chips">
+              <mat-checkbox *ngFor="let status of allStatuses"
+                [checked]="isStatusChecked(pt, status)"
+                (change)="toggleStatus(pt, status)"
+                color="primary">
+                {{ statusLabels[status] }}
+              </mat-checkbox>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <button mat-raised-button color="primary" (click)="savePostTypeSettings(pt)" [disabled]="savingType === pt.key">
+              <mat-icon>save</mat-icon>
+              {{ savingType === pt.key ? 'Saving...' : 'Save ' + pt.label + ' Settings' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
   </div>
 </div>

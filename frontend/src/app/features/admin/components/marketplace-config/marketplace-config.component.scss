@@ -1,22 +1,26 @@
-.config-container {
-  max-width: 720px;
+.post-config-container {
+  max-width: 900px;
   margin: 0 auto;
   padding: 24px 16px;
 }
 
-.config-header {
-  margin-bottom: 24px;
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
 
   h2 {
     margin: 0;
     font-size: 24px;
-    font-weight: 500;
+    font-weight: 600;
+    color: #1a1a2e;
   }
 
   .subtitle {
     margin: 4px 0 0;
-    color: #666;
     font-size: 14px;
+    color: #888;
   }
 }
 
@@ -24,23 +28,204 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 0;
+  padding: 60px 0;
   color: #666;
 
-  p {
-    margin-top: 16px;
+  p { margin-top: 16px; }
+}
+
+.config-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+
+  mat-icon {
+    color: #555;
+    font-size: 22px;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
   }
 }
 
-.setting-card {
-  margin-bottom: 16px;
+// ===== Pricing =====
+
+.paid-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  .toggle-hint {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .save-toggle-btn {
+    margin-left: auto;
+    min-width: 80px;
+  }
+}
+
+.pricing-table {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pricing-header-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #f5f5f5;
+  font-weight: 600;
+  font-size: 13px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pricing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+
+  .type-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    font-size: 14px;
+    color: #333;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .price-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 4px 10px;
+
+    .rupee {
+      font-size: 14px;
+      color: #888;
+      font-weight: 500;
+    }
+
+    input {
+      width: 60px;
+      border: none;
+      background: transparent;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: right;
+      outline: none;
+      color: #333;
+    }
+  }
+}
+
+.pricing-actions {
+  padding: 16px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #f0f0f0;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+// ===== Type Tabs =====
+
+.type-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+
+  .type-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    white-space: nowrap;
+    transition: all 0.2s;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: #f5f5f5;
+      border-color: #ccc;
+    }
+
+    &.active {
+      background: var(--tab-color);
+      color: white;
+      border-color: var(--tab-color);
+
+      mat-icon { color: white; }
+    }
+  }
+}
+
+// ===== Settings Card =====
+
+.settings-card {
+  border: 1px solid #e8e8e8;
+  border-top: 3px solid;
+  border-radius: 8px;
+  padding: 20px;
 }
 
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.setting-block {
+  padding: 14px 0;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .setting-info {
@@ -48,72 +233,77 @@
 }
 
 .setting-label {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #333;
 }
 
 .setting-desc {
-  font-size: 13px;
-  color: #888;
+  font-size: 12px;
+  color: #999;
   margin-top: 2px;
 }
 
 .setting-control {
-  width: 200px;
+  width: 180px;
   flex-shrink: 0;
+
+  &.small { width: 100px; }
 
   ::ng-deep .mat-mdc-form-field-subscript-wrapper {
     display: none;
   }
 }
 
-.threshold-input {
-  width: 100px;
-}
-
-.status-checkboxes {
+.status-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  gap: 6px 20px;
+  margin-top: 12px;
 
-  mat-checkbox {
-    font-size: 14px;
-  }
+  mat-checkbox { font-size: 13px; }
 }
 
-.actions {
-  margin-top: 24px;
+.card-actions {
+  padding-top: 20px;
   display: flex;
   justify-content: flex-end;
 
   button {
-    min-width: 160px;
-    height: 44px;
-    font-size: 15px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
 }
 
-.btn-spinner {
-  display: inline-block;
+// ===== Responsive =====
+
+@media (max-width: 768px) {
+  .type-tabs .type-tab .tab-label { display: none; }
+  .type-tabs .type-tab { padding: 8px 10px; }
 }
 
 @media (max-width: 600px) {
+  .post-config-container { padding: 16px 12px; }
+
   .setting-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
 
-  .setting-control {
+  .setting-control,
+  .setting-control.small {
     width: 100%;
   }
 
-  .threshold-input {
-    width: 100%;
+  .paid-toggle-row {
+    flex-wrap: wrap;
+  }
+
+  .pricing-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
