@@ -23,6 +23,8 @@ class ShopModel {
   final double? commissionRate;
   final String? gstNumber;
   final String? panNumber;
+  final String? fssaiCertificateNumber;
+  final String? groceryLicenseNumber;
   final String? status;
   final bool isActive;
   final bool isVerified;
@@ -62,6 +64,8 @@ class ShopModel {
     this.commissionRate,
     this.gstNumber,
     this.panNumber,
+    this.fssaiCertificateNumber,
+    this.groceryLicenseNumber,
     this.status,
     required this.isActive,
     required this.isVerified,
@@ -103,6 +107,8 @@ class ShopModel {
       commissionRate: json['commissionRate']?.toDouble(),
       gstNumber: json['gstNumber'],
       panNumber: json['panNumber'],
+      fssaiCertificateNumber: json['fssaiCertificateNumber'],
+      groceryLicenseNumber: json['groceryLicenseNumber'],
       status: json['status'],
       isActive: json['isActive'] ?? false,
       isVerified: json['isVerified'] ?? false,
@@ -147,6 +153,8 @@ class ShopModel {
       'commissionRate': commissionRate,
       'gstNumber': gstNumber,
       'panNumber': panNumber,
+      'fssaiCertificateNumber': fssaiCertificateNumber,
+      'groceryLicenseNumber': groceryLicenseNumber,
       'status': status,
       'isActive': isActive,
       'isVerified': isVerified,

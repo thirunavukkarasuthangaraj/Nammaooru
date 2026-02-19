@@ -23,6 +23,8 @@ export interface Shop {
   commissionRate: number;
   gstNumber?: string;
   panNumber?: string;
+  fssaiCertificateNumber?: string;
+  groceryLicenseNumber?: string;
   upiId?: string;
   status: ShopStatus;
   isActive: boolean;
@@ -70,6 +72,8 @@ export interface ShopCreateRequest {
   commissionRate?: number;
   gstNumber?: string;
   panNumber?: string;
+  fssaiCertificateNumber?: string;
+  groceryLicenseNumber?: string;
   upiId?: string;
 }
 
@@ -95,6 +99,8 @@ export interface ShopUpdateRequest {
   commissionRate?: number;
   gstNumber?: string;
   panNumber?: string;
+  fssaiCertificateNumber?: string;
+  groceryLicenseNumber?: string;
   upiId?: string;
   status?: ShopStatus;
   isActive?: boolean;

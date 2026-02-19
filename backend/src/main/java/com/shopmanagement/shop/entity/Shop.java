@@ -148,6 +148,14 @@ public class Shop {
     @Column(name = "pan_number")
     private String panNumber;
 
+    @Size(max = 20)
+    @Column(name = "fssai_certificate_number")
+    private String fssaiCertificateNumber;
+
+    @Size(max = 30)
+    @Column(name = "grocery_license_number")
+    private String groceryLicenseNumber;
+
     // Payment Information
     @Size(max = 100)
     @Column(name = "upi_id")

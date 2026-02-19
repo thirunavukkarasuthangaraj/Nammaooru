@@ -376,6 +376,52 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                         child: SizedBox(height: 8),
                       ),
 
+                    // Shop Licenses/Certificates
+                    if (_shop != null && (_shop!['fssaiCertificateNumber'] != null || _shop!['groceryLicenseNumber'] != null))
+                      SliverToBoxAdapter(
+                        child: Container(
+                          color: Colors.white,
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              if (_shop!['fssaiCertificateNumber'] != null && _shop!['fssaiCertificateNumber'].toString().isNotEmpty)
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.verified_user, size: 16, color: Color(0xFF2E7D32)),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          'FSSAI: ${_shop!['fssaiCertificateNumber']}',
+                                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (_shop!['groceryLicenseNumber'] != null && _shop!['groceryLicenseNumber'].toString().isNotEmpty)
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.description, size: 16, color: Color(0xFF2E7D32)),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          'Grocery Lic: ${_shop!['groceryLicenseNumber']}',
+                                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     // Categories Section
                     if (_categories.isNotEmpty)
                       SliverToBoxAdapter(
