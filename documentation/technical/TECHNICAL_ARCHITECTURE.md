@@ -1091,7 +1091,7 @@ Both apps are **production-ready** with comprehensive backend API integration, r
 - `provider: ^6.0.5` - State management
 - `http: ^1.1.0` - API client
 
-**Google Maps API Key**: `AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U`
+**Google Maps API Key**: Set via environment variable or `AndroidManifest.xml`
 
 **📖 Complete Documentation**: See [DELIVERY_PARTNER_APP_ARCHITECTURE.md](DELIVERY_PARTNER_APP_ARCHITECTURE.md)
 

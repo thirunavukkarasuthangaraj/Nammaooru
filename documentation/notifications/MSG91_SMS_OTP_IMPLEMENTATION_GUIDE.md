@@ -28,7 +28,7 @@ This guide provides complete instructions for implementing MSG91 SMS and OTP fun
 ### Step 2: Get API Credentials
 1. Login to MSG91 Dashboard
 2. Navigate to **Settings** → **API Keys**
-3. Copy your **Auth Key** (e.g., `463859A66N4Ih6468c48e0dP1`)
+3. Copy your **Auth Key** (e.g., `your_msg91_auth_key_here`)
 4. Note down your **Sender ID** (e.g., `NMROOU` or numeric ID)
 
 ### Step 3: WhatsApp Business Setup (Optional)

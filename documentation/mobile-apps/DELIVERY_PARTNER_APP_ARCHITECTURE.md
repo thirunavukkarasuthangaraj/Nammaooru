@@ -459,7 +459,7 @@ class LocationUpdate {
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 
-API Key: AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U
+API Key: (set via google_maps_api_key in AndroidManifest.xml)
 ```
 
 ### Route Calculation

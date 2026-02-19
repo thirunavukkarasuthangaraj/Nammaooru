@@ -171,7 +171,7 @@ spring:
     host: smtp.hostinger.com
     port: 587
     username: noreplay@nammaoorudelivary.in
-    password: noreplaynammaooruDelivary@2025
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:

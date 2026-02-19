@@ -9,7 +9,7 @@ This document explains the email configuration for the NammaOoru Thiru Software 
 - **SMTP Host**: smtp.hostinger.com
 - **SMTP Port**: 465 (SSL) / 587 (STARTTLS) 
 - **Email Address**: noreplay@nammaoorudelivary.in
-- **Password**: noreplaynammaooruDelivary@2025
+- **Password**: (set via MAIL_PASSWORD env var)
 - **Provider**: Hostinger
 
 ### Application Configuration Files
@@ -21,7 +21,7 @@ spring:
     host: ${MAIL_HOST:smtp.hostinger.com}
     port: ${MAIL_PORT:465}
     username: ${MAIL_USERNAME:noreplay@nammaoorudelivary.in}
-    password: ${MAIL_PASSWORD:noreplaynammaooruDelivary@2025}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -71,7 +71,7 @@ public class EmailProperties {
 MAIL_HOST=smtp.hostinger.com
 MAIL_PORT=587
 MAIL_USERNAME=noreplay@nammaoorudelivary.in
-MAIL_PASSWORD=noreplaynammaooruDelivary@2025
+MAIL_PASSWORD=your_smtp_password_here
 EMAIL_FROM_ADDRESS=noreplay@nammaoorudelivary.in
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true

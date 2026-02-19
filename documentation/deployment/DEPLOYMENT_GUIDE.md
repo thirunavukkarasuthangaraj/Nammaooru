@@ -133,7 +133,7 @@ volumes:
 ```bash
 # .env file (never commit this)
 DB_PASSWORD=secure_database_password
-MAIL_PASSWORD=noreplaynammaooruDelivary@2025
+MAIL_PASSWORD=your_smtp_password_here
 JWT_SECRET=your_jwt_secret_minimum_256_bits
 ```
 

@@ -61,7 +61,7 @@ spring:
     host: ${MAIL_HOST:smtp.hostinger.com}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:noreplay@nammaoorudelivary.in}
-    password: ${MAIL_PASSWORD:noreplaynammaooruDelivary@2025}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -211,21 +211,21 @@ app:
 
 # Razorpay Payment Gateway
 razorpay:
-  mode: ${RAZORPAY_MODE:live}   # "test" or "live"
+  mode: ${RAZORPAY_MODE:test}   # "test" or "live"
   test:
-    key-id: ${RAZORPAY_TEST_KEY_ID:rzp_test_SHVPTn816jIgxJ}
-    key-secret: ${RAZORPAY_TEST_KEY_SECRET:QH8RzVz0FRZqvwdDyqJ49LqK}
+    key-id: ${RAZORPAY_TEST_KEY_ID:}
+    key-secret: ${RAZORPAY_TEST_KEY_SECRET:}
   live:
-    key-id: ${rzp_live_SHz5o2j1EVVrIV:}
-    key-secret: ${LulPJf46OSVvpAQ8ikTfqYrh:}
+    key-id: ${RAZORPAY_LIVE_KEY_ID:}
+    key-secret: ${RAZORPAY_LIVE_KEY_SECRET:}
 
 msg91:
   auth:
-    key: ${MSG91_AUTH_KEY:463859A66N4Ih6468c48e0dP1}
+    key: ${MSG91_AUTH_KEY:}
   sender:
     id: ${MSG91_SENDER_ID:NAMMAO}
   template:
-    otp: ${MSG91_OTP_TEMPLATE_ID:690f78375bceb56a7e591805}
+    otp: ${MSG91_OTP_TEMPLATE_ID:}
     order-confirmation: ${MSG91_ORDER_CONFIRMATION_TEMPLATE_ID:nammaooru}
     order-status: ${MSG91_ORDER_STATUS_TEMPLATE_ID:nammaooru}
     order-delivered: ${MSG91_ORDER_DELIVERED_TEMPLATE_ID:nammaooru}
@@ -233,8 +233,8 @@ msg91:
     marketing-msg: ${MSG91_MARKETING_MSG_TEMPLATE:marketingmsg}
   whatsapp:
     enabled: ${MSG91_WHATSAPP_ENABLED:true}
-    namespace: ${MSG91_NAMESPACE:cdb0958b_6e68_4cd9_ae36_04da5dccb2ba}
-    integrated-number: ${MSG91_INTEGRATED_NUMBER:15558914648}
+    namespace: ${MSG91_NAMESPACE:}
+    integrated-number: ${MSG91_INTEGRATED_NUMBER:}
     bulk-api-url: ${MSG91_WHATSAPP_BULK_URL:https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/}
   api:
     base-url: ${MSG91_API_URL:https://control.msg91.com/api/v5}
@@ -244,7 +244,7 @@ sms:
   enabled: ${SMS_ENABLED:true}
   gateway:
     url: https://control.msg91.com/api/v5/otp
-    api-key: ${MSG91_AUTH_KEY:463859A66N4Ih6468c48e0dP1}
+    api-key: ${MSG91_AUTH_KEY:}
     sender-id: ${MSG91_SENDER_ID:NAMMAO}
     provider: MSG91
 
@@ -285,10 +285,10 @@ gemini:
   enabled: ${GEMINI_ENABLED:true}
   # Multiple API keys for rotation (15 RPM each = 60 RPM total)
   api-keys:
-    - ${GEMINI_API_KEY_1:AIzaSyCGt_F5WfqMZwr5UDkvOKWSuMQkkNRxoTc}
-    - ${GEMINI_API_KEY_2:AIzaSyAYqI-DsGx4QWBjyS9K8P9uSqMEcD7CmQo}
-    - ${GEMINI_API_KEY_3:AIzaSyDvKELg3zFky3G2Pg0uN2_NV5BoIl9JiQE}
-    - ${GEMINI_API_KEY_4:AIzaSyA-SdjVz-rnQbPk17e9k2FSq6LY_svGB3Q}
+    - ${GEMINI_API_KEY_1:}
+    - ${GEMINI_API_KEY_2:}
+    - ${GEMINI_API_KEY_3:}
+    - ${GEMINI_API_KEY_4:}
   model: ${GEMINI_MODEL:gemini-1.5-flash}
   api-url: https://generativelanguage.googleapis.com/v1/models
   rate-limit:

@@ -79,7 +79,7 @@ From your screenshot, you have:
 
 **Example of full key format:**
 ```
-AIzaSyA-SdjVz-rnQbPk17e9k2FSq6LY_svGB3Q
+AIzaSy...your-full-api-key-here
 ```
 
 ### Step 2: Choose Configuration Method
@@ -97,10 +97,10 @@ You have **3 options** (choose one):
 gemini:
   enabled: true
   api-keys:
-    - ${GEMINI_API_KEY_1:AIzaSyAb1cde2fgh3ijk4lmn5opq6rst7uvw8xyz}
-    - ${GEMINI_API_KEY_2:AIzaSyAYqI-DsGx4QWBjyS9K8P9uSqMEcD7CmQo}
-    - ${GEMINI_API_KEY_3:AIzaSyDvKELg3zFky3G2Pg0uN2_NV5BoIl9JiQE}
-    - ${GEMINI_API_KEY_4:AIzaSyA-SdjVz-rnQbPk17e9k2FSq6LY_svGB3Q}
+    - ${GEMINI_API_KEY_1:}
+    - ${GEMINI_API_KEY_2:}
+    - ${GEMINI_API_KEY_3:}
+    - ${GEMINI_API_KEY_4:}
 ```
 3. Replace with your full keys (remove the `${...}` wrapper):
 ```yaml

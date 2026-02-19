@@ -143,13 +143,13 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:8080/api',  // Backend port
   appUrl: 'http://localhost:4200',
-  googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
+  googleMapsApiKey: '(set via environment)',
   websocketUrl: 'ws://localhost:8082/ws',
   firebase: {
     // Firebase configuration for push notifications
-    apiKey: "AIzaSyB7MSHYRGCj9V-y3VZWCJvQ9I0LCB_-Oag",
+    apiKey: "(set via environment)",
     projectId: "grocery-5ecc5",
-    messagingSenderId: "368788713881"
+    messagingSenderId: "(set via environment)"
   }
 };
 ```

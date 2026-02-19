@@ -2,8 +2,20 @@ backend/src/main/resources/firebase-service-account.json
 
 # Environment files (contains API keys and secrets)
 .env
+.env.*
+!.env.example
+!.env.docker
 backend/.env
+backend/.env.*
 **/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
+
+# Gemini setup scripts with real keys
+gemini-api-setup/set-keys-windows.bat
+gemini-api-setup/set-keys-linux.sh
+gemini-api-setup/your-api-keys.txt
 
 # Root level documentation and temporary files
 /*.md
