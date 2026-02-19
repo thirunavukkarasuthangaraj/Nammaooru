@@ -1,9 +1,11 @@
 package com.shopmanagement.service;
 
+import com.shopmanagement.entity.Customer;
 import com.shopmanagement.entity.HealthTipQueue;
 import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.UserFcmToken;
+import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.HealthTipQueueRepository;
 import com.shopmanagement.repository.NotificationRepository;
 import com.shopmanagement.repository.UserFcmTokenRepository;
@@ -34,6 +36,7 @@ public class DailyHealthTipService {
 
     private final GeminiSearchService geminiSearchService;
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final FirebaseNotificationService firebaseNotificationService;
     private final NotificationRepository notificationRepository;
@@ -284,13 +287,24 @@ public class DailyHealthTipService {
             }
         }
 
-        List<Notification> notifications = userIds.stream()
-                .map(userId -> Notification.builder()
+        // Map User mobile numbers to Customer IDs (notifications are fetched by Customer ID)
+        List<String> mobileNumbers = optedInUsers.stream()
+                .map(User::getMobileNumber)
+                .filter(m -> m != null && !m.isEmpty())
+                .collect(Collectors.toList());
+        Map<String, Long> mobileToCustomerId = customerRepository.findByMobileNumberIn(mobileNumbers).stream()
+                .collect(Collectors.toMap(Customer::getMobileNumber, Customer::getId, (a, b) -> a));
+
+        List<Notification> notifications = new ArrayList<>();
+        for (User user : optedInUsers) {
+            Long customerId = mobileToCustomerId.get(user.getMobileNumber());
+            if (customerId != null) {
+                notifications.add(Notification.builder()
                         .title(HEALTH_TIP_TITLE)
                         .message(message)
                         .type(Notification.NotificationType.HEALTH_TIP)
                         .priority(Notification.NotificationPriority.LOW)
-                        .recipientId(userId)
+                        .recipientId(customerId)
                         .recipientType(Notification.RecipientType.CUSTOMER)
                         .senderType(senderType)
                         .icon("health")
@@ -298,8 +312,9 @@ public class DailyHealthTipService {
                         .isPushSent(true)
                         .createdBy(createdBy)
                         .updatedBy(createdBy)
-                        .build())
-                .collect(Collectors.toList());
+                        .build());
+            }
+        }
         notificationRepository.saveAll(notifications);
 
         return Map.of(

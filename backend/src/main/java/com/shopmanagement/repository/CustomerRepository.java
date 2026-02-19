@@ -148,4 +148,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     // Age-based queries (if needed)
     @Query("SELECT c FROM Customer c WHERE YEAR(CURRENT_DATE) - YEAR(c.dateOfBirth) BETWEEN :minAge AND :maxAge")
     List<Customer> findByAgeRange(@Param("minAge") Integer minAge, @Param("maxAge") Integer maxAge);
+
+    List<Customer> findByMobileNumberIn(List<String> mobileNumbers);
 }
