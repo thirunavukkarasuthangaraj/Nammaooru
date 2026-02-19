@@ -273,7 +273,7 @@ public class DailyHealthTipService {
 
         int successCount = 0;
         int failCount = 0;
-        Map<String, String> data = Map.of("type", "health_tip", "category", "HEALTH_TIP");
+        Map<String, String> data = new java.util.HashMap<>(Map.of("type", "health_tip", "category", "HEALTH_TIP"));
 
         for (UserFcmToken fcmToken : fcmTokens) {
             try {
