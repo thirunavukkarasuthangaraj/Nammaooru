@@ -211,8 +211,13 @@ app:
 
 # Razorpay Payment Gateway
 razorpay:
-  key-id: ${RAZORPAY_KEY_ID:rzp_test_SHVPTn816jIgxJ}
-  key-secret: ${RAZORPAY_KEY_SECRET:QH8RzVz0FRZqvwdDyqJ49LqK}
+  mode: ${RAZORPAY_MODE:live}   # "test" or "live"
+  test:
+    key-id: ${RAZORPAY_TEST_KEY_ID:rzp_test_SHVPTn816jIgxJ}
+    key-secret: ${RAZORPAY_TEST_KEY_SECRET:QH8RzVz0FRZqvwdDyqJ49LqK}
+  live:
+    key-id: ${rzp_live_SHz5o2j1EVVrIV:}
+    key-secret: ${LulPJf46OSVvpAQ8ikTfqYrh:}
 
 msg91:
   auth:

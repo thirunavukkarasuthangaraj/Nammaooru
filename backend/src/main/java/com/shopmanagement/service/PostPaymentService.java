@@ -5,11 +5,11 @@ import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
 import com.shopmanagement.entity.PostPayment;
+import com.shopmanagement.config.RazorpayConfig;
 import com.shopmanagement.repository.PostPaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,16 +28,11 @@ public class PostPaymentService {
 
     private final PostPaymentRepository postPaymentRepository;
     private final RazorpayClient razorpayClient;
+    private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
 
-    @Value("${razorpay.key-id:}")
-    private String razorpayKeyId;
-
-    @Value("${razorpay.key-secret:}")
-    private String razorpayKeySecret;
-
     private boolean isTestMode() {
-        return razorpayKeyId == null || razorpayKeyId.isEmpty() || razorpayClient == null;
+        return razorpayConfig.isTestMode();
     }
 
     private static final double PROCESSING_FEE_PERCENT = 2.36; // Razorpay 2% + 18% GST
@@ -92,7 +87,7 @@ public class PostPaymentService {
         config.put("processingFeePaise", processingFeePaise);
         config.put("totalAmountPaise", totalAmountPaise);
         config.put("currency", currency);
-        config.put("razorpayKeyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
+        config.put("razorpayKeyId", isTestMode() ? "TEST_MODE" : razorpayConfig.getActiveKeyId());
         config.put("testMode", isTestMode());
         config.put("durationDays", durationDays);
         return config;
@@ -143,7 +138,7 @@ public class PostPaymentService {
         result.put("basePrice", priceInRupees);
         result.put("processingFeePaise", processingFeePaise);
         result.put("currency", currency);
-        result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
+        result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayConfig.getActiveKeyId());
         result.put("testMode", isTestMode());
         return result;
     }
@@ -168,7 +163,7 @@ public class PostPaymentService {
             attributes.put("razorpay_payment_id", razorpayPaymentId);
             attributes.put("razorpay_signature", razorpaySignature);
 
-            boolean isValid = Utils.verifyPaymentSignature(attributes, razorpayKeySecret);
+            boolean isValid = Utils.verifyPaymentSignature(attributes, razorpayConfig.getActiveKeySecret());
             if (!isValid) {
                 payment.setStatus(PostPayment.PaymentStatus.FAILED);
                 postPaymentRepository.save(payment);
@@ -243,7 +238,7 @@ public class PostPaymentService {
         result.put("count", count);
         result.put("processingFeePaise", processingFeePaise);
         result.put("currency", currency);
-        result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayKeyId);
+        result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayConfig.getActiveKeyId());
         result.put("testMode", isTestMode());
         result.put("tokenIds", tokenIds);
         return result;
@@ -270,7 +265,7 @@ public class PostPaymentService {
             attributes.put("razorpay_payment_id", razorpayPaymentId);
             attributes.put("razorpay_signature", razorpaySignature);
 
-            boolean isValid = Utils.verifyPaymentSignature(attributes, razorpayKeySecret);
+            boolean isValid = Utils.verifyPaymentSignature(attributes, razorpayConfig.getActiveKeySecret());
             if (!isValid) {
                 payments.forEach(p -> p.setStatus(PostPayment.PaymentStatus.FAILED));
                 postPaymentRepository.saveAll(payments);
