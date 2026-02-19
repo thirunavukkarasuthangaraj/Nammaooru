@@ -93,11 +93,12 @@ public class OrderController {
         return ResponseUtil.success(response, "Order status updated successfully");
     }
     
-    @PutMapping("/{id}/cancel")
+    @PostMapping("/{id}/cancel")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER') or hasRole('CUSTOMER')")
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @PathVariable Long id,
-            @RequestParam String reason) {
+            @RequestBody Map<String, String> body) {
+        String reason = body.getOrDefault("reason", "No reason provided");
         log.info("Cancelling order: {} with reason: {}", id, reason);
         OrderResponse response = orderService.cancelOrder(id, reason);
         return ResponseUtil.success(response, "Order cancelled successfully");
