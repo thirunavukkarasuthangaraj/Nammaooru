@@ -469,7 +469,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Future<void> _loadFeaturedPosts() async {
     try {
-      final response = await _apiService.get('/featured-posts', includeAuth: false);
+      // Pass user location for nearby filtering
+      final queryParams = <String, String>{};
+      if (_userLatitude != null && _userLongitude != null) {
+        queryParams['lat'] = _userLatitude.toString();
+        queryParams['lng'] = _userLongitude.toString();
+        queryParams['radius'] = '50';
+      }
+      final response = await _apiService.get('/featured-posts', queryParams: queryParams, includeAuth: false);
       if (response['success'] != true || response['data'] == null) return;
 
       final data = response['data'] as Map<String, dynamic>;

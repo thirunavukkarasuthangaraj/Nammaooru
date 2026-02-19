@@ -1088,7 +1088,7 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _PropertyDetailsSheet(listing: listing),
+      builder: (context) => PropertyDetailsSheet(listing: listing),
     );
   }
 
@@ -1114,16 +1114,16 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   }
 }
 
-class _PropertyDetailsSheet extends StatefulWidget {
+class PropertyDetailsSheet extends StatefulWidget {
   final Map<String, dynamic> listing;
 
-  const _PropertyDetailsSheet({required this.listing});
+  const PropertyDetailsSheet({super.key, required this.listing});
 
   @override
-  State<_PropertyDetailsSheet> createState() => _PropertyDetailsSheetState();
+  State<PropertyDetailsSheet> createState() => _PropertyDetailsSheetState();
 }
 
-class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
+class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
   int _currentImageIndex = 0;
   late final PageController _pageController;
 
@@ -1652,12 +1652,12 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Title
+                    // Title (English or Tamil)
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
-                        labelText: 'Title *',
-                        hintText: 'e.g., 2 BHK House for Sale',
+                        labelText: 'Title / தலைப்பு *',
+                        hintText: 'e.g., 2 BHK House for Sale / 2 BHK வீடு விற்பனைக்கு',
                         border: OutlineInputBorder(),
                       ),
                       validator: (v) => v?.isEmpty ?? true ? 'Required' : null,

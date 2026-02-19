@@ -27,9 +27,11 @@ public class FeaturedPostsService {
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
 
-    public Map<String, Object> getFeaturedPosts() {
+    public Map<String, Object> getFeaturedPosts(Double lat, Double lng, Double radiusKm) {
         Map<String, Object> result = new LinkedHashMap<>();
         Pageable top10 = PageRequest.of(0, 10);
+        boolean hasLocation = lat != null && lng != null;
+        double radius = radiusKm != null ? radiusKm : 50.0;
 
         // Combos - active combos from all shops
         try {
@@ -50,62 +52,121 @@ public class FeaturedPostsService {
         }
 
         // Only PAID posts show in the banner (isPaid=true), ordered by date (newest first)
+        // If lat/lng provided, filter by distance (posts without location are always included)
+        String[] approvedStatus = new String[]{"APPROVED"};
 
-        // Marketplace - paid approved posts only
+        // Marketplace - paid approved posts, nearby if location provided
         try {
-            var mpPosts = marketplacePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
-                    MarketplacePost.PostStatus.APPROVED, top10).getContent();
-            result.put("marketplace", mpPosts.stream().map(this::mapMarketplace).toList());
+            if (hasLocation) {
+                var mpPosts = marketplacePostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("marketplace", mpPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapMarketplace).toList());
+            } else {
+                var mpPosts = marketplacePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        MarketplacePost.PostStatus.APPROVED, top10).getContent();
+                result.put("marketplace", mpPosts.stream().map(this::mapMarketplace).toList());
+            }
         } catch (Exception e) {
             result.put("marketplace", List.of());
         }
 
-        // Farmer Products - paid approved only
+        // Farmer Products - paid approved, nearby if location provided
         try {
-            var fpPosts = farmerProductRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
-                    FarmerProduct.PostStatus.APPROVED, top10).getContent();
-            result.put("farmer", fpPosts.stream().map(this::mapFarmer).toList());
+            if (hasLocation) {
+                var fpPosts = farmerProductRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("farmer", fpPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapFarmer).toList());
+            } else {
+                var fpPosts = farmerProductRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        FarmerProduct.PostStatus.APPROVED, top10).getContent();
+                result.put("farmer", fpPosts.stream().map(this::mapFarmer).toList());
+            }
         } catch (Exception e) {
             result.put("farmer", List.of());
         }
 
-        // Labour - paid approved only
+        // Labour - paid approved, nearby if location provided
         try {
-            var lbPosts = labourPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
-                    LabourPost.PostStatus.APPROVED, top10).getContent();
-            result.put("labour", lbPosts.stream().map(this::mapLabour).toList());
+            if (hasLocation) {
+                var lbPosts = labourPostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("labour", lbPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapLabour).toList());
+            } else {
+                var lbPosts = labourPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        LabourPost.PostStatus.APPROVED, top10).getContent();
+                result.put("labour", lbPosts.stream().map(this::mapLabour).toList());
+            }
         } catch (Exception e) {
             result.put("labour", List.of());
         }
 
-        // Travel - paid approved only
+        // Travel - paid approved, nearby if location provided
         try {
-            var tvPosts = travelPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
-                    TravelPost.PostStatus.APPROVED, top10).getContent();
-            result.put("travel", tvPosts.stream().map(this::mapTravel).toList());
+            if (hasLocation) {
+                var tvPosts = travelPostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("travel", tvPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapTravel).toList());
+            } else {
+                var tvPosts = travelPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        TravelPost.PostStatus.APPROVED, top10).getContent();
+                result.put("travel", tvPosts.stream().map(this::mapTravel).toList());
+            }
         } catch (Exception e) {
             result.put("travel", List.of());
         }
 
-        // Parcel - paid approved only
+        // Parcel - paid approved, nearby if location provided
         try {
-            var pcPosts = parcelServicePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
-                    ParcelServicePost.PostStatus.APPROVED, top10).getContent();
-            result.put("parcel", pcPosts.stream().map(this::mapParcel).toList());
+            if (hasLocation) {
+                var pcPosts = parcelServicePostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("parcel", pcPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapParcel).toList());
+            } else {
+                var pcPosts = parcelServicePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        ParcelServicePost.PostStatus.APPROVED, top10).getContent();
+                result.put("parcel", pcPosts.stream().map(this::mapParcel).toList());
+            }
         } catch (Exception e) {
             result.put("parcel", List.of());
         }
 
-        // Real Estate - paid approved only
+        // Real Estate - paid approved only (no lat/lng on findNearbyPosts, use standard query)
         try {
             var rePosts = realEstatePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
                     RealEstatePost.PostStatus.APPROVED, top10).getContent();
-            result.put("realEstate", rePosts.stream().map(this::mapRealEstate).toList());
+            if (hasLocation) {
+                // Filter by distance in Java for real estate (has its own lat/lng fields)
+                result.put("realEstate", rePosts.stream()
+                        .filter(p -> p.getLatitude() == null || p.getLongitude() == null ||
+                                haversineDistance(lat, lng, p.getLatitude(), p.getLongitude()) <= radius)
+                        .map(this::mapRealEstate).toList());
+            } else {
+                result.put("realEstate", rePosts.stream().map(this::mapRealEstate).toList());
+            }
         } catch (Exception e) {
             result.put("realEstate", List.of());
         }
 
         return result;
+    }
+
+    /**
+     * Calculate Haversine distance between two points in km.
+     */
+    private double haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+        double R = 6371.0; // Earth radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 
     private Map<String, Object> mapMarketplace(MarketplacePost p) {

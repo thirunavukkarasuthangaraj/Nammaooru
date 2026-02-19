@@ -662,7 +662,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _MarketplacePostDetailsSheet(post: post),
+      builder: (context) => MarketplacePostDetailsSheet(post: post),
     );
   }
 
@@ -2151,8 +2151,8 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
-                        labelText: 'Title *',
-                        hintText: 'e.g., 2 BHK House for Sale',
+                        labelText: 'Title / தலைப்பு *',
+                        hintText: 'e.g., Sofa for Sale / சோபா விற்பனைக்கு',
                         border: OutlineInputBorder(),
                       ),
                       validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
@@ -2610,16 +2610,16 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
 
 // ─── Marketplace Post Details Bottom Sheet ───
 
-class _MarketplacePostDetailsSheet extends StatefulWidget {
+class MarketplacePostDetailsSheet extends StatefulWidget {
   final Map<String, dynamic> post;
 
-  const _MarketplacePostDetailsSheet({required this.post});
+  const MarketplacePostDetailsSheet({super.key, required this.post});
 
   @override
-  State<_MarketplacePostDetailsSheet> createState() => _MarketplacePostDetailsSheetState();
+  State<MarketplacePostDetailsSheet> createState() => _MarketplacePostDetailsSheetState();
 }
 
-class _MarketplacePostDetailsSheetState extends State<_MarketplacePostDetailsSheet> {
+class _MarketplacePostDetailsSheetState extends State<MarketplacePostDetailsSheet> {
   Map<String, dynamic> get post => widget.post;
 
   String _getImageUrl() {
