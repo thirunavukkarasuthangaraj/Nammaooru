@@ -1,0 +1,264 @@
+<div class="health-tips-container">
+  <!-- Header -->
+  <div class="header-section">
+    <h2 class="page-title">
+      <mat-icon class="title-icon">health_and_safety</mat-icon>
+      Health Tips Management
+    </h2>
+    <div class="header-actions">
+      <button mat-raised-button color="primary"
+              (click)="generateWeeklyTips()"
+              [disabled]="isGenerating">
+        <mat-icon>auto_awesome</mat-icon>
+        {{ isGenerating ? 'Generating...' : 'Generate Week Tips' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <div class="stat-card stat-pending">
+      <mat-card>
+        <div class="stat-value">{{ stats.PENDING }}</div>
+        <div class="stat-label">Pending</div>
+      </mat-card>
+    </div>
+    <div class="stat-card stat-approved">
+      <mat-card>
+        <div class="stat-value">{{ stats.APPROVED }}</div>
+        <div class="stat-label">Approved</div>
+      </mat-card>
+    </div>
+    <div class="stat-card stat-sent">
+      <mat-card>
+        <div class="stat-value">{{ stats.SENT }}</div>
+        <div class="stat-label">Sent</div>
+      </mat-card>
+    </div>
+    <div class="stat-card stat-rejected">
+      <mat-card>
+        <div class="stat-value">{{ stats.REJECTED }}</div>
+        <div class="stat-label">Rejected</div>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Tab Section -->
+  <div class="tab-section">
+    <mat-button-toggle-group [value]="activeTab" (change)="switchTab($event.value)">
+      <mat-button-toggle value="queue">Queue</mat-button-toggle>
+      <mat-button-toggle value="history">Sent History</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  <!-- QUEUE TAB -->
+  <ng-container *ngIf="activeTab === 'queue'">
+    <mat-card class="filter-card">
+      <mat-card-content>
+        <div class="filter-row">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-label>Search</mat-label>
+            <input matInput (keyup)="applyFilter($event)" placeholder="Search tips..." />
+            <mat-icon matPrefix>search</mat-icon>
+          </mat-form-field>
+
+          <mat-button-toggle-group [(value)]="filterStatus" (change)="filterByStatus(filterStatus)">
+            <mat-button-toggle value="ALL">All</mat-button-toggle>
+            <mat-button-toggle value="PENDING">Pending</mat-button-toggle>
+            <mat-button-toggle value="APPROVED">Approved</mat-button-toggle>
+            <mat-button-toggle value="REJECTED">Rejected</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="table-card">
+      <mat-card-content>
+        <div class="table-container">
+          <table mat-table [dataSource]="queueDataSource" matSort #queueSort="matSort" class="health-tip-table">
+            <!-- ID Column -->
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+              <td mat-cell *matCellDef="let tip">{{ tip.id }}</td>
+            </ng-container>
+
+            <!-- Message Column -->
+            <ng-container matColumnDef="message">
+              <th mat-header-cell *matHeaderCellDef>Message</th>
+              <td mat-cell *matCellDef="let tip">
+                <div *ngIf="editingTipId !== tip.id" class="tip-message tip-message-truncated">
+                  {{ tip.message }}
+                </div>
+                <div *ngIf="editingTipId === tip.id">
+                  <mat-form-field appearance="outline" class="edit-field">
+                    <textarea matInput [(ngModel)]="editMessage" rows="3"></textarea>
+                  </mat-form-field>
+                  <div class="edit-actions">
+                    <button mat-raised-button color="primary" (click)="saveEdit(tip)" [disabled]="!editMessage.trim()">
+                      <mat-icon>save</mat-icon> Save
+                    </button>
+                    <button mat-button (click)="cancelEdit()">Cancel</button>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Scheduled Date Column -->
+            <ng-container matColumnDef="scheduledDate">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Scheduled</th>
+              <td mat-cell *matCellDef="let tip" class="date-cell">
+                {{ formatDate(tip.scheduledDate) }}
+              </td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let tip">
+                <mat-chip [color]="getStatusColor(tip.status)" selected class="status-chip">
+                  <mat-icon class="status-chip-icon" style="font-size: 16px; width: 16px; height: 16px; margin-right: 4px;">
+                    {{ getStatusIcon(tip.status) }}
+                  </mat-icon>
+                  {{ tip.status }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <!-- Approved By Column -->
+            <ng-container matColumnDef="approvedBy">
+              <th mat-header-cell *matHeaderCellDef>Approved By</th>
+              <td mat-cell *matCellDef="let tip" class="date-cell">
+                {{ tip.approvedBy || '-' }}
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let tip">
+                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Actions menu">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item (click)="startEdit(tip)" *ngIf="tip.status === 'PENDING'">
+                    <mat-icon>edit</mat-icon>
+                    <span>Edit</span>
+                  </button>
+                  <button mat-menu-item (click)="approveTip(tip)" class="approve-action"
+                          *ngIf="tip.status === 'PENDING'">
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Approve</span>
+                  </button>
+                  <button mat-menu-item (click)="rejectTip(tip)" class="delete-action"
+                          *ngIf="tip.status === 'PENDING'">
+                    <mat-icon>cancel</mat-icon>
+                    <span>Reject</span>
+                  </button>
+                  <mat-divider *ngIf="tip.status === 'APPROVED'"></mat-divider>
+                  <button mat-menu-item (click)="sendNow(tip)"
+                          *ngIf="tip.status === 'APPROVED'">
+                    <mat-icon>send</mat-icon>
+                    <span>Send Now</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="queueColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: queueColumns;"></tr>
+
+            <!-- No Data Row -->
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell" colspan="6">
+                <div class="no-data">
+                  <mat-icon>inbox</mat-icon>
+                  <p>No health tips in queue. Click "Generate Week Tips" to create some.</p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <mat-paginator #queuePaginator
+          [pageSizeOptions]="[10, 25, 50]"
+          showFirstLastButtons>
+        </mat-paginator>
+      </mat-card-content>
+    </mat-card>
+  </ng-container>
+
+  <!-- HISTORY TAB -->
+  <ng-container *ngIf="activeTab === 'history'">
+    <mat-card class="table-card">
+      <mat-card-content>
+        <div class="table-container">
+          <table mat-table [dataSource]="historyDataSource" class="health-tip-table">
+            <!-- ID Column -->
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let tip">{{ tip.id }}</td>
+            </ng-container>
+
+            <!-- Message Column -->
+            <ng-container matColumnDef="message">
+              <th mat-header-cell *matHeaderCellDef>Message</th>
+              <td mat-cell *matCellDef="let tip">
+                <div class="tip-message">{{ tip.message }}</div>
+              </td>
+            </ng-container>
+
+            <!-- Scheduled Date Column -->
+            <ng-container matColumnDef="scheduledDate">
+              <th mat-header-cell *matHeaderCellDef>Scheduled</th>
+              <td mat-cell *matCellDef="let tip" class="date-cell">
+                {{ formatDate(tip.scheduledDate) }}
+              </td>
+            </ng-container>
+
+            <!-- Sent At Column -->
+            <ng-container matColumnDef="sentAt">
+              <th mat-header-cell *matHeaderCellDef>Sent At</th>
+              <td mat-cell *matCellDef="let tip" class="date-cell">
+                {{ formatDateTime(tip.sentAt) }}
+              </td>
+            </ng-container>
+
+            <!-- Approved By Column -->
+            <ng-container matColumnDef="approvedBy">
+              <th mat-header-cell *matHeaderCellDef>Approved By</th>
+              <td mat-cell *matCellDef="let tip" class="date-cell">
+                {{ tip.approvedBy || '-' }}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: historyColumns;"></tr>
+
+            <!-- No Data Row -->
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell" colspan="5">
+                <div class="no-data">
+                  <mat-icon>history</mat-icon>
+                  <p>No sent health tips yet.</p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <mat-paginator #historyPaginator
+          [length]="historyTotalElements"
+          [pageSize]="historyPageSize"
+          [pageSizeOptions]="[10, 20, 50]"
+          (page)="onHistoryPageChange($event)"
+          showFirstLastButtons>
+        </mat-paginator>
+      </mat-card-content>
+    </mat-card>
+  </ng-container>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <mat-spinner></mat-spinner>
+  </div>
+</div>

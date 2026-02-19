@@ -53,6 +53,7 @@ import { FeatureConfigManagementComponent } from './components/feature-config-ma
 import { PostLimitsComponent } from './components/post-limits/post-limits.component';
 import { PostEditDialogComponent } from './components/post-edit-dialog/post-edit-dialog.component';
 import { PaymentHistoryComponent } from './components/payment-history/payment-history.component';
+import { HealthTipsManagementComponent } from './components/health-tips/health-tips-management.component';
 
 @NgModule({
   declarations: [
@@ -82,7 +83,8 @@ import { PaymentHistoryComponent } from './components/payment-history/payment-hi
     FeatureConfigManagementComponent,
     PostLimitsComponent,
     PostEditDialogComponent,
-    PaymentHistoryComponent
+    PaymentHistoryComponent,
+    HealthTipsManagementComponent
   ],
   imports: [
     CommonModule,
@@ -216,6 +218,10 @@ import { PaymentHistoryComponent } from './components/payment-history/payment-hi
       {
         path: 'payment-history',
         component: PaymentHistoryComponent
+      },
+      {
+        path: 'health-tips',
+        component: HealthTipsManagementComponent
       },
       {
         path: 'shops',

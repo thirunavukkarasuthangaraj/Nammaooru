@@ -168,7 +168,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
         { title: 'Push Notifications', icon: 'notifications_active', route: '/admin/push-notifications', badge: null },
-        { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null }
+        { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null },
+        { title: 'Health Tips', icon: 'health_and_safety', route: '/admin/health-tips', badge: null }
       ]
     },
     {
@@ -265,7 +266,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
         { title: 'Push Notifications', icon: 'notifications_active', route: '/admin/push-notifications', badge: null },
-        { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null }
+        { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null },
+        { title: 'Health Tips', icon: 'health_and_safety', route: '/admin/health-tips', badge: null }
       ]
     },
     {
