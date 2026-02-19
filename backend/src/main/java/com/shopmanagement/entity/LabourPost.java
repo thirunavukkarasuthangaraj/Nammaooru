@@ -111,6 +111,12 @@ public class LabourPost {
         CAR_REPAIR,
         TYRE_PUNCTURE,
         GENERAL_LABOUR,
+        CLEANER,
+        GARDENER,
+        COOK,
+        CCTV_TECHNICIAN,
+        COMPUTER_TECHNICIAN,
+        MOBILE_TECHNICIAN,
         OTHER
     }
 

@@ -205,6 +205,7 @@ export class LabourManagementComponent implements OnInit {
       case 'ELECTRICIAN': return 'Electrician';
       case 'PLUMBER': return 'Plumber';
       case 'CARPENTER': return 'Carpenter';
+      case 'CONTRACTOR': return 'Contractor';
       case 'MASON': return 'Mason';
       case 'WELDER': return 'Welder';
       case 'MECHANIC': return 'Mechanic';
@@ -217,6 +218,11 @@ export class LabourManagementComponent implements OnInit {
       case 'CCTV_TECHNICIAN': return 'CCTV Technician';
       case 'COMPUTER_TECHNICIAN': return 'Computer Technician';
       case 'MOBILE_TECHNICIAN': return 'Mobile Technician';
+      case 'HELPER': return 'Helper';
+      case 'BIKE_REPAIR': return 'Bike Repair';
+      case 'CAR_REPAIR': return 'Car Repair';
+      case 'TYRE_PUNCTURE': return 'Tyre Puncture';
+      case 'GENERAL_LABOUR': return 'General Labour';
       case 'OTHER': return 'Other';
       default: return category;
     }
