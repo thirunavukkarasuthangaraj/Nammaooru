@@ -18,6 +18,8 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
 
     Page<LabourPost> findByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
+    Page<LabourPost> findByStatusAndIsPaidTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+
     List<LabourPost> findBySellerUserIdOrderByCreatedAtDesc(Long sellerUserId);
 
     Page<LabourPost> findByStatusInOrderByCreatedAtDesc(List<PostStatus> statuses, Pageable pageable);

@@ -18,6 +18,8 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
 
     Page<TravelPost> findByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
+    Page<TravelPost> findByStatusAndIsPaidTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+
     List<TravelPost> findBySellerUserIdOrderByCreatedAtDesc(Long sellerUserId);
 
     Page<TravelPost> findByStatusInOrderByCreatedAtDesc(List<PostStatus> statuses, Pageable pageable);

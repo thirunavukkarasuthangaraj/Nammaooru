@@ -45,6 +45,11 @@ import '../screens/farmer_products_screen.dart';
 import '../screens/labour_screen.dart';
 import '../screens/travel_screen.dart';
 import '../screens/parcel_screen.dart';
+import '../screens/real_estate_screen.dart';
+import '../screens/farmer_post_detail_screen.dart';
+import '../screens/labour_post_detail_screen.dart';
+import '../screens/travel_post_detail_screen.dart';
+import '../screens/parcel_post_detail_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -527,12 +532,47 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           'color': const Color(0xFFAD1457),
           'label': 'Real Estate',
           'labelTamil': 'ரியல் எஸ்டேட்',
-          'screen': const MarketplaceScreen(),
+          'screen': const RealEstateScreen(),
           'titleKey': 'title',
           'subtitleKey': 'location',
           'imageKey': 'imageUrls',
         },
       };
+
+      // Parse shop promotions/offers from API
+      final promotions = data['promotions'];
+      if (promotions is List && promotions.isNotEmpty) {
+        for (final promo in promotions) {
+          final promoType = promo['type']?.toString() ?? '';
+          final discountValue = promo['discountValue'];
+          String discountText = '';
+          if (promoType == 'PERCENTAGE' && discountValue != null) {
+            discountText = '${double.tryParse(discountValue.toString())?.toStringAsFixed(0) ?? ''}% OFF';
+          } else if (promoType == 'FIXED_AMOUNT' && discountValue != null) {
+            discountText = '₹${double.tryParse(discountValue.toString())?.toStringAsFixed(0) ?? ''} OFF';
+          } else if (promoType == 'FREE_SHIPPING') {
+            discountText = 'Free Shipping';
+          } else if (promoType == 'BUY_ONE_GET_ONE') {
+            discountText = 'Buy 1 Get 1';
+          }
+          allFeatured.add({
+            'type': 'promotion',
+            'title': promo['title'] ?? 'Special Offer',
+            'subtitle': '${promo['shopName'] ?? 'Shop Offer'} • $discountText',
+            'image': (promo['bannerUrl'] ?? promo['imageUrl'] ?? '').toString(),
+            'icon': Icons.percent_rounded,
+            'color': const Color(0xFFFF6F00),
+            'label': promo['shopName'] ?? 'Offer',
+            'labelTamil': promo['shopName'] ?? 'சலுகை',
+            'screen': null,
+            'promoCode': promo['code'],
+            'discountValue': promo['discountValue'],
+            'promoType': promo['type'],
+            'shopId': promo['shopId'],
+            'postData': promo,
+          });
+        }
+      }
 
       // Parse combos from API
       final combos = data['combos'];
@@ -549,14 +589,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             'color': const Color(0xFFE91E63),
             'label': combo['shopName'] ?? 'Combo',
             'labelTamil': combo['shopName'] ?? 'காம்போ',
-            'screen': null, // Combos don't navigate to a screen
+            'screen': null,
             'comboPrice': combo['comboPrice'],
             'originalPrice': combo['originalPrice'],
           });
         }
       }
 
-      // Parse post categories
+      // Parse paid post categories (only paid posts show in banner)
       for (final entry in configs.entries) {
         final key = entry.key;
         final cfg = entry.value;
@@ -596,6 +636,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               'label': cfg['label'],
               'labelTamil': cfg['labelTamil'],
               'screen': cfg['screen'],
+              'postData': post,
             });
           }
         }
@@ -819,6 +860,146 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  void _onFeaturedPostTap(Map<String, dynamic> post) {
+    final type = post['type'];
+    final postData = post['postData'] as Map<String, dynamic>?;
+
+    // Handle promotion tap - show promo code details
+    if (type == 'promotion') {
+      final code = post['promoCode'] ?? '';
+      final title = post['title'] ?? 'Special Offer';
+      final subtitle = post['subtitle'] ?? '';
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 20),
+              Icon(Icons.percent_rounded, size: 48, color: VillageTheme.primaryGreen),
+              const SizedBox(height: 12),
+              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey[600]), textAlign: TextAlign.center),
+              if (code.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: VillageTheme.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: VillageTheme.primaryGreen, width: 2, style: BorderStyle.solid),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(code, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen, letterSpacing: 2)),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: code));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Promo code "$code" copied!'), duration: const Duration(seconds: 2)),
+                          );
+                        },
+                        child: Icon(Icons.copy, color: VillageTheme.primaryGreen, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('Use this code at checkout', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              ],
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (postData != null) {
+      switch (type) {
+        case 'farmer':
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => FarmerPostDetailScreen(post: postData),
+          ));
+          return;
+        case 'labour':
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => LabourPostDetailScreen(post: postData),
+          ));
+          return;
+        case 'travel':
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => TravelPostDetailScreen(post: postData),
+          ));
+          return;
+        case 'parcel':
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ParcelPostDetailScreen(post: postData),
+          ));
+          return;
+        case 'marketplace':
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => MarketplacePostDetailsSheet(post: postData),
+          );
+          return;
+        case 'realEstate':
+          // Transform raw API data to the format PropertyDetailsSheet expects
+          final listingType = postData['listingType']?.toString() ?? 'FOR_SALE';
+          final propertyType = postData['propertyType']?.toString() ?? 'LAND';
+          final transformedData = <String, dynamic>{
+            'id': postData['id'],
+            'title': postData['title'] ?? '',
+            'type': propertyType.replaceAll('_', ' ').split(' ').map((w) =>
+              w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : w
+            ).join(' '),
+            'listingType': listingType == 'FOR_RENT' ? 'For Rent' : 'For Sale',
+            'price': (postData['price'] as num?)?.toInt() ?? 0,
+            'priceUnit': listingType == 'FOR_RENT' ? 'month' : 'total',
+            'area': postData['areaSqft'] != null ? '${postData['areaSqft']} sq.ft' : 'N/A',
+            'areaSqft': postData['areaSqft'],
+            'bedrooms': postData['bedrooms'],
+            'bathrooms': postData['bathrooms'],
+            'location': postData['location'] ?? '',
+            'description': postData['description'] ?? '',
+            'images': (postData['imageUrls'] as String?)?.split(',').where((s) => s.trim().isNotEmpty).toList() ?? [],
+            'videoUrl': postData['videoUrl'],
+            'postedBy': postData['ownerName'] ?? 'Unknown',
+            'phone': postData['ownerPhone'] ?? '',
+            'postedDate': postData['createdAt'] != null ? DateTime.tryParse(postData['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+            'viewsCount': postData['viewsCount'] ?? 0,
+          };
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => PropertyDetailsSheet(listing: transformedData),
+          );
+          return;
+      }
+    }
+
+    // Fallback: navigate to category screen
+    if (post['screen'] != null) {
+      final Widget screen = post['screen'] as Widget;
+      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    }
+  }
+
   Widget _buildFeaturedPostCard(Map<String, dynamic> post) {
     final Color color = post['color'] as Color;
     final IconData icon = post['icon'] as IconData;
@@ -830,12 +1011,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final bool isCombo = post['type'] == 'combo';
 
     return GestureDetector(
-      onTap: () {
-        if (post['screen'] != null) {
-          final Widget screen = post['screen'] as Widget;
-          Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
-        }
-      },
+      onTap: () => _onFeaturedPostTap(post),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(

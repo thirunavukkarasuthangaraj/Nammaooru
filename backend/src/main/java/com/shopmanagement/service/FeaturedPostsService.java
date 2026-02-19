@@ -2,12 +2,15 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.entity.*;
 import com.shopmanagement.repository.*;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -21,69 +24,82 @@ public class FeaturedPostsService {
     private final ParcelServicePostRepository parcelServicePostRepository;
     private final RealEstatePostRepository realEstatePostRepository;
     private final ProductComboRepository productComboRepository;
+    private final PromotionRepository promotionRepository;
+    private final ShopRepository shopRepository;
 
     public Map<String, Object> getFeaturedPosts() {
         Map<String, Object> result = new LinkedHashMap<>();
-        Pageable top2 = PageRequest.of(0, 2);
+        Pageable top10 = PageRequest.of(0, 10);
 
         // Combos - active combos from all shops
         try {
             var combos = productComboRepository.findAllActiveCombos(LocalDate.now());
-            var limitedCombos = combos.size() > 4 ? combos.subList(0, 4) : combos;
+            var limitedCombos = combos.size() > 6 ? combos.subList(0, 6) : combos;
             result.put("combos", limitedCombos.stream().map(this::mapCombo).toList());
         } catch (Exception e) {
             result.put("combos", List.of());
         }
 
-        // Marketplace - 2 recent approved posts
+        // Shop Promotions/Offers - active public promotions
         try {
-            var mpPosts = marketplacePostRepository.findByStatusOrderByCreatedAtDesc(
-                    MarketplacePost.PostStatus.APPROVED, top2).getContent();
+            var promos = promotionRepository.findAllPublicActive(LocalDateTime.now());
+            var limitedPromos = promos.size() > 10 ? promos.subList(0, 10) : promos;
+            result.put("promotions", limitedPromos.stream().map(this::mapPromotion).toList());
+        } catch (Exception e) {
+            result.put("promotions", List.of());
+        }
+
+        // Only PAID posts show in the banner (isPaid=true), ordered by date (newest first)
+
+        // Marketplace - paid approved posts only
+        try {
+            var mpPosts = marketplacePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                    MarketplacePost.PostStatus.APPROVED, top10).getContent();
             result.put("marketplace", mpPosts.stream().map(this::mapMarketplace).toList());
         } catch (Exception e) {
             result.put("marketplace", List.of());
         }
 
-        // Farmer Products - 2 recent approved
+        // Farmer Products - paid approved only
         try {
-            var fpPosts = farmerProductRepository.findByStatusOrderByCreatedAtDesc(
-                    FarmerProduct.PostStatus.APPROVED, top2).getContent();
+            var fpPosts = farmerProductRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                    FarmerProduct.PostStatus.APPROVED, top10).getContent();
             result.put("farmer", fpPosts.stream().map(this::mapFarmer).toList());
         } catch (Exception e) {
             result.put("farmer", List.of());
         }
 
-        // Labour - 2 recent approved
+        // Labour - paid approved only
         try {
-            var lbPosts = labourPostRepository.findByStatusOrderByCreatedAtDesc(
-                    LabourPost.PostStatus.APPROVED, top2).getContent();
+            var lbPosts = labourPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                    LabourPost.PostStatus.APPROVED, top10).getContent();
             result.put("labour", lbPosts.stream().map(this::mapLabour).toList());
         } catch (Exception e) {
             result.put("labour", List.of());
         }
 
-        // Travel - 2 recent approved
+        // Travel - paid approved only
         try {
-            var tvPosts = travelPostRepository.findByStatusOrderByCreatedAtDesc(
-                    TravelPost.PostStatus.APPROVED, top2).getContent();
+            var tvPosts = travelPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                    TravelPost.PostStatus.APPROVED, top10).getContent();
             result.put("travel", tvPosts.stream().map(this::mapTravel).toList());
         } catch (Exception e) {
             result.put("travel", List.of());
         }
 
-        // Parcel - 2 recent approved
+        // Parcel - paid approved only
         try {
-            var pcPosts = parcelServicePostRepository.findByStatusOrderByCreatedAtDesc(
-                    ParcelServicePost.PostStatus.APPROVED, top2).getContent();
+            var pcPosts = parcelServicePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                    ParcelServicePost.PostStatus.APPROVED, top10).getContent();
             result.put("parcel", pcPosts.stream().map(this::mapParcel).toList());
         } catch (Exception e) {
             result.put("parcel", List.of());
         }
 
-        // Real Estate - 2 recent approved
+        // Real Estate - paid approved only
         try {
-            var rePosts = realEstatePostRepository.findByStatusOrderByCreatedAtDesc(
-                    RealEstatePost.PostStatus.APPROVED, top2).getContent();
+            var rePosts = realEstatePostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                    RealEstatePost.PostStatus.APPROVED, top10).getContent();
             result.put("realEstate", rePosts.stream().map(this::mapRealEstate).toList());
         } catch (Exception e) {
             result.put("realEstate", List.of());
@@ -171,6 +187,29 @@ public class FeaturedPostsService {
         m.put("price", p.getPrice());
         m.put("location", p.getLocation());
         m.put("ownerName", p.getOwnerName());
+        return m;
+    }
+
+    private Map<String, Object> mapPromotion(Promotion p) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", p.getId());
+        m.put("title", p.getTitle());
+        m.put("description", p.getDescription());
+        m.put("code", p.getCode());
+        m.put("type", p.getType() != null ? p.getType().name() : null);
+        m.put("discountValue", p.getDiscountValue());
+        m.put("minimumOrderAmount", p.getMinimumOrderAmount());
+        m.put("maximumDiscountAmount", p.getMaximumDiscountAmount());
+        m.put("imageUrl", p.getImageUrl());
+        m.put("bannerUrl", p.getBannerUrl());
+        m.put("endDate", p.getEndDate() != null ? p.getEndDate().toString() : null);
+        // Get shop name if shop-specific promotion
+        if (p.getShopId() != null) {
+            m.put("shopId", p.getShopId());
+            try {
+                shopRepository.findById(p.getShopId()).ifPresent(shop -> m.put("shopName", shop.getName()));
+            } catch (Exception ignored) {}
+        }
         return m;
     }
 

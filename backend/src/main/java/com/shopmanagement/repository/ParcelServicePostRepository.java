@@ -18,6 +18,8 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
 
     Page<ParcelServicePost> findByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
+    Page<ParcelServicePost> findByStatusAndIsPaidTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+
     List<ParcelServicePost> findBySellerUserIdOrderByCreatedAtDesc(Long sellerUserId);
 
     Page<ParcelServicePost> findByStatusInOrderByCreatedAtDesc(List<PostStatus> statuses, Pageable pageable);

@@ -20,6 +20,9 @@ public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, 
     // Find all approved posts
     Page<RealEstatePost> findByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
+    // Find paid approved posts for banner
+    Page<RealEstatePost> findByStatusAndIsPaidTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+
     // Find by property type
     Page<RealEstatePost> findByStatusAndPropertyTypeOrderByCreatedAtDesc(
             PostStatus status, PropertyType propertyType, Pageable pageable);
