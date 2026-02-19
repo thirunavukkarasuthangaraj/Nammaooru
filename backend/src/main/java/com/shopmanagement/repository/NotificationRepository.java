@@ -144,6 +144,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Find by recipient ID and type with ordering
     List<Notification> findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(Long recipientId, Notification.RecipientType recipientType);
 
+    // Find distinct health tips sent (one per unique message, most recent first)
+    @Query("SELECT n FROM Notification n WHERE n.type = 'HEALTH_TIP' AND n.isActive = true " +
+           "AND n.id IN (SELECT MIN(n2.id) FROM Notification n2 WHERE n2.type = 'HEALTH_TIP' AND n2.isActive = true GROUP BY n2.message) " +
+           "ORDER BY n.createdAt DESC")
+    Page<Notification> findHealthTipHistory(Pageable pageable);
+
     // Mark all as read for a specific recipient type
     @Modifying
     @Query("UPDATE Notification n SET n.status = 'READ', n.readAt = CURRENT_TIMESTAMP WHERE n.recipientId = :recipientId AND n.recipientType = :recipientType AND n.status = 'UNREAD'")

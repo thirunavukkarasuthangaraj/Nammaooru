@@ -145,7 +145,7 @@ public class Notification {
     }
     
     public enum NotificationType {
-        INFO, SUCCESS, WARNING, ERROR, ORDER, ORDER_UPDATE, PAYMENT, SYSTEM, PROMOTION, REMINDER, ANNOUNCEMENT
+        INFO, SUCCESS, WARNING, ERROR, ORDER, ORDER_UPDATE, PAYMENT, SYSTEM, PROMOTION, REMINDER, ANNOUNCEMENT, HEALTH_TIP
     }
     
     public enum NotificationPriority {

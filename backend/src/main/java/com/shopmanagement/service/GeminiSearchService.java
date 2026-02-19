@@ -230,6 +230,28 @@ public class GeminiSearchService {
     }
 
     /**
+     * General-purpose text generation using Gemini AI.
+     * Calls Gemini with the given prompt and returns the raw text response.
+     */
+    public String generateText(String prompt) {
+        if (!geminiConfig.getEnabled()) {
+            throw new IllegalStateException("Gemini AI is not enabled");
+        }
+
+        try {
+            log.info("Generating text with Gemini AI");
+            String response = callGeminiAPI(prompt);
+            if (response != null && !response.trim().isEmpty()) {
+                return response.trim();
+            }
+            throw new RuntimeException("Empty response from Gemini API");
+        } catch (Exception e) {
+            log.error("Error generating text with Gemini: {}", e.getMessage());
+            throw new RuntimeException("Failed to generate text with Gemini", e);
+        }
+    }
+
+    /**
      * Check if Gemini AI is enabled
      */
     public boolean isEnabled() {

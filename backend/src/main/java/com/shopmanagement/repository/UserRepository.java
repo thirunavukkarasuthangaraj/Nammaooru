@@ -140,6 +140,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
                                           @Param("lng") double longitude,
                                           @Param("radiusKm") double radiusKm);
 
+    // Find customers opted in for health tip notifications
+    List<User> findByRoleAndHealthTipNotificationsEnabledTrue(User.UserRole role);
+
     // Find nearby customers (USER role) within radius using Haversine formula
     @Query(value = "SELECT * FROM users u WHERE u.role = 'USER' " +
            "AND u.is_active = true " +

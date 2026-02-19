@@ -503,6 +503,76 @@ public class CustomerMobileController {
         }
     }
 
+    @GetMapping("/preferences/health-tips")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getHealthTipPreference() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401)
+                    .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
+            }
+
+            String username = authentication.getName();
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(404)
+                    .body(ApiResponse.error("User not found", "USER_NOT_FOUND"));
+            }
+
+            User user = userOpt.get();
+            boolean enabled = user.getHealthTipNotificationsEnabled() != null
+                    ? user.getHealthTipNotificationsEnabled() : true;
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("enabled", enabled),
+                    "Health tip preference fetched successfully"));
+
+        } catch (Exception e) {
+            log.error("Error fetching health tip preference", e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to fetch preference", "PREFERENCE_ERROR"));
+        }
+    }
+
+    @PutMapping("/preferences/health-tips")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateHealthTipPreference(
+            @RequestBody Map<String, Boolean> request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401)
+                    .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
+            }
+
+            Boolean enabled = request.get("enabled");
+            if (enabled == null) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("'enabled' field is required", "INVALID_REQUEST"));
+            }
+
+            String username = authentication.getName();
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(404)
+                    .body(ApiResponse.error("User not found", "USER_NOT_FOUND"));
+            }
+
+            User user = userOpt.get();
+            user.setHealthTipNotificationsEnabled(enabled);
+            userRepository.save(user);
+
+            log.info("Health tip preference updated to {} for user {}", enabled, username);
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("enabled", enabled),
+                    "Health tip preference updated successfully"));
+
+        } catch (Exception e) {
+            log.error("Error updating health tip preference", e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to update preference", "PREFERENCE_ERROR"));
+        }
+    }
+
     @PostMapping("/notifications/{id}/mark-read")
     public ResponseEntity<ApiResponse<String>> markNotificationAsRead(@PathVariable Long id) {
         try {

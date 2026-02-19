@@ -9,6 +9,7 @@ import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.repository.UserFcmTokenRepository;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.service.DailyHealthTipService;
 import com.shopmanagement.service.NotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class NotificationController {
     private final NotificationService notificationService;
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final UserRepository userRepository;
+    private final DailyHealthTipService dailyHealthTipService;
     
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('SHOP_OWNER')")
@@ -279,6 +281,82 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
     
+    // ===== Daily Health Tip Queue Admin Endpoints =====
+
+    @PostMapping("/health-tip/generate-week")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> generateWeeklyTips() {
+        log.info("Admin generating weekly health tips");
+        List<Map<String, Object>> tips = dailyHealthTipService.generateWeeklyTips();
+        return ResponseEntity.ok(Map.of("success", true, "data", tips, "count", tips.size()));
+    }
+
+    @GetMapping("/health-tip/queue")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getHealthTipQueue() {
+        log.info("Admin viewing health tip queue");
+        List<Map<String, Object>> queue = dailyHealthTipService.getQueue();
+        Map<String, Object> stats = dailyHealthTipService.getQueueStats();
+        return ResponseEntity.ok(Map.of("success", true, "data", queue, "stats", stats));
+    }
+
+    @PutMapping("/health-tip/queue/{tipId}/edit")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> editQueuedTip(
+            @PathVariable Long tipId,
+            @RequestBody Map<String, String> request) {
+        String message = request.get("message");
+        if (message == null || message.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "'message' field is required"));
+        }
+        log.info("Admin editing health tip ID {}", tipId);
+        Map<String, Object> result = dailyHealthTipService.editQueuedTip(tipId, message.trim());
+        return ResponseEntity.ok(Map.of("success", true, "data", result));
+    }
+
+    @PutMapping("/health-tip/queue/{tipId}/approve")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> approveTip(@PathVariable Long tipId) {
+        String adminName = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Admin {} approving health tip ID {}", adminName, tipId);
+        Map<String, Object> result = dailyHealthTipService.approveTip(tipId, adminName);
+        return ResponseEntity.ok(Map.of("success", true, "data", result));
+    }
+
+    @PutMapping("/health-tip/queue/{tipId}/reject")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> rejectTip(@PathVariable Long tipId) {
+        log.info("Admin rejecting health tip ID {}", tipId);
+        Map<String, Object> result = dailyHealthTipService.rejectTip(tipId);
+        return ResponseEntity.ok(Map.of("success", true, "data", result));
+    }
+
+    @PostMapping("/health-tip/queue/{tipId}/send-now")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> sendTipNow(@PathVariable Long tipId) {
+        String adminName = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Admin {} sending health tip ID {} immediately", adminName, tipId);
+        Map<String, Object> result = dailyHealthTipService.sendTipNow(tipId, adminName);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/health-tip/history")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getHealthTipHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Admin fetching health tip history - page: {}, size: {}", page, size);
+        var history = dailyHealthTipService.getHealthTipHistory(page, size);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "data", history.getContent(),
+                "totalPages", history.getTotalPages(),
+                "totalElements", history.getTotalElements(),
+                "currentPage", history.getNumber()
+        ));
+    }
+
     @GetMapping("/enums")
     public ResponseEntity<Map<String, Object>> getNotificationEnums() {
         return ResponseEntity.ok(Map.of(

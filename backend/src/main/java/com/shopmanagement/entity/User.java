@@ -159,6 +159,10 @@ public class User implements UserDetails {
     @Column(name = "last_activity")
     private LocalDateTime lastActivity;
 
+    @Column(name = "health_tip_notifications_enabled")
+    @Builder.Default
+    private Boolean healthTipNotificationsEnabled = true;
+
     // Shop-specific driver assignment: links a delivery partner to their assigned shops
     // One driver can serve multiple shops in the same village
     @ElementCollection(fetch = FetchType.EAGER)
