@@ -36,6 +36,8 @@ public interface RentalPostRepository extends JpaRepository<RentalPost, Long> {
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 
+    Page<RentalPost> findByStatusAndIsPaidTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+
     // Haversine nearby queries - posts with NULL lat/lng are always included
     @Query(value = "SELECT * FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND (" +
            "rp.latitude IS NULL OR rp.longitude IS NULL OR (" +

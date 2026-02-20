@@ -1,6 +1,7 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.entity.*;
+import com.shopmanagement.entity.RentalPost;
 import com.shopmanagement.repository.*;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.repository.ShopRepository;
@@ -23,6 +24,7 @@ public class FeaturedPostsService {
     private final TravelPostRepository travelPostRepository;
     private final ParcelServicePostRepository parcelServicePostRepository;
     private final RealEstatePostRepository realEstatePostRepository;
+    private final RentalPostRepository rentalPostRepository;
     private final ProductComboRepository productComboRepository;
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
@@ -152,6 +154,22 @@ public class FeaturedPostsService {
             result.put("realEstate", List.of());
         }
 
+        // Rental - paid approved, nearby if location provided
+        try {
+            if (hasLocation) {
+                var rnPosts = rentalPostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("rental", rnPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapRental).toList());
+            } else {
+                var rnPosts = rentalPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        RentalPost.PostStatus.APPROVED, top10).getContent();
+                result.put("rental", rnPosts.stream().map(this::mapRental).toList());
+            }
+        } catch (Exception e) {
+            result.put("rental", List.of());
+        }
+
         return result;
     }
 
@@ -254,6 +272,21 @@ public class FeaturedPostsService {
         m.put("location", p.getLocation());
         m.put("ownerName", p.getOwnerName());
         m.put("ownerPhone", p.getOwnerPhone());
+        return m;
+    }
+
+    private Map<String, Object> mapRental(RentalPost p) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", p.getId());
+        m.put("title", p.getTitle());
+        m.put("description", p.getDescription());
+        m.put("imageUrls", p.getImageUrls());
+        m.put("price", p.getPrice());
+        m.put("priceUnit", p.getPriceUnit());
+        m.put("category", p.getCategory() != null ? p.getCategory().name() : null);
+        m.put("location", p.getLocation());
+        m.put("sellerName", p.getSellerName());
+        m.put("sellerPhone", p.getSellerPhone());
         return m;
     }
 
