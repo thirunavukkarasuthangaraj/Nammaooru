@@ -106,6 +106,7 @@ public class FarmerProduct {
         HOLD,
         HIDDEN,
         CORRECTION_REQUIRED,
-        REMOVED
+        REMOVED,
+        DELETED
     }
 }

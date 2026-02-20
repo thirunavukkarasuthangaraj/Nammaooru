@@ -112,6 +112,17 @@ public class MarketplaceService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
+        // Balance day inheritance: free posts inherit remaining validity from most recently deleted post
+        if (paidTokenId == null) {
+            marketplacePostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
+                    user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+                if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                    post.setValidTo(deleted.getValidTo());
+                    log.info("Marketplace post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+                }
+            });
+        }
+
         MarketplacePost saved = marketplacePostRepository.save(post);
 
         // Consume paid token if used
@@ -180,7 +191,7 @@ public class MarketplaceService {
     public List<MarketplacePost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return marketplacePostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return marketplacePostRepository.findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(user.getId(), PostStatus.DELETED);
     }
 
     @Transactional(readOnly = true)
@@ -303,8 +314,9 @@ public class MarketplaceService {
             }
         }
 
-        marketplacePostRepository.delete(post);
-        log.info("Marketplace post deleted: id={}", id);
+        post.setStatus(PostStatus.DELETED);
+        marketplacePostRepository.save(post);
+        log.info("Marketplace post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
     @Transactional(readOnly = true)

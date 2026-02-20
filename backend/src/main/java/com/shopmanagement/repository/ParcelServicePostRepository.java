@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ParcelServicePostRepository extends JpaRepository<ParcelServicePost, Long> {
@@ -111,4 +112,10 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
 
     // Expired posts: valid_to before cutoff, in active statuses
     List<ParcelServicePost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<ParcelServicePost.PostStatus> statuses);
+
+    // Exclude deleted posts from "My Posts" listing
+    List<ParcelServicePost> findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(Long sellerUserId, PostStatus status);
+
+    // Find most recently deleted post by user (for balance day inheritance)
+    Optional<ParcelServicePost> findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(Long sellerUserId, PostStatus status);
 }

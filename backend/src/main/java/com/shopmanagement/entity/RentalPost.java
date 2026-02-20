@@ -111,6 +111,7 @@ public class RentalPost {
         HOLD,
         HIDDEN,
         CORRECTION_REQUIRED,
-        REMOVED
+        REMOVED,
+        DELETED
     }
 }

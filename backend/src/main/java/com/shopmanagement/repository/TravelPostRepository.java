@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
@@ -111,4 +112,10 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
 
     // Expired posts: valid_to before cutoff, in active statuses
     List<TravelPost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
+
+    // Exclude deleted posts from "My Posts" listing
+    List<TravelPost> findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(Long sellerUserId, PostStatus status);
+
+    // Find most recently deleted post by user (for balance day inheritance)
+    Optional<TravelPost> findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(Long sellerUserId, PostStatus status);
 }

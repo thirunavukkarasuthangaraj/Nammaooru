@@ -129,6 +129,17 @@ public class ParcelServicePostService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
+        // Balance day inheritance: free posts inherit remaining validity from most recently deleted post
+        if (paidTokenId == null) {
+            parcelServicePostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
+                    user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+                if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                    post.setValidTo(deleted.getValidTo());
+                    log.info("Parcel post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+                }
+            });
+        }
+
         ParcelServicePost saved = parcelServicePostRepository.save(post);
 
         // Consume paid token if used
@@ -202,7 +213,7 @@ public class ParcelServicePostService {
     public List<ParcelServicePost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return parcelServicePostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return parcelServicePostRepository.findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(user.getId(), PostStatus.DELETED);
     }
 
     @Transactional(readOnly = true)
@@ -339,8 +350,9 @@ public class ParcelServicePostService {
             }
         }
 
-        parcelServicePostRepository.delete(post);
-        log.info("Parcel service post deleted: id={}", id);
+        post.setStatus(PostStatus.DELETED);
+        parcelServicePostRepository.save(post);
+        log.info("Parcel service post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
     @Transactional(readOnly = true)

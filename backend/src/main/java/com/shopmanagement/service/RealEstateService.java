@@ -109,6 +109,15 @@ public class RealEstateService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
+        // Balance day inheritance: inherit remaining validity from most recently deleted post
+        realEstatePostRepository.findTopByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
+                user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+            if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                post.setValidTo(deleted.getValidTo());
+                log.info("Real estate post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+            }
+        });
+
         RealEstatePost saved = realEstatePostRepository.save(post);
         log.info("Real estate post created: id={}, title={}, type={}, owner={}, autoApproved={}, validTo={}",
                 saved.getId(), title, propertyType, username, autoApprove, saved.getValidTo());
@@ -171,7 +180,7 @@ public class RealEstateService {
     public List<RealEstatePost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return realEstatePostRepository.findByOwnerUserIdOrderByCreatedAtDesc(user.getId());
+        return realEstatePostRepository.findByOwnerUserIdAndStatusNotOrderByCreatedAtDesc(user.getId(), PostStatus.DELETED);
     }
 
     @Transactional(readOnly = true)
@@ -261,8 +270,9 @@ public class RealEstateService {
             }
         }
 
-        realEstatePostRepository.delete(post);
-        log.info("Real estate post deleted: id={}", id);
+        post.setStatus(PostStatus.DELETED);
+        realEstatePostRepository.save(post);
+        log.info("Real estate post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
     @Transactional(readOnly = true)

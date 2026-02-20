@@ -129,6 +129,7 @@ public class LabourPost {
         HOLD,
         HIDDEN,
         CORRECTION_REQUIRED,
-        REMOVED
+        REMOVED,
+        DELETED
     }
 }

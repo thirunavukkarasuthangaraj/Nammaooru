@@ -128,6 +128,17 @@ public class TravelPostService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
+        // Balance day inheritance: free posts inherit remaining validity from most recently deleted post
+        if (paidTokenId == null) {
+            travelPostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
+                    user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+                if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                    post.setValidTo(deleted.getValidTo());
+                    log.info("Travel post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+                }
+            });
+        }
+
         TravelPost saved = travelPostRepository.save(post);
 
         // Consume paid token if used
@@ -201,7 +212,7 @@ public class TravelPostService {
     public List<TravelPost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return travelPostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return travelPostRepository.findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(user.getId(), PostStatus.DELETED);
     }
 
     @Transactional(readOnly = true)
@@ -338,8 +349,9 @@ public class TravelPostService {
             }
         }
 
-        travelPostRepository.delete(post);
-        log.info("Travel post deleted: id={}", id);
+        post.setStatus(PostStatus.DELETED);
+        travelPostRepository.save(post);
+        log.info("Travel post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
     @Transactional(readOnly = true)

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
@@ -111,4 +112,10 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
 
     // Expired posts: valid_to before cutoff, in active statuses
     List<LabourPost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
+
+    // Exclude deleted posts from "My Posts" listing
+    List<LabourPost> findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(Long sellerUserId, PostStatus status);
+
+    // Find most recently deleted post by user (for balance day inheritance)
+    Optional<LabourPost> findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(Long sellerUserId, PostStatus status);
 }

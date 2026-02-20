@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, Long> {
@@ -64,4 +65,10 @@ public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, 
 
     // Expired posts: valid_to before cutoff, in active statuses
     List<RealEstatePost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
+
+    // Exclude deleted posts from "My Posts" listing
+    List<RealEstatePost> findByOwnerUserIdAndStatusNotOrderByCreatedAtDesc(Long ownerUserId, PostStatus status);
+
+    // Find most recently deleted post by user (for balance day inheritance)
+    Optional<RealEstatePost> findTopByOwnerUserIdAndStatusOrderByUpdatedAtDesc(Long ownerUserId, PostStatus status);
 }

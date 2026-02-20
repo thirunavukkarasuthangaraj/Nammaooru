@@ -118,6 +118,7 @@ public class ParcelServicePost {
         HOLD,
         HIDDEN,
         CORRECTION_REQUIRED,
-        REMOVED
+        REMOVED,
+        DELETED
     }
 }

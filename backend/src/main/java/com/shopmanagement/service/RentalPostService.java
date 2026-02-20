@@ -95,6 +95,15 @@ public class RentalPostService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
+        // Balance day inheritance: inherit remaining validity from most recently deleted post
+        rentalPostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
+                user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+            if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                post.setValidTo(deleted.getValidTo());
+                log.info("Rental post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+            }
+        });
+
         RentalPost saved = rentalPostRepository.save(post);
 
         log.info("Rental post created: id={}, title={}, category={}, seller={}, autoApproved={}",
@@ -164,7 +173,7 @@ public class RentalPostService {
     public List<RentalPost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return rentalPostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return rentalPostRepository.findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(user.getId(), PostStatus.DELETED);
     }
 
     @Transactional(readOnly = true)
@@ -290,8 +299,9 @@ public class RentalPostService {
             }
         }
 
-        rentalPostRepository.delete(post);
-        log.info("Rental post deleted: id={}", id);
+        post.setStatus(PostStatus.DELETED);
+        rentalPostRepository.save(post);
+        log.info("Rental post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
     @Transactional

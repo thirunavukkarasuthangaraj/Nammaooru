@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MarketplacePostRepository extends JpaRepository<MarketplacePost, Long> {
@@ -110,4 +111,10 @@ public interface MarketplacePostRepository extends JpaRepository<MarketplacePost
 
     // Expired posts: valid_to before cutoff, in active statuses
     List<MarketplacePost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
+
+    // Exclude deleted posts from "My Posts" listing
+    List<MarketplacePost> findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(Long sellerUserId, PostStatus status);
+
+    // Find most recently deleted post by user (for balance day inheritance)
+    Optional<MarketplacePost> findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(Long sellerUserId, PostStatus status);
 }

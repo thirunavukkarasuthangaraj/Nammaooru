@@ -137,6 +137,11 @@ public class RealEstatePost {
         REJECTED,
         SOLD,
         RENTED,
-        FLAGGED
+        FLAGGED,
+        HOLD,
+        HIDDEN,
+        CORRECTION_REQUIRED,
+        REMOVED,
+        DELETED
     }
 }

@@ -124,6 +124,17 @@ public class LabourPostService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
+        // Balance day inheritance: free posts inherit remaining validity from most recently deleted post
+        if (paidTokenId == null) {
+            labourPostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
+                    user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+                if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                    post.setValidTo(deleted.getValidTo());
+                    log.info("Labour post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+                }
+            });
+        }
+
         LabourPost saved = labourPostRepository.save(post);
 
         // Consume paid token if used
@@ -197,7 +208,7 @@ public class LabourPostService {
     public List<LabourPost> getMyPosts(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return labourPostRepository.findBySellerUserIdOrderByCreatedAtDesc(user.getId());
+        return labourPostRepository.findBySellerUserIdAndStatusNotOrderByCreatedAtDesc(user.getId(), PostStatus.DELETED);
     }
 
     @Transactional(readOnly = true)
@@ -334,8 +345,9 @@ public class LabourPostService {
             }
         }
 
-        labourPostRepository.delete(post);
-        log.info("Labour post deleted: id={}", id);
+        post.setStatus(PostStatus.DELETED);
+        labourPostRepository.save(post);
+        log.info("Labour post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
     @Transactional(readOnly = true)

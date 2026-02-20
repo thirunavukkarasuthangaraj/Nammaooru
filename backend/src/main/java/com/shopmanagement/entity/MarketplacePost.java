@@ -105,6 +105,7 @@ public class MarketplacePost {
         HOLD,
         HIDDEN,
         CORRECTION_REQUIRED,
-        REMOVED
+        REMOVED,
+        DELETED
     }
 }
