@@ -298,7 +298,7 @@ gemini:
 # Content Moderation (uses Gemini Vision API)
 content:
   moderation:
-    enabled: ${CONTENT_MODERATION_ENABLED:true}
+    enabled: ${CONTENT_MODERATION_ENABLED:false}
     timeout-seconds: ${CONTENT_MODERATION_TIMEOUT:8}
     fail-open: ${CONTENT_MODERATION_FAIL_OPEN:false}
     max-image-size-bytes: ${CONTENT_MODERATION_MAX_SIZE:5242880}
