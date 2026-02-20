@@ -15,6 +15,7 @@ class ParcelService {
     double? latitude,
     double? longitude,
     double? radiusKm,
+    String? search,
   }) async {
     try {
       Logger.api('Fetching parcel posts - page: $page, size: $size, serviceType: $serviceType');
@@ -34,6 +35,7 @@ class ParcelService {
           queryParams['radius'] = radiusKm.toString();
         }
       }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       final response = await _apiService.get(
         '/parcels',

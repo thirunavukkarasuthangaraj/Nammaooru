@@ -156,6 +156,13 @@ public class LabourPostService {
     }
 
     @Transactional(readOnly = true)
+    public Page<LabourPost> searchByLocation(String search, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        return labourPostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+                visibleStatuses, search, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<LabourPost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
@@ -222,8 +229,11 @@ public class LabourPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LabourPost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<LabourPost> getAllPostsForAdmin(Pageable pageable, String search) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
+        if (search != null && !search.trim().isEmpty()) {
+            return labourPostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(statuses, search.trim(), pageable);
+        }
         return labourPostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 

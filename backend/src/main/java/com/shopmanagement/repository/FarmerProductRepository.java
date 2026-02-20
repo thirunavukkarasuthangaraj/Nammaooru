@@ -105,6 +105,10 @@ public interface FarmerProductRepository extends JpaRepository<FarmerProduct, Lo
                                     @Param("lng") double lng,
                                     @Param("radiusKm") double radiusKm);
 
+    // Location text search
+    Page<FarmerProduct> findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+            List<PostStatus> statuses, String location, Pageable pageable);
+
     // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
     List<FarmerProduct> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
             LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);

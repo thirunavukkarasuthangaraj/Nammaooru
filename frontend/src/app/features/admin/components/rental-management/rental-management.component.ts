@@ -45,6 +45,7 @@ export class RentalManagementComponent implements OnInit {
   totalPages = 0;
   totalItems = 0;
   pageSize = 20;
+  searchText = '';
 
   statusOptions: StatusOption[] = [
     { value: 'APPROVED', label: 'Approve', icon: 'check_circle', color: '#4caf50' },
@@ -70,7 +71,7 @@ export class RentalManagementComponent implements OnInit {
     this.loading = true;
     const request$ = this.activeTab === 'pending'
       ? this.rentalService.getPendingPosts(this.currentPage, this.pageSize)
-      : this.rentalService.getAllPosts(this.currentPage, this.pageSize);
+      : this.rentalService.getAllPosts(this.currentPage, this.pageSize, this.searchText);
 
     request$.subscribe({
       next: (response) => {
@@ -86,6 +87,11 @@ export class RentalManagementComponent implements OnInit {
         this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
       }
     });
+  }
+
+  onSearchChange(): void {
+    this.currentPage = 0;
+    this.loadPosts();
   }
 
   switchTab(tab: 'pending' | 'all'): void {

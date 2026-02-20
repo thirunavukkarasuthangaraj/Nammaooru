@@ -40,6 +40,7 @@ export class ParcelManagementComponent implements OnInit {
   totalPages = 0;
   totalItems = 0;
   pageSize = 20;
+  searchText = '';
 
   // Gallery lightbox
   galleryOpen = false;
@@ -61,7 +62,7 @@ export class ParcelManagementComponent implements OnInit {
     this.loading = true;
     const request$ = this.activeTab === 'pending'
       ? this.parcelService.getPendingPosts(this.currentPage, this.pageSize)
-      : this.parcelService.getAllPosts(this.currentPage, this.pageSize);
+      : this.parcelService.getAllPosts(this.currentPage, this.pageSize, this.searchText);
 
     request$.subscribe({
       next: (response) => {
@@ -77,6 +78,11 @@ export class ParcelManagementComponent implements OnInit {
         this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
       }
     });
+  }
+
+  onSearchChange(): void {
+    this.currentPage = 0;
+    this.loadPosts();
   }
 
   switchTab(tab: 'pending' | 'all'): void {

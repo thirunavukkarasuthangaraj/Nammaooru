@@ -160,6 +160,12 @@ public class TravelPostService {
     }
 
     @Transactional(readOnly = true)
+    public Page<TravelPost> searchByLocation(String search, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        return travelPostRepository.searchByLocation(visibleStatuses, search, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<TravelPost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
@@ -226,8 +232,11 @@ public class TravelPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TravelPost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<TravelPost> getAllPostsForAdmin(Pageable pageable, String search) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
+        if (search != null && !search.trim().isEmpty()) {
+            return travelPostRepository.searchByLocation(statuses, search.trim(), pageable);
+        }
         return travelPostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 

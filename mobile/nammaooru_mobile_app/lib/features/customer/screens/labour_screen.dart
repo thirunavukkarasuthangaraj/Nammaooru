@@ -10,6 +10,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/labour_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import 'create_labour_screen.dart';
@@ -34,6 +35,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
+  double _selectedRadius = 50.0;
+  String _searchText = '';
 
   // My Posts tab
   late TabController _tabController;
@@ -176,6 +179,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -204,6 +209,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -457,37 +464,22 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   Widget _buildBrowseTab() {
     return Column(
       children: [
-        // Category filter chips
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _categoryLabels.length,
-              itemBuilder: (context, index) {
-                final cat = _categoryLabels.keys.elementAt(index);
-                final isSelected = (_selectedCategory == null && cat == 'All') ||
-                    _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(_getCategoryTamil(cat, context)),
-                    selected: isSelected,
-                    onSelected: (_) => _onCategorySelected(cat),
-                    selectedColor: _labourBlue.withOpacity(0.2),
-                    checkmarkColor: _labourBlue,
-                    labelStyle: TextStyle(
-                      color: isSelected ? _labourBlue : Colors.grey[700],
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+        PostFilterBar(
+          categories: _categoryLabels.keys.toList(),
+          selectedCategory: _selectedCategory,
+          onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _loadPosts();
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _loadPosts();
+          },
+          accentColor: VillageTheme.primaryGreen,
+          categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
         ),
         // Posts list
         Expanded(

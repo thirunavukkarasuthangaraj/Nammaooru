@@ -10,6 +10,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/parcel_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import 'create_parcel_screen.dart';
@@ -34,6 +35,8 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
+  double _selectedRadius = 50.0;
+  String _searchText = '';
 
   // My Posts tab
   late TabController _tabController;
@@ -116,6 +119,8 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
         serviceType: _selectedServiceType,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -144,6 +149,8 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
         serviceType: _selectedServiceType,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -531,37 +538,22 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   Widget _buildBrowseTab() {
     return Column(
       children: [
-        // Service type filter chips
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _serviceTypeLabels.length,
-              itemBuilder: (context, index) {
-                final type = _serviceTypeLabels.keys.elementAt(index);
-                final isSelected = (_selectedServiceType == null && type == 'All') ||
-                    _selectedServiceType == type;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(_getServiceTypeTamil(type, context)),
-                    selected: isSelected,
-                    onSelected: (_) => _onServiceTypeSelected(type),
-                    selectedColor: _parcelOrange.withOpacity(0.2),
-                    checkmarkColor: _parcelOrange,
-                    labelStyle: TextStyle(
-                      color: isSelected ? _parcelOrange : Colors.grey[700],
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+        PostFilterBar(
+          categories: _serviceTypeLabels.keys.toList(),
+          selectedCategory: _selectedServiceType,
+          onCategoryChanged: (type) => _onServiceTypeSelected(type ?? 'All'),
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _loadPosts();
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _loadPosts();
+          },
+          accentColor: VillageTheme.primaryGreen,
+          categoryLabelBuilder: (type) => _getServiceTypeTamil(type, context),
         ),
         // Posts list
         Expanded(

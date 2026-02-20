@@ -120,6 +120,13 @@ public class RentalPostService {
     }
 
     @Transactional(readOnly = true)
+    public Page<RentalPost> searchByLocation(String search, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        return rentalPostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+                visibleStatuses, search, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<RentalPost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
@@ -193,8 +200,11 @@ public class RentalPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RentalPost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<RentalPost> getAllPostsForAdmin(Pageable pageable, String search) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.RENTED);
+        if (search != null && !search.trim().isEmpty()) {
+            return rentalPostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(statuses, search.trim(), pageable);
+        }
         return rentalPostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 

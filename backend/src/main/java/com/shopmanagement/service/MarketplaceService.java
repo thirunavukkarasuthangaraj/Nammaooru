@@ -145,6 +145,13 @@ public class MarketplaceService {
     }
 
     @Transactional(readOnly = true)
+    public Page<MarketplacePost> searchByLocation(String search, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        return marketplacePostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+                visibleStatuses, search, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<MarketplacePost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
@@ -205,8 +212,11 @@ public class MarketplaceService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MarketplacePost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<MarketplacePost> getAllPostsForAdmin(Pageable pageable, String search) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
+        if (search != null && !search.trim().isEmpty()) {
+            return marketplacePostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(statuses, search.trim(), pageable);
+        }
         return marketplacePostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 

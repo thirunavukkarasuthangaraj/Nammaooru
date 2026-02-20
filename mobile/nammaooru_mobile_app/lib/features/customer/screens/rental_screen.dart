@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/rental_service.dart';
 import 'create_rental_screen.dart';
 import 'rental_post_detail_screen.dart';
@@ -27,6 +29,8 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
+  double _selectedRadius = 50.0;
+  String _searchText = '';
 
   // My Posts tab
   late TabController _tabController;
@@ -137,6 +141,8 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -199,6 +205,13 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
       _posts = [];
     });
     _loadPosts();
+  }
+
+  String _getCategoryTamil(String category, BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    final english = _categoryLabels[category] ?? category;
+    final tamil = _categoryTamilMap[category] ?? category;
+    return lang.getText(english, tamil);
   }
 
   String _formatPrice(dynamic price) {
@@ -338,7 +351,23 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
       child: Column(
         children: [
           // Category filter chips
-          _buildCategoryChips(langProvider),
+          PostFilterBar(
+            categories: _categoryLabels.keys.toList(),
+            selectedCategory: _selectedCategory,
+            onCategoryChanged: (cat) => _onCategorySelected(cat),
+            selectedRadius: _selectedRadius,
+            onRadiusChanged: (radius) {
+              setState(() => _selectedRadius = radius ?? 50.0);
+              _loadPosts(refresh: true);
+            },
+            searchText: _searchText,
+            onSearchSubmitted: (text) {
+              setState(() => _searchText = text);
+              _loadPosts(refresh: true);
+            },
+            accentColor: VillageTheme.primaryGreen,
+            categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
+          ),
 
           // Posts list
           Expanded(
@@ -374,41 +403,6 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
                       ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryChips(LanguageProvider langProvider) {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: _categoryLabels.entries.map((entry) {
-          final isSelected = (entry.key == 'All' && _selectedCategory == null) ||
-              entry.key == _selectedCategory;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(
-                langProvider.getText(entry.value, _categoryTamilMap[entry.key] ?? entry.value),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.grey[700],
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-              selected: isSelected,
-              selectedColor: _rentalOrange,
-              backgroundColor: Colors.white,
-              checkmarkColor: Colors.white,
-              onSelected: (selected) {
-                _onCategorySelected(entry.key == 'All' ? null : entry.key);
-              },
-            ),
-          );
-        }).toList(),
       ),
     );
   }

@@ -14,6 +14,7 @@ class RealEstateService {
     String? propertyType,
     String? listingType,
     String? location,
+    String? search,
   }) async {
     try {
       Logger.api('Fetching real estate posts - page: $page, propertyType: $propertyType, listingType: $listingType');
@@ -32,6 +33,7 @@ class RealEstateService {
       if (location != null && location.isNotEmpty) {
         queryParams['location'] = location;
       }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       final response = await _apiService.get(
         '/real-estate',

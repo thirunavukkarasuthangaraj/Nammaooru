@@ -10,6 +10,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/travel_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import 'create_travel_screen.dart';
@@ -34,6 +35,8 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
+  double _selectedRadius = 50.0;
+  String _searchText = '';
 
   // My Posts tab
   late TabController _tabController;
@@ -122,6 +125,8 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
         vehicleType: _selectedVehicleType,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -150,6 +155,8 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
         vehicleType: _selectedVehicleType,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -403,37 +410,22 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   Widget _buildBrowseTab() {
     return Column(
       children: [
-        // Vehicle type filter chips
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _vehicleTypeLabels.length,
-              itemBuilder: (context, index) {
-                final type = _vehicleTypeLabels.keys.elementAt(index);
-                final isSelected = (_selectedVehicleType == null && type == 'All') ||
-                    _selectedVehicleType == type;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(_getVehicleTypeTamil(type, context)),
-                    selected: isSelected,
-                    onSelected: (_) => _onVehicleTypeSelected(type),
-                    selectedColor: _travelTeal.withOpacity(0.2),
-                    checkmarkColor: _travelTeal,
-                    labelStyle: TextStyle(
-                      color: isSelected ? _travelTeal : Colors.grey[700],
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+        PostFilterBar(
+          categories: _vehicleTypeLabels.keys.toList(),
+          selectedCategory: _selectedVehicleType,
+          onCategoryChanged: (type) => _onVehicleTypeSelected(type ?? 'All'),
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _loadPosts();
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _loadPosts();
+          },
+          accentColor: VillageTheme.primaryGreen,
+          categoryLabelBuilder: (type) => _getVehicleTypeTamil(type, context),
         ),
         // Posts list
         Expanded(

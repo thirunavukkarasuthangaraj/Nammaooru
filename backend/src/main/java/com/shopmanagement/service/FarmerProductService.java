@@ -149,6 +149,13 @@ public class FarmerProductService {
     }
 
     @Transactional(readOnly = true)
+    public Page<FarmerProduct> searchByLocation(String search, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        return farmerProductRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+                visibleStatuses, search, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<FarmerProduct> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
@@ -209,8 +216,11 @@ public class FarmerProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FarmerProduct> getAllPostsForAdmin(Pageable pageable) {
+    public Page<FarmerProduct> getAllPostsForAdmin(Pageable pageable, String search) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
+        if (search != null && !search.trim().isEmpty()) {
+            return farmerProductRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(statuses, search.trim(), pageable);
+        }
         return farmerProductRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 

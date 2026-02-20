@@ -15,6 +15,7 @@ class TravelService {
     double? latitude,
     double? longitude,
     double? radiusKm,
+    String? search,
   }) async {
     try {
       Logger.api('Fetching travel posts - page: $page, size: $size, vehicleType: $vehicleType');
@@ -34,6 +35,7 @@ class TravelService {
           queryParams['radius'] = radiusKm.toString();
         }
       }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       final response = await _apiService.get(
         '/travels',

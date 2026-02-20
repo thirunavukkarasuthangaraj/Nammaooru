@@ -17,10 +17,10 @@ export class FarmerProductsAdminService {
     });
   }
 
-  getAllPosts(page: number = 0, size: number = 20): Observable<any> {
-    return this.http.get(`${this.apiUrl}/admin/all`, {
-      params: { page: page.toString(), size: size.toString() }
-    });
+  getAllPosts(page: number = 0, size: number = 20, search: string = ''): Observable<any> {
+    let params: any = { page: page.toString(), size: size.toString() };
+    if (search) params.search = search;
+    return this.http.get(`${this.apiUrl}/admin/all`, { params });
   }
 
   getReportedPosts(page: number = 0, size: number = 20): Observable<any> {

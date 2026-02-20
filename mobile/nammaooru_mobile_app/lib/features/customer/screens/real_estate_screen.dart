@@ -30,6 +30,7 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
+  String _searchText = '';
 
   @override
   void initState() {
@@ -85,6 +86,7 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         size: 20,
         propertyType: propertyType,
         listingType: listingType,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (response['success'] == true || response['data'] != null) {
@@ -226,6 +228,47 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   Widget _buildBrowseTab() {
     return Column(
       children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: SizedBox(
+            height: 40,
+            child: TextField(
+              controller: TextEditingController(text: _searchText)
+                ..selection = TextSelection.fromPosition(
+                  TextPosition(offset: _searchText.length),
+                ),
+              decoration: InputDecoration(
+                hintText: 'Search by location...',
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
+                suffixIcon: _searchText.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey[400], size: 18),
+                        onPressed: () {
+                          setState(() => _searchText = '');
+                          _fetchListings(refresh: true);
+                        },
+                        padding: EdgeInsets.zero,
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              style: const TextStyle(fontSize: 14),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (text) {
+                setState(() => _searchText = text);
+                _fetchListings(refresh: true);
+              },
+            ),
+          ),
+        ),
         // Filter chips
         Container(
           color: Colors.white,

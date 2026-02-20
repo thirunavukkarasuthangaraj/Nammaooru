@@ -15,6 +15,7 @@ class LabourService {
     double? latitude,
     double? longitude,
     double? radiusKm,
+    String? search,
   }) async {
     try {
       Logger.api('Fetching labour posts - page: $page, size: $size, category: $category');
@@ -34,6 +35,7 @@ class LabourService {
           queryParams['radius'] = radiusKm.toString();
         }
       }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       final response = await _apiService.get(
         '/labours',

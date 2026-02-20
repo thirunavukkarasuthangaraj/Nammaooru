@@ -17,6 +17,7 @@ import '../services/marketplace_service.dart';
 import '../services/real_estate_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import 'create_post_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
@@ -38,6 +39,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
+  double _selectedRadius = 50.0;
+  String _searchText = '';
 
   // My Posts tab
   late TabController _tabController;
@@ -129,6 +132,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -157,6 +162,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -568,37 +575,22 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   Widget _buildMarketplaceTab() {
     return Column(
       children: [
-        // Category filter chips
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final cat = _categories[index];
-                final isSelected = (_selectedCategory == null && cat == 'All') ||
-                    _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(_getCategoryTamil(cat, context)),
-                    selected: isSelected,
-                    onSelected: (_) => _onCategorySelected(cat),
-                    selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
-                    checkmarkColor: VillageTheme.primaryGreen,
-                    labelStyle: TextStyle(
-                      color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+        PostFilterBar(
+          categories: _categories,
+          selectedCategory: _selectedCategory,
+          onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _loadPosts();
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _loadPosts();
+          },
+          accentColor: VillageTheme.primaryGreen,
+          categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
         ),
         // Posts list
         Expanded(

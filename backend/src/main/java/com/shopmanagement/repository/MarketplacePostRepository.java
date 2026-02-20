@@ -105,6 +105,10 @@ public interface MarketplacePostRepository extends JpaRepository<MarketplacePost
                                     @Param("lng") double lng,
                                     @Param("radiusKm") double radiusKm);
 
+    // Location text search
+    Page<MarketplacePost> findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+            List<PostStatus> statuses, String location, Pageable pageable);
+
     // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
     List<MarketplacePost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
             LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);

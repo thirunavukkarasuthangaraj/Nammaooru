@@ -64,11 +64,14 @@ public class FarmerProductController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "50") double radius) {
+            @RequestParam(defaultValue = "50") double radius,
+            @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<FarmerProduct> posts;
-            if (category != null && !category.isEmpty()) {
+            if (search != null && !search.trim().isEmpty()) {
+                posts = farmerProductService.searchByLocation(search.trim(), pageable);
+            } else if (category != null && !category.isEmpty()) {
                 posts = farmerProductService.getApprovedPostsByCategory(category, pageable, lat, lng, radius);
             } else {
                 posts = farmerProductService.getApprovedPosts(pageable, lat, lng, radius);
@@ -151,10 +154,11 @@ public class FarmerProductController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAllPostsForAdmin(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<FarmerProduct> posts = farmerProductService.getAllPostsForAdmin(pageable);
+            Page<FarmerProduct> posts = farmerProductService.getAllPostsForAdmin(pageable, search);
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
             log.error("Error fetching all farmer products", e);

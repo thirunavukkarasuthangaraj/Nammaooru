@@ -104,6 +104,10 @@ public interface RentalPostRepository extends JpaRepository<RentalPost, Long> {
                                     @Param("lng") double lng,
                                     @Param("radiusKm") double radiusKm);
 
+    // Location text search
+    Page<RentalPost> findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
+            List<PostStatus> statuses, String location, Pageable pageable);
+
     // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
     List<RentalPost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
             LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);

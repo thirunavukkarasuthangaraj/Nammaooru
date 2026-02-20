@@ -67,17 +67,22 @@ public class TravelPostController {
             @RequestParam(required = false) String vehicleType,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "50") double radius) {
+            @RequestParam(defaultValue = "50") double radius,
+            @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Double effectiveLat = lat;
-            Double effectiveLng = lng;
-            Double effectiveRadius = (lat != null && lng != null) ? radius : null;
             Page<TravelPost> posts;
-            if (vehicleType != null && !vehicleType.isEmpty()) {
-                posts = travelPostService.getApprovedPostsByVehicleType(vehicleType, pageable, effectiveLat, effectiveLng, effectiveRadius);
+            if (search != null && !search.trim().isEmpty()) {
+                posts = travelPostService.searchByLocation(search.trim(), pageable);
             } else {
-                posts = travelPostService.getApprovedPosts(pageable, effectiveLat, effectiveLng, effectiveRadius);
+                Double effectiveLat = lat;
+                Double effectiveLng = lng;
+                Double effectiveRadius = (lat != null && lng != null) ? radius : null;
+                if (vehicleType != null && !vehicleType.isEmpty()) {
+                    posts = travelPostService.getApprovedPostsByVehicleType(vehicleType, pageable, effectiveLat, effectiveLng, effectiveRadius);
+                } else {
+                    posts = travelPostService.getApprovedPosts(pageable, effectiveLat, effectiveLng, effectiveRadius);
+                }
             }
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
@@ -144,10 +149,11 @@ public class TravelPostController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAllPostsForAdmin(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<TravelPost> posts = travelPostService.getAllPostsForAdmin(pageable);
+            Page<TravelPost> posts = travelPostService.getAllPostsForAdmin(pageable, search);
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
             log.error("Error fetching all travel posts", e);

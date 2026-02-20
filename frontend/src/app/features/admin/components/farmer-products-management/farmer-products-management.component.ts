@@ -44,6 +44,7 @@ export class FarmerProductsManagementComponent implements OnInit {
   totalPages = 0;
   totalItems = 0;
   pageSize = 20;
+  searchText = '';
 
   // Gallery lightbox
   galleryOpen = false;
@@ -74,7 +75,7 @@ export class FarmerProductsManagementComponent implements OnInit {
     this.loading = true;
     const request$ = this.activeTab === 'pending'
       ? this.farmerProductsService.getPendingPosts(this.currentPage, this.pageSize)
-      : this.farmerProductsService.getAllPosts(this.currentPage, this.pageSize);
+      : this.farmerProductsService.getAllPosts(this.currentPage, this.pageSize, this.searchText);
 
     request$.subscribe({
       next: (response) => {
@@ -90,6 +91,11 @@ export class FarmerProductsManagementComponent implements OnInit {
         this.snackBar.open('Failed to load farmer products', 'Close', { duration: 3000 });
       }
     });
+  }
+
+  onSearchChange(): void {
+    this.currentPage = 0;
+    this.loadPosts();
   }
 
   switchTab(tab: 'pending' | 'all'): void {

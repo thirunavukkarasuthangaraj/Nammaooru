@@ -64,11 +64,14 @@ public class MarketplaceController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "50") double radius) {
+            @RequestParam(defaultValue = "50") double radius,
+            @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<MarketplacePost> posts;
-            if (category != null && !category.isEmpty()) {
+            if (search != null && !search.trim().isEmpty()) {
+                posts = marketplaceService.searchByLocation(search.trim(), pageable);
+            } else if (category != null && !category.isEmpty()) {
                 posts = marketplaceService.getApprovedPostsByCategory(category, pageable, lat, lng, radius);
             } else {
                 posts = marketplaceService.getApprovedPosts(pageable, lat, lng, radius);
@@ -138,10 +141,11 @@ public class MarketplaceController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAllPostsForAdmin(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<MarketplacePost> posts = marketplaceService.getAllPostsForAdmin(pageable);
+            Page<MarketplacePost> posts = marketplaceService.getAllPostsForAdmin(pageable, search);
             return ResponseUtil.paginated(posts);
         } catch (Exception e) {
             log.error("Error fetching all posts", e);

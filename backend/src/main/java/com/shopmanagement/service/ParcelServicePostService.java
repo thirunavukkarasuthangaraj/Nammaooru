@@ -161,6 +161,12 @@ public class ParcelServicePostService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ParcelServicePost> searchByLocation(String search, Pageable pageable) {
+        List<PostStatus> visibleStatuses = getVisibleStatuses();
+        return parcelServicePostRepository.searchByLocation(visibleStatuses, search, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<ParcelServicePost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
@@ -227,8 +233,11 @@ public class ParcelServicePostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ParcelServicePost> getAllPostsForAdmin(Pageable pageable) {
+    public Page<ParcelServicePost> getAllPostsForAdmin(Pageable pageable, String search) {
         List<PostStatus> statuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.SOLD);
+        if (search != null && !search.trim().isEmpty()) {
+            return parcelServicePostRepository.searchByLocation(statuses, search.trim(), pageable);
+        }
         return parcelServicePostRepository.findByStatusInOrderByCreatedAtDesc(statuses, pageable);
     }
 

@@ -106,6 +106,15 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
                                        @Param("lng") double lng,
                                        @Param("radiusKm") double radiusKm);
 
+    // Location text search (searches fromLocation OR toLocation)
+    @Query("SELECT t FROM TravelPost t WHERE t.status IN :statuses AND " +
+           "(LOWER(t.fromLocation) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(t.toLocation) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY t.createdAt DESC")
+    Page<TravelPost> searchByLocation(@Param("statuses") List<PostStatus> statuses,
+                                       @Param("search") String search,
+                                       Pageable pageable);
+
     // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
     List<TravelPost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
             LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);

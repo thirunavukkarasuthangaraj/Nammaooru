@@ -18,6 +18,18 @@
     </button>
   </div>
 
+  <!-- Search Filter -->
+  <div class="search-filter" *ngIf="activeTab === 'all'">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search by location</mat-label>
+      <input matInput [(ngModel)]="searchText" (keyup.enter)="onSearchChange()" placeholder="Type location and press Enter...">
+      <button mat-icon-button matSuffix *ngIf="searchText" (click)="searchText = ''; onSearchChange()">
+        <mat-icon>clear</mat-icon>
+      </button>
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
   <!-- Loading -->
   <div *ngIf="loading" class="loading-container">
     <mat-spinner diameter="40"></mat-spinner>

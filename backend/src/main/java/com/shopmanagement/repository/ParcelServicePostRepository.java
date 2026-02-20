@@ -106,6 +106,15 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
                                        @Param("lng") double lng,
                                        @Param("radiusKm") double radiusKm);
 
+    // Location text search (searches fromLocation OR toLocation)
+    @Query("SELECT p FROM ParcelServicePost p WHERE p.status IN :statuses AND " +
+           "(LOWER(p.fromLocation) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(p.toLocation) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY p.createdAt DESC")
+    Page<ParcelServicePost> searchByLocation(@Param("statuses") List<PostStatus> statuses,
+                                              @Param("search") String search,
+                                              Pageable pageable);
+
     // Expiry reminder: posts expiring between now and reminderDate, not yet reminded, in active statuses
     List<ParcelServicePost> findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(
             LocalDateTime from, LocalDateTime to, List<ParcelServicePost.PostStatus> statuses);

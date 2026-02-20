@@ -15,6 +15,7 @@ class FarmerProductsService {
     double? latitude,
     double? longitude,
     double? radiusKm,
+    String? search,
   }) async {
     try {
       Logger.api('Fetching farmer products - page: $page, size: $size, category: $category');
@@ -35,6 +36,7 @@ class FarmerProductsService {
           queryParams['radius'] = radiusKm.toString();
         }
       }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       final response = await _apiService.get(
         '/farmer-products',
