@@ -17,7 +17,7 @@ export class FeatureConfigManagementComponent implements OnInit {
 
   displayedColumns: string[] = [
     'displayOrder', 'featureName', 'displayName', 'displayNameTamil',
-    'icon', 'color', 'maxPostsPerUser', 'active', 'actions'
+    'icon', 'color', 'radiusKm', 'maxPostsPerUser', 'active', 'actions'
   ];
 
   constructor(

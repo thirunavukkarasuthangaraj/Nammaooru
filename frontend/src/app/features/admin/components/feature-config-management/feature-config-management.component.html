@@ -123,6 +123,13 @@
         </td>
       </ng-container>
 
+      <ng-container matColumnDef="radiusKm">
+        <th mat-header-cell *matHeaderCellDef>Radius (km)</th>
+        <td mat-cell *matCellDef="let f">
+          <span class="radius-badge">{{ f.radiusKm || 50 }} km</span>
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="maxPostsPerUser">
         <th mat-header-cell *matHeaderCellDef>Post Limit</th>
         <td mat-cell *matCellDef="let f">
