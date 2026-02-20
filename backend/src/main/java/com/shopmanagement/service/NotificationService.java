@@ -108,9 +108,29 @@ public class NotificationService {
     public NotificationResponse createBroadcastNotification(NotificationRequest request) {
         log.info("Creating broadcast notification: {} for type: {}", request.getTitle(), request.getRecipientType());
 
-        List<Long> recipientIds = getBroadcastRecipients(request.getRecipientType());
-        List<Notification> notifications = new ArrayList<>();
+        List<Long> recipientIds;
 
+        // Location-based targeting: filter users by lat/lng/radius
+        if (request.getLatitude() != null && request.getLongitude() != null && request.getRadiusKm() != null) {
+            log.info("Location-based targeting: lat={}, lng={}, radius={}km",
+                    request.getLatitude(), request.getLongitude(), request.getRadiusKm());
+            List<User> nearbyUsers = userRepository.findNearbyCustomers(
+                    request.getLatitude(), request.getLongitude(), request.getRadiusKm());
+            recipientIds = nearbyUsers.stream().map(User::getId).collect(Collectors.toList());
+            log.info("Found {} customers within {}km radius", recipientIds.size(), request.getRadiusKm());
+        } else {
+            recipientIds = getBroadcastRecipients(request.getRecipientType());
+        }
+
+        if (recipientIds.isEmpty()) {
+            log.warn("No recipients found for broadcast notification");
+            // Still create a single notification record for audit
+            Notification notification = buildNotification(request, 0L);
+            Notification saved = notificationRepository.save(notification);
+            return mapToResponse(saved);
+        }
+
+        List<Notification> notifications = new ArrayList<>();
         for (Long recipientId : recipientIds) {
             Notification notification = buildNotification(request, recipientId);
             notifications.add(notification);

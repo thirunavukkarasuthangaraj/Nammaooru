@@ -74,6 +74,11 @@ public class NotificationRequest {
     private Boolean sendEmail;
     
     private Boolean sendPush;
-    
+
     private String metadata;
+
+    // Location-based targeting
+    private Double latitude;
+    private Double longitude;
+    private Double radiusKm;
 }

@@ -11,9 +11,11 @@ import { PushNotificationService, PushNotificationRequest } from '../../../../co
 export class PushNotificationSenderComponent implements OnInit {
   notificationForm!: FormGroup;
   loading = false;
+  useLocationFilter = false;
   recipientTypes = ['ALL_CUSTOMERS', 'SPECIFIC_USER'];
   notificationTypes: string[] = [];
   priorities: string[] = [];
+  radiusOptions = [5, 10, 25, 50, 100];
 
   constructor(
     private fb: FormBuilder,
@@ -33,7 +35,10 @@ export class PushNotificationSenderComponent implements OnInit {
       priority: ['HIGH', Validators.required],
       type: ['INFO', Validators.required],
       recipientType: ['ALL_CUSTOMERS', Validators.required],
-      recipientId: [null]
+      recipientId: [null],
+      latitude: [null],
+      longitude: [null],
+      radiusKm: [25]
     });
 
     // Handle recipientId validation based on recipientType
@@ -41,12 +46,20 @@ export class PushNotificationSenderComponent implements OnInit {
       const recipientIdControl = this.notificationForm.get('recipientId');
       if (value === 'SPECIFIC_USER') {
         recipientIdControl?.setValidators([Validators.required]);
+        this.useLocationFilter = false;
       } else {
         recipientIdControl?.clearValidators();
         recipientIdControl?.setValue(null);
       }
       recipientIdControl?.updateValueAndValidity();
     });
+  }
+
+  toggleLocationFilter(): void {
+    this.useLocationFilter = !this.useLocationFilter;
+    if (!this.useLocationFilter) {
+      this.notificationForm.patchValue({ latitude: null, longitude: null });
+    }
   }
 
   private loadEnums(): void {
@@ -81,6 +94,13 @@ export class PushNotificationSenderComponent implements OnInit {
       recipientId: formValue.recipientId,
       sendPush: true
     };
+
+    // Add location targeting if enabled
+    if (this.useLocationFilter && formValue.latitude && formValue.longitude && formValue.radiusKm) {
+      request.latitude = formValue.latitude;
+      request.longitude = formValue.longitude;
+      request.radiusKm = formValue.radiusKm;
+    }
 
     const sendObservable = request.recipientType === 'ALL_CUSTOMERS'
       ? this.pushNotificationService.sendBroadcastNotification(request)

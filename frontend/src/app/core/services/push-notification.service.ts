@@ -13,6 +13,9 @@ export interface PushNotificationRequest {
   recipientType?: 'ALL_CUSTOMERS' | 'SPECIFIC_USER';
   recipientId?: number;
   sendPush?: boolean;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
 }
 
 export interface NotificationResponse {
@@ -39,7 +42,7 @@ export class PushNotificationService {
    * Uses the /api/notifications/broadcast endpoint
    */
   sendBroadcastNotification(request: PushNotificationRequest): Observable<NotificationResponse> {
-    const payload = {
+    const payload: any = {
       title: request.title,
       message: request.message,
       priority: request.priority,
@@ -47,6 +50,13 @@ export class PushNotificationService {
       recipientType: 'ALL_CUSTOMERS',
       sendPush: true
     };
+
+    // Add location-based targeting if provided
+    if (request.latitude && request.longitude && request.radiusKm) {
+      payload.latitude = request.latitude;
+      payload.longitude = request.longitude;
+      payload.radiusKm = request.radiusKm;
+    }
 
     return this.http.post<NotificationResponse>(`${this.API_URL}/broadcast`, payload).pipe(
       map(response => {

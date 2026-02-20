@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -188,46 +189,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAsRead(NotificationModel notification) async {
     if (notification.isRead) return;
 
+    // Always update UI immediately so notification stays visible as "read"
+    if (mounted) {
+      setState(() {
+        _updateNotificationReadStatus(notification.id, true);
+      });
+    }
+
     // Check if this is a backend notification (numeric ID) or Firebase-only notification
     final isBackendNotification = _isNumericId(notification.id);
 
     try {
-      // Only call backend API for notifications with numeric IDs
       if (isBackendNotification) {
-        final response = await _notificationApi.markAsRead(notification.id);
-
-        if (mounted) {
-          if (response['statusCode'] == '0000') {
-            // Reload notifications from backend to get updated status
-            await _loadNotifications();
-          } else {
-            // If API call failed, just update UI locally
-            setState(() {
-              _updateNotificationReadStatus(notification.id, true);
-            });
-            Helpers.showSnackBar(context, 'Marked as read locally', isError: false);
-          }
-        }
-      } else {
-        // Firebase-only notification - update UI locally and persist to shared preferences
-        if (mounted) {
-          setState(() {
-            _updateNotificationReadStatus(notification.id, true);
-          });
-          // Store in shared preferences for persistence
-          await _saveReadNotificationId(notification.id);
-        }
+        // Call backend API (fire and forget - UI already updated)
+        await _notificationApi.markAsRead(notification.id);
       }
+      // Mark in Firebase local storage too
+      FirebaseNotificationService.markAsReadLocally(notification.id);
+      // Persist read status for Firebase notifications
+      await _saveReadNotificationId(notification.id);
     } catch (e) {
-      // Still update UI even if API fails
-      if (mounted) {
-        setState(() {
-          _updateNotificationReadStatus(notification.id, true);
-        });
-        if (!isBackendNotification) {
-          await _saveReadNotificationId(notification.id);
-        }
-      }
+      // UI already updated, just log the error
+      debugPrint('Error marking notification as read: $e');
     }
   }
 

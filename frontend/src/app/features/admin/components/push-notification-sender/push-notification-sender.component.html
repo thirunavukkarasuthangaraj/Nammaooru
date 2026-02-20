@@ -80,6 +80,39 @@
           </mat-form-field>
         </div>
 
+        <!-- Location-based targeting (only for ALL_CUSTOMERS) -->
+        <div class="location-filter" *ngIf="!isSpecificUser">
+          <mat-checkbox [(ngModel)]="useLocationFilter" [ngModelOptions]="{standalone: true}" (change)="toggleLocationFilter()">
+            <mat-icon>my_location</mat-icon>
+            Target by Location (send only to customers near a specific area)
+          </mat-checkbox>
+
+          <div class="form-row three-columns" *ngIf="useLocationFilter">
+            <mat-form-field appearance="outline">
+              <mat-label>Latitude</mat-label>
+              <input matInput type="number" formControlName="latitude" placeholder="e.g. 12.1457" step="0.0001">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Longitude</mat-label>
+              <input matInput type="number" formControlName="longitude" placeholder="e.g. 78.7377" step="0.0001">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Radius (km)</mat-label>
+              <mat-select formControlName="radiusKm">
+                <mat-option *ngFor="let r of radiusOptions" [value]="r">{{r}} km</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <p class="location-hint" *ngIf="useLocationFilter">
+            <mat-icon>info_outline</mat-icon>
+            Only customers whose last known location is within the specified radius will receive this notification.
+            Tirupattur: 12.1457, 78.7377
+          </p>
+        </div>
+
         <div class="form-actions">
           <button mat-raised-button color="primary" type="submit" [disabled]="loading">
             <mat-icon *ngIf="!loading">send</mat-icon>
@@ -113,6 +146,7 @@
           </ul>
         </li>
         <li><strong>Notification Types:</strong> Used for categorizing and filtering notifications in the app</li>
+        <li><strong>Location Targeting:</strong> Enable "Target by Location" to send notifications only to customers within a specific radius of a location</li>
       </ul>
     </mat-card-content>
   </mat-card>

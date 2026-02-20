@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/models/notification_model.dart';
 import '../app/routes.dart';
 import 'notification_api_service.dart';
@@ -25,6 +27,9 @@ class FirebaseNotificationService {
     }
 
     try {
+      // Load persisted notifications from SharedPreferences
+      await loadPersistedNotifications();
+
       // Setup message handlers
       _setupMessageHandlers();
 
@@ -234,13 +239,63 @@ class FirebaseNotificationService {
     );
   }
 
-  /// Add notification to local storage
+  /// Add notification to local storage and persist to SharedPreferences
   static void _addLocalNotification(NotificationModel notification) {
+    // Avoid duplicates
+    if (_localNotifications.any((n) => n.id == notification.id)) return;
+
     _localNotifications.insert(0, notification); // Latest first
 
     // Keep only last 100 notifications
     if (_localNotifications.length > 100) {
       _localNotifications.removeRange(100, _localNotifications.length);
+    }
+
+    // Persist to SharedPreferences
+    _persistNotifications();
+  }
+
+  /// Persist all local notifications to SharedPreferences
+  static Future<void> _persistNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = _localNotifications.map((n) => json.encode(n.toJson())).toList();
+      await prefs.setStringList('firebase_local_notifications', jsonList);
+    } catch (e) {
+      debugPrint('Error persisting notifications: $e');
+    }
+  }
+
+  /// Load persisted notifications from SharedPreferences on startup
+  static Future<void> loadPersistedNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = prefs.getStringList('firebase_local_notifications') ?? [];
+
+      // Clean up notifications older than 7 days
+      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+
+      for (final jsonStr in jsonList) {
+        try {
+          final map = json.decode(jsonStr) as Map<String, dynamic>;
+          final notification = NotificationModel.fromJson(map);
+          if (notification.createdAt.isAfter(cutoff) &&
+              !_localNotifications.any((n) => n.id == notification.id)) {
+            _localNotifications.add(notification);
+          }
+        } catch (e) {
+          // Skip malformed entries
+        }
+      }
+
+      // Sort latest first
+      _localNotifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      // Re-persist cleaned list
+      await _persistNotifications();
+      debugPrint('Loaded ${_localNotifications.length} persisted notifications');
+    } catch (e) {
+      debugPrint('Error loading persisted notifications: $e');
     }
   }
 
@@ -443,7 +498,7 @@ class FirebaseNotificationService {
     return _localNotifications.where((n) => !n.isRead).length;
   }
 
-  /// Mark notification as read locally
+  /// Mark notification as read locally and persist
   static void markAsReadLocally(String notificationId) {
     final index = _localNotifications.indexWhere((n) => n.id == notificationId);
     if (index != -1) {
@@ -456,11 +511,13 @@ class FirebaseNotificationService {
         isRead: true,
         data: _localNotifications[index].data,
       );
+      _persistNotifications();
     }
   }
 
   /// Clear all local notifications
   static void clearLocalNotifications() {
     _localNotifications.clear();
+    _persistNotifications();
   }
 }
