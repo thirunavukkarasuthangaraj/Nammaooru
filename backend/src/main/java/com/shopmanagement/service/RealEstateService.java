@@ -36,6 +36,7 @@ public class RealEstateService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final UserPostLimitService userPostLimitService;
 
     @Transactional
     public RealEstatePost createPost(String title, String description, PropertyType propertyType,
@@ -46,6 +47,16 @@ public class RealEstateService {
                                       String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "REAL_ESTATE");
+        if (postLimit > 0) {
+            List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = realEstatePostRepository.countByOwnerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                throw new RuntimeException("LIMIT_REACHED");
+            }
+        }
 
         // Upload images (up to 5)
         List<String> imageUrlList = new ArrayList<>();
@@ -320,6 +331,52 @@ public class RealEstateService {
 
         RealEstatePost saved = realEstatePostRepository.save(post);
         log.info("Real estate post admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
+    public RealEstatePost userEditPost(Long id, Map<String, Object> updates, String username) {
+        RealEstatePost post = realEstatePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getOwnerUserId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own posts");
+        }
+
+        if (post.getStatus() != PostStatus.APPROVED) {
+            throw new RuntimeException("Only approved posts can be edited");
+        }
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+        if (updates.containsKey("propertyType")) {
+            try {
+                post.setPropertyType(RealEstatePost.PropertyType.valueOf(((String) updates.get("propertyType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid property type: " + updates.get("propertyType"));
+            }
+        }
+        if (updates.containsKey("listingType")) {
+            try {
+                post.setListingType(RealEstatePost.ListingType.valueOf(((String) updates.get("listingType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid listing type: " + updates.get("listingType"));
+            }
+        }
+        if (updates.containsKey("price")) post.setPrice(updates.get("price") != null ? new java.math.BigDecimal(updates.get("price").toString()) : null);
+        if (updates.containsKey("areaSqft")) post.setAreaSqft(updates.get("areaSqft") != null ? ((Number) updates.get("areaSqft")).intValue() : null);
+        if (updates.containsKey("bedrooms")) post.setBedrooms(updates.get("bedrooms") != null ? ((Number) updates.get("bedrooms")).intValue() : null);
+        if (updates.containsKey("bathrooms")) post.setBathrooms(updates.get("bathrooms") != null ? ((Number) updates.get("bathrooms")).intValue() : null);
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+        if (updates.containsKey("phone")) post.setOwnerPhone((String) updates.get("phone"));
+
+        post.setStatus(PostStatus.PENDING_APPROVAL);
+
+        RealEstatePost saved = realEstatePostRepository.save(post);
+        log.info("Real estate post user-edited: id={}, userId={}", id, user.getId());
         return saved;
     }
 

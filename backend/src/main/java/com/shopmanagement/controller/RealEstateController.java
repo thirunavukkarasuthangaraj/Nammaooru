@@ -299,6 +299,21 @@ public class RealEstateController {
         }
     }
 
+    @PutMapping("/{id}/edit")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<RealEstatePost>> userEditPost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            String username = getCurrentUsername();
+            RealEstatePost post = realEstateService.userEditPost(id, updates, username);
+            return ResponseUtil.success(post, "Post updated successfully. It will be reviewed again.");
+        } catch (Exception e) {
+            log.error("Error editing real estate post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

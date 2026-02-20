@@ -16,6 +16,7 @@ import '../../../core/services/location_service.dart';
 import '../services/marketplace_service.dart';
 import '../services/real_estate_service.dart';
 import '../widgets/renewal_payment_handler.dart';
+import '../../../core/utils/image_compressor.dart';
 import 'create_post_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
@@ -63,7 +64,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     'Electronics',
     'Furniture',
     'Vehicles',
-    'Agriculture',
     'Clothing',
     'Food',
     'Finance',
@@ -196,7 +196,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       'Electronics': 'எலக்ட்ரானிக்ஸ்',
       'Furniture': 'மரச்சாமான்',
       'Vehicles': 'வாகனங்கள்',
-      'Agriculture': 'விவசாயம்',
       'Clothing': 'ஆடைகள்',
       'Food': 'உணவு',
       'Finance': 'நிதி',
@@ -234,9 +233,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   }
 
   Future<void> _callSeller(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.isEmpty) return;
+    final uri = Uri.parse('tel:$cleanPhone');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open phone dialer')),
+        );
+      }
     }
   }
 
@@ -1521,7 +1528,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     ],
                   ),
                 ],
-                if (status == 'APPROVED') ...[
+                if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED') ...[
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -1541,6 +1548,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         ),
                       ),
                       const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _showEditMarketplaceSheet(post),
+                        icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                        tooltip: 'Edit',
+                      ),
                       IconButton(
                         onPressed: () async {
                           final confirm = await showDialog<bool>(
@@ -1574,6 +1586,81 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditMarketplaceSheet(Map<String, dynamic> post) {
+    final titleController = TextEditingController(text: post['title'] ?? '');
+    final descController = TextEditingController(text: post['description'] ?? '');
+    final priceController = TextEditingController(text: post['price']?.toString() ?? '');
+    final phoneController = TextEditingController(text: post['sellerPhone'] ?? '');
+    final categoryController = TextEditingController(text: post['category'] ?? '');
+    final locationController = TextEditingController(text: post['location'] ?? '');
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                const SizedBox(height: 12),
+                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      setSheetState(() => isSaving = true);
+                      final updates = <String, dynamic>{};
+                      if (titleController.text != (post['title'] ?? '')) updates['title'] = titleController.text;
+                      if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (priceController.text != (post['price']?.toString() ?? '')) updates['price'] = priceController.text;
+                      if (phoneController.text != (post['sellerPhone'] ?? '')) updates['phone'] = phoneController.text;
+                      if (categoryController.text != (post['category'] ?? '')) updates['category'] = categoryController.text;
+                      if (locationController.text != (post['location'] ?? '')) updates['location'] = locationController.text;
+                      if (updates.isEmpty) { Navigator.pop(ctx); return; }
+                      final result = await _marketplaceService.editPost(post['id'], updates);
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                        );
+                        if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1949,9 +2036,16 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                             }
                             final phone = listing['phone']?.toString() ?? '';
                             if (phone.isNotEmpty) {
-                              final uri = Uri.parse('tel:$phone');
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
+                              final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                              final uri = Uri.parse('tel:$cleanPhone');
+                              try {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Could not open phone dialer')),
+                                  );
+                                }
                               }
                             }
                           },
@@ -1979,8 +2073,14 @@ class _PropertyDetailsSheetState extends State<_PropertyDetailsSheet> {
                               final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
                               final message = Uri.encodeComponent('Hi, I am interested in the property: ${listing['title']}');
                               final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                              if (await canLaunchUrl(uri)) {
+                              try {
                                 await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Could not open WhatsApp')),
+                                  );
+                                }
                               }
                             }
                           },
@@ -2065,8 +2165,10 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
   Future<void> _pickImages() async {
     final images = await _picker.pickMultiImage();
     if (images.isNotEmpty) {
+      final toAdd = images.take(5 - _images.length).toList();
+      final compressed = await ImageCompressor.compressMultiple(toAdd);
       setState(() {
-        _images.addAll(images.take(5 - _images.length));
+        _images.addAll(compressed);
       });
     }
   }
@@ -2665,6 +2767,8 @@ class _MarketplacePostDetailsSheetState extends State<MarketplacePostDetailsShee
   Widget build(BuildContext context) {
     final imageUrl = _getImageUrl();
     final isSold = post['status'] == 'SOLD';
+    print('DEBUG MarketplacePostDetailsSheet post keys: ${post.keys.toList()}');
+    print('DEBUG sellerPhone: "${post['sellerPhone']}"');
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -2812,6 +2916,31 @@ class _MarketplacePostDetailsSheetState extends State<MarketplacePostDetailsShee
                         ),
                       );
                     }),
+                  if (post['sellerPhone'] != null && post['sellerPhone'].toString().isNotEmpty)
+                    Builder(builder: (context) {
+                      final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+                      final phone = post['sellerPhone'].toString();
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.phone, size: 20, color: Colors.grey[600]),
+                            const SizedBox(width: 12),
+                            Text('Phone: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
+                            Expanded(
+                              child: isLoggedIn
+                                  ? Text(phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))
+                                  : ClipRect(
+                                      child: ImageFiltered(
+                                        imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                        child: Text(phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   if (post['location'] != null && post['location'].toString().isNotEmpty)
                     _buildDetailRow(Icons.location_on, 'Location', post['location']),
                   if (post['createdAt'] != null)
@@ -2829,21 +2958,38 @@ class _MarketplacePostDetailsSheetState extends State<MarketplacePostDetailsShee
                   const SizedBox(height: 30),
                   // Contact buttons
                   if (!isSold)
-                    Row(
+                    Builder(builder: (ctx) {
+                      final isLoggedIn = Provider.of<AuthProvider>(ctx, listen: false).isAuthenticated;
+                      return Row(
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final phone = post['sellerPhone']?.toString() ?? '';
-                              if (phone.isNotEmpty) {
-                                final uri = Uri.parse('tel:$phone');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri);
-                                }
+                            onPressed: () {
+                              if (!isLoggedIn) {
+                                Navigator.of(context).pop();
+                                GoRouter.of(context).go('/login');
+                                return;
                               }
+                              final phone = post['sellerPhone']?.toString() ?? '';
+                              if (phone.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Phone number not available')),
+                                );
+                                return;
+                              }
+                              final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                              final uri = Uri.parse('tel:$cleanPhone');
+                              launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Could not open phone dialer')),
+                                  );
+                                }
+                                return false;
+                              });
                             },
-                            icon: const Icon(Icons.call),
-                            label: const Text('Call'),
+                            icon: Icon(isLoggedIn ? Icons.call : Icons.login),
+                            label: Text(isLoggedIn ? 'Call' : 'Login to Call'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: VillageTheme.primaryGreen,
                               foregroundColor: Colors.white,
@@ -2855,20 +3001,34 @@ class _MarketplacePostDetailsSheetState extends State<MarketplacePostDetailsShee
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final phone = post['sellerPhone']?.toString() ?? '';
-                              if (phone.isNotEmpty) {
-                                final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                                final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
-                                final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');
-                                final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                }
+                            onPressed: () {
+                              if (!isLoggedIn) {
+                                Navigator.of(context).pop();
+                                GoRouter.of(context).go('/login');
+                                return;
                               }
+                              final phone = post['sellerPhone']?.toString() ?? '';
+                              if (phone.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Phone number not available')),
+                                );
+                                return;
+                              }
+                              final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                              final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
+                              final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');
+                              final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
+                              launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Could not open WhatsApp')),
+                                  );
+                                }
+                                return false;
+                              });
                             },
-                            icon: const Icon(Icons.chat),
-                            label: const Text('WhatsApp'),
+                            icon: Icon(isLoggedIn ? Icons.chat : Icons.login),
+                            label: Text(isLoggedIn ? 'WhatsApp' : 'Login'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: VillageTheme.primaryGreen,
                               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -2878,7 +3038,8 @@ class _MarketplacePostDetailsSheetState extends State<MarketplacePostDetailsShee
                           ),
                         ),
                       ],
-                    ),
+                    );
+                    }),
                 ],
               ),
             ),

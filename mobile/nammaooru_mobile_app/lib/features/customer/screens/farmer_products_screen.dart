@@ -219,9 +219,17 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   }
 
   Future<void> _callSeller(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.isEmpty) return;
+    final uri = Uri.parse('tel:$cleanPhone');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open phone dialer')),
+        );
+      }
     }
   }
 
@@ -1138,7 +1146,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
                     ],
                   ),
                 ],
-                if (status == 'APPROVED') ...[
+                if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED') ...[
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -1158,6 +1166,11 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
                         ),
                       ),
                       const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _showEditFarmerProductSheet(post),
+                        icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                        tooltip: 'Edit',
+                      ),
                       IconButton(
                         onPressed: () async {
                           final confirm = await showDialog<bool>(
@@ -1194,6 +1207,85 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       ),
     );
   }
+  void _showEditFarmerProductSheet(Map<String, dynamic> post) {
+    final titleController = TextEditingController(text: post['title'] ?? '');
+    final descController = TextEditingController(text: post['description'] ?? '');
+    final priceController = TextEditingController(text: post['price']?.toString() ?? '');
+    final phoneController = TextEditingController(text: post['sellerPhone'] ?? '');
+    final unitController = TextEditingController(text: post['unit'] ?? '');
+    final categoryController = TextEditingController(text: post['category'] ?? '');
+    final locationController = TextEditingController(text: post['location'] ?? '');
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                const SizedBox(height: 12),
+                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: unitController, decoration: const InputDecoration(labelText: 'Unit (e.g., kg, piece)', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location', border: OutlineInputBorder())),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      setSheetState(() => isSaving = true);
+                      final updates = <String, dynamic>{};
+                      if (titleController.text != (post['title'] ?? '')) updates['title'] = titleController.text;
+                      if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (priceController.text != (post['price']?.toString() ?? '')) updates['price'] = priceController.text;
+                      if (phoneController.text != (post['sellerPhone'] ?? '')) updates['phone'] = phoneController.text;
+                      if (unitController.text != (post['unit'] ?? '')) updates['unit'] = unitController.text;
+                      if (categoryController.text != (post['category'] ?? '')) updates['category'] = categoryController.text;
+                      if (locationController.text != (post['location'] ?? '')) updates['location'] = locationController.text;
+                      if (updates.isEmpty) { Navigator.pop(ctx); return; }
+                      final result = await _farmerService.editPost(post['id'], updates);
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                        );
+                        if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'FARMER_PRODUCTS');
     handler.renewSingle(

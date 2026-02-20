@@ -12,6 +12,7 @@ import '../../../core/localization/language_provider.dart';
 import '../services/travel_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
+import '../../../core/utils/image_compressor.dart';
 
 class CreateTravelScreen extends StatefulWidget {
   const CreateTravelScreen({super.key});
@@ -43,12 +44,16 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
 
   static const Map<String, String> _vehicleTypes = {
     'CAR': 'Car',
+    'AUTO': 'Auto',
+    'BIKE': 'Bike',
     'SMALL_BUS': 'Small Bus',
     'BUS': 'Bus',
   };
 
   static const Map<String, String> _vehicleTypeTamil = {
     'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
+    'AUTO': '\u0B86\u0B9F\u0BCD\u0B9F\u0BCB',
+    'BIKE': '\u0BAA\u0BC8\u0B95\u0BCD',
     'SMALL_BUS': '\u0B9A\u0BBF\u0BB1\u0BBF\u0BAF \u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
     'BUS': '\u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
   };
@@ -143,8 +148,9 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         imageQuality: 70,
       );
       if (pickedFile != null && mounted) {
+        final compressed = await ImageCompressor.compressXFile(pickedFile);
         setState(() {
-          _selectedImages.add(File(pickedFile.path));
+          _selectedImages.add(File(compressed.path));
         });
       }
     } catch (e) {
@@ -170,9 +176,10 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         imageQuality: 70,
       );
       if (pickedFiles.isNotEmpty && mounted) {
+        final toAdd = pickedFiles.take(remaining).toList();
+        final compressed = await ImageCompressor.compressMultiple(toAdd);
         setState(() {
-          final toAdd = pickedFiles.take(remaining).map((f) => File(f.path)).toList();
-          _selectedImages.addAll(toAdd);
+          _selectedImages.addAll(compressed.map((f) => File(f.path)).toList());
         });
         if (pickedFiles.length > remaining) {
           _showMaxImagesMessage();

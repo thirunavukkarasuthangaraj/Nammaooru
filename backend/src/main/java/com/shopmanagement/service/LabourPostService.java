@@ -390,6 +390,42 @@ public class LabourPostService {
     }
 
     @Transactional
+    public LabourPost userEditPost(Long id, Map<String, Object> updates, String username) {
+        LabourPost post = labourPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own posts");
+        }
+
+        if (post.getStatus() != PostStatus.APPROVED && post.getStatus() != PostStatus.CORRECTION_REQUIRED) {
+            throw new RuntimeException("Only approved or correction-required posts can be edited");
+        }
+
+        if (updates.containsKey("name")) post.setName((String) updates.get("name"));
+        if (updates.containsKey("phone")) post.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("category")) {
+            try {
+                post.setCategory(LabourCategory.valueOf(((String) updates.get("category")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid labour category: " + updates.get("category"));
+            }
+        }
+        if (updates.containsKey("experience")) post.setExperience((String) updates.get("experience"));
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+
+        post.setStatus(PostStatus.PENDING_APPROVAL);
+
+        LabourPost saved = labourPostRepository.save(post);
+        log.info("Labour post user-edited: id={}, userId={}", id, user.getId());
+        return saved;
+    }
+
+    @Transactional
     public LabourPost renewPost(Long postId, Long paidTokenId, String username) {
         LabourPost post = labourPostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

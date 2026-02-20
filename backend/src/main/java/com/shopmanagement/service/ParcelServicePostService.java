@@ -398,6 +398,45 @@ public class ParcelServicePostService {
     }
 
     @Transactional
+    public ParcelServicePost userEditPost(Long id, Map<String, Object> updates, String username) {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own posts");
+        }
+
+        if (post.getStatus() != PostStatus.APPROVED && post.getStatus() != PostStatus.CORRECTION_REQUIRED) {
+            throw new RuntimeException("Only approved or correction-required posts can be edited");
+        }
+
+        if (updates.containsKey("serviceName")) post.setServiceName((String) updates.get("serviceName"));
+        if (updates.containsKey("phone")) post.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("serviceType")) {
+            try {
+                post.setServiceType(ParcelServicePost.ServiceType.valueOf(((String) updates.get("serviceType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid service type: " + updates.get("serviceType"));
+            }
+        }
+        if (updates.containsKey("fromLocation")) post.setFromLocation((String) updates.get("fromLocation"));
+        if (updates.containsKey("toLocation")) post.setToLocation((String) updates.get("toLocation"));
+        if (updates.containsKey("priceInfo")) post.setPriceInfo((String) updates.get("priceInfo"));
+        if (updates.containsKey("address")) post.setAddress((String) updates.get("address"));
+        if (updates.containsKey("timings")) post.setTimings((String) updates.get("timings"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+
+        post.setStatus(PostStatus.PENDING_APPROVAL);
+
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post user-edited: id={}, userId={}", id, user.getId());
+        return saved;
+    }
+
+    @Transactional
     public ParcelServicePost renewPost(Long postId, Long paidTokenId, String username) {
         ParcelServicePost post = parcelServicePostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

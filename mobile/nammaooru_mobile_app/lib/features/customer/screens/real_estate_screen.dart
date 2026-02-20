@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/image_compressor.dart';
 import '../services/real_estate_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,7 +21,7 @@ class RealEstateScreen extends StatefulWidget {
 class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'For Sale', 'For Rent', 'Land', 'House', 'Apartment'];
+  final List<String> _filters = ['All', 'For Sale', 'For Rent', 'Land', 'House', 'Apartment', 'Agriculture'];
 
   final RealEstateService _realEstateService = RealEstateService();
   List<Map<String, dynamic>> _listings = [];
@@ -625,6 +629,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                           _buildActionChip('Mark Rented', Icons.home, Colors.teal, () => _markAsRented(post)),
                           const SizedBox(width: 8),
                         ],
+                        _buildActionChip('Edit', Icons.edit, Colors.blue, () => _showEditRealEstateSheet(post)),
+                        const SizedBox(width: 8),
                         _buildActionChip('Delete', Icons.delete, Colors.red, () => _deleteMyPost(post)),
                       ],
                     ),
@@ -741,6 +747,95 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
       }
     }
+  }
+
+  void _showEditRealEstateSheet(Map<String, dynamic> post) {
+    final titleController = TextEditingController(text: post['title'] ?? '');
+    final descController = TextEditingController(text: post['description'] ?? '');
+    final priceController = TextEditingController(text: post['price']?.toString() ?? '');
+    final phoneController = TextEditingController(text: post['ownerPhone'] ?? '');
+    final locationController = TextEditingController(text: post['location'] ?? '');
+    final areaController = TextEditingController(text: post['areaSqft']?.toString() ?? '');
+    final bedroomsController = TextEditingController(text: post['bedrooms']?.toString() ?? '');
+    final bathroomsController = TextEditingController(text: post['bathrooms']?.toString() ?? '');
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Property', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                const SizedBox(height: 12),
+                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: areaController, decoration: const InputDecoration(labelText: 'Area (sq.ft)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: bedroomsController, decoration: const InputDecoration(labelText: 'Bedrooms', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: bathroomsController, decoration: const InputDecoration(labelText: 'Bathrooms', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      setSheetState(() => isSaving = true);
+                      final updates = <String, dynamic>{};
+                      if (titleController.text != (post['title'] ?? '')) updates['title'] = titleController.text;
+                      if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (priceController.text != (post['price']?.toString() ?? '')) updates['price'] = priceController.text;
+                      if (phoneController.text != (post['ownerPhone'] ?? '')) updates['phone'] = phoneController.text;
+                      if (locationController.text != (post['location'] ?? '')) updates['location'] = locationController.text;
+                      if (areaController.text != (post['areaSqft']?.toString() ?? '')) {
+                        updates['areaSqft'] = int.tryParse(areaController.text);
+                      }
+                      if (bedroomsController.text != (post['bedrooms']?.toString() ?? '')) {
+                        updates['bedrooms'] = int.tryParse(bedroomsController.text);
+                      }
+                      if (bathroomsController.text != (post['bathrooms']?.toString() ?? '')) {
+                        updates['bathrooms'] = int.tryParse(bathroomsController.text);
+                      }
+                      if (updates.isEmpty) { Navigator.pop(ctx); return; }
+                      final result = await _realEstateService.editPost(post['id'], updates);
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                        );
+                        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _renewSinglePost(int postId) async {
@@ -1423,21 +1518,38 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                   ),
                   const SizedBox(height: 30),
                   // Contact buttons
-                  Row(
+                  Builder(builder: (ctx) {
+                    final isLoggedIn = Provider.of<AuthProvider>(ctx, listen: false).isAuthenticated;
+                    return Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final phone = listing['phone']?.toString() ?? '';
-                            if (phone.isNotEmpty) {
-                              final uri = Uri.parse('tel:$phone');
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
-                              }
+                          onPressed: () {
+                            if (!isLoggedIn) {
+                              Navigator.of(context).pop();
+                              GoRouter.of(context).go('/login');
+                              return;
                             }
+                            final phone = listing['phone']?.toString() ?? '';
+                            if (phone.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Phone number not available')),
+                              );
+                              return;
+                            }
+                            final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                            final uri = Uri.parse('tel:$cleanPhone');
+                            launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Could not open phone dialer')),
+                                );
+                              }
+                              return false;
+                            });
                           },
-                          icon: const Icon(Icons.call),
-                          label: const Text('Call'),
+                          icon: Icon(isLoggedIn ? Icons.call : Icons.login),
+                          label: Text(isLoggedIn ? 'Call' : 'Login to Call'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: VillageTheme.primaryGreen,
                             foregroundColor: Colors.white,
@@ -1451,20 +1563,34 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final phone = listing['phone']?.toString() ?? '';
-                            if (phone.isNotEmpty) {
-                              final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                              final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
-                              final message = Uri.encodeComponent('Hi, I am interested in the property: ${listing['title']}');
-                              final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
-                              }
+                          onPressed: () {
+                            if (!isLoggedIn) {
+                              Navigator.of(context).pop();
+                              GoRouter.of(context).go('/login');
+                              return;
                             }
+                            final phone = listing['phone']?.toString() ?? '';
+                            if (phone.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Phone number not available')),
+                              );
+                              return;
+                            }
+                            final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                            final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
+                            final message = Uri.encodeComponent('Hi, I am interested in the property: ${listing['title']}');
+                            final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
+                            launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Could not open WhatsApp')),
+                                );
+                              }
+                              return false;
+                            });
                           },
-                          icon: const Icon(Icons.chat),
-                          label: const Text('WhatsApp'),
+                          icon: Icon(isLoggedIn ? Icons.chat : Icons.login),
+                          label: Text(isLoggedIn ? 'WhatsApp' : 'Login'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: VillageTheme.primaryGreen,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1476,7 +1602,8 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                         ),
                       ),
                     ],
-                  ),
+                  );
+                  }),
                 ],
               ),
             ),
@@ -1548,10 +1675,28 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
   }
 
   Future<void> _pickImages() async {
+    final remaining = 5 - _images.length;
+    if (remaining <= 0) return;
+
     final images = await _picker.pickMultiImage();
     if (images.isNotEmpty) {
+      final toAdd = images.take(remaining).toList();
+      // Compress images before adding
+      final compressed = await ImageCompressor.compressMultiple(toAdd);
       setState(() {
-        _images.addAll(images.take(5 - _images.length));
+        _images.addAll(compressed);
+      });
+    }
+  }
+
+  Future<void> _captureImage() async {
+    if (_images.length >= 5) return;
+
+    final image = await _picker.pickImage(source: ImageSource.camera);
+    if (image != null) {
+      final compressed = await ImageCompressor.compressXFile(image);
+      setState(() {
+        _images.add(compressed);
       });
     }
   }
@@ -1743,8 +1888,10 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                         scrollDirection: Axis.horizontal,
                         children: [
                           ..._images.map((img) => _buildImageTile(img)),
-                          if (_images.length < 5)
-                            _buildAddMediaTile(Icons.add_photo_alternate, 'Add Photos', _pickImages),
+                          if (_images.length < 5) ...[
+                            _buildAddMediaTile(Icons.add_photo_alternate, 'Gallery', _pickImages),
+                            _buildAddMediaTile(Icons.camera_alt, 'Camera', _captureImage),
+                          ],
                         ],
                       ),
                     ),
@@ -1897,6 +2044,15 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
           if (mounted) {
             _showPropertySuccessDialog();
           }
+        } else if (_isLimitReached(result)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Post limit reached! You cannot create more property listings.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1917,6 +2073,12 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         );
       }
     }
+  }
+
+  bool _isLimitReached(Map<String, dynamic> result) {
+    final message = result['message']?.toString() ?? '';
+    final statusCode = result['statusCode']?.toString() ?? '';
+    return message.contains('LIMIT_REACHED') || statusCode == 'LIMIT_REACHED';
   }
 
   void _showPropertySuccessDialog() {

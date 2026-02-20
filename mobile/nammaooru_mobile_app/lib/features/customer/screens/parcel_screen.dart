@@ -205,9 +205,17 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   }
 
   Future<void> _callService(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.isEmpty) return;
+    final uri = Uri.parse('tel:$cleanPhone');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open phone dialer')),
+        );
+      }
     }
   }
 
@@ -338,6 +346,89 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
       _loadMyPosts();
       _tabController.animateTo(1);
     });
+  }
+
+  void _showEditParcelSheet(Map<String, dynamic> post) {
+    final serviceNameController = TextEditingController(text: post['serviceName'] ?? '');
+    final phoneController = TextEditingController(text: post['phone'] ?? '');
+    final fromController = TextEditingController(text: post['fromLocation'] ?? '');
+    final toController = TextEditingController(text: post['toLocation'] ?? '');
+    final priceInfoController = TextEditingController(text: post['priceInfo'] ?? '');
+    final addressController = TextEditingController(text: post['address'] ?? '');
+    final timingsController = TextEditingController(text: post['timings'] ?? '');
+    final descController = TextEditingController(text: post['description'] ?? '');
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: serviceNameController, decoration: const InputDecoration(labelText: 'Service Name', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: fromController, decoration: const InputDecoration(labelText: 'From Location', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: toController, decoration: const InputDecoration(labelText: 'To Location', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: priceInfoController, decoration: const InputDecoration(labelText: 'Price Info', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Address', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: timingsController, decoration: const InputDecoration(labelText: 'Timings', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      setSheetState(() => isSaving = true);
+                      final updates = <String, dynamic>{};
+                      if (serviceNameController.text != (post['serviceName'] ?? '')) updates['serviceName'] = serviceNameController.text;
+                      if (phoneController.text != (post['phone'] ?? '')) updates['phone'] = phoneController.text;
+                      if (fromController.text != (post['fromLocation'] ?? '')) updates['fromLocation'] = fromController.text;
+                      if (toController.text != (post['toLocation'] ?? '')) updates['toLocation'] = toController.text;
+                      if (priceInfoController.text != (post['priceInfo'] ?? '')) updates['priceInfo'] = priceInfoController.text;
+                      if (addressController.text != (post['address'] ?? '')) updates['address'] = addressController.text;
+                      if (timingsController.text != (post['timings'] ?? '')) updates['timings'] = timingsController.text;
+                      if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (updates.isEmpty) { Navigator.pop(ctx); return; }
+                      final result = await _parcelService.editPost(post['id'], updates);
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                        );
+                        if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _renewSinglePost(int postId) {
@@ -1117,7 +1208,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                           ],
                         ),
                       ],
-                      if (status == 'APPROVED') ...[
+                      if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED') ...[
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -1137,6 +1228,11 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                               ),
                             ),
                             const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () => _showEditParcelSheet(post),
+                              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                              tooltip: 'Edit',
+                            ),
                             IconButton(
                               onPressed: () async {
                                 final confirm = await showDialog<bool>(

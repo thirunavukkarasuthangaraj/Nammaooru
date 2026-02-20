@@ -357,6 +357,36 @@ public class MarketplaceService {
     }
 
     @Transactional
+    public MarketplacePost userEditPost(Long id, Map<String, Object> updates, String username) {
+        MarketplacePost post = marketplacePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own posts");
+        }
+
+        if (post.getStatus() != PostStatus.APPROVED && post.getStatus() != PostStatus.CORRECTION_REQUIRED) {
+            throw new RuntimeException("Only approved or correction-required posts can be edited");
+        }
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+        if (updates.containsKey("price")) post.setPrice(updates.get("price") != null ? new java.math.BigDecimal(updates.get("price").toString()) : null);
+        if (updates.containsKey("phone")) post.setSellerPhone((String) updates.get("phone"));
+        if (updates.containsKey("category")) post.setCategory((String) updates.get("category"));
+        if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
+
+        post.setStatus(PostStatus.PENDING_APPROVAL);
+
+        MarketplacePost saved = marketplacePostRepository.save(post);
+        log.info("Marketplace post user-edited: id={}, userId={}", id, user.getId());
+        return saved;
+    }
+
+    @Transactional
     public MarketplacePost renewPost(Long postId, Long paidTokenId, String username) {
         MarketplacePost post = marketplacePostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

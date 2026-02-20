@@ -205,6 +205,15 @@ class RealEstateService {
         options: Options(headers: headers),
       );
 
+      final responseCode = response.data?['statusCode']?.toString() ?? '';
+      if (responseCode.isNotEmpty && responseCode != '0000') {
+        return {
+          'success': false,
+          'message': response.data?['message'] ?? 'Failed to create property listing',
+          'statusCode': responseCode,
+        };
+      }
+
       return {
         'success': true,
         'data': response.data?['data'],
@@ -345,6 +354,36 @@ class RealEstateService {
       };
     } catch (e) {
       Logger.e('Failed to renew real estate post', 'REAL_ESTATE', e);
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
+  /// Edit a post (text fields only, no image changes)
+  Future<Map<String, dynamic>> editPost(int postId, Map<String, dynamic> updates) async {
+    try {
+      Logger.api('Editing real estate post: $postId');
+
+      final response = await ApiClient.put(
+        '/real-estate/$postId/edit',
+        data: updates,
+      );
+
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Post updated successfully',
+      };
+    } on DioException catch (e) {
+      Logger.e('Failed to edit real estate post', 'REAL_ESTATE', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to edit post',
+      };
+    } catch (e) {
+      Logger.e('Failed to edit real estate post', 'REAL_ESTATE', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',

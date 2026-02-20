@@ -151,6 +151,15 @@ class TravelService {
         options: Options(headers: headers),
       );
 
+      final responseCode = response.data?['statusCode']?.toString() ?? '';
+      if (responseCode.isNotEmpty && responseCode != '0000') {
+        return {
+          'success': false,
+          'message': response.data?['message'] ?? 'Failed to create listing',
+          'statusCode': responseCode,
+        };
+      }
+
       return {
         'success': true,
         'data': response.data?['data'],
@@ -300,6 +309,36 @@ class TravelService {
       };
     } catch (e) {
       Logger.e('Failed to renew travel post', 'TRAVELS', e);
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
+  /// Edit a post (text fields only, no image changes)
+  Future<Map<String, dynamic>> editPost(int postId, Map<String, dynamic> updates) async {
+    try {
+      Logger.api('Editing travel post: $postId');
+
+      final response = await ApiClient.put(
+        '/travels/$postId/edit',
+        data: updates,
+      );
+
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Post updated successfully',
+      };
+    } on DioException catch (e) {
+      Logger.e('Failed to edit travel post', 'TRAVEL', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to edit post',
+      };
+    } catch (e) {
+      Logger.e('Failed to edit travel post', 'TRAVEL', e);
       return {
         'success': false,
         'message': 'An unexpected error occurred: $e',

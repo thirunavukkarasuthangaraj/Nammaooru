@@ -292,6 +292,21 @@ public class FarmerProductController {
         }
     }
 
+    @PutMapping("/{id}/edit")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<FarmerProduct>> userEditPost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            String username = getCurrentUsername();
+            FarmerProduct post = farmerProductService.userEditPost(id, updates, username);
+            return ResponseUtil.success(post, "Post updated successfully. It will be reviewed again.");
+        } catch (Exception e) {
+            log.error("Error editing farmer product post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

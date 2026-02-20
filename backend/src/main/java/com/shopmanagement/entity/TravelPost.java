@@ -102,6 +102,8 @@ public class TravelPost {
 
     public enum VehicleType {
         CAR,
+        AUTO,
+        BIKE,
         SMALL_BUS,
         BUS
     }

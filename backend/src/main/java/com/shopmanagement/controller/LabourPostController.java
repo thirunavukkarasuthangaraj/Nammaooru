@@ -295,6 +295,21 @@ public class LabourPostController {
         }
     }
 
+    @PutMapping("/{id}/edit")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<LabourPost>> userEditPost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        try {
+            String username = getCurrentUsername();
+            LabourPost post = labourPostService.userEditPost(id, updates, username);
+            return ResponseUtil.success(post, "Post updated successfully. It will be reviewed again.");
+        } catch (Exception e) {
+            log.error("Error editing labour post", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getName();

@@ -48,6 +48,8 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   static const Map<String, String> _vehicleTypeLabels = {
     'All': 'All',
     'CAR': 'Car',
+    'AUTO': 'Auto',
+    'BIKE': 'Bike',
     'SMALL_BUS': 'Small Bus',
     'BUS': 'Bus',
   };
@@ -55,12 +57,16 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   static const Map<String, String> _vehicleTypeTamilMap = {
     'All': '\u0B85\u0BA9\u0BC8\u0BA4\u0BCD\u0BA4\u0BC1\u0BAE\u0BCD',
     'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
+    'AUTO': '\u0B86\u0B9F\u0BCD\u0B9F\u0BCB',
+    'BIKE': '\u0BAA\u0BC8\u0B95\u0BCD',
     'SMALL_BUS': '\u0B9A\u0BBF\u0BB1\u0BBF\u0BAF \u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
     'BUS': '\u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
   };
 
   static const Map<String, IconData> _vehicleTypeIcons = {
     'CAR': Icons.directions_car,
+    'AUTO': Icons.electric_rickshaw,
+    'BIKE': Icons.two_wheeler,
     'SMALL_BUS': Icons.airport_shuttle,
     'BUS': Icons.directions_bus,
   };
@@ -205,9 +211,17 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   }
 
   Future<void> _callDriver(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.isEmpty) return;
+    final uri = Uri.parse('tel:$cleanPhone');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open phone dialer')),
+        );
+      }
     }
   }
 
@@ -1047,7 +1061,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                           ],
                         ),
                       ],
-                      if (status == 'APPROVED') ...[
+                      if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED') ...[
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -1067,6 +1081,11 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                               ),
                             ),
                             const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () => _showEditTravelSheet(post),
+                              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                              tooltip: 'Edit',
+                            ),
                             IconButton(
                               onPressed: () async {
                                 final confirm = await showDialog<bool>(
@@ -1153,6 +1172,87 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditTravelSheet(Map<String, dynamic> post) {
+    final titleController = TextEditingController(text: post['title'] ?? '');
+    final phoneController = TextEditingController(text: post['phone'] ?? '');
+    final fromController = TextEditingController(text: post['fromLocation'] ?? '');
+    final toController = TextEditingController(text: post['toLocation'] ?? '');
+    final priceController = TextEditingController(text: post['price'] ?? '');
+    final seatsController = TextEditingController(text: post['seatsAvailable']?.toString() ?? '');
+    final descController = TextEditingController(text: post['description'] ?? '');
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                TextField(controller: fromController, decoration: const InputDecoration(labelText: 'From Location', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: toController, decoration: const InputDecoration(labelText: 'To Location', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: seatsController, decoration: const InputDecoration(labelText: 'Seats Available', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : () async {
+                      setSheetState(() => isSaving = true);
+                      final updates = <String, dynamic>{};
+                      if (titleController.text != (post['title'] ?? '')) updates['title'] = titleController.text;
+                      if (phoneController.text != (post['phone'] ?? '')) updates['phone'] = phoneController.text;
+                      if (fromController.text != (post['fromLocation'] ?? '')) updates['fromLocation'] = fromController.text;
+                      if (toController.text != (post['toLocation'] ?? '')) updates['toLocation'] = toController.text;
+                      if (priceController.text != (post['price'] ?? '')) updates['price'] = priceController.text;
+                      if (seatsController.text != (post['seatsAvailable']?.toString() ?? '')) {
+                        updates['seatsAvailable'] = int.tryParse(seatsController.text);
+                      }
+                      if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (updates.isEmpty) { Navigator.pop(ctx); return; }
+                      final result = await _travelService.editPost(post['id'], updates);
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                        );
+                        if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: _travelTeal, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

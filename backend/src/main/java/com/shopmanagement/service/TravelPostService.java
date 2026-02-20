@@ -396,6 +396,44 @@ public class TravelPostService {
     }
 
     @Transactional
+    public TravelPost userEditPost(Long id, Map<String, Object> updates, String username) {
+        TravelPost post = travelPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("You can only edit your own posts");
+        }
+
+        if (post.getStatus() != PostStatus.APPROVED && post.getStatus() != PostStatus.CORRECTION_REQUIRED) {
+            throw new RuntimeException("Only approved or correction-required posts can be edited");
+        }
+
+        if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
+        if (updates.containsKey("phone")) post.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("vehicleType")) {
+            try {
+                post.setVehicleType(TravelPost.VehicleType.valueOf(((String) updates.get("vehicleType")).toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid vehicle type: " + updates.get("vehicleType"));
+            }
+        }
+        if (updates.containsKey("fromLocation")) post.setFromLocation((String) updates.get("fromLocation"));
+        if (updates.containsKey("toLocation")) post.setToLocation((String) updates.get("toLocation"));
+        if (updates.containsKey("price")) post.setPrice((String) updates.get("price"));
+        if (updates.containsKey("seatsAvailable")) post.setSeatsAvailable(updates.get("seatsAvailable") != null ? ((Number) updates.get("seatsAvailable")).intValue() : null);
+        if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
+
+        post.setStatus(PostStatus.PENDING_APPROVAL);
+
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post user-edited: id={}, userId={}", id, user.getId());
+        return saved;
+    }
+
+    @Transactional
     public TravelPost renewPost(Long postId, Long paidTokenId, String username) {
         TravelPost post = travelPostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
