@@ -405,6 +405,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         size: 20,
         propertyType: propertyType,
         listingType: listingType,
+        search: _reSearchText.isNotEmpty ? _reSearchText : null,
       );
 
       if (response['success'] == true || response['data'] != null) {
@@ -896,11 +897,54 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     return '\u20B9${numPrice.toStringAsFixed(0)}';
   }
 
+  String _reSearchText = '';
+
   // ─── Tab 2: Real Estate Browse ───
 
   Widget _buildRealEstateTab() {
     return Column(
       children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: SizedBox(
+            height: 40,
+            child: TextField(
+              controller: TextEditingController(text: _reSearchText)
+                ..selection = TextSelection.fromPosition(
+                  TextPosition(offset: _reSearchText.length),
+                ),
+              decoration: InputDecoration(
+                hintText: 'Search by location...',
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
+                suffixIcon: _reSearchText.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey[400], size: 18),
+                        onPressed: () {
+                          setState(() => _reSearchText = '');
+                          _reFetchListings(refresh: true);
+                        },
+                        padding: EdgeInsets.zero,
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              style: const TextStyle(fontSize: 14),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (text) {
+                setState(() => _reSearchText = text);
+                _reFetchListings(refresh: true);
+              },
+            ),
+          ),
+        ),
         // Filter chips
         Container(
           color: Colors.white,
