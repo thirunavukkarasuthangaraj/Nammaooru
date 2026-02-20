@@ -12,6 +12,7 @@ import '../../../core/localization/language_provider.dart';
 import '../services/marketplace_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
+import '../../../core/utils/image_compressor.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -146,8 +147,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
 
       if (pickedFile != null) {
+        final compressed = await ImageCompressor.compressXFile(pickedFile);
         setState(() {
-          _selectedImage = File(pickedFile.path);
+          _selectedImage = File(compressed.path);
         });
       }
     } catch (e) {

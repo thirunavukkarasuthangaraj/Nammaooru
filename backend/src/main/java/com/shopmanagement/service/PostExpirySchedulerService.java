@@ -26,6 +26,7 @@ public class PostExpirySchedulerService {
     private final TravelPostRepository travelPostRepository;
     private final ParcelServicePostRepository parcelServicePostRepository;
     private final RealEstatePostRepository realEstatePostRepository;
+    private final RentalPostRepository rentalPostRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
@@ -47,6 +48,8 @@ public class PostExpirySchedulerService {
             ParcelServicePost.PostStatus.PENDING_APPROVAL, ParcelServicePost.PostStatus.APPROVED);
     private static final List<RealEstatePost.PostStatus> RE_ACTIVE = List.of(
             RealEstatePost.PostStatus.PENDING_APPROVAL, RealEstatePost.PostStatus.APPROVED);
+    private static final List<RentalPost.PostStatus> RN_ACTIVE = List.of(
+            RentalPost.PostStatus.PENDING_APPROVAL, RentalPost.PostStatus.APPROVED);
 
     /**
      * Daily at 9 AM: Send expiry reminders for posts expiring within N days
@@ -118,6 +121,15 @@ public class PostExpirySchedulerService {
                 count++;
             }
 
+            // Rental posts
+            for (RentalPost post : rentalPostRepository
+                    .findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(now, reminderCutoff, RN_ACTIVE)) {
+                sendReminderForPost(post.getSellerUserId(), post.getTitle(), "Rental", post.getId(), post.getValidTo());
+                post.setExpiryReminderSent(true);
+                rentalPostRepository.save(post);
+                count++;
+            }
+
             log.info("Post expiry reminder job completed: {} reminders sent", count);
         } catch (Exception e) {
             log.error("Error in post expiry reminder scheduler", e);
@@ -186,6 +198,14 @@ public class PostExpirySchedulerService {
                 realEstatePostRepository.delete(post);
                 deleted++;
                 log.info("Deleted expired real estate post: id={}, title={}", post.getId(), post.getTitle());
+            }
+
+            // Rental posts
+            for (RentalPost post : rentalPostRepository.findByValidToBeforeAndStatusIn(cutoff, RN_ACTIVE)) {
+                deleteImages(post.getImageUrls());
+                rentalPostRepository.delete(post);
+                deleted++;
+                log.info("Deleted expired rental post: id={}, title={}", post.getId(), post.getTitle());
             }
 
             log.info("Expired post cleanup job completed: {} posts deleted", deleted);

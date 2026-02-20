@@ -50,6 +50,9 @@ public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, 
     // Find featured posts
     Page<RealEstatePost> findByStatusAndIsFeaturedTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
+    // Count active posts by owner
+    long countByOwnerUserIdAndStatusIn(Long ownerUserId, List<PostStatus> statuses);
+
     // Count by status
     long countByStatus(PostStatus status);
 

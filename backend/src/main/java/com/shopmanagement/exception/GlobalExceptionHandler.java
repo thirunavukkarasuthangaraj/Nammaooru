@@ -2,6 +2,7 @@ package com.shopmanagement.exception;
 
 import com.shopmanagement.common.constants.ResponseConstants;
 import com.shopmanagement.common.dto.ApiResponse;
+import com.shopmanagement.exception.ContentModerationException;
 import com.shopmanagement.product.exception.ProductNotFoundException;
 import com.shopmanagement.shop.exception.ShopNotFoundException;
 import com.shopmanagement.shop.exception.ShopValidationException;
@@ -125,6 +126,19 @@ public class GlobalExceptionHandler {
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
         
+        return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
+    }
+
+    @ExceptionHandler(ContentModerationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleContentModerationException(ContentModerationException ex, WebRequest request) {
+        log.warn("Content moderation failed: {}", ex.getMessage());
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .statusCode(ResponseConstants.CONTENT_MODERATION_FAILED)
+                .message(ex.getMessage())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .build();
+
         return new ResponseEntity<>(response, HttpStatus.OK);  // Always return 200
     }
 

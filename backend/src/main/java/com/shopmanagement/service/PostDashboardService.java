@@ -6,12 +6,14 @@ import com.shopmanagement.entity.ParcelServicePost;
 import com.shopmanagement.entity.MarketplacePost;
 import com.shopmanagement.entity.FarmerProduct;
 import com.shopmanagement.entity.RealEstatePost;
+import com.shopmanagement.entity.RentalPost;
 import com.shopmanagement.repository.LabourPostRepository;
 import com.shopmanagement.repository.TravelPostRepository;
 import com.shopmanagement.repository.ParcelServicePostRepository;
 import com.shopmanagement.repository.MarketplacePostRepository;
 import com.shopmanagement.repository.FarmerProductRepository;
 import com.shopmanagement.repository.RealEstatePostRepository;
+import com.shopmanagement.repository.RentalPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,7 @@ public class PostDashboardService {
     private final MarketplacePostRepository marketplacePostRepository;
     private final FarmerProductRepository farmerProductRepository;
     private final RealEstatePostRepository realEstatePostRepository;
+    private final RentalPostRepository rentalPostRepository;
 
     public Map<String, Map<String, Long>> getDashboardStats() {
         Map<String, Map<String, Long>> stats = new HashMap<>();
@@ -37,6 +40,7 @@ public class PostDashboardService {
         stats.put("marketplace", getMarketplaceStats());
         stats.put("farmer", getFarmerStats());
         stats.put("realEstate", getRealEstateStats());
+        stats.put("rental", getRentalStats());
         return stats;
     }
 
@@ -97,6 +101,16 @@ public class PostDashboardService {
         stats.put("approved", realEstatePostRepository.countByStatus(RealEstatePost.PostStatus.APPROVED));
         stats.put("rejected", realEstatePostRepository.countByStatus(RealEstatePost.PostStatus.REJECTED));
         stats.put("reported", realEstatePostRepository.countByReportCountGreaterThan(0));
+        return stats;
+    }
+
+    private Map<String, Long> getRentalStats() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("total", rentalPostRepository.count());
+        stats.put("pending", rentalPostRepository.countByStatus(RentalPost.PostStatus.PENDING_APPROVAL));
+        stats.put("approved", rentalPostRepository.countByStatus(RentalPost.PostStatus.APPROVED));
+        stats.put("rejected", rentalPostRepository.countByStatus(RentalPost.PostStatus.REJECTED));
+        stats.put("reported", rentalPostRepository.countByReportCountGreaterThan(0));
         return stats;
     }
 }

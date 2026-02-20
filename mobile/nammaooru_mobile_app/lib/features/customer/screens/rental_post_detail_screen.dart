@@ -6,25 +6,41 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../services/parcel_service.dart';
+import '../services/rental_service.dart';
 
-class ParcelPostDetailScreen extends StatefulWidget {
+class RentalPostDetailScreen extends StatefulWidget {
   final Map<String, dynamic> post;
 
-  const ParcelPostDetailScreen({super.key, required this.post});
+  const RentalPostDetailScreen({super.key, required this.post});
 
   @override
-  State<ParcelPostDetailScreen> createState() => _ParcelPostDetailScreenState();
+  State<RentalPostDetailScreen> createState() => _RentalPostDetailScreenState();
 }
 
-class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
-  static const Color _parcelOrange = Color(0xFFE65100);
+class _RentalPostDetailScreenState extends State<RentalPostDetailScreen> {
+  static const Color _rentalOrange = Color(0xFFFF6F00);
   late PageController _pageController;
   int _currentImageIndex = 0;
 
   Map<String, dynamic> get post => widget.post;
 
   List<String> get _imageUrls => _parseImageUrls(post);
+
+  static const Map<String, String> _categoryLabels = {
+    'SHOP': 'Shop',
+    'AUTO': 'Auto',
+    'BIKE': 'Bike',
+    'HOUSE': 'House',
+    'LAND': 'Land',
+    'EQUIPMENT': 'Equipment',
+    'FURNITURE': 'Furniture',
+  };
+
+  static const Map<String, String> _priceUnitDisplay = {
+    'per_hour': '/ hour',
+    'per_day': '/ day',
+    'per_month': '/ month',
+  };
 
   static List<String> _parseImageUrls(Map<String, dynamic> post) {
     final imageUrls = post['imageUrls'];
@@ -39,18 +55,6 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
     return [];
   }
 
-  static const Map<String, String> _serviceTypeLabels = {
-    'DOOR_TO_DOOR': 'Door to Door',
-    'PICKUP_POINT': 'Pickup Point',
-    'BOTH': 'Both',
-  };
-
-  static const Map<String, IconData> _serviceTypeIcons = {
-    'DOOR_TO_DOOR': Icons.home,
-    'PICKUP_POINT': Icons.store,
-    'BOTH': Icons.swap_horiz,
-  };
-
   @override
   void initState() {
     super.initState();
@@ -61,6 +65,17 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  String _formatPrice(dynamic price) {
+    if (price == null) return '';
+    final numPrice = double.tryParse(price.toString()) ?? 0;
+    if (numPrice >= 100000) {
+      return '\u20B9${(numPrice / 100000).toStringAsFixed(1)}L';
+    } else if (numPrice >= 1000) {
+      return '\u20B9${(numPrice / 1000).toStringAsFixed(numPrice % 1000 == 0 ? 0 : 1)}K';
+    }
+    return '\u20B9${numPrice.toStringAsFixed(0)}';
   }
 
   String _formatDate(dynamic dateStr) {
@@ -78,7 +93,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
   void _openFullScreenGallery(int initialIndex) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => _ParcelFullScreenGallery(
+        builder: (context) => _RentalFullScreenGallery(
           imageUrls: _imageUrls,
           initialIndex: initialIndex,
         ),
@@ -88,11 +103,11 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
 
   void _showReportDialog() {
     final reasons = [
-      'Fake / Incorrect Information',
-      'Wrong Contact Number',
+      'Fake / Incorrect Listing',
+      'Wrong Price',
       'Scam / Fraud',
       'Inappropriate Content',
-      'Not Available Anymore',
+      'Already Rented',
       'Other',
     ];
     String? selectedReason;
@@ -107,7 +122,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
             children: [
               Icon(Icons.flag, color: Colors.orange[700], size: 24),
               const SizedBox(width: 8),
-              const Text('Report Listing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Report Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
           content: SingleChildScrollView(
@@ -116,7 +131,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Why are you reporting "${post['serviceName']}"?',
+                  'Why are you reporting "${post['title']}"?',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(height: 12),
@@ -124,7 +139,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                   title: Text(reason, style: const TextStyle(fontSize: 14)),
                   value: reason,
                   groupValue: selectedReason,
-                  activeColor: _parcelOrange,
+                  activeColor: _rentalOrange,
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                   onChanged: (value) {
@@ -157,9 +172,9 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                   ? null
                   : () async {
                       Navigator.pop(context);
-                      final parcelService = ParcelService();
-                      final result = await parcelService.reportPost(
-                        post['id'],
+                      final rentalService = RentalService();
+                      final result = await rentalService.reportPost(
+                        post['id'] is int ? post['id'] : int.parse(post['id'].toString()),
                         selectedReason!,
                         details: detailsController.text,
                       );
@@ -167,7 +182,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(result['message'] ?? 'Reported'),
-                            backgroundColor: result['success'] == true ? _parcelOrange : Colors.red,
+                            backgroundColor: result['success'] == true ? _rentalOrange : Colors.red,
                           ),
                         );
                       }
@@ -188,20 +203,20 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
-    final isUnavailable = post['status'] == 'SOLD';
-    final serviceType = post['serviceType']?.toString() ?? '';
-    final serviceTypeIcon = _serviceTypeIcons[serviceType] ?? Icons.local_shipping;
-    final serviceTypeLabel = _serviceTypeLabels[serviceType] ?? serviceType;
+    final isRented = post['status'] == 'RENTED';
+    final price = post['price'];
+    final priceUnit = post['priceUnit']?.toString() ?? 'per_month';
+    final category = post['category']?.toString() ?? '';
     final imageUrls = _imageUrls;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          post['serviceName'] ?? langProvider.getText('Parcel Details', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd'),
+          post['title'] ?? langProvider.getText('Rental Details', 'வாடகை விவரங்கள்'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        backgroundColor: _parcelOrange,
+        backgroundColor: _rentalOrange,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -282,17 +297,17 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                           ),
                         ),
                       ),
-                      if (isUnavailable)
+                      if (isRented)
                         Positioned(
                           top: 12,
                           left: 12,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: Colors.blue,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('UNAVAILABLE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                            child: const Text('RENTED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                           ),
                         ),
                     ],
@@ -307,13 +322,13 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(serviceTypeIcon, size: 80, color: Colors.grey[400]),
-                    if (isUnavailable) ...[
+                    Icon(Icons.vpn_key_rounded, size: 80, color: Colors.grey[400]),
+                    if (isRented) ...[
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                        child: const Text('UNAVAILABLE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(8)),
+                        child: const Text('RENTED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                     ],
                   ],
@@ -331,7 +346,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                     height: 8,
                     margin: const EdgeInsets.symmetric(horizontal: 2),
                     decoration: BoxDecoration(
-                      color: _currentImageIndex == index ? _parcelOrange : Colors.grey[350],
+                      color: _currentImageIndex == index ? _rentalOrange : Colors.grey[350],
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -345,176 +360,67 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Service Name and Service Type
+                  // Category badge
+                  if (category.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: _rentalOrange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _categoryLabels[category] ?? category,
+                        style: const TextStyle(fontSize: 13, color: _rentalOrange, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+
+                  // Title and Price
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Builder(builder: (context) {
-                          final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-                          return isLoggedIn
-                              ? Text(
-                                  post['serviceName'] ?? '',
-                                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                                )
-                              : ClipRect(
-                                  child: ImageFiltered(
-                                    imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                                    child: Text(
-                                      post['serviceName'] ?? '',
-                                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                );
-                        }),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _parcelOrange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(serviceTypeIcon, size: 18, color: _parcelOrange),
-                            const SizedBox(width: 4),
-                            Text(
-                              serviceTypeLabel,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _parcelOrange),
-                            ),
-                          ],
+                        child: Text(
+                          post['title'] ?? '',
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                       ),
+                      if (price != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _rentalOrange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                _formatPrice(price),
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _rentalOrange),
+                              ),
+                              Text(
+                                _priceUnitDisplay[priceUnit] ?? '/ $priceUnit',
+                                style: TextStyle(fontSize: 12, color: _rentalOrange.withOpacity(0.8)),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
                   // Detail rows
-                  if ((post['fromLocation'] != null && post['fromLocation'].toString().isNotEmpty) ||
-                      (post['toLocation'] != null && post['toLocation'].toString().isNotEmpty))
-                    _buildDetailRow(
-                      Icons.route,
-                      langProvider.getText('Route', '\u0baa\u0bbe\u0ba4\u0bc8'),
-                      '${post['fromLocation'] ?? ''} \u2192 ${post['toLocation'] ?? ''}',
-                    ),
-
-                  if (post['priceInfo'] != null && post['priceInfo'].toString().isNotEmpty)
-                    _buildDetailRow(Icons.currency_rupee, langProvider.getText('Price', '\u0bb5\u0bbf\u0bb2\u0bc8'), post['priceInfo']),
-
-                  if (post['address'] != null && post['address'].toString().isNotEmpty)
-                    _buildDetailRow(Icons.location_on, langProvider.getText('Address', '\u0bae\u0bc1\u0b95\u0bb5\u0bb0\u0bbf'), post['address']),
-
-                  // View on Map button
-                  if (post['latitude'] != null && post['longitude'] != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: InkWell(
-                        onTap: () async {
-                          final lat = post['latitude'];
-                          final lng = post['longitude'];
-                          final label = Uri.encodeComponent(post['serviceName'] ?? 'Parcel Service');
-                          final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _parcelOrange.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.map, size: 20, color: _parcelOrange),
-                              const SizedBox(width: 12),
-                              Text(
-                                langProvider.getText('View on Map', '\u0bae\u0bc7\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95'),
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _parcelOrange),
-                              ),
-                              const Spacer(),
-                              const Icon(Icons.open_in_new, size: 16, color: _parcelOrange),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (post['address'] != null && post['address'].toString().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: InkWell(
-                        onTap: () async {
-                          final query = Uri.encodeComponent(post['address']);
-                          final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _parcelOrange.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.map, size: 20, color: _parcelOrange),
-                              const SizedBox(width: 12),
-                              Text(
-                                langProvider.getText('View on Map', '\u0bae\u0bc7\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95'),
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _parcelOrange),
-                              ),
-                              const Spacer(),
-                              const Icon(Icons.open_in_new, size: 16, color: _parcelOrange),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  if (post['timings'] != null && post['timings'].toString().isNotEmpty)
-                    _buildDetailRow(Icons.access_time, langProvider.getText('Timings', '\u0ba8\u0bc7\u0bb0\u0bae\u0bcd'), post['timings']),
-
-                  if (post['phone'] != null && post['phone'].toString().isNotEmpty)
-                    Builder(builder: (context) {
-                      final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-                      final phone = post['phone'] ?? '';
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Icon(Icons.phone, size: 20, color: Colors.grey[600]),
-                            const SizedBox(width: 12),
-                            Text('${langProvider.getText('Phone', '\u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bc7\u0b9a\u0bbf')}: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
-                            Expanded(
-                              child: isLoggedIn
-                                  ? Text(phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))
-                                  : ClipRect(
-                                      child: ImageFiltered(
-                                        imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                                        child: Text(phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-
                   if (post['sellerName'] != null)
                     Builder(builder: (context) {
                       final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-                      final sellerName = post['sellerName'] ?? '';
+                      final sellerName = post['sellerName'] ?? 'Owner';
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Row(
                           children: [
                             Icon(Icons.person, size: 20, color: Colors.grey[600]),
                             const SizedBox(width: 12),
-                            Text('${langProvider.getText('Posted by', '\u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0b9f\u0bcd\u0b9f\u0bb5\u0bb0\u0bcd')}: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
+                            Text('Owner: ', style: TextStyle(fontSize: 15, color: Colors.grey[600])),
                             Expanded(
                               child: isLoggedIn
                                   ? Text(sellerName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))
@@ -530,13 +436,16 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                       );
                     }),
 
+                  if (post['location'] != null && post['location'].toString().isNotEmpty)
+                    _buildDetailRow(Icons.location_on, 'Location', post['location']),
+
                   if (post['createdAt'] != null)
-                    _buildDetailRow(Icons.calendar_today, langProvider.getText('Posted', '\u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0b9f\u0bcd\u0b9f \u0ba8\u0bbe\u0bb3\u0bcd'), _formatDate(post['createdAt'])),
+                    _buildDetailRow(Icons.access_time, 'Posted', _formatDate(post['createdAt'])),
 
                   // Description
                   if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    Text(langProvider.getText('Description', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Text(
                       post['description'],
@@ -547,13 +456,13 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                   const SizedBox(height: 30),
 
                   // Contact buttons
-                  if (!isUnavailable)
+                  if (!isRented)
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
-                              final phone = post['phone']?.toString() ?? '';
+                              final phone = post['sellerPhone']?.toString() ?? '';
                               if (phone.isNotEmpty) {
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
                                 final uri = Uri.parse('tel:$cleanPhone');
@@ -569,9 +478,9 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                               }
                             },
                             icon: const Icon(Icons.call),
-                            label: Text(langProvider.getText('Call', '\u0b85\u0bb4\u0bc8\u0b95\u0bcd\u0b95')),
+                            label: const Text('Call'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _parcelOrange,
+                              backgroundColor: _rentalOrange,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -582,11 +491,11 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () async {
-                              final phone = post['phone']?.toString() ?? '';
+                              final phone = post['sellerPhone']?.toString() ?? '';
                               if (phone.isNotEmpty) {
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
                                 final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
-                                final message = Uri.encodeComponent('Hi, I am interested in: ${post['serviceName']} (${serviceTypeLabel})');
+                                final message = Uri.encodeComponent('Hi, I am interested in renting: ${post['title']}');
                                 final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
                                 try {
                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -602,10 +511,10 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                             icon: const Icon(Icons.chat),
                             label: const Text('WhatsApp'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: _parcelOrange,
+                              foregroundColor: _rentalOrange,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              side: const BorderSide(color: _parcelOrange),
+                              side: const BorderSide(color: _rentalOrange),
                             ),
                           ),
                         ),
@@ -635,19 +544,19 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
   }
 }
 
-// Full Screen Gallery with InteractiveViewer
+// --- Full Screen Gallery ---
 
-class _ParcelFullScreenGallery extends StatefulWidget {
+class _RentalFullScreenGallery extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
 
-  const _ParcelFullScreenGallery({required this.imageUrls, required this.initialIndex});
+  const _RentalFullScreenGallery({required this.imageUrls, required this.initialIndex});
 
   @override
-  State<_ParcelFullScreenGallery> createState() => _ParcelFullScreenGalleryState();
+  State<_RentalFullScreenGallery> createState() => _RentalFullScreenGalleryState();
 }
 
-class _ParcelFullScreenGalleryState extends State<_ParcelFullScreenGallery> {
+class _RentalFullScreenGalleryState extends State<_RentalFullScreenGallery> {
   late PageController _pageController;
   late int _currentIndex;
 
@@ -707,7 +616,6 @@ class _ParcelFullScreenGalleryState extends State<_ParcelFullScreenGallery> {
               );
             },
           ),
-          // Thumbnail strip at bottom
           if (widget.imageUrls.length > 1)
             Positioned(
               bottom: 20,

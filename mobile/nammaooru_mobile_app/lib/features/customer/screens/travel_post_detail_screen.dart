@@ -482,9 +482,16 @@ class _TravelPostDetailScreenState extends State<TravelPostDetailScreen> {
                             onPressed: () async {
                               final phone = post['phone']?.toString() ?? '';
                               if (phone.isNotEmpty) {
-                                final uri = Uri.parse('tel:$phone');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri);
+                                final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                                final uri = Uri.parse('tel:$cleanPhone');
+                                try {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } catch (_) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Could not open phone dialer')),
+                                    );
+                                  }
                                 }
                               }
                             },
@@ -508,8 +515,14 @@ class _TravelPostDetailScreenState extends State<TravelPostDetailScreen> {
                                 final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
                                 final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']} ($vehicleLabel)');
                                 final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                                if (await canLaunchUrl(uri)) {
+                                try {
                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } catch (_) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Could not open WhatsApp')),
+                                    );
+                                  }
                                 }
                               }
                             },

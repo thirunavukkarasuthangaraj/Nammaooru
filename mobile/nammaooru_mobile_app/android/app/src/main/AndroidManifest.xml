@@ -66,6 +66,9 @@
         <action android:name="android.intent.action.SENDTO" />
         <data android:scheme="sms" />
     </intent>
+    <!-- Required for WhatsApp deep links -->
+    <package android:name="com.whatsapp" />
+    <package android:name="com.whatsapp.w4b" />
 </queries>
 
 
@@ -137,11 +140,4 @@
             android:value="2" />
     </application>
     
-    <!-- Required to query activities that can process text -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT" />
-            <data android:mimeType="text/plain" />
-        </intent>
-    </queries>
 </manifest>

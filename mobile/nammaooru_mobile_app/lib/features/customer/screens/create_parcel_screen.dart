@@ -12,6 +12,7 @@ import '../../../core/localization/language_provider.dart';
 import '../services/parcel_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
+import '../../../core/utils/image_compressor.dart';
 
 class CreateParcelScreen extends StatefulWidget {
   const CreateParcelScreen({super.key});
@@ -146,8 +147,9 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
         imageQuality: 70,
       );
       if (pickedFile != null && mounted) {
+        final compressed = await ImageCompressor.compressXFile(pickedFile);
         setState(() {
-          _selectedImages.add(File(pickedFile.path));
+          _selectedImages.add(File(compressed.path));
         });
       }
     } catch (e) {
@@ -173,9 +175,10 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
         imageQuality: 70,
       );
       if (pickedFiles.isNotEmpty && mounted) {
+        final toAdd = pickedFiles.take(remaining).toList();
+        final compressed = await ImageCompressor.compressMultiple(toAdd);
         setState(() {
-          final toAdd = pickedFiles.take(remaining).map((f) => File(f.path)).toList();
-          _selectedImages.addAll(toAdd);
+          _selectedImages.addAll(compressed.map((f) => File(f.path)).toList());
         });
         if (pickedFiles.length > remaining) {
           _showMaxImagesMessage();

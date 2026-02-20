@@ -179,6 +179,7 @@ public class FeaturedPostsService {
         m.put("category", p.getCategory());
         m.put("location", p.getLocation());
         m.put("sellerName", p.getSellerName());
+        m.put("sellerPhone", p.getSellerPhone());
         return m;
     }
 
@@ -193,6 +194,7 @@ public class FeaturedPostsService {
         m.put("category", p.getCategory());
         m.put("location", p.getLocation());
         m.put("sellerName", p.getSellerName());
+        m.put("sellerPhone", p.getSellerPhone());
         return m;
     }
 
@@ -206,6 +208,7 @@ public class FeaturedPostsService {
         m.put("location", p.getLocation());
         m.put("experience", p.getExperience());
         m.put("sellerName", p.getSellerName());
+        m.put("phone", p.getPhone());
         return m;
     }
 
@@ -220,6 +223,7 @@ public class FeaturedPostsService {
         m.put("toLocation", p.getToLocation());
         m.put("price", p.getPrice());
         m.put("sellerName", p.getSellerName());
+        m.put("phone", p.getPhone());
         return m;
     }
 
@@ -234,6 +238,7 @@ public class FeaturedPostsService {
         m.put("toLocation", p.getToLocation());
         m.put("priceInfo", p.getPriceInfo());
         m.put("sellerName", p.getSellerName());
+        m.put("phone", p.getPhone());
         return m;
     }
 
@@ -248,6 +253,7 @@ public class FeaturedPostsService {
         m.put("price", p.getPrice());
         m.put("location", p.getLocation());
         m.put("ownerName", p.getOwnerName());
+        m.put("ownerPhone", p.getOwnerPhone());
         return m;
     }
 

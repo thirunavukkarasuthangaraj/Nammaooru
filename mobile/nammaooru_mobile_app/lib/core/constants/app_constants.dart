@@ -78,6 +78,7 @@ class AppConstants {
     '4002': 'File size exceeds limit',
     '4003': 'File type not allowed',
     '4004': 'File not found',
+    '4005': 'Image contains inappropriate content',
     
     // Database errors (5xxx)
     '5001': 'Database operation failed',

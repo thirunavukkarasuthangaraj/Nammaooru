@@ -73,7 +73,10 @@ public class ResponseConstants {
     
     public static final String FILE_NOT_FOUND = "4004";
     public static final String FILE_NOT_FOUND_MESSAGE = "File not found";
-    
+
+    public static final String CONTENT_MODERATION_FAILED = "4005";
+    public static final String CONTENT_MODERATION_FAILED_MESSAGE = "Image contains inappropriate content";
+
     // Database errors (5xxx)
     public static final String DATABASE_ERROR = "5001";
     public static final String DATABASE_ERROR_MESSAGE = "Database operation failed";

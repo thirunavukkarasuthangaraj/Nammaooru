@@ -93,7 +93,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   String _getPostTypeLabel(String? postType, LanguageProvider lang) {
     switch (postType) {
       case 'MARKETPLACE':
-        return lang.getText('Marketplace', '\u0BB8\u0BA8\u0BCD\u0BA4\u0BC8');
+        return lang.getText('Marketplace', '\u0B9A\u0BA8\u0BCD\u0BA4\u0BC8');
       case 'FARM_PRODUCTS':
         return lang.getText('Farm Products', '\u0BB5\u0BBF\u0BB5\u0B9A\u0BBE\u0BAF \u0BAA\u0BCA\u0BB0\u0BC1\u0B9F\u0BCD\u0B95\u0BB3\u0BCD');
       case 'LABOURS':

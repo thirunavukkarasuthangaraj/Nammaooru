@@ -55,7 +55,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 10MB
+      max-request-size: 50MB
 
   mail:
     host: ${MAIL_HOST:smtp.hostinger.com}
@@ -294,3 +294,11 @@ gemini:
   rate-limit:
     per-key-rpm: 15  # Requests per minute per key
     total-rpm: 60     # Total requests per minute (4 keys × 15)
+
+# Content Moderation (uses Gemini Vision API)
+content:
+  moderation:
+    enabled: ${CONTENT_MODERATION_ENABLED:true}
+    timeout-seconds: ${CONTENT_MODERATION_TIMEOUT:8}
+    fail-open: ${CONTENT_MODERATION_FAIL_OPEN:true}
+    max-image-size-bytes: ${CONTENT_MODERATION_MAX_SIZE:5242880}

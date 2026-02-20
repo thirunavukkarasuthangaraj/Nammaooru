@@ -1,6 +1,7 @@
 package com.shopmanagement.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +24,9 @@ import java.util.UUID;
 @Slf4j
 public class FileUploadService {
 
+    @Autowired
+    private ImageContentModerationService contentModerationService;
+
     @Value("${file.upload.path:./uploads}")
     private String uploadPath;
 
@@ -34,6 +38,7 @@ public class FileUploadService {
 
     public String uploadFile(MultipartFile file, String category) throws IOException {
         validateFile(file);
+        contentModerationService.validateImageContent(file);
 
         String fileName = generateFileName(file);
         String categoryPath = category != null ? category + "/" : "";
@@ -94,6 +99,7 @@ public class FileUploadService {
      */
     public String uploadComboImage(MultipartFile file, Long shopId, Long comboId) throws IOException {
         validateFile(file);
+        contentModerationService.validateImageContent(file);
 
         String fileName = generateFileName(file);
         String categoryPath = "combos/" + shopId + "/" + (comboId != null ? comboId : "temp") + "/";

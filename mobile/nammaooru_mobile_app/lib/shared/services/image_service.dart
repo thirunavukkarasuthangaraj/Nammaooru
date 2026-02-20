@@ -6,6 +6,7 @@ import 'package:image_cropper/image_cropper.dart';
 // import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/image_compressor.dart';
 
 class ImageService {
   static final ImagePicker _picker = ImagePicker();
@@ -36,11 +37,12 @@ class ImageService {
         maxHeight: maxHeight?.toDouble(),
         imageQuality: imageQuality ?? AppConstants.imageQuality,
       );
-      
+
       if (image != null) {
-        return File(image.path);
+        final compressed = await ImageCompressor.compressXFile(image);
+        return File(compressed.path);
       }
-      
+
       return null;
     } catch (e) {
       print('Error picking image from camera: $e');
@@ -63,11 +65,12 @@ class ImageService {
         maxHeight: maxHeight?.toDouble(),
         imageQuality: imageQuality ?? AppConstants.imageQuality,
       );
-      
+
       if (image != null) {
-        return File(image.path);
+        final compressed = await ImageCompressor.compressXFile(image);
+        return File(compressed.path);
       }
-      
+
       return null;
     } catch (e) {
       print('Error picking image from gallery: $e');
@@ -90,12 +93,14 @@ class ImageService {
         maxHeight: maxHeight?.toDouble(),
         imageQuality: imageQuality ?? AppConstants.imageQuality,
       );
-      
-      if (limit != null && images.length > limit) {
-        return images.take(limit).map((image) => File(image.path)).toList();
+
+      List<XFile> selected = images;
+      if (limit != null && selected.length > limit) {
+        selected = selected.take(limit).toList();
       }
-      
-      return images.map((image) => File(image.path)).toList();
+
+      final compressed = await ImageCompressor.compressMultiple(selected);
+      return compressed.map((xfile) => File(xfile.path)).toList();
     } catch (e) {
       print('Error picking multiple images: $e');
       return [];
@@ -156,17 +161,20 @@ class ImageService {
   
   static Future<File?> compressImage(
     File imageFile, {
-    int quality = 80,
-    int? maxWidth,
-    int? maxHeight,
+    int quality = 70,
+    int maxDimension = 1280,
   }) async {
     try {
-      // This is a placeholder implementation
-      // In a real app, you might use packages like flutter_image_compress
-      return imageFile;
+      final xfile = XFile(imageFile.path);
+      final compressed = await ImageCompressor.compressXFile(
+        xfile,
+        quality: quality,
+        maxDimension: maxDimension,
+      );
+      return File(compressed.path);
     } catch (e) {
       print('Error compressing image: $e');
-      return null;
+      return imageFile;
     }
   }
   

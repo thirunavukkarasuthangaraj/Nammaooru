@@ -46,6 +46,7 @@ import '../screens/labour_screen.dart';
 import '../screens/travel_screen.dart';
 import '../screens/parcel_screen.dart';
 import '../screens/real_estate_screen.dart';
+import '../screens/rental_screen.dart';
 import '../screens/farmer_post_detail_screen.dart';
 import '../screens/labour_post_detail_screen.dart';
 import '../screens/travel_post_detail_screen.dart';
@@ -957,11 +958,20 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           ));
           return;
         case 'marketplace':
+          // Merge with full marketplace data (has sellerPhone) if available
+          final postId = postData['id'];
+          final fullPost = _marketplacePosts.firstWhere(
+            (p) => p['id'] == postId,
+            orElse: () => null,
+          );
+          final mergedData = fullPost != null
+              ? {...Map<String, dynamic>.from(fullPost), ...postData}
+              : postData;
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (_) => MarketplacePostDetailsSheet(post: postData),
+            builder: (_) => MarketplacePostDetailsSheet(post: mergedData),
           );
           return;
         case 'realEstate':
@@ -2001,6 +2011,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       'directions_bus_rounded': Icons.directions_bus_rounded,
       'local_shipping_rounded': Icons.local_shipping_rounded,
       'directions_car_rounded': Icons.directions_car_rounded,
+      'vpn_key_rounded': Icons.vpn_key_rounded,
     };
     return iconMap[iconName] ?? Icons.grid_view_rounded;
   }
@@ -2039,6 +2050,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
     } else if (route.contains('parcels')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()));
+    } else if (route.contains('rentals')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()));
     } else if (route.contains('bus-timing')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen()));
     }
@@ -2202,6 +2215,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               subtitle: languageProvider.getText('Courier & delivery', 'கூரியர் & டெலிவரி'),
               color: const Color(0xFFE65100),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.vpn_key_rounded,
+              title: languageProvider.getText('Rent', 'வாடகை'),
+              subtitle: languageProvider.getText('Shops, Houses & more', 'கடை, வீடு & மேலும்'),
+              color: const Color(0xFFFF6F00),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen())),
             ),
             _buildModernCategoryTile(
               icon: Icons.directions_bus_rounded,

@@ -9,72 +9,69 @@ import '../../../core/services/location_service.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
-import '../services/farmer_products_service.dart';
-import '../widgets/post_payment_handler.dart';
+import '../services/rental_service.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
 
-class CreateFarmerPostScreen extends StatefulWidget {
-  const CreateFarmerPostScreen({super.key});
+class CreateRentalScreen extends StatefulWidget {
+  const CreateRentalScreen({super.key});
 
   @override
-  State<CreateFarmerPostScreen> createState() => _CreateFarmerPostScreenState();
+  State<CreateRentalScreen> createState() => _CreateRentalScreenState();
 }
 
-class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
+class _CreateRentalScreenState extends State<CreateRentalScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
-  final FarmerProductsService _farmerService = FarmerProductsService();
+  final RentalService _rentalService = RentalService();
 
-  String _selectedCategory = 'Vegetables';
-  String _selectedUnit = 'kg';
+  String _selectedCategory = 'HOUSE';
+  String _selectedPriceUnit = 'per_month';
   final List<File> _selectedImages = [];
-  static const int _maxImages = 5;
   bool _isSubmitting = false;
-  int? _paidTokenId;
   double? _latitude;
   double? _longitude;
 
-  final List<String> _categories = [
-    'Vegetables',
-    'Fruits',
-    'Grains & Pulses',
-    'Dairy',
-    'Spices',
-    'Flowers',
-    'Organic',
-    'Seeds & Plants',
-    'Honey & Jaggery',
-    'Other',
+  static const Color _rentalOrange = Color(0xFFFF6F00);
+
+  static const List<String> _categories = [
+    'SHOP', 'AUTO', 'BIKE', 'HOUSE', 'LAND', 'EQUIPMENT', 'FURNITURE',
   ];
 
-  static const Map<String, String> _categoryTamil = {
-    'Vegetables': 'காய்கறிகள்',
-    'Fruits': 'பழங்கள்',
-    'Grains & Pulses': 'தானியங்கள் & பருப்பு',
-    'Dairy': 'பால் பொருட்கள்',
-    'Spices': 'மசாலா பொருட்கள்',
-    'Flowers': 'பூக்கள்',
-    'Organic': 'இயற்கை',
-    'Seeds & Plants': 'விதைகள் & செடிகள்',
-    'Honey & Jaggery': 'தேன் & வெல்லம்',
-    'Other': 'மற்றவை',
+  static const Map<String, String> _categoryLabels = {
+    'SHOP': 'Shop',
+    'AUTO': 'Auto',
+    'BIKE': 'Bike',
+    'HOUSE': 'House',
+    'LAND': 'Land',
+    'EQUIPMENT': 'Equipment',
+    'FURNITURE': 'Furniture',
   };
 
-  final List<String> _units = ['kg', 'g', 'litre', 'piece', 'bunch', 'dozen', 'quintal'];
+  static const Map<String, String> _categoryTamil = {
+    'SHOP': 'கடை',
+    'AUTO': 'ஆட்டோ',
+    'BIKE': 'பைக்',
+    'HOUSE': 'வீடு',
+    'LAND': 'நிலம்',
+    'EQUIPMENT': 'உபகரணம்',
+    'FURNITURE': 'மரச்சாமான்',
+  };
 
-  static const Map<String, String> _unitTamil = {
-    'kg': 'கிலோ',
-    'g': 'கிராம்',
-    'litre': 'லிட்டர்',
-    'piece': 'எண்ணிக்கை',
-    'bunch': 'கட்டு',
-    'dozen': 'டஜன்',
-    'quintal': 'குவிண்டால்',
+  static const Map<String, String> _priceUnitLabels = {
+    'per_hour': 'Per Hour',
+    'per_day': 'Per Day',
+    'per_month': 'Per Month',
+  };
+
+  static const Map<String, String> _priceUnitTamil = {
+    'per_hour': 'மணிக்கு',
+    'per_day': 'நாளுக்கு',
+    'per_month': 'மாதத்திற்கு',
   };
 
   @override
@@ -147,24 +144,30 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         }
       }
     } catch (e) {
-      // Location is optional, silently fail
+      // Location is optional
     }
   }
 
-  Future<void> _pickImageFromCamera() async {
-    if (_selectedImages.length >= _maxImages) {
-      _showMaxImagesMessage();
-      return;
-    }
+  Future<void> _pickImage(ImageSource source) async {
     try {
+      if (_selectedImages.length >= 5) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Maximum 5 images allowed')),
+          );
+        }
+        return;
+      }
+
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
-        source: ImageSource.camera,
+        source: source,
         maxWidth: 1024,
         maxHeight: 1024,
-        imageQuality: 70,
+        imageQuality: 85,
       );
-      if (pickedFile != null && mounted) {
+
+      if (pickedFile != null) {
         final compressed = await ImageCompressor.compressXFile(pickedFile);
         setState(() {
           _selectedImages.add(File(compressed.path));
@@ -179,51 +182,6 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     }
   }
 
-  Future<void> _pickImagesFromGallery() async {
-    if (_selectedImages.length >= _maxImages) {
-      _showMaxImagesMessage();
-      return;
-    }
-    try {
-      final picker = ImagePicker();
-      final remaining = _maxImages - _selectedImages.length;
-      final pickedFiles = await picker.pickMultiImage(
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
-      );
-      if (pickedFiles.isNotEmpty && mounted) {
-        final toAdd = pickedFiles.take(remaining).toList();
-        final compressed = await ImageCompressor.compressMultiple(toAdd);
-        setState(() {
-          _selectedImages.addAll(compressed.map((f) => File(f.path)).toList());
-        });
-        if (pickedFiles.length > remaining) {
-          _showMaxImagesMessage();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking images: $e')),
-        );
-      }
-    }
-  }
-
-  void _showMaxImagesMessage() {
-    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(langProvider.getText(
-          'Maximum $_maxImages images allowed',
-          'அதிகபட்சம் $_maxImages புகைப்படங்கள் அனுமதிக்கப்படும்',
-        )),
-        backgroundColor: Colors.orange,
-      ),
-    );
-  }
-
   void _showImageSourceDialog() {
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     showModalBottomSheet(
@@ -236,7 +194,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               title: Text(langProvider.getText('Take Photo', 'புகைப்படம் எடுக்க')),
               onTap: () {
                 Navigator.pop(context);
-                _pickImageFromCamera();
+                _pickImage(ImageSource.camera);
               },
             ),
             ListTile(
@@ -244,7 +202,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               title: Text(langProvider.getText('Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
               onTap: () {
                 Navigator.pop(context);
-                _pickImagesFromGallery();
+                _pickImage(ImageSource.gallery);
               },
             ),
           ],
@@ -253,41 +211,32 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     );
   }
 
-  Future<void> _submitPost({int? paidTokenId}) async {
+  Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final tokenToUse = paidTokenId ?? _paidTokenId;
 
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      final result = await _farmerService.createPost(
+      final result = await _rentalService.createPost(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         price: _priceController.text.isNotEmpty
             ? double.tryParse(_priceController.text)
             : null,
+        priceUnit: _selectedPriceUnit,
         phone: _phoneController.text.trim(),
         category: _selectedCategory,
         location: _locationController.text.trim(),
-        unit: _selectedUnit,
-        imagePaths: _selectedImages.isNotEmpty
-            ? _selectedImages.map((f) => f.path).toList()
-            : null,
-        paidTokenId: tokenToUse,
+        imagePaths: _selectedImages.map((f) => f.path).toList(),
         latitude: _latitude,
         longitude: _longitude,
       );
 
       if (mounted) {
         if (result['success'] == true) {
-          _paidTokenId = null;
           _showSuccessDialog();
-        } else if (PostPaymentHandler.isLimitReached(result)) {
-          setState(() { _isSubmitting = false; });
-          _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -315,20 +264,6 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     }
   }
 
-  void _handleLimitReached() {
-    final handler = PostPaymentHandler(
-      context: context,
-      postType: 'FARM_PRODUCTS',
-      onPaymentSuccess: () {},
-      onTokenReceived: (tokenId) {
-        _paidTokenId = tokenId;
-        _submitPost(paidTokenId: tokenId);
-      },
-      onPaymentCancelled: () {},
-    );
-    handler.startPayment();
-  }
-
   void _showSuccessDialog() {
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     showDialog(
@@ -339,7 +274,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 64),
+            const Icon(Icons.check_circle, color: Colors.green, size: 64),
             const SizedBox(height: 16),
             Text(
               langProvider.getText('Post Submitted!', 'பதிவு சமர்ப்பிக்கப்பட்டது!'),
@@ -348,8 +283,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
             const SizedBox(height: 8),
             Text(
               langProvider.getText(
-                'Your farmer product is submitted for approval. It will be visible once admin approves it.',
-                'உங்கள் விவசாய பொருள் ஒப்புதலுக்கு சமர்ப்பிக்கப்பட்டது. நிர்வாகி ஒப்புதல் அளித்தவுடன் தெரியும்.',
+                'Your rental post is submitted for approval. It will be visible to others once admin approves it.',
+                'உங்கள் வாடகை பதிவு ஒப்புதலுக்கு சமர்ப்பிக்கப்பட்டது. நிர்வாகி ஒப்புதல் அளித்தவுடன் மற்றவர்களுக்கு தெரியும்.',
               ),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[600]),
@@ -361,12 +296,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
 
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop(); // Close dialog
-        Future.delayed(const Duration(milliseconds: 150), () {
-          if (mounted) {
-            Navigator.of(context).pop(true); // Go back to farmer products screen
-          }
-        });
+        Navigator.pop(context); // Close dialog
+        Navigator.pop(context); // Go back
       }
     });
   }
@@ -379,10 +310,10 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Sell Farm Product', 'விவசாய பொருள் விற்க'),
+          langProvider.getText('Post for Rent', 'வாடகைக்கு பதிவிடு'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: _rentalOrange,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -398,7 +329,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               const SizedBox(height: 20),
 
               // Title
-              _buildLabel(langProvider.getText('Product Name *', 'பொருள் பெயர் *')),
+              _buildLabel(langProvider.getText('Title *', 'தலைப்பு *')),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _titleController,
@@ -406,96 +337,17 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 keyboardType: TextInputType.text,
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
-                  langProvider.getText('e.g., Fresh Tomatoes', 'எ.கா., புதிய தக்காளி'),
+                  langProvider.getText('e.g., 2BHK House for Rent', 'எ.கா., 2BHK வீடு வாடகைக்கு'),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Product name is required', 'பொருள் பெயர் தேவை');
+                    return langProvider.getText('Title is required', 'தலைப்பு தேவை');
                   }
                   if (value.trim().length < 3) {
                     return langProvider.getText('Must be at least 3 characters', 'குறைந்தது 3 எழுத்துகள் தேவை');
                   }
                   return null;
                 },
-              ),
-              const SizedBox(height: 12),
-
-              // Description
-              _buildLabel(langProvider.getText('Description *', 'விவரம் *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _descriptionController,
-                maxLength: 1000,
-                maxLines: 3,
-                keyboardType: TextInputType.multiline,
-                decoration: _inputDecoration(
-                  langProvider.getText('Describe your product...', 'உங்கள் பொருளை விவரிக்கவும்...'),
-                ).copyWith(
-                  suffixIcon: VoiceInputButton(controller: _descriptionController),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Description is required', 'விவரம் தேவை');
-                  }
-                  if (value.trim().length < 10) {
-                    return langProvider.getText('Description must be at least 10 characters', 'விவரம் குறைந்தது 10 எழுத்துகள் இருக்க வேண்டும்');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Price & Unit row
-              _buildLabel(langProvider.getText('Price per unit *', 'ஒரு யூனிட் விலை *')),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextFormField(
-                      controller: _priceController,
-                      keyboardType: TextInputType.number,
-                      decoration: _inputDecoration('e.g., 50').copyWith(
-                        prefixText: '\u20B9 ',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return langProvider.getText('Price is required', 'விலை தேவை');
-                        }
-                        final price = double.tryParse(value.trim());
-                        if (price == null) {
-                          return langProvider.getText('Enter a valid price', 'சரியான விலையை உள்ளிடவும்');
-                        }
-                        if (price <= 0) {
-                          return langProvider.getText('Price must be greater than 0', 'விலை 0-ஐ விட அதிகமாக இருக்க வேண்டும்');
-                        }
-                        if (price > 10000000) {
-                          return langProvider.getText('Price cannot exceed \u20B91,00,00,000', 'விலை \u20B91,00,00,000 மிகாமல் இருக்க வேண்டும்');
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedUnit,
-                      decoration: _inputDecoration('Unit'),
-                      items: _units.map((unit) {
-                        return DropdownMenuItem(
-                          value: unit,
-                          child: Text(langProvider.getText(unit, _unitTamil[unit] ?? unit)),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedUnit = value ?? 'kg';
-                        });
-                      },
-                    ),
-                  ),
-                ],
               ),
               const SizedBox(height: 12),
 
@@ -510,14 +362,84 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(langProvider.getText(cat, _categoryTamil[cat] ?? cat)),
+                    child: Text(langProvider.getText(
+                      _categoryLabels[cat] ?? cat,
+                      _categoryTamil[cat] ?? cat,
+                    )),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
-                    _selectedCategory = value ?? 'Vegetables';
+                    _selectedCategory = value ?? 'HOUSE';
                   });
                 },
+              ),
+              const SizedBox(height: 12),
+
+              // Price + Price Unit row
+              _buildLabel(langProvider.getText('Price *', 'விலை *')),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _priceController,
+                      keyboardType: TextInputType.number,
+                      decoration: _inputDecoration('e.g., 5000').copyWith(
+                        prefixText: '\u20B9 ',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return langProvider.getText('Price is required', 'விலை தேவை');
+                        }
+                        final price = double.tryParse(value.trim());
+                        if (price == null || price <= 0) {
+                          return langProvider.getText('Enter a valid price', 'சரியான விலையை உள்ளிடவும்');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedPriceUnit,
+                      decoration: _inputDecoration('Unit'),
+                      items: _priceUnitLabels.entries.map((entry) {
+                        return DropdownMenuItem(
+                          value: entry.key,
+                          child: Text(langProvider.getText(
+                            entry.value,
+                            _priceUnitTamil[entry.key] ?? entry.value,
+                          ), style: const TextStyle(fontSize: 14)),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedPriceUnit = value ?? 'per_month';
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Description
+              _buildLabel(langProvider.getText('Description', 'விவரம்')),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _descriptionController,
+                maxLength: 1000,
+                maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                decoration: _inputDecoration(
+                  langProvider.getText('Describe the rental...', 'வாடகை பற்றி விவரிக்கவும்...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -534,7 +456,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 decoration: _inputDecoration(
                   langProvider.getText('Your phone number', 'உங்கள் தொலைபேசி எண்'),
                 ).copyWith(
-                  prefixIcon: const Icon(Icons.phone, size: 20, color: Color(0xFF2E7D32)),
+                  prefixIcon: const Icon(Icons.phone, size: 20, color: Color(0xFFFF6F00)),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -558,7 +480,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 controller: _locationController,
                 decoration: _inputDecoration('e.g., Mittur, Tirupattur').copyWith(
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.my_location, color: Color(0xFF2E7D32)),
+                    icon: const Icon(Icons.my_location, color: Color(0xFFFF6F00)),
                     onPressed: _getLocation,
                   ),
                 ),
@@ -581,7 +503,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitPost,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
+                    backgroundColor: _rentalOrange,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -637,7 +559,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFFF6F00), width: 1.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
@@ -647,44 +569,61 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            _buildLabel(langProvider.getText('Product Photos', 'பொருள் புகைப்படங்கள்')),
-            const SizedBox(width: 8),
-            Text(
-              '${_selectedImages.length}/$_maxImages',
-              style: TextStyle(
-                fontSize: 13,
-                color: _selectedImages.length >= _maxImages ? Colors.orange : Colors.grey[500],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        Text(
+          langProvider.getText('Photos (up to 5)', 'புகைப்படங்கள் (5 வரை)'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: VillageTheme.primaryText),
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 120,
+          height: 110,
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              // Existing images
+              // Add photo button
+              if (_selectedImages.length < 5)
+                GestureDetector(
+                  onTap: _showImageSourceDialog,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo, size: 32, color: Colors.grey[400]),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_selectedImages.length}/5',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // Selected images
               ..._selectedImages.asMap().entries.map((entry) {
                 final index = entry.key;
-                final image = entry.value;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10),
+                final file = entry.value;
+                return Container(
+                  width: 100,
+                  height: 100,
+                  margin: const EdgeInsets.only(right: 8),
                   child: Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.file(
-                          image,
-                          width: 120,
-                          height: 120,
+                          file,
+                          width: 100,
+                          height: 100,
                           fit: BoxFit.cover,
                         ),
                       ),
-                      // Remove button
                       Positioned(
                         top: 4,
                         right: 4,
@@ -695,7 +634,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                             });
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(3),
+                            padding: const EdgeInsets.all(2),
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
@@ -704,52 +643,10 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                           ),
                         ),
                       ),
-                      // Index badge
-                      if (_selectedImages.length > 1)
-                        Positioned(
-                          bottom: 4,
-                          left: 4,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 );
               }),
-              // Add button
-              if (_selectedImages.length < _maxImages)
-                GestureDetector(
-                  onTap: _showImageSourceDialog,
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.grey[400]),
-                        const SizedBox(height: 6),
-                        Text(
-                          langProvider.getText('Add Photo', 'புகைப்படம்'),
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
