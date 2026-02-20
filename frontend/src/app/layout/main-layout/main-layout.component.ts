@@ -138,7 +138,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
-        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null }
+        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
+        { title: 'Rentals', icon: 'vpn_key', route: '/admin/rentals', badge: null }
       ]
     },
     {
@@ -147,7 +148,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
         { title: 'Labour Reports', icon: 'report_problem', route: '/admin/labours/reported', badge: null },
         { title: 'Travel Reports', icon: 'report_problem', route: '/admin/travels/reported', badge: null },
-        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null }
+        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null },
+        { title: 'Rental Reports', icon: 'report_problem', route: '/admin/rentals/reported', badge: null }
       ]
     },
     {
@@ -236,7 +238,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
-        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null }
+        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
+        { title: 'Rentals', icon: 'vpn_key', route: '/admin/rentals', badge: null }
       ]
     },
     {
@@ -245,7 +248,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Reported Posts', icon: 'report', route: '/admin/reported-posts', badge: null },
         { title: 'Labour Reports', icon: 'report_problem', route: '/admin/labours/reported', badge: null },
         { title: 'Travel Reports', icon: 'report_problem', route: '/admin/travels/reported', badge: null },
-        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null }
+        { title: 'Parcel Reports', icon: 'report_problem', route: '/admin/parcels/reported', badge: null },
+        { title: 'Rental Reports', icon: 'report_problem', route: '/admin/rentals/reported', badge: null }
       ]
     },
     {

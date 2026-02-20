@@ -54,6 +54,8 @@ import { PostLimitsComponent } from './components/post-limits/post-limits.compon
 import { PostEditDialogComponent } from './components/post-edit-dialog/post-edit-dialog.component';
 import { PaymentHistoryComponent } from './components/payment-history/payment-history.component';
 import { HealthTipsManagementComponent } from './components/health-tips/health-tips-management.component';
+import { RentalManagementComponent } from './components/rental-management/rental-management.component';
+import { RentalReportedComponent } from './components/rental-reported/rental-reported.component';
 
 @NgModule({
   declarations: [
@@ -84,7 +86,9 @@ import { HealthTipsManagementComponent } from './components/health-tips/health-t
     PostLimitsComponent,
     PostEditDialogComponent,
     PaymentHistoryComponent,
-    HealthTipsManagementComponent
+    HealthTipsManagementComponent,
+    RentalManagementComponent,
+    RentalReportedComponent
   ],
   imports: [
     CommonModule,
@@ -222,6 +226,14 @@ import { HealthTipsManagementComponent } from './components/health-tips/health-t
       {
         path: 'health-tips',
         component: HealthTipsManagementComponent
+      },
+      {
+        path: 'rentals',
+        component: RentalManagementComponent
+      },
+      {
+        path: 'rentals/reported',
+        component: RentalReportedComponent
       },
       {
         path: 'shops',
