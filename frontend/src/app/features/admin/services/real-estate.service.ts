@@ -23,6 +23,12 @@ export class RealEstateAdminService {
     });
   }
 
+  getReportedPosts(page: number = 0, size: number = 20): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/reported`, {
+      params: { page: page.toString(), size: size.toString() }
+    });
+  }
+
   approvePost(id: number): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/approve`, {});
   }
@@ -33,6 +39,10 @@ export class RealEstateAdminService {
 
   deletePost(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  changePostStatus(id: number, status: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}/status`, { status });
   }
 
   adminUpdatePost(id: number, data: any): Observable<any> {

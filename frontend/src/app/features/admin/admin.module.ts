@@ -56,6 +56,8 @@ import { PaymentHistoryComponent } from './components/payment-history/payment-hi
 import { HealthTipsManagementComponent } from './components/health-tips/health-tips-management.component';
 import { RentalManagementComponent } from './components/rental-management/rental-management.component';
 import { RentalReportedComponent } from './components/rental-reported/rental-reported.component';
+import { AllReportsComponent } from './components/all-reports/all-reports.component';
+import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
   declarations: [
@@ -88,7 +90,8 @@ import { RentalReportedComponent } from './components/rental-reported/rental-rep
     PaymentHistoryComponent,
     HealthTipsManagementComponent,
     RentalManagementComponent,
-    RentalReportedComponent
+    RentalReportedComponent,
+    AllReportsComponent
   ],
   imports: [
     CommonModule,
@@ -117,6 +120,7 @@ import { RentalReportedComponent } from './components/rental-reported/rental-rep
     MatRadioModule,
     MatProgressBarModule,
     MatDividerModule,
+    MatTabsModule,
     RouterModule.forChild([
       {
         path: '',
@@ -234,6 +238,10 @@ import { RentalReportedComponent } from './components/rental-reported/rental-rep
       {
         path: 'rentals/reported',
         component: RentalReportedComponent
+      },
+      {
+        path: 'all-reports',
+        component: AllReportsComponent
       },
       {
         path: 'shops',

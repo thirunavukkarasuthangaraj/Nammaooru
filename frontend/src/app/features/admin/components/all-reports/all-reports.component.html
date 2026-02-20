@@ -1,0 +1,660 @@
+<div class="all-reports">
+  <div class="header">
+    <h2>
+      <mat-icon class="header-icon">report</mat-icon>
+      All Reports
+    </h2>
+    <p class="subtitle">All reported posts across modules - review and take action</p>
+  </div>
+
+  <mat-tab-group
+    [(selectedIndex)]="selectedTabIndex"
+    (selectedIndexChange)="onTabChange($event)"
+    animationDuration="200ms"
+    class="reports-tabs">
+
+    <!-- ========== MARKETPLACE TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">storefront</mat-icon>
+        <span>Marketplace</span>
+        <span class="tab-badge" *ngIf="tabStates['marketplace'].totalItems > 0">{{ tabStates['marketplace'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'marketplace' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'marketplace', label: 'marketplace' }"></ng-container>
+
+        <div *ngIf="!tabStates['marketplace'].loading && tabStates['marketplace'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['marketplace'].totalItems }} reported post{{ tabStates['marketplace'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['marketplace'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrl" [src]="getImageUrl(post.imageUrl)" alt="Product" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrl" class="no-image">image</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>Title</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.title }}</div>
+                <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="price">
+              <th mat-header-cell *matHeaderCellDef>Price</th>
+              <td mat-cell *matCellDef="let post"><span class="price">{{ formatPrice(post.price) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="seller">
+              <th mat-header-cell *matHeaderCellDef>Seller</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.sellerPhone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip" *ngIf="post.category">{{ post.category }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="mkMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #mkMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('marketplace', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','title','reports','price','seller','category','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','title','reports','price','seller','category','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'marketplace' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+    <!-- ========== FARMER PRODUCTS TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">eco</mat-icon>
+        <span>Farmer Products</span>
+        <span class="tab-badge" *ngIf="tabStates['farmer'].totalItems > 0">{{ tabStates['farmer'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'farmer' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'farmer', label: 'farmer product' }"></ng-container>
+
+        <div *ngIf="!tabStates['farmer'].loading && tabStates['farmer'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['farmer'].totalItems }} reported post{{ tabStates['farmer'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['farmer'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrl" [src]="getImageUrl(post.imageUrl)" alt="Product" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrl" class="no-image">image</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>Title</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.title }}</div>
+                <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="price">
+              <th mat-header-cell *matHeaderCellDef>Price</th>
+              <td mat-cell *matCellDef="let post"><span class="price">{{ formatPrice(post.price) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="seller">
+              <th mat-header-cell *matHeaderCellDef>Seller</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.sellerPhone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip" *ngIf="post.category">{{ post.category }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="fpMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #fpMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('farmer', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','title','reports','price','seller','category','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','title','reports','price','seller','category','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'farmer' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+    <!-- ========== LABOUR TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">construction</mat-icon>
+        <span>Labours</span>
+        <span class="tab-badge" *ngIf="tabStates['labour'].totalItems > 0">{{ tabStates['labour'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'labour' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'labour', label: 'labour' }"></ng-container>
+
+        <div *ngIf="!tabStates['labour'].loading && tabStates['labour'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['labour'].totalItems }} reported post{{ tabStates['labour'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['labour'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrls" [src]="getFirstImage(post.imageUrls)" alt="Labour" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrls" class="no-image">person</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Name</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.name }}</div>
+                <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip">{{ getLabourCategoryLabel(post.category) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="phone">
+              <th mat-header-cell *matHeaderCellDef>Phone</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.phone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="lbMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #lbMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('labour', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','name','reports','category','phone','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','name','reports','category','phone','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'labour' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+    <!-- ========== TRAVEL TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">directions_car</mat-icon>
+        <span>Travels</span>
+        <span class="tab-badge" *ngIf="tabStates['travel'].totalItems > 0">{{ tabStates['travel'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'travel' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'travel', label: 'travel' }"></ng-container>
+
+        <div *ngIf="!tabStates['travel'].loading && tabStates['travel'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['travel'].totalItems }} reported post{{ tabStates['travel'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['travel'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrls" [src]="getFirstImage(post.imageUrls)" alt="Travel" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrls" class="no-image">directions_car</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>Title</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.title }}</div>
+                <div class="post-description" *ngIf="post.fromLocation && post.toLocation">{{ post.fromLocation }} → {{ post.toLocation }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="vehicleType">
+              <th mat-header-cell *matHeaderCellDef>Vehicle</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip">{{ getVehicleTypeLabel(post.vehicleType) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="phone">
+              <th mat-header-cell *matHeaderCellDef>Phone</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.phone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="tvMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #tvMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('travel', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','title','reports','vehicleType','phone','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','title','reports','vehicleType','phone','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'travel' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+    <!-- ========== PARCEL TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">local_shipping</mat-icon>
+        <span>Parcel Services</span>
+        <span class="tab-badge" *ngIf="tabStates['parcel'].totalItems > 0">{{ tabStates['parcel'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'parcel' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'parcel', label: 'parcel' }"></ng-container>
+
+        <div *ngIf="!tabStates['parcel'].loading && tabStates['parcel'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['parcel'].totalItems }} reported post{{ tabStates['parcel'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['parcel'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrls" [src]="getFirstImage(post.imageUrls)" alt="Parcel" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrls" class="no-image">local_shipping</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="serviceName">
+              <th mat-header-cell *matHeaderCellDef>Service Name</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.serviceName }}</div>
+                <div class="post-description" *ngIf="post.fromLocation && post.toLocation">{{ post.fromLocation }} → {{ post.toLocation }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="serviceType">
+              <th mat-header-cell *matHeaderCellDef>Service Type</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip">{{ getServiceTypeLabel(post.serviceType) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="phone">
+              <th mat-header-cell *matHeaderCellDef>Phone</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.phone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="pcMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #pcMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('parcel', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','serviceName','reports','serviceType','phone','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','serviceName','reports','serviceType','phone','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'parcel' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+    <!-- ========== RENTAL TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">vpn_key</mat-icon>
+        <span>Rentals</span>
+        <span class="tab-badge" *ngIf="tabStates['rental'].totalItems > 0">{{ tabStates['rental'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'rental' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'rental', label: 'rental' }"></ng-container>
+
+        <div *ngIf="!tabStates['rental'].loading && tabStates['rental'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['rental'].totalItems }} reported post{{ tabStates['rental'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['rental'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrls" [src]="getFirstImage(post.imageUrls)" alt="Rental" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrls" class="no-image">vpn_key</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>Title</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.title }}</div>
+                <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="price">
+              <th mat-header-cell *matHeaderCellDef>Price</th>
+              <td mat-cell *matCellDef="let post"><span class="price">{{ formatPrice(post.price) }}<span *ngIf="post.priceUnit"> / {{ post.priceUnit }}</span></span></td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip">{{ getRentalCategoryLabel(post.category) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="phone">
+              <th mat-header-cell *matHeaderCellDef>Contact</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.sellerPhone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="rnMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #rnMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('rental', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','title','reports','price','category','phone','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','title','reports','price','category','phone','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'rental' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+    <!-- ========== REAL ESTATE TAB ========== -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">home_work</mat-icon>
+        <span>Real Estate</span>
+        <span class="tab-badge" *ngIf="tabStates['realestate'].totalItems > 0">{{ tabStates['realestate'].totalItems }}</span>
+      </ng-template>
+
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="loadingTpl; context: { key: 'realestate' }"></ng-container>
+        <ng-container *ngTemplateOutlet="emptyTpl; context: { key: 'realestate', label: 'real estate' }"></ng-container>
+
+        <div *ngIf="!tabStates['realestate'].loading && tabStates['realestate'].posts.length > 0" class="posts-container">
+          <div class="total-info">
+            <mat-icon>flag</mat-icon>
+            <span>{{ tabStates['realestate'].totalItems }} reported post{{ tabStates['realestate'].totalItems > 1 ? 's' : '' }}</span>
+          </div>
+
+          <table mat-table [dataSource]="tabStates['realestate'].posts" class="posts-table">
+            <ng-container matColumnDef="image">
+              <th mat-header-cell *matHeaderCellDef>Image</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-image">
+                  <img *ngIf="post.imageUrl" [src]="getImageUrl(post.imageUrl)" alt="Property" loading="lazy">
+                  <mat-icon *ngIf="!post.imageUrl" class="no-image">home_work</mat-icon>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>Title</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="post-title">{{ post.title }}</div>
+                <div class="post-description" *ngIf="post.description">{{ post.description }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="reports">
+              <th mat-header-cell *matHeaderCellDef>Reports</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="report-count" [class.high]="post.reportCount >= 3">
+                  <mat-icon class="report-icon">flag</mat-icon> {{ post.reportCount }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="price">
+              <th mat-header-cell *matHeaderCellDef>Price</th>
+              <td mat-cell *matCellDef="let post"><span class="price">{{ formatPrice(post.price) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="propertyType">
+              <th mat-header-cell *matHeaderCellDef>Property Type</th>
+              <td mat-cell *matCellDef="let post"><span class="category-chip" *ngIf="post.propertyType">{{ post.propertyType }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="seller">
+              <th mat-header-cell *matHeaderCellDef>Seller</th>
+              <td mat-cell *matCellDef="let post">
+                <div class="seller-info">
+                  <span class="seller-name">{{ post.sellerName }}</span>
+                  <span class="seller-phone">{{ post.sellerPhone }}</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let post">
+                <span class="status-badge" [ngClass]="'status-' + post.status?.toLowerCase()">{{ getStatusLabel(post.status) }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let post"><span class="date">{{ formatDate(post.createdAt) }}</span></td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Action</th>
+              <td mat-cell *matCellDef="let post">
+                <button mat-stroked-button [matMenuTriggerFor]="reMenu" class="action-dropdown">Change Status <mat-icon>arrow_drop_down</mat-icon></button>
+                <mat-menu #reMenu="matMenu">
+                  <button mat-menu-item *ngFor="let option of getAvailableStatuses(post)" (click)="onStatusChange('realestate', post, option.value)">
+                    <mat-icon [style.color]="option.color">{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['image','title','reports','price','propertyType','seller','status','date','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['image','title','reports','price','propertyType','seller','status','date','actions']"></tr>
+          </table>
+          <ng-container *ngTemplateOutlet="paginationTpl; context: { key: 'realestate' }"></ng-container>
+        </div>
+      </ng-template>
+    </mat-tab>
+
+  </mat-tab-group>
+</div>
+
+<!-- ========== SHARED TEMPLATES ========== -->
+
+<!-- Loading Template -->
+<ng-template #loadingTpl let-key="key">
+  <div *ngIf="tabStates[key].loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading reported posts...</p>
+  </div>
+</ng-template>
+
+<!-- Empty State Template -->
+<ng-template #emptyTpl let-key="key" let-label="label">
+  <div *ngIf="!tabStates[key].loading && tabStates[key].posts.length === 0 && tabStates[key].loaded" class="empty-state">
+    <mat-icon class="empty-icon">verified</mat-icon>
+    <h3>No reported posts</h3>
+    <p>All clear! No {{ label }} posts have been reported by users.</p>
+  </div>
+</ng-template>
+
+<!-- Pagination Template -->
+<ng-template #paginationTpl let-key="key">
+  <div class="pagination" *ngIf="tabStates[key].totalPages > 1">
+    <button mat-button [disabled]="tabStates[key].currentPage === 0" (click)="onPageChange(key, tabStates[key].currentPage - 1)">
+      <mat-icon>chevron_left</mat-icon> Previous
+    </button>
+    <span class="page-info">Page {{ tabStates[key].currentPage + 1 }} of {{ tabStates[key].totalPages }} ({{ tabStates[key].totalItems }} posts)</span>
+    <button mat-button [disabled]="tabStates[key].currentPage >= tabStates[key].totalPages - 1" (click)="onPageChange(key, tabStates[key].currentPage + 1)">
+      Next <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+</ng-template>

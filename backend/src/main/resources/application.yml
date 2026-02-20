@@ -289,8 +289,8 @@ gemini:
     - ${GEMINI_API_KEY_2:}
     - ${GEMINI_API_KEY_3:}
     - ${GEMINI_API_KEY_4:}
-  model: ${GEMINI_MODEL:gemini-1.5-flash}
-  api-url: https://generativelanguage.googleapis.com/v1/models
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+  api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models}
   rate-limit:
     per-key-rpm: 15  # Requests per minute per key
     total-rpm: 60     # Total requests per minute (4 keys × 15)
@@ -300,5 +300,5 @@ content:
   moderation:
     enabled: ${CONTENT_MODERATION_ENABLED:true}
     timeout-seconds: ${CONTENT_MODERATION_TIMEOUT:8}
-    fail-open: ${CONTENT_MODERATION_FAIL_OPEN:true}
+    fail-open: ${CONTENT_MODERATION_FAIL_OPEN:false}
     max-image-size-bytes: ${CONTENT_MODERATION_MAX_SIZE:5242880}
