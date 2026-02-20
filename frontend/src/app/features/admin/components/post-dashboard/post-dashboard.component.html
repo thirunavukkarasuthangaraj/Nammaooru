@@ -23,7 +23,7 @@
     </div>
 
     <div *ngIf="!featuredLoading && !featuredError" class="featured-grid">
-      <ng-container *ngFor="let category of ['combos', 'marketplace', 'farmer', 'labour', 'travel', 'parcel', 'realEstate']">
+      <ng-container *ngFor="let category of ['combos', 'marketplace', 'farmer', 'labour', 'travel', 'parcel', 'realEstate', 'rental']">
         <div class="featured-category" *ngIf="featuredPosts[category]?.length > 0">
           <div class="category-header" (click)="navigateTo(getCategoryRoute(category))">
             <mat-icon>{{ getCategoryIcon(category) }}</mat-icon>
@@ -250,6 +250,38 @@
         </div>
         <div class="stat-card reported" (click)="navigateTo('/admin/real-estate/reported')">
           <div class="stat-value">{{ realEstateStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rental Section -->
+    <div class="section rental-section">
+      <h3><mat-icon>vpn_key</mat-icon> Rental Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/rentals')">
+          <div class="stat-value">{{ rentalStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/rentals')">
+          <div class="stat-value">{{ rentalStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/rentals')">
+          <div class="stat-value">{{ rentalStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/rentals')">
+          <div class="stat-value">{{ rentalStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/rentals/reported')">
+          <div class="stat-value">{{ rentalStats.reported }}</div>
           <div class="stat-label">Reported</div>
           <mat-icon class="card-icon">report</mat-icon>
         </div>

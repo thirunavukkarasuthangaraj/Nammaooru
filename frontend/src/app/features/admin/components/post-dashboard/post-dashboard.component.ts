@@ -22,6 +22,7 @@ export class PostDashboardComponent implements OnInit {
   marketplaceStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   farmerStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   realEstateStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
+  rentalStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   isLoading = true;
   errorMessage = '';
 
@@ -52,6 +53,7 @@ export class PostDashboardComponent implements OnInit {
         this.marketplaceStats = data.marketplace || this.marketplaceStats;
         this.farmerStats = data.farmer || this.farmerStats;
         this.realEstateStats = data.realEstate || this.realEstateStats;
+        this.rentalStats = data.rental || this.rentalStats;
         this.isLoading = false;
       },
       error: (err) => {
@@ -97,7 +99,8 @@ export class PostDashboardComponent implements OnInit {
       'labour': 'Labour',
       'travel': 'Travel',
       'parcel': 'Parcel Service',
-      'realEstate': 'Real Estate'
+      'realEstate': 'Real Estate',
+      'rental': 'Rentals'
     };
     return labels[key] || key;
   }
@@ -110,7 +113,8 @@ export class PostDashboardComponent implements OnInit {
       'labour': 'construction',
       'travel': 'directions_car',
       'parcel': 'local_shipping',
-      'realEstate': 'home'
+      'realEstate': 'home',
+      'rental': 'vpn_key'
     };
     return icons[key] || 'article';
   }
@@ -122,7 +126,8 @@ export class PostDashboardComponent implements OnInit {
       'labour': '/admin/labours',
       'travel': '/admin/travels',
       'parcel': '/admin/parcels',
-      'realEstate': '/admin/real-estate'
+      'realEstate': '/admin/real-estate',
+      'rental': '/admin/rentals'
     };
     return routes[key] || '';
   }
