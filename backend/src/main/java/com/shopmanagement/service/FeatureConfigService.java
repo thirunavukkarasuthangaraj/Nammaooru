@@ -39,6 +39,7 @@ public class FeatureConfigService {
         existing.setIcon(updated.getIcon());
         existing.setColor(updated.getColor());
         existing.setRoute(updated.getRoute());
+        existing.setImageUrl(updated.getImageUrl());
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
         existing.setRadiusKm(updated.getRadiusKm());

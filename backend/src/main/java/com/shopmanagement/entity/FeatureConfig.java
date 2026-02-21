@@ -39,6 +39,9 @@ public class FeatureConfig {
     @Column(length = 200)
     private String route;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(precision = 10, scale = 7)
     private BigDecimal latitude;
 

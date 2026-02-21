@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/constants/colors.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/storage/local_storage.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../shared/widgets/language_selector.dart';
 import '../../../core/api/api_client.dart';
 import '../../../shared/services/location_service.dart';
@@ -63,6 +65,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {
       return const Color(0xFF2196F3);
     }
+  }
+
+  /// Helper for bilingual text
+  String _t(String en, String ta) {
+    return Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
   }
 
   @override
@@ -122,8 +129,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               await LocalStorage.setMap('user_profile', userData);
 
               // Fetch user's addresses to get location
-              String userLocation = 'Not set';
-              String userAddress = 'No address added';
+              String userLocation = '';
+              String userAddress = '';
 
               try {
                 final addressesResponse = await ApiClient.get('/customer/delivery-locations');
@@ -236,12 +243,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'location': userLocation,
                   'totalOrders': orderCount.toString(),
                   'membershipType': userData['role'] == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
-                  'appVersion': '1.0.0',
+                  'appVersion': '', // loaded async below
                   'lastLogin': userData['lastLoginAt'] ?? 'Just now',
                   'isActive': userData['isActive'] ?? true,
                   'department': userData['department'],
                 };
                 _isLoading = false;
+              });
+              // Load app version async
+              PackageInfo.fromPlatform().then((info) {
+                if (mounted) {
+                  setState(() => _userInfo['appVersion'] = info.version);
+                }
               });
               return;
             }
@@ -424,12 +437,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to logout?'),
+          title: Text(_t('Confirm Logout', 'வெளியேற்றத்தை உறுதிசெய்')),
+          content: Text(_t('Are you sure you want to logout?', 'நிச்சயமாக வெளியேற விரும்புகிறீர்களா?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(_t('Cancel', 'ரத்து செய்')),
             ),
             ElevatedButton(
               onPressed: () {
@@ -440,7 +453,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Logout'),
+              child: Text(_t('Logout', 'வெளியேறு')),
             ),
           ],
         );
@@ -468,9 +481,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 AppBar(
-                  title: const Text(
-                    'My Profile',
-                    style: TextStyle(
+                  title: Text(
+                    _t('My Profile', 'என் சுயவிவரம்'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
@@ -656,28 +669,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildUserDetailsCard() {
     return _buildCard(
-      'User Details',
+      _t('User Details', 'பயனர் விவரங்கள்'),
       Icons.person_outline,
       [
-        _buildDetailRow('Email', _userInfo['email'] ?? 'N/A'),
-        _buildDetailRow('Phone', _userInfo['phoneNumber'] ?? 'N/A'),
-        _buildDetailRow('Address', _userInfo['address'] ?? 'N/A'),
-        _buildDetailRow('Role', _userInfo['userRole']?.toString().replaceAll('_', ' ') ?? 'Customer'),
-        _buildDetailRow('Location', _userInfo['location'] ?? 'N/A'),
-        _buildDetailRow('Account Status', _userInfo['accountCreated'] ?? 'N/A'),
+        _buildDetailRow(_t('Email', 'மின்னஞ்சல்'), _userInfo['email'] ?? 'N/A'),
+        _buildDetailRow(_t('Phone', 'தொலைபேசி'), _userInfo['phoneNumber'] ?? 'N/A'),
+        _buildDetailRow(_t('Address', 'முகவரி'), _userInfo['address'] ?? 'N/A'),
+        _buildDetailRow(_t('Account Created', 'கணக்கு உருவாக்கம்'), _formatDateTime(_userInfo['accountCreated'])),
       ],
     );
   }
 
   Widget _buildAccountActionsCard() {
     return _buildCard(
-      'Account Actions',
+      _t('Account Actions', 'கணக்கு செயல்கள்'),
       Icons.settings_outlined,
       [
-        _buildActionRow('Manage Addresses', Icons.location_on_outlined, () {
+        _buildActionRow(_t('Manage Addresses', 'முகவரிகள் நிர்வகி'), Icons.location_on_outlined, () {
           context.push('/customer/addresses');
         }),
-        _buildActionRow('Payment History', Icons.payment_outlined, () {
+        _buildActionRow(_t('Payment History', 'பணம் செலுத்திய வரலாறு'), Icons.payment_outlined, () {
           Navigator.push(context, MaterialPageRoute(
             builder: (context) => const PaymentHistoryScreen(),
           ));
@@ -688,7 +699,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildPostStatsCard() {
     if (_isLoadingPosts) {
-      return _buildCard('My Posts', Icons.article_outlined, [
+      return _buildCard(_t('My Posts', 'என் பதிவுகள்'), Icons.article_outlined, [
         const Padding(
           padding: EdgeInsets.all(20),
           child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
@@ -738,8 +749,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Icon(Icons.article_outlined, color: AppColors.primary, size: 22),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
-                    child: Text('My Posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  Expanded(
+                    child: Text(_t('My Posts', 'என் பதிவுகள்'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                   ),
                   GestureDetector(
                     onTap: () => context.push('/customer/my-posts'),
@@ -752,7 +763,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('View All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          Text(_t('View All', 'அனைத்தும்'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
                           const SizedBox(width: 2),
                           Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
                         ],
@@ -773,11 +784,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(
               children: [
-                _buildStatChip('$totalAll', 'Total', const Color(0xFF2196F3)),
+                _buildStatChip('$totalAll', _t('Total', 'மொத்தம்'), const Color(0xFF2196F3)),
                 const SizedBox(width: 10),
-                _buildStatChip('$totalFree', 'Free', const Color(0xFF4CAF50)),
+                _buildStatChip('$totalFree', _t('Free', 'இலவசம்'), const Color(0xFF4CAF50)),
                 const SizedBox(width: 10),
-                _buildStatChip('$totalPaid', 'Paid', const Color(0xFFFF9800)),
+                _buildStatChip('$totalPaid', _t('Paid', 'கட்டணம்'), const Color(0xFFFF9800)),
               ],
             ),
           ),
@@ -804,11 +815,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
-                        const Text('Post Pricing', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        Text(_t('Post Pricing', 'பதிவு விலை'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    _buildPricingRow(Icons.card_giftcard_rounded, '1st Post', 'FREE', const Color(0xFF4CAF50)),
+                    _buildPricingRow(Icons.card_giftcard_rounded, _t('1st Post', 'முதல் பதிவு'), _t('FREE', 'இலவசம்'), const Color(0xFF4CAF50)),
                     const SizedBox(height: 6),
                     Builder(builder: (_) {
                       final firstPricing = _postPricing.values.isNotEmpty ? _postPricing.values.first : null;
@@ -817,11 +828,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       final perDay = firstPricing?['perDayRate'] ?? 0.5;
                       return Column(
                         children: [
-                          _buildPricingRow(Icons.currency_rupee_rounded, 'Next Post', '\u20B9$price per post', const Color(0xFFFF9800)),
+                          _buildPricingRow(Icons.currency_rupee_rounded, _t('Next Post', 'அடுத்த பதிவு'), '\u20B9$price ${_t('per post', 'ஒரு பதிவு')}', const Color(0xFFFF9800)),
                           const SizedBox(height: 6),
-                          _buildPricingRow(Icons.calendar_today_rounded, 'Validity', '$days days', const Color(0xFF2196F3)),
+                          _buildPricingRow(Icons.calendar_today_rounded, _t('Validity', 'செல்லுபடி'), '$days ${_t('days', 'நாட்கள்')}', const Color(0xFF2196F3)),
                           const SizedBox(height: 6),
-                          _buildPricingRow(Icons.trending_down_rounded, 'Per Day', '\u20B9$perDay / day', const Color(0xFF9C27B0)),
+                          _buildPricingRow(Icons.trending_down_rounded, _t('Per Day', 'ஒரு நாள்'), '\u20B9$perDay / ${_t('day', 'நாள்')}', const Color(0xFF9C27B0)),
                         ],
                       );
                     }),
@@ -867,9 +878,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                Text('$free free', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                                Text('$free ${_t('free', 'இலவசம்')}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                                 Text('  ·  ', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                                Text('$paid paid', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                                Text('$paid ${_t('paid', 'கட்டணம்')}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                               ],
                             ),
                           ],
@@ -935,15 +946,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSystemInfoCard() {
     return _buildCard(
-      'System Information',
+      _t('System Information', 'கணினி தகவல்'),
       Icons.info_outline,
       [
-        _buildDetailRow('Authentication Status', _userInfo['isAuthenticated'] ? '✅ Authenticated' : '❌ Not Authenticated'),
-        _buildDetailRow('Session Started', _formatDateTime(_userInfo['loginTime'])),
-        _buildDetailRow('Last Login', _userInfo['lastLogin'] ?? 'N/A'),
-        _buildDetailRow('App Version', _userInfo['appVersion'] ?? '1.0.0'),
-        _buildDetailRow('Membership Type', _userInfo['membershipType'] ?? 'Customer'),
-        _buildDetailRow('Total Orders', _userInfo['totalOrders'] ?? '0'),
+        _buildDetailRow(_t('Auth Status', 'அங்கீகாரம்'), _userInfo['isAuthenticated'] ? _t('Authenticated', 'அங்கீகரிக்கப்பட்டது') : _t('Not Authenticated', 'அங்கீகரிக்கப்படவில்லை')),
+        _buildDetailRow(_t('Session Started', 'அமர்வு தொடக்கம்'), _formatDateTime(_userInfo['loginTime'])),
+        _buildDetailRow(_t('Last Login', 'கடைசி உள்நுழைவு'), _userInfo['lastLogin'] ?? 'N/A'),
+        _buildDetailRow(_t('App Version', 'பயன்பாட்டு பதிப்பு'), _userInfo['appVersion'] ?? '1.0.0'),
+        _buildDetailRow(_t('Membership', 'உறுப்பினர்'), _userInfo['membershipType'] ?? 'Customer'),
+        _buildDetailRow(_t('Total Orders', 'மொத்த ஆர்டர்கள்'), _userInfo['totalOrders'] ?? '0'),
       ],
     );
   }
@@ -1142,7 +1153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Contact Support',
+                        _t('Contact Support', 'தொடர்பு கொள்ள'),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -1223,14 +1234,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               )
-            : const Row(
+            : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.logout_rounded, size: 22),
-                  SizedBox(width: 10),
+                  const Icon(Icons.logout_rounded, size: 22),
+                  const SizedBox(width: 10),
                   Text(
-                    'Logout',
-                    style: TextStyle(
+                    _t('Logout', 'வெளியேறு'),
+                    style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.2,

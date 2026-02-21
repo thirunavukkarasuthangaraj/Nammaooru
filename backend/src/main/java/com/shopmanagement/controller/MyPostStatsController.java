@@ -154,6 +154,7 @@ public class MyPostStatsController {
                     meta.put("icon", fc.getIcon());
                     meta.put("color", fc.getColor());
                     meta.put("route", fc.getRoute());
+                    meta.put("imageUrl", fc.getImageUrl());
                     modules.put(fc.getFeatureName(), meta);
                 }
             }

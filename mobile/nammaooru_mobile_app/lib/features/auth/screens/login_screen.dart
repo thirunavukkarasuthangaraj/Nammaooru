@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
-import '../../../core/utils/validators.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/language_selector.dart';
@@ -126,7 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     loadingMessage: 'Logging in...',
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24.0),
-                      child: Form(
+                      child: AutofillGroup(
+                        child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -147,6 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
+                    ),
                     ),
                   );
                 },
@@ -283,6 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
         keyboardType: TextInputType.phone,
         textInputAction: TextInputAction.next,
         maxLength: 10,
+        autofillHints: const [AutofillHints.telephoneNumber],
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
             return 'Please enter your mobile number';
@@ -328,7 +330,13 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: _passwordController,
         obscureText: _obscurePassword,
         textInputAction: TextInputAction.done,
-        validator: Validators.validatePassword,
+        autofillHints: const [AutofillHints.password],
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter your password';
+          }
+          return null;
+        },
         onFieldSubmitted: (_) => _handleLogin(),
         style: const TextStyle(
           fontSize: 16,

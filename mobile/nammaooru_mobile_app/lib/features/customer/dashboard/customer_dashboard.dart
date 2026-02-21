@@ -2133,6 +2133,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               title: title,
               subtitle: '',
               color: _parseColor(feature['color']),
+              imageUrl: feature['imageUrl']?.toString(),
               onTap: () => _navigateToFeature(feature['route']),
             );
           }).toList(),
@@ -2239,11 +2240,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
+    String? imageUrl,
   }) {
     final lightBg = HSLColor.fromColor(color)
         .withLightness(0.95)
         .withSaturation(0.6)
         .toColor();
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
@@ -2255,15 +2258,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         ),
         child: Stack(
           children: [
-            // Large watermark icon
+            // Large watermark icon/image
             Positioned(
               right: -8,
               bottom: -8,
-              child: Icon(
-                icon,
-                size: 75,
-                color: color.withValues(alpha: 0.08),
-              ),
+              child: hasImage
+                  ? Opacity(
+                      opacity: 0.08,
+                      child: Image.network(
+                        ImageUrlHelper.getFullImageUrl(imageUrl),
+                        width: 75,
+                        height: 75,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(icon, size: 75, color: color.withValues(alpha: 0.08)),
+                      ),
+                    )
+                  : Icon(icon, size: 75, color: color.withValues(alpha: 0.08)),
             ),
             // Content
             Padding(
@@ -2272,12 +2282,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Colored icon circle
+                  // Icon circle with image or icon
                   Container(
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: hasImage ? null : LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
@@ -2287,6 +2297,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                               .toColor(),
                         ],
                       ),
+                      color: hasImage ? Colors.white : null,
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
@@ -2296,7 +2307,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         ),
                       ],
                     ),
-                    child: Icon(icon, color: Colors.white, size: 26),
+                    child: hasImage
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image.network(
+                              ImageUrlHelper.getFullImageUrl(imageUrl),
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 26),
+                            ),
+                          )
+                        : Icon(icon, color: Colors.white, size: 26),
                   ),
                   // Title and Subtitle
                   Column(

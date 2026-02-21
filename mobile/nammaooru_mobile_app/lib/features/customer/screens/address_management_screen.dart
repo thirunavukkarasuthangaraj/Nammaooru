@@ -1741,23 +1741,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 Expanded(
                   child: _addresses.isEmpty
                       ? _buildEmptyState()
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            // Responsive grid: 1 column mobile, 2 columns tablet (600px+)
-                            final crossAxisCount = constraints.maxWidth >= 600 ? 2 : 1;
-                            return GridView.builder(
-                              padding: const EdgeInsets.all(12),
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: crossAxisCount == 2 ? 1.5 : 1.8, // Much taller cards to accommodate long village addresses
-                              ),
-                              itemCount: _addresses.length,
-                              itemBuilder: (context, index) {
-                                return _buildAddressCard(index);
-                              },
-                            );
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _addresses.length,
+                          itemBuilder: (context, index) {
+                            return _buildAddressCard(index);
                           },
                         ),
                 ),
@@ -1808,159 +1796,145 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Widget _buildAddressCard(int index) {
     final address = _addresses[index];
     final isDefault = address['isDefault'] ?? false;
+    final addressType = address['addressType'] ?? address['addressLabel'] ?? 'Home';
+    final pin = (address['postalCode'] ?? address['pincode'] ?? '').toString();
+    final city = address['city'] ?? '';
+    final state = address['state'] ?? '';
+    final cityState = [city, state].where((s) => s.isNotEmpty).join(', ');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: isDefault
-            ? Border.all(color: AppColors.primary, width: 2)
-            : Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: isDefault
+            ? BorderSide(color: AppColors.primary, width: 1.5)
+            : BorderSide(color: Colors.grey.shade200),
       ),
+      elevation: isDefault ? 2 : 0.5,
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
+            // Top row: type badge + default badge + actions
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDefault
-                        ? AppColors.primary
-                        : AppColors.textSecondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    color: isDefault ? AppColors.primary : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    address['addressType'] ?? address['addressLabel'] ?? 'Home',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: isDefault ? Colors.white : AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        addressType.toLowerCase() == 'work' ? Icons.work_outline_rounded : Icons.home_outlined,
+                        size: 14,
+                        color: isDefault ? Colors.white : Colors.grey[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        addressType,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDefault ? Colors.white : Colors.grey[700],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (isDefault) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(4),
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.3)),
                     ),
                     child: const Text(
-                      'DEFAULT',
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      'Default',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF4CAF50)),
                     ),
                   ),
                 ],
                 const Spacer(),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () => _showEditAddressDialog(index),
-                      icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: EdgeInsets.zero,
-                    ),
-                    IconButton(
-                      onPressed: () => _deleteAddress(index),
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
+                InkWell(
+                  onTap: () => _showEditAddressDialog(index),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(Icons.edit_outlined, color: AppColors.primary, size: 18),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => _deleteAddress(index),
+                  borderRadius: BorderRadius.circular(8),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.primary,
-                    size: 14,
+            const SizedBox(height: 10),
+            // Address text
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(Icons.location_on_rounded, color: AppColors.primary, size: 16),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _buildFullAddress(address),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary, height: 1.4),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _buildFullAddress(address),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                            height: 1.3,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '${address['city'] ?? 'Tirupattur'}, ${address['state'] ?? 'Tamil Nadu'}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textHint,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if ((address['postalCode'] ?? address['pincode'] ?? '').toString().isNotEmpty)
-                          Text(
-                            'PIN: ${address['postalCode'] ?? address['pincode'] ?? ''}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+            // City, State + PIN
+            if (cityState.isNotEmpty || pin.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Row(
+                  children: [
+                    if (cityState.isNotEmpty)
+                      Text(cityState, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    if (cityState.isNotEmpty && pin.isNotEmpty)
+                      Text('  ·  ', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                    if (pin.isNotEmpty)
+                      Text(pin, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  ],
+                ),
+              ),
+            ],
+            // Set as default button
             if (!isDefault) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => _setAsDefault(index),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Set as Default',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                child: InkWell(
+                  onTap: () => _setAsDefault(index),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Set as Default',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                    ),
                   ),
                 ),
               ),

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:email_validator/email_validator.dart';
 import 'dart:ui';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/theme/village_theme.dart';
-import '../../../core/utils/validators.dart';
 import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -26,7 +24,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _obscurePassword = true;
   bool _acceptTerms = false;
-  String? _selectedGender;
 
   @override
   void dispose() {
@@ -50,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please accept the terms and conditions'),
+          content: const Text('Please accept the terms and conditions'),
           backgroundColor: VillageTheme.errorRed,
         ),
       );
@@ -67,7 +64,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       phoneNumber: _phoneController.text.trim(),
       role: 'CUSTOMER',
       username: generatedUsername,
-      gender: _selectedGender,
     );
 
     if (mounted) {
@@ -96,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/login_background.png'),
             fit: BoxFit.cover,
@@ -120,7 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircularProgressIndicator(
+                          const CircularProgressIndicator(
                             color: VillageTheme.primaryGreen,
                             strokeWidth: 3,
                           ),
@@ -138,31 +134,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   return SingleChildScrollView(
                     padding: const EdgeInsets.all(24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: 40),
-                          _buildHeader(),
-                          const SizedBox(height: 32),
-                          _buildNameField(),
-                          const SizedBox(height: 16),
-                          _buildEmailField(),
-                          const SizedBox(height: 16),
-                          _buildPhoneField(),
-                          const SizedBox(height: 16),
-                          // Gender field hidden for now - uncomment to re-enable:
-                          // _buildGenderField(),
-                          // const SizedBox(height: 16),
-                          _buildPasswordField(),
-                          const SizedBox(height: 16),
-                          _buildTermsAndConditions(),
-                          const SizedBox(height: 24),
-                          _buildRegisterButton(),
-                          const SizedBox(height: 16),
-                          _buildLoginLink(),
-                        ],
+                    child: AutofillGroup(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 40),
+                            _buildHeader(),
+                            const SizedBox(height: 32),
+                            _buildNameField(),
+                            const SizedBox(height: 12),
+                            _buildEmailField(),
+                            const SizedBox(height: 12),
+                            _buildPhoneField(),
+                            const SizedBox(height: 12),
+                            _buildPasswordField(),
+                            const SizedBox(height: 16),
+                            _buildTermsRow(),
+                            const SizedBox(height: 20),
+                            _buildRegisterButton(),
+                            const SizedBox(height: 16),
+                            _buildLoginLink(),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -171,63 +166,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTabButtons() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                context.go('/login');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: const Text(
-                  'Sign In',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF95A5A6),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Text(
-                'Create Account',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2C3E50),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -266,17 +204,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Join NammaOoru',
+          'Join NammaOoru community',
           style: TextStyle(
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Connect with your local community',
-          style: TextStyle(
-            fontSize: 14,
+            fontSize: 15,
             color: Colors.white,
           ),
         ),
@@ -284,44 +214,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildNameField() {
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    int? maxLength,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+    List<String>? autofillHints,
+    void Function(String)? onFieldSubmitted,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextFormField(
-        controller: _nameController,
-        textInputAction: TextInputAction.next,
-        maxLength: 50,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Please enter your name';
-          }
-          if (value.trim().length < 2) {
-            return 'Name must be at least 2 characters';
-          }
-          if (value.trim().length > 50) {
-            return 'Name must be less than 50 characters';
-          }
-          return null;
-        },
+        controller: controller,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction ?? TextInputAction.next,
+        maxLength: maxLength,
+        obscureText: obscureText,
+        autofillHints: autofillHints,
+        onFieldSubmitted: onFieldSubmitted,
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
         ),
+        validator: validator,
         decoration: InputDecoration(
-          hintText: 'Enter your full name',
+          hintText: hint,
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
           ),
-          prefixIcon: Icon(
-            Icons.person_outlined,
-            color: Colors.black54,
-            size: 20,
-          ),
+          prefixIcon: Icon(icon, color: Colors.black54, size: 20),
+          suffixIcon: suffixIcon,
           border: InputBorder.none,
           counterText: '',
           contentPadding: const EdgeInsets.symmetric(
@@ -330,305 +261,162 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNameField() {
+    return _buildInputField(
+      controller: _nameController,
+      hint: 'Full Name',
+      icon: Icons.person_outlined,
+      maxLength: 50,
+      autofillHints: const [AutofillHints.name],
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter your name';
+        }
+        if (value.trim().length < 2) {
+          return 'Name must be at least 2 characters';
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildEmailField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: _emailController,
-        keyboardType: TextInputType.emailAddress,
-        textInputAction: TextInputAction.next,
-        maxLength: 100,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        style: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF2C3E50),
-        ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Please enter your email';
-          }
-          if (!EmailValidator.validate(value.trim())) {
-            return 'Please enter a valid email address';
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          hintText: 'Enter your email address',
-          hintStyle: const TextStyle(
-            color: Colors.black54,
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.email_outlined,
-            color: Colors.black54,
-            size: 20,
-          ),
-          border: InputBorder.none,
-          counterText: '',
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
-      ),
+    return _buildInputField(
+      controller: _emailController,
+      hint: 'Email',
+      icon: Icons.email_outlined,
+      keyboardType: TextInputType.emailAddress,
+      maxLength: 100,
+      autofillHints: const [AutofillHints.email],
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter your email';
+        }
+        if (!value.contains('@') || !value.contains('.')) {
+          return 'Please enter a valid email';
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildPhoneField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: _phoneController,
-        keyboardType: TextInputType.phone,
-        textInputAction: TextInputAction.next,
-        maxLength: 10,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        style: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF2C3E50),
-        ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Please enter your phone number';
-          }
-          if (value.trim().length != 10) {
-            return 'Phone number must be 10 digits';
-          }
-          // Check if all digits (no letters)
-          if (!RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
-            return 'Phone number must contain only digits';
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          hintText: 'Enter your phone number',
-          hintStyle: const TextStyle(
-            color: Colors.black54,
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.phone_outlined,
-            color: Colors.black54,
-            size: 20,
-          ),
-          border: InputBorder.none,
-          counterText: '',
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGenderField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonFormField<String>(
-        value: _selectedGender,
-        decoration: InputDecoration(
-          hintText: 'Select your gender (Optional)',
-          hintStyle: const TextStyle(
-            color: Colors.black54,
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.person_outline,
-            color: Colors.black54,
-            size: 20,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
-        items: const [
-          DropdownMenuItem(value: 'MALE', child: Text('Male')),
-          DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
-          DropdownMenuItem(value: 'OTHER', child: Text('Other')),
-          DropdownMenuItem(
-              value: 'PREFER_NOT_TO_SAY', child: Text('Prefer not to say')),
-        ],
-        onChanged: (value) {
-          setState(() {
-            _selectedGender = value;
-          });
-        },
-        style: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF2C3E50),
-        ),
-        dropdownColor: const Color(0xFFF8F9FA),
-        icon: Icon(
-          Icons.arrow_drop_down,
-          color: Colors.black54,
-        ),
-      ),
+    return _buildInputField(
+      controller: _phoneController,
+      hint: 'Phone Number',
+      icon: Icons.phone_outlined,
+      keyboardType: TextInputType.phone,
+      maxLength: 10,
+      autofillHints: const [AutofillHints.telephoneNumber],
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter your phone number';
+        }
+        if (value.trim().length != 10 || !RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
+          return 'Enter a valid 10-digit phone number';
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildPasswordField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: _passwordController,
-        obscureText: _obscurePassword,
-        textInputAction: TextInputAction.done,
-        maxLength: 50,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        onFieldSubmitted: (_) => _handleRegister(),
-        style: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF2C3E50),
+    return _buildInputField(
+      controller: _passwordController,
+      hint: 'Password (min 4 characters)',
+      icon: Icons.lock_outlined,
+      obscureText: _obscurePassword,
+      maxLength: 50,
+      textInputAction: TextInputAction.done,
+      autofillHints: const [AutofillHints.newPassword],
+      onFieldSubmitted: (_) => _handleRegister(),
+      suffixIcon: IconButton(
+        icon: Icon(
+          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          color: Colors.black54,
+          size: 20,
         ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Please enter a password';
-          }
-          if (value.length < 6) {
-            return 'Password must be at least 6 characters';
-          }
-          if (value.length > 50) {
-            return 'Password must be less than 50 characters';
-          }
-          return null;
+        onPressed: () {
+          setState(() {
+            _obscurePassword = !_obscurePassword;
+          });
         },
-        decoration: InputDecoration(
-          hintText: 'Enter Password',
-          hintStyle: const TextStyle(
-            color: Colors.black54,
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.lock_outlined,
-            color: Colors.black54,
-            size: 20,
-          ),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscurePassword
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              color: Colors.black54,
-              size: 20,
-            ),
-            onPressed: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-          ),
-          border: InputBorder.none,
-          counterText: '',
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
       ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter a password';
+        }
+        if (value.length < 4) {
+          return 'Password must be at least 4 characters';
+        }
+        return null;
+      },
     );
   }
 
-  Widget _buildTermsAndConditions() {
-    return Container(
-      decoration: VillageTheme.cardDecoration,
-      padding: const EdgeInsets.all(VillageTheme.spacingM),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Transform.scale(
-            scale: 1.3,
-            child: Checkbox(
-              value: _acceptTerms,
-              onChanged: (value) {
-                setState(() {
-                  _acceptTerms = value ?? false;
-                });
-              },
-              activeColor: VillageTheme.primaryGreen,
-              checkColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
+  Widget _buildTermsRow() {
+    return Row(
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: _acceptTerms,
+            onChanged: (value) {
+              setState(() {
+                _acceptTerms = value ?? false;
+              });
+            },
+            activeColor: VillageTheme.primaryGreen,
+            checkColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
-          const SizedBox(width: VillageTheme.spacingS),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '📋 I agree to the following:',
-                  style: VillageTheme.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: VillageTheme.primaryGreen,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Wrap(
+            children: [
+              const Text(
+                'I agree to ',
+                style: TextStyle(fontSize: 13, color: Colors.white),
+              ),
+              GestureDetector(
+                onTap: () => _launchUrl('https://nammaoorudelivary.in/terms-and-conditions'),
+                child: const Text(
+                  'Terms',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
                   ),
                 ),
-                const SizedBox(height: VillageTheme.spacingXS),
-                Wrap(
-                  children: [
-                    Text(
-                      'I agree to the ',
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: VillageTheme.secondaryText,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        _showTermsAndConditions(context);
-                      },
-                      child: Text(
-                        'Terms & Conditions',
-                        style: VillageTheme.bodyMedium.copyWith(
-                          color: VillageTheme.accentOrange,
-                          fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      ' and ',
-                      style: VillageTheme.bodyMedium.copyWith(
-                        color: VillageTheme.secondaryText,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        _showPrivacyPolicy(context);
-                      },
-                      child: Text(
-                        'Privacy Policy',
-                        style: VillageTheme.bodyMedium.copyWith(
-                          color: VillageTheme.accentOrange,
-                          fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+              const Text(
+                ' & ',
+                style: TextStyle(fontSize: 13, color: Colors.white),
+              ),
+              GestureDetector(
+                onTap: () => _launchUrl('https://nammaoorudelivary.in/privacy-policy'),
+                child: const Text(
+                  'Privacy Policy',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -669,15 +457,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         const Text(
           'Already have an account? ',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.white),
         ),
         TextButton(
-          onPressed: () {
-            context.go('/login');
-          },
+          onPressed: () => context.go('/login'),
           style: TextButton.styleFrom(
             padding: EdgeInsets.zero,
             minimumSize: Size.zero,
@@ -696,64 +479,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _showTermsAndConditions(BuildContext context) async {
-    const String termsUrl = 'https://nammaoorudelivary.in/terms-and-conditions';
-
-    final Uri url = Uri.parse(termsUrl);
-
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not open terms and conditions'),
-              backgroundColor: VillageTheme.errorRed,
-            ),
-          );
-        }
       }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: VillageTheme.errorRed,
-          ),
-        );
-      }
-    }
-  }
-
-  void _showPrivacyPolicy(BuildContext context) async {
-    const String privacyPolicyUrl =
-        'https://nammaoorudelivary.in/privacy-policy';
-
-    final Uri url = Uri.parse(privacyPolicyUrl);
-
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not open privacy policy'),
-              backgroundColor: VillageTheme.errorRed,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: VillageTheme.errorRed,
-          ),
-        );
-      }
-    }
+    } catch (_) {}
   }
 }
