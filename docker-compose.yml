@@ -32,7 +32,7 @@ services:
       - DELIVERY_PARTNER_DOCUMENT_PATH=${DELIVERY_PARTNER_DOCUMENT_PATH:-/app/uploads/documents/delivery-partners}
       - PRODUCT_IMAGES_PATH=${PRODUCT_IMAGES_PATH:-/app/uploads/products}
       # JPA configuration (for development, use: JPA_DDL_AUTO=update JPA_SHOW_SQL=true)
-      - JPA_DDL_AUTO=${JPA_DDL_AUTO:-validate}
+      - JPA_DDL_AUTO=${JPA_DDL_AUTO:-update}
       - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}
       # Scheduled jobs control (for zero-downtime deployment)
       - APP_SCHEDULING_ENABLED=${APP_SCHEDULING_ENABLED:-true}
@@ -65,7 +65,7 @@ services:
     # Docker will automatically assign available host ports
     # Deployment script discovers actual ports dynamically
     ports:
-      - "8080"  # Format: "internal_port" - Docker assigns random host port
+      - "8081:8080"  # Fixed port: host 8081 -> container 8080
     volumes:
       # Mount host directory for persistent file storage (production)
       - /opt/shop-management/uploads:/app/uploads
