@@ -26,10 +26,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   bool _isLoggingOut = false;
 
+  // Post counts
+  Map<String, Map<String, int>> _postCounts = {};
+  Map<String, int> _postLimits = {};
+  Map<String, Map<String, dynamic>> _postPricing = {};
+  bool _isLoadingPosts = true;
+  bool _postsExpanded = false;
+
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
+    _loadPostCounts();
   }
 
   Future<void> _loadUserProfile() async {
@@ -269,6 +277,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _loadPostCounts() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      setState(() => _isLoadingPosts = false);
+      return;
+    }
+
+    // Module key mapping: backend feature name -> display name
+    const moduleKeyMap = {
+      'MARKETPLACE': 'Marketplace',
+      'FARM_PRODUCTS': 'Farm Products',
+      'LABOURS': 'Labours',
+      'TRAVELS': 'Travels',
+      'PARCEL_SERVICE': 'Parcel',
+      'RENTAL': 'Rental',
+      'REAL_ESTATE': 'Real Estate',
+    };
+
+    final counts = <String, Map<String, int>>{};
+
+    try {
+      final response = await ApiClient.get('/posts/my-stats');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['data'] != null) {
+          final statsData = data['data'] as Map;
+
+          // Parse counts
+          final countsData = statsData['counts'] as Map? ?? {};
+          for (final entry in countsData.entries) {
+            final displayName = moduleKeyMap[entry.key];
+            if (displayName != null && entry.value is Map) {
+              final c = entry.value as Map;
+              counts[displayName] = {
+                'free': (c['free'] as num?)?.toInt() ?? 0,
+                'paid': (c['paid'] as num?)?.toInt() ?? 0,
+                'total': (c['total'] as num?)?.toInt() ?? 0,
+              };
+            }
+          }
+
+          // Parse limits
+          final limitsData = statsData['limits'] as Map? ?? {};
+          _postLimits = limitsData.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0));
+
+          // Parse pricing
+          final pricingData = statsData['pricing'] as Map? ?? {};
+          final parsedPricing = <String, Map<String, dynamic>>{};
+          for (final entry in pricingData.entries) {
+            final displayName = moduleKeyMap[entry.key];
+            if (displayName != null && entry.value is Map) {
+              final p = entry.value as Map;
+              parsedPricing[displayName] = {
+                'price': (p['price'] as num?)?.toInt() ?? 0,
+                'durationDays': (p['durationDays'] as num?)?.toInt() ?? 30,
+                'perDayRate': (p['perDayRate'] as num?)?.toDouble() ?? 0.0,
+              };
+            }
+          }
+          _postPricing = parsedPricing;
+        }
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _postCounts = counts;
+        _isLoadingPosts = false;
+      });
+    }
+  }
+
   Future<void> _handleLogout() async {
     try {
       setState(() => _isLoggingOut = true);
@@ -376,6 +456,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildUserDetailsCard(),
                               const SizedBox(height: 24),
                               _buildAccountActionsCard(),
+                              const SizedBox(height: 24),
+                              _buildPostStatsCard(),
                               const SizedBox(height: 24),
                               _buildSystemInfoCard(),
                               const SizedBox(height: 24),
@@ -564,6 +646,289 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ));
         }),
       ],
+    );
+  }
+
+  Widget _buildPostStatsCard() {
+    if (_isLoadingPosts) {
+      return _buildCard('My Posts', Icons.article_outlined, [
+        const Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+        ),
+      ]);
+    }
+
+    int totalFree = 0, totalPaid = 0, totalAll = 0;
+    for (final c in _postCounts.values) {
+      totalFree += c['free'] ?? 0;
+      totalPaid += c['paid'] ?? 0;
+      totalAll += c['total'] ?? 0;
+    }
+
+    final moduleColors = {
+      'Marketplace': const Color(0xFF2196F3),
+      'Farm Products': const Color(0xFF2E7D32),
+      'Labours': const Color(0xFF1565C0),
+      'Travels': const Color(0xFF00897B),
+      'Parcel': const Color(0xFFE65100),
+      'Rental': const Color(0xFFFF6F00),
+      'Real Estate': const Color(0xFF5C6BC0),
+    };
+
+    final moduleIcons = {
+      'Marketplace': Icons.storefront_rounded,
+      'Farm Products': Icons.eco_rounded,
+      'Labours': Icons.construction_rounded,
+      'Travels': Icons.directions_bus_rounded,
+      'Parcel': Icons.local_shipping_rounded,
+      'Rental': Icons.vpn_key_rounded,
+      'Real Estate': Icons.home_work_rounded,
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header - always visible
+          InkWell(
+            onTap: () => setState(() => _postsExpanded = !_postsExpanded),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.article_outlined, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Text('My Posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  ),
+                  Icon(
+                    _postsExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: Colors.grey[400],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Summary badges - always visible
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Row(
+              children: [
+                _buildStatChip('$totalAll', 'Total', const Color(0xFF2196F3)),
+                const SizedBox(width: 10),
+                _buildStatChip('$totalFree', 'Free', const Color(0xFF4CAF50)),
+                const SizedBox(width: 10),
+                _buildStatChip('$totalPaid', 'Paid', const Color(0xFFFF9800)),
+              ],
+            ),
+          ),
+          // Pricing info banner - always visible
+          if (_postPricing.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF4CAF50).withOpacity(0.08),
+                      const Color(0xFF2196F3).withOpacity(0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.2)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        const Text('Post Pricing', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _buildPricingRow(Icons.card_giftcard_rounded, '1st Post', 'FREE', const Color(0xFF4CAF50)),
+                    const SizedBox(height: 6),
+                    Builder(builder: (_) {
+                      final firstPricing = _postPricing.values.isNotEmpty ? _postPricing.values.first : null;
+                      final price = firstPricing?['price'] ?? 15;
+                      final days = firstPricing?['durationDays'] ?? 30;
+                      final perDay = firstPricing?['perDayRate'] ?? 0.5;
+                      return Column(
+                        children: [
+                          _buildPricingRow(Icons.currency_rupee_rounded, 'Next Post', '\u20B9$price per post', const Color(0xFFFF9800)),
+                          const SizedBox(height: 6),
+                          _buildPricingRow(Icons.calendar_today_rounded, 'Validity', '$days days', const Color(0xFF2196F3)),
+                          const SizedBox(height: 6),
+                          _buildPricingRow(Icons.trending_down_rounded, 'Per Day', '\u20B9$perDay / day', const Color(0xFF9C27B0)),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          // Expandable module breakdown
+          if (_postsExpanded) ...[
+            Divider(height: 1, color: Colors.grey.shade100),
+            // Column headers
+            Padding(
+              padding: const EdgeInsets.fromLTRB(64, 10, 16, 4),
+              child: Row(
+                children: [
+                  const Expanded(child: SizedBox()),
+                  SizedBox(width: 42, child: Text('Free', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 42, child: Text('Paid', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 42, child: Text('Total', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 52, child: Text('Price', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 42, child: Text('Days', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                ],
+              ),
+            ),
+            ..._postCounts.entries.map((entry) {
+              final name = entry.key;
+              final counts = entry.value;
+              final color = moduleColors[name] ?? Colors.grey;
+              final icon = moduleIcons[name] ?? Icons.article;
+              final total = counts['total'] ?? 0;
+              final free = counts['free'] ?? 0;
+              final paid = counts['paid'] ?? 0;
+              final pricing = _postPricing[name];
+              final price = pricing?['price'] ?? 0;
+              final days = pricing?['durationDays'] ?? 30;
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: color, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                    SizedBox(
+                      width: 42,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('$free', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50)), textAlign: TextAlign.center),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 42,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF9800).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('$paid', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)), textAlign: TextAlign.center),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 42,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('$total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color), textAlign: TextAlign.center),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 52,
+                      child: Text('\u20B9$price', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 42,
+                      child: Text('${days}d', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+        const Spacer(),
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+
+  Widget _buildStatChip(String count, String label, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
     );
   }
 

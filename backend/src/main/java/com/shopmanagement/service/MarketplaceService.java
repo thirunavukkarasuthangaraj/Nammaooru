@@ -40,6 +40,7 @@ public class MarketplaceService {
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
+    private final GlobalPostLimitService globalPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -57,6 +58,9 @@ public class MarketplaceService {
                                        String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check global post limit (1 free post across all modules)
+        globalPostLimitService.checkGlobalPostLimit(user.getId(), paidTokenId);
 
         // Check post limit (user-specific override > global FeatureConfig limit)
         int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "MARKETPLACE");

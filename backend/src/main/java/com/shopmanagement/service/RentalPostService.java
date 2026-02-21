@@ -39,6 +39,7 @@ public class RentalPostService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final GlobalPostLimitService globalPostLimitService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -48,6 +49,9 @@ public class RentalPostService {
                                   BigDecimal latitude, BigDecimal longitude) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check global post limit (1 free post across all modules)
+        globalPostLimitService.checkGlobalPostLimit(user.getId(), null);
 
         // Upload images
         List<String> imageUrlList = new ArrayList<>();

@@ -37,6 +37,7 @@ public class RealEstateService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
+    private final GlobalPostLimitService globalPostLimitService;
 
     @Transactional
     public RealEstatePost createPost(String title, String description, PropertyType propertyType,
@@ -47,6 +48,9 @@ public class RealEstateService {
                                       String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check global post limit (1 free post across all modules)
+        globalPostLimitService.checkGlobalPostLimit(user.getId(), null);
 
         // Check post limit (user-specific override > global FeatureConfig limit)
         int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "REAL_ESTATE");
