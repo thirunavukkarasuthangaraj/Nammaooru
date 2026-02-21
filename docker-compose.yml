@@ -61,11 +61,10 @@ services:
       - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
       - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
       - GEMINI_API_KEY_4=${GEMINI_API_KEY_4}
-    # Expose internal port only (Nginx will proxy to these)
-    # Docker will automatically assign available host ports
-    # Deployment script discovers actual ports dynamically
+    # Expose internal port - Docker assigns random host port
+    # Deploy script detects port dynamically and updates Nginx
     ports:
-      - "8081:8080"  # Fixed port: host 8081 -> container 8080
+      - "8080"
     volumes:
       # Mount host directory for persistent file storage (production)
       - /opt/shop-management/uploads:/app/uploads
