@@ -102,17 +102,17 @@ check_api_health
 # Step 6: Update Nginx to new backend
 log_step "Switching Nginx from port $OLD_BACKEND_PORT to $NEW_BACKEND_PORT"
 log_warn "⏰ CRITICAL MOMENT: Switching traffic from old to new container"
-sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$NEW_BACKEND_PORT;|" $NGINX_CONFIG
+sudo sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$NEW_BACKEND_PORT;|" $NGINX_CONFIG
 
 # Step 7: Test and reload Nginx
-if nginx -t 2>&1 | grep -q "successful"; then
+if sudo nginx -t 2>&1 | grep -q "successful"; then
     log_step "Reloading Nginx..."
     NGINX_RELOAD_TIME=$(date '+%Y-%m-%d %H:%M:%S.%3N')
-    systemctl reload nginx
+    sudo systemctl reload nginx
     log_info "✅ Nginx reloaded at $NGINX_RELOAD_TIME - Traffic now on new container"
 else
     log_error "Nginx config test failed! Rolling back..."
-    sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$OLD_BACKEND_PORT;|" $NGINX_CONFIG
+    sudo sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$OLD_BACKEND_PORT;|" $NGINX_CONFIG
     docker stop $NEW_BACKEND
     docker rm $NEW_BACKEND
     exit 1

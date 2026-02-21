@@ -18,11 +18,11 @@ echo "✅ Found backend on port: $BACKEND_PORT"
 
 # Update Nginx configuration
 NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
-sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$BACKEND_PORT;|" $NGINX_CONFIG
+sudo sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$BACKEND_PORT;|" $NGINX_CONFIG
 
 # Test and reload Nginx
-if nginx -t; then
-    systemctl reload nginx
+if sudo nginx -t; then
+    sudo systemctl reload nginx
     echo "✅ Nginx updated and reloaded successfully!"
     echo "   Backend API now accessible at: https://api.nammaoorudelivary.in"
 else
