@@ -830,27 +830,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ],
-          // Expandable module breakdown
+          // Expandable module breakdown — clean layout
           if (_postsExpanded) ...[
             Divider(height: 1, color: Colors.grey.shade100),
-            // Column headers
-            Padding(
-              padding: const EdgeInsets.fromLTRB(64, 10, 16, 4),
-              child: Row(
-                children: [
-                  const Expanded(child: SizedBox()),
-                  SizedBox(width: 42, child: Text('Free', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                  const SizedBox(width: 6),
-                  SizedBox(width: 42, child: Text('Paid', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                  const SizedBox(width: 6),
-                  SizedBox(width: 42, child: Text('Total', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                  const SizedBox(width: 6),
-                  SizedBox(width: 52, child: Text('Price', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                  const SizedBox(width: 6),
-                  SizedBox(width: 42, child: Text('Days', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                ],
-              ),
-            ),
+            const SizedBox(height: 8),
             ..._postCounts.entries.map((entry) {
               final name = entry.key;
               final counts = entry.value;
@@ -859,74 +842,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final total = counts['total'] ?? 0;
               final free = counts['free'] ?? 0;
               final paid = counts['paid'] ?? 0;
-              final pricing = _postPricing[name];
-              final price = pricing?['price'] ?? 0;
-              final days = pricing?['durationDays'] ?? 30;
 
               return InkWell(
                 onTap: () => context.push('/customer/my-posts?module=$name'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: Row(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(icon, color: color, size: 16),
+                        child: Icon(icon, color: color, size: 18),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      ),
-                      SizedBox(
-                        width: 42,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('$free', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50)), textAlign: TextAlign.center),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Text('$free free', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                                Text('  ·  ', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                                Text('$paid paid', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      SizedBox(
-                        width: 42,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF9800).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('$paid', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)), textAlign: TextAlign.center),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        child: Text('$total', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
                       ),
-                      const SizedBox(width: 6),
-                      SizedBox(
-                        width: 42,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('$total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color), textAlign: TextAlign.center),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      SizedBox(
-                        width: 52,
-                        child: Text('\u20B9$price', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
-                      ),
-                      const SizedBox(width: 6),
-                      SizedBox(
-                        width: 42,
-                        child: Text('${days}d', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
-                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[400]),
                     ],
                   ),
                 ),
