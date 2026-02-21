@@ -97,7 +97,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          context.go('/customer/dashboard');
+        }
+      },
+      child: Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -156,6 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -283,13 +291,31 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: _emailController,
         keyboardType: TextInputType.phone,
         textInputAction: TextInputAction.next,
-        maxLength: 10,
         autofillHints: const [AutofillHints.telephoneNumber],
+        onChanged: (value) {
+          // Strip country code (+91, 91, 0) and spaces from autofill
+          String cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+          if (cleaned.length > 10) {
+            // Remove leading country code (91)
+            if (cleaned.startsWith('91') && cleaned.length >= 12) {
+              cleaned = cleaned.substring(cleaned.length - 10);
+            } else {
+              cleaned = cleaned.substring(cleaned.length - 10);
+            }
+          }
+          if (cleaned != value) {
+            _emailController.text = cleaned;
+            _emailController.selection = TextSelection.fromPosition(
+              TextPosition(offset: cleaned.length),
+            );
+          }
+        },
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
             return 'Please enter your mobile number';
           }
-          if (value.trim().length != 10) {
+          final digits = value.trim().replaceAll(RegExp(r'[^0-9]'), '');
+          if (digits.length != 10) {
             return 'Mobile number must be 10 digits';
           }
           return null;
@@ -304,10 +330,17 @@ class _LoginScreenState extends State<LoginScreen> {
             color: Colors.black54,
             fontSize: 16,
           ),
-          prefixIcon: Icon(
-            Icons.phone,
-            color: Colors.black54,
-            size: 20,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.phone, color: Colors.black54, size: 20),
+                const SizedBox(width: 6),
+                const Text('+91', style: TextStyle(fontSize: 15, color: Color(0xFF2C3E50), fontWeight: FontWeight.w500)),
+                Container(width: 1, height: 20, margin: const EdgeInsets.only(left: 8), color: Colors.black26),
+              ],
+            ),
           ),
           border: InputBorder.none,
           counterText: '',

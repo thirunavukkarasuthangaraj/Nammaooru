@@ -67,10 +67,6 @@ class AppRouter {
       //   builder: (context, state) => const DeliveryFeeTestScreen(),
       // ), // Temporarily disabled
       GoRoute(
-        path: '/customer/cart',
-        builder: (context, state) => const CartScreen(),
-      ),
-      GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
       ),
@@ -82,6 +78,10 @@ class AppRouter {
           GoRoute(
             path: '/customer/dashboard',
             builder: (context, state) => const CustomerDashboard(),
+          ),
+          GoRoute(
+            path: '/customer/cart',
+            builder: (context, state) => const CartScreen(),
           ),
           GoRoute(
             path: '/customer/shops',

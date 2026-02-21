@@ -88,7 +88,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          context.go('/customer/dashboard');
+        }
+      },
+      child: Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -167,6 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -226,6 +234,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? Function(String?)? validator,
     List<String>? autofillHints,
     void Function(String)? onFieldSubmitted,
+    void Function(String)? onChanged,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -240,6 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         obscureText: obscureText,
         autofillHints: autofillHints,
         onFieldSubmitted: onFieldSubmitted,
+        onChanged: onChanged,
         style: const TextStyle(
           fontSize: 16,
           color: Color(0xFF2C3E50),
@@ -309,13 +319,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       hint: 'Phone Number',
       icon: Icons.phone_outlined,
       keyboardType: TextInputType.phone,
-      maxLength: 10,
       autofillHints: const [AutofillHints.telephoneNumber],
+      onChanged: (value) {
+        // Strip +91, spaces, dashes from autofill
+        String cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+        if (cleaned.length > 10) {
+          cleaned = cleaned.substring(cleaned.length - 10);
+        }
+        if (cleaned != value) {
+          _phoneController.text = cleaned;
+          _phoneController.selection = TextSelection.fromPosition(
+            TextPosition(offset: cleaned.length),
+          );
+        }
+      },
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
           return 'Please enter your phone number';
         }
-        if (value.trim().length != 10 || !RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
+        final digits = value.trim().replaceAll(RegExp(r'[^0-9]'), '');
+        if (digits.length != 10) {
           return 'Enter a valid 10-digit phone number';
         }
         return null;
