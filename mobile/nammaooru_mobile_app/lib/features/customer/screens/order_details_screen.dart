@@ -585,7 +585,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Subtotal:'),
-                Text('₹${_order!.totalAmount.toStringAsFixed(2)}'),
+                Text('₹${_order!.subtotal > 0 ? _order!.subtotal.toStringAsFixed(2) : (_order!.totalAmount - _order!.deliveryFee).toStringAsFixed(2)}'),
               ],
             ),
             const SizedBox(height: 4),
@@ -593,7 +593,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Delivery Fee:'),
-                Text('₹0.00'),
+                Text('₹${_order!.deliveryFee.toStringAsFixed(2)}'),
               ],
             ),
             const Divider(),

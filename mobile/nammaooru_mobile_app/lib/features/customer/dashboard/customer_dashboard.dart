@@ -51,6 +51,7 @@ import '../screens/farmer_post_detail_screen.dart';
 import '../screens/labour_post_detail_screen.dart';
 import '../screens/travel_post_detail_screen.dart';
 import '../screens/parcel_post_detail_screen.dart';
+import '../screens/panchayat_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -2011,7 +2012,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       'directions_bus_rounded': Icons.directions_bus_rounded,
       'local_shipping_rounded': Icons.local_shipping_rounded,
       'directions_car_rounded': Icons.directions_car_rounded,
+      'home_work_rounded': Icons.home_work_rounded,
       'vpn_key_rounded': Icons.vpn_key_rounded,
+      'account_balance_rounded': Icons.account_balance_rounded,
     };
     return iconMap[iconName] ?? Icons.grid_view_rounded;
   }
@@ -2050,10 +2053,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
     } else if (route.contains('parcels')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()));
+    } else if (route.contains('real-estate')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen()));
     } else if (route.contains('rentals')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()));
     } else if (route.contains('bus-timing')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen()));
+    } else if (route.contains('village') || route.contains('panchayat')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()));
     }
   }
 
@@ -2217,6 +2224,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
             ),
             _buildModernCategoryTile(
+              icon: Icons.home_work_rounded,
+              title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
+              subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு, விற்கு & வாடகை'),
+              color: const Color(0xFF5C6BC0),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen())),
+            ),
+            _buildModernCategoryTile(
               icon: Icons.vpn_key_rounded,
               title: languageProvider.getText('Rent', 'வாடகை'),
               subtitle: languageProvider.getText('Shops, Houses & more', 'கடை, வீடு & மேலும்'),
@@ -2229,6 +2243,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               subtitle: languageProvider.getText('Schedules & routes', 'அட்டவணை'),
               color: const Color(0xFF9C27B0),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.account_balance_rounded,
+              title: languageProvider.getText('Village', 'கிராமம்'),
+              subtitle: languageProvider.getText('Panchayat details', 'பஞ்சாயத்து விவரம்'),
+              color: const Color(0xFF795548),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen())),
             ),
           ],
         ),
@@ -2243,48 +2264,63 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     required Color color,
     required VoidCallback onTap,
   }) {
+    final lightBg = HSLColor.fromColor(color)
+        .withLightness(0.95)
+        .withSaturation(0.6)
+        .toColor();
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: lightBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
         ),
         child: Stack(
           children: [
-            // Background accent
+            // Large watermark icon
             Positioned(
-              right: -20,
-              bottom: -20,
+              right: -8,
+              bottom: -8,
               child: Icon(
                 icon,
-                size: 80,
-                color: color.withOpacity(0.08),
+                size: 75,
+                color: color.withValues(alpha: 0.08),
               ),
             ),
             // Content
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Icon container
+                  // Colored icon circle
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          color,
+                          HSLColor.fromColor(color)
+                              .withLightness((HSLColor.fromColor(color).lightness - 0.1).clamp(0.0, 1.0))
+                              .toColor(),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    child: Icon(icon, color: color, size: 24),
+                    child: Icon(icon, color: Colors.white, size: 26),
                   ),
                   // Title and Subtitle
                   Column(
@@ -2294,22 +2330,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[850],
+                          letterSpacing: 0.2,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[500],
+                      if (subtitle.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: color.withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ],

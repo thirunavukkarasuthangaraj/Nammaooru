@@ -209,9 +209,14 @@ export class TravelManagementComponent implements OnInit {
 
   getVehicleTypeLabel(type: string): string {
     switch (type) {
-      case 'CAR': return 'Car';
-      case 'SMALL_BUS': return 'Small Bus';
       case 'BUS': return 'Bus';
+      case 'LORRY': return 'Lorry';
+      case 'SMALL_BUS': return 'Mini Bus';
+      case 'RENT': return 'Rent';
+      case 'CAR': return 'Car';
+      case 'PARCEL_SERVICE': return 'Parcel Service';
+      case 'BIKE': return 'Bike';
+      case 'AUTO': return 'Auto';
       default: return type;
     }
   }

@@ -419,13 +419,16 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Raju Kumar', 'எ.கா., ராஜு குமார்'),
-                ),
+                ).copyWith(suffixIcon: VoiceInputButton(controller: _nameController)),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Worker name is required', 'தொழிலாளர் பெயர் தேவை');
                   }
                   if (value.trim().length < 3) {
                     return langProvider.getText('Must be at least 3 characters', 'குறைந்தது 3 எழுத்துகள் தேவை');
+                  }
+                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                    return langProvider.getText('Name max 3 words', '\u0BAA\u0BC6\u0BAF\u0BB0\u0BCD \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
                   }
                   return null;
                 },

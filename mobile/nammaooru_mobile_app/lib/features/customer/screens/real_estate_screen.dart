@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../services/real_estate_service.dart';
+import '../widgets/voice_input_button.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
+import '../../../core/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class RealEstateScreen extends StatefulWidget {
@@ -32,12 +36,41 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   final ScrollController _scrollController = ScrollController();
   String _searchText = '';
 
+  double _selectedRadius = 50.0;
+  double? _userLatitude;
+  double? _userLongitude;
+
+  // Saved/favorites
+  Set<int> _savedIds = {};
+  List<Map<String, dynamic>> _savedListings = [];
+  bool _isSavedLoading = false;
+  static const String _savedPrefsKey = 'real_estate_saved_ids';
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 2 && _savedListings.isEmpty && _savedIds.isNotEmpty) {
+        _fetchSavedListings();
+      }
+    });
+    _loadSavedIds();
+    _loadLocation();
     _fetchListings();
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _loadLocation() async {
+    try {
+      final loc = await LocationService.instance.getCurrentPosition();
+      if (loc != null && mounted) {
+        setState(() {
+          _userLatitude = loc.latitude;
+          _userLongitude = loc.longitude;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -116,6 +149,62 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   Future<void> _loadMore() async {
     _currentPage++;
     await _fetchListings();
+  }
+
+  Future<void> _loadSavedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_savedPrefsKey) ?? [];
+    setState(() {
+      _savedIds = ids.map((e) => int.tryParse(e) ?? 0).where((e) => e > 0).toSet();
+    });
+  }
+
+  Future<void> _saveSavedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_savedPrefsKey, _savedIds.map((e) => e.toString()).toList());
+  }
+
+  void _toggleSaved(int postId) {
+    setState(() {
+      if (_savedIds.contains(postId)) {
+        _savedIds.remove(postId);
+        _savedListings.removeWhere((l) => l['id'] == postId);
+      } else {
+        _savedIds.add(postId);
+        // Add from browse listings if available
+        final listing = _listings.firstWhere((l) => l['id'] == postId, orElse: () => <String, dynamic>{});
+        if (listing.isNotEmpty) {
+          _savedListings.add(listing);
+        }
+      }
+    });
+    _saveSavedIds();
+  }
+
+  bool _isSaved(int postId) => _savedIds.contains(postId);
+
+  Future<void> _fetchSavedListings() async {
+    if (_savedIds.isEmpty) return;
+    setState(() => _isSavedLoading = true);
+    try {
+      final List<Map<String, dynamic>> results = [];
+      for (final id in _savedIds) {
+        try {
+          final response = await _realEstateService.getPostById(id);
+          if (response['success'] == true && response['data'] != null) {
+            results.add(_mapApiToLocal(response['data']));
+          }
+        } catch (_) {
+          // Post may have been deleted, skip
+        }
+      }
+      setState(() {
+        _savedListings = results;
+        _isSavedLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isSavedLoading = false);
+    }
   }
 
   Map<String, dynamic> _mapApiToLocal(Map<String, dynamic> api) {
@@ -218,7 +307,14 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showPostPropertySheet(),
+        onPressed: () {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          if (!authProvider.isAuthenticated) {
+            GoRouter.of(context).go('/login');
+            return;
+          }
+          _showPostPropertySheet();
+        },
         backgroundColor: VillageTheme.primaryGreen,
         child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
@@ -228,78 +324,24 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   Widget _buildBrowseTab() {
     return Column(
       children: [
-        // Search bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: SizedBox(
-            height: 40,
-            child: TextField(
-              controller: TextEditingController(text: _searchText)
-                ..selection = TextSelection.fromPosition(
-                  TextPosition(offset: _searchText.length),
-                ),
-              decoration: InputDecoration(
-                hintText: 'Search by location...',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
-                suffixIcon: _searchText.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear, color: Colors.grey[400], size: 18),
-                        onPressed: () {
-                          setState(() => _searchText = '');
-                          _fetchListings(refresh: true);
-                        },
-                        padding: EdgeInsets.zero,
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              style: const TextStyle(fontSize: 14),
-              textInputAction: TextInputAction.search,
-              onSubmitted: (text) {
-                setState(() => _searchText = text);
-                _fetchListings(refresh: true);
-              },
-            ),
-          ),
-        ),
-        // Filter chips
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: _filters.map((filter) {
-                final isSelected = _selectedFilter == filter;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(filter),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() => _selectedFilter = filter);
-                      _fetchListings(refresh: true);
-                    },
-                    backgroundColor: Colors.grey[200],
-                    selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
-                    labelStyle: TextStyle(
-                      color: isSelected ? VillageTheme.primaryGreen : Colors.grey[700],
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    checkmarkColor: VillageTheme.primaryGreen,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+        PostFilterBar(
+          categories: _filters,
+          selectedCategory: _selectedFilter,
+          onCategoryChanged: (cat) {
+            setState(() => _selectedFilter = cat ?? 'All');
+            _fetchListings(refresh: true);
+          },
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _fetchListings(refresh: true);
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _fetchListings(refresh: true);
+          },
+          accentColor: const Color(0xFF5C6BC0),
         ),
         // Listings
         Expanded(
@@ -416,6 +458,26 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   }
 
   Widget _buildMyPostsTab() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('Login to view your posts', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => GoRouter.of(context).go('/login'),
+              icon: const Icon(Icons.login),
+              label: const Text('Login'),
+              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen),
+            ),
+          ],
+        ),
+      );
+    }
     if (!_myPostsLoaded) {
       _fetchMyPosts();
     }
@@ -823,15 +885,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                TextField(controller: titleController, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: titleController))),
                 const SizedBox(height: 12),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                TextField(controller: descController, decoration: InputDecoration(labelText: 'Description', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: descController)), maxLines: 3),
                 const SizedBox(height: 12),
                 TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder()), keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
                 TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
                 const SizedBox(height: 12),
-                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location', border: OutlineInputBorder())),
+                TextField(controller: locationController, decoration: InputDecoration(labelText: 'Location', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: locationController))),
                 const SizedBox(height: 12),
                 TextField(controller: areaController, decoration: const InputDecoration(labelText: 'Area (sq.ft)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
@@ -915,22 +977,61 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   }
 
   Widget _buildSavedTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.favorite_border, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No saved properties',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the heart icon to save properties',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('Login to view saved properties', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => GoRouter.of(context).go('/login'),
+              icon: const Icon(Icons.login),
+              label: const Text('Login'),
+              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_isSavedLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_savedIds.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.favorite_border, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No saved properties',
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap the heart icon to save properties',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_savedListings.isEmpty && _savedIds.isNotEmpty) {
+      _fetchSavedListings();
+      return const Center(child: CircularProgressIndicator());
+    }
+    return RefreshIndicator(
+      onRefresh: _fetchSavedListings,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _savedListings.length,
+        itemBuilder: (context, index) {
+          return _buildPropertyCard(_savedListings[index]);
+        },
       ),
     );
   }
@@ -1175,11 +1276,23 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
               backgroundColor: Colors.white,
               radius: 18,
               child: IconButton(
-                icon: const Icon(Icons.favorite_border, size: 18),
-                color: Colors.grey[600],
+                icon: Icon(
+                  _isSaved(listing['id']) ? Icons.favorite : Icons.favorite_border,
+                  size: 18,
+                ),
+                color: _isSaved(listing['id']) ? Colors.red : Colors.grey[600],
                 onPressed: () {
+                  final auth = Provider.of<AuthProvider>(context, listen: false);
+                  if (!auth.isAuthenticated) {
+                    GoRouter.of(context).go('/login');
+                    return;
+                  }
+                  _toggleSaved(listing['id']);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Saved to favorites')),
+                    SnackBar(
+                      content: Text(_isSaved(listing['id']) ? 'Saved to favorites' : 'Removed from favorites'),
+                      duration: const Duration(seconds: 1),
+                    ),
                   );
                 },
               ),
@@ -1843,12 +1956,17 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     // Title (English or Tamil)
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Title / தலைப்பு *',
                         hintText: 'e.g., 2 BHK House for Sale / 2 BHK வீடு விற்பனைக்கு',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: VoiceInputButton(controller: _titleController),
                       ),
-                      validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                      validator: (v) {
+                        if (v?.isEmpty ?? true) return 'Required';
+                        if (v!.trim().split(RegExp(r'\s+')).length > 3) return 'Title max 3 words / தலைப்பு அதிகபட்சம் 3 வார்த்தைகள்';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -1887,11 +2005,12 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     // Location
                     TextFormField(
                       controller: _locationController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Location *',
                         hintText: 'e.g., Thiruvannamalai',
-                        prefixIcon: Icon(Icons.location_on),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.location_on),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: VoiceInputButton(controller: _locationController),
                       ),
                       validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
                     ),
@@ -1901,10 +2020,11 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 3,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Description',
                         hintText: 'Describe your property...',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: VoiceInputButton(controller: _descriptionController),
                       ),
                     ),
                     const SizedBox(height: 16),

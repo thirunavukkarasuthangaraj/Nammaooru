@@ -1,0 +1,140 @@
+<div class="village-management">
+  <div class="page-header">
+    <h2>Village / Panchayat Management</h2>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="openAddForm()" *ngIf="!showForm">
+        <mat-icon>add</mat-icon> Add Village
+      </button>
+      <button mat-icon-button (click)="loadVillages()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Form -->
+  <mat-card *ngIf="showForm" class="form-card">
+    <mat-card-content>
+      <h3>{{ editingId ? 'Edit Village' : 'Add New Village' }}</h3>
+      <form [formGroup]="villageForm" (ngSubmit)="saveVillage()" class="village-form">
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Village Name</mat-label>
+            <input matInput formControlName="name" placeholder="e.g. Tirupattur">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Name (Tamil)</mat-label>
+            <input matInput formControlName="nameTamil" placeholder="e.g. திருப்பத்தூர்">
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>District</mat-label>
+            <input matInput formControlName="district" placeholder="e.g. Tirupattur">
+          </mat-form-field>
+        </div>
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Panchayat Name</mat-label>
+            <input matInput formControlName="panchayatName" placeholder="e.g. Tirupattur Town Panchayat">
+          </mat-form-field>
+          <mat-form-field class="url-field">
+            <mat-label>Panchayat URL</mat-label>
+            <input matInput formControlName="panchayatUrl" placeholder="https://...">
+          </mat-form-field>
+        </div>
+        <div class="form-row">
+          <mat-form-field class="description-field">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="2" placeholder="Optional details"></textarea>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Display Order</mat-label>
+            <input matInput type="number" formControlName="displayOrder">
+          </mat-form-field>
+        </div>
+        <div class="form-actions">
+          <button mat-raised-button color="primary" type="submit" [disabled]="villageForm.invalid">
+            {{ editingId ? 'Update' : 'Create' }}
+          </button>
+          <button mat-button type="button" (click)="cancelForm()">Cancel</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading villages...</p>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!isLoading" class="table-container">
+    <table mat-table [dataSource]="villages" class="villages-table">
+      <ng-container matColumnDef="displayOrder">
+        <th mat-header-cell *matHeaderCellDef>Order</th>
+        <td mat-cell *matCellDef="let v">{{ v.displayOrder }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let v">{{ v.name }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="nameTamil">
+        <th mat-header-cell *matHeaderCellDef>Tamil</th>
+        <td mat-cell *matCellDef="let v">{{ v.nameTamil }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="district">
+        <th mat-header-cell *matHeaderCellDef>District</th>
+        <td mat-cell *matCellDef="let v">{{ v.district }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="panchayatName">
+        <th mat-header-cell *matHeaderCellDef>Panchayat</th>
+        <td mat-cell *matCellDef="let v">{{ v.panchayatName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="panchayatUrl">
+        <th mat-header-cell *matHeaderCellDef>URL</th>
+        <td mat-cell *matCellDef="let v">
+          <a *ngIf="v.panchayatUrl" [href]="v.panchayatUrl" target="_blank" class="url-link"
+             matTooltip="{{ v.panchayatUrl }}">
+            {{ truncateUrl(v.panchayatUrl) }}
+          </a>
+          <span *ngIf="!v.panchayatUrl" class="text-muted">No URL</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="active">
+        <th mat-header-cell *matHeaderCellDef>Active</th>
+        <td mat-cell *matCellDef="let v">
+          <mat-slide-toggle
+            [checked]="v.isActive"
+            (change)="toggleActive(v)"
+            color="primary">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let v">
+          <button mat-icon-button matTooltip="Edit" (click)="openEditForm(v)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteVillage(v)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <div *ngIf="villages.length === 0" class="empty-state">
+      <mat-icon>domain</mat-icon>
+      <p>No villages found. Click "Add Village" to get started.</p>
+    </div>
+  </div>
+</div>

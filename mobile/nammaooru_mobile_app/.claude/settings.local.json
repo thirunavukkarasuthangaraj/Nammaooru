@@ -29,7 +29,10 @@
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" logcat -c)",
       "Bash(\"C:\\Users\\MVNLA\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb\" shell \"am start -n com.nammaooru.app/.MainActivity\")",
       "Bash(ipconfig)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(start chrome)"
     ],
     "deny": [],
     "ask": [],

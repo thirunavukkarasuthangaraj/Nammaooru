@@ -55,9 +55,12 @@ export class PostEditDialogComponent implements OnInit {
       { key: 'title', label: 'Title', type: 'text' },
       { key: 'phone', label: 'Phone', type: 'text' },
       { key: 'vehicleType', label: 'Vehicle Type', type: 'select', options: [
+        { value: 'BUS', label: 'Bus' },
+        { value: 'LORRY', label: 'Lorry' },
+        { value: 'SMALL_BUS', label: 'Mini Bus' },
+        { value: 'RENT', label: 'Rent' },
         { value: 'CAR', label: 'Car' },
-        { value: 'SMALL_BUS', label: 'Small Bus' },
-        { value: 'BUS', label: 'Bus' }
+        { value: 'PARCEL_SERVICE', label: 'Parcel Service' }
       ]},
       { key: 'fromLocation', label: 'From Location', type: 'text' },
       { key: 'toLocation', label: 'To Location', type: 'text' },

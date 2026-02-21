@@ -48,6 +48,9 @@ dependencies:
   # Promo Codes - Using simple UUID without device info to avoid permissions
   uuid: ^4.2.1
   
+  # WebView
+  webview_flutter: ^4.10.0
+
   # Navigation
   go_router: ^12.1.3
   

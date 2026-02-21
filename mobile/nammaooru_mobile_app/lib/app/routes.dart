@@ -26,6 +26,7 @@ import '../features/customer/screens/travel_screen.dart';
 import '../features/customer/screens/create_travel_screen.dart';
 import '../features/customer/screens/parcel_screen.dart';
 import '../features/customer/screens/create_parcel_screen.dart';
+import '../features/customer/screens/panchayat_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -161,6 +162,10 @@ class AppRouter {
           GoRoute(
             path: '/customer/parcels/create',
             builder: (context, state) => const CreateParcelScreen(),
+          ),
+          GoRoute(
+            path: '/customer/village',
+            builder: (context, state) => const PanchayatScreen(),
           ),
         ],
       ),

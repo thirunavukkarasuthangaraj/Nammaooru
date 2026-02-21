@@ -101,11 +101,12 @@ public class TravelPost {
     private LocalDateTime updatedAt;
 
     public enum VehicleType {
-        CAR,
-        AUTO,
-        BIKE,
+        BUS,
+        LORRY,
         SMALL_BUS,
-        BUS
+        RENT,
+        CAR,
+        PARCEL_SERVICE
     }
 
     public enum PostStatus {

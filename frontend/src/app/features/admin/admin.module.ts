@@ -57,6 +57,7 @@ import { HealthTipsManagementComponent } from './components/health-tips/health-t
 import { RentalManagementComponent } from './components/rental-management/rental-management.component';
 import { RentalReportedComponent } from './components/rental-reported/rental-reported.component';
 import { AllReportsComponent } from './components/all-reports/all-reports.component';
+import { VillageManagementComponent } from './components/village-management/village-management.component';
 import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
@@ -91,7 +92,8 @@ import { MatTabsModule } from '@angular/material/tabs';
     HealthTipsManagementComponent,
     RentalManagementComponent,
     RentalReportedComponent,
-    AllReportsComponent
+    AllReportsComponent,
+    VillageManagementComponent
   ],
   imports: [
     CommonModule,
@@ -242,6 +244,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'all-reports',
         component: AllReportsComponent
+      },
+      {
+        path: 'villages',
+        component: VillageManagementComponent
       },
       {
         path: 'shops',

@@ -389,13 +389,16 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Fast Parcel Delivery', '\u0b8e.\u0b95\u0bbe., \u0bb5\u0bc7\u0b95 \u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9f\u0bc6\u0bb2\u0bbf\u0bb5\u0bb0\u0bbf'),
-                ),
+                ).copyWith(suffixIcon: VoiceInputButton(controller: _serviceNameController)),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Service name is required', '\u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bc6\u0baf\u0bb0\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
                   }
                   if (value.trim().length < 3) {
                     return langProvider.getText('Must be at least 3 characters', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 3 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                    return langProvider.getText('Title max 3 words', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
                   }
                   return null;
                 },

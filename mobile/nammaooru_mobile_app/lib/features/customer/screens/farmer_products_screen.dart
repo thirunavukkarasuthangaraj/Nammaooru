@@ -60,6 +60,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
     'Organic',
     'Seeds & Plants',
     'Honey & Jaggery',
+    'Agri Machines',
     'Other',
   ];
 
@@ -204,6 +205,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       'Organic': 'இயற்கை',
       'Seeds & Plants': 'விதைகள் & செடிகள்',
       'Honey & Jaggery': 'தேன் & வெல்லம்',
+      'Agri Machines': 'விவசாய இயந்திரங்கள்',
       'Other': 'பிற',
     };
     return lang.getText(cat, tamilMap[cat] ?? cat);

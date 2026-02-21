@@ -32,7 +32,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
   final _descriptionController = TextEditingController();
   final TravelService _travelService = TravelService();
 
-  String _selectedVehicleType = 'CAR';
+  String _selectedVehicleType = 'BUS';
   final List<File> _selectedImages = [];
   static const int _maxImages = 3;
   bool _isSubmitting = false;
@@ -43,19 +43,21 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
   static const Color _travelTeal = Color(0xFF00897B);
 
   static const Map<String, String> _vehicleTypes = {
-    'CAR': 'Car',
-    'AUTO': 'Auto',
-    'BIKE': 'Bike',
-    'SMALL_BUS': 'Small Bus',
     'BUS': 'Bus',
+    'LORRY': 'Lorry',
+    'SMALL_BUS': 'Mini Bus',
+    'RENT': 'Rent',
+    'CAR': 'Car',
+    'PARCEL_SERVICE': 'Parcel Service',
   };
 
   static const Map<String, String> _vehicleTypeTamil = {
-    'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
-    'AUTO': '\u0B86\u0B9F\u0BCD\u0B9F\u0BCB',
-    'BIKE': '\u0BAA\u0BC8\u0B95\u0BCD',
-    'SMALL_BUS': '\u0B9A\u0BBF\u0BB1\u0BBF\u0BAF \u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
     'BUS': '\u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
+    'LORRY': '\u0BB2\u0BBE\u0BB0\u0BBF',
+    'SMALL_BUS': '\u0BAE\u0BBF\u0BA9\u0BBF \u0BAA\u0BB8\u0BCD',
+    'RENT': '\u0BB5\u0BBE\u0B9F\u0B95\u0BC8',
+    'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
+    'PARCEL_SERVICE': '\u0BAA\u0BBE\u0BB0\u0BCD\u0B9A\u0BB2\u0BCD',
   };
 
   @override
@@ -395,13 +397,16 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., Chennai to Tirupathi Daily', '\u0B8E.\u0B95\u0BBE., \u0B9A\u0BC6\u0BA9\u0BCD\u0BA9\u0BC8 \u0BA4\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BA4\u0BBF \u0BA4\u0BBF\u0BA9\u0B9A\u0BB0\u0BBF'),
-                ),
+                ).copyWith(suffixIcon: VoiceInputButton(controller: _titleController)),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Title is required', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0BA4\u0BC7\u0BB5\u0BC8');
                   }
                   if (value.trim().length < 3) {
                     return langProvider.getText('Must be at least 3 characters', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 3 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                  }
+                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                    return langProvider.getText('Title max 3 words', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
                   }
                   return null;
                 },
@@ -424,7 +429,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
-                    _selectedVehicleType = value ?? 'CAR';
+                    _selectedVehicleType = value ?? 'BUS';
                   });
                 },
               ),

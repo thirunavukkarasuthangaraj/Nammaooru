@@ -338,13 +338,16 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
                   langProvider.getText('e.g., 2BHK House for Rent', 'எ.கா., 2BHK வீடு வாடகைக்கு'),
-                ),
+                ).copyWith(suffixIcon: VoiceInputButton(controller: _titleController)),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return langProvider.getText('Title is required', 'தலைப்பு தேவை');
                   }
                   if (value.trim().length < 3) {
                     return langProvider.getText('Must be at least 3 characters', 'குறைந்தது 3 எழுத்துகள் தேவை');
+                  }
+                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                    return langProvider.getText('Title max 3 words', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
                   }
                   return null;
                 },

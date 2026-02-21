@@ -50,28 +50,31 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
 
   static const Map<String, String> _vehicleTypeLabels = {
     'All': 'All',
-    'CAR': 'Car',
-    'AUTO': 'Auto',
-    'BIKE': 'Bike',
-    'SMALL_BUS': 'Small Bus',
     'BUS': 'Bus',
+    'LORRY': 'Lorry',
+    'SMALL_BUS': 'Mini Bus',
+    'RENT': 'Rent',
+    'CAR': 'Car',
+    'PARCEL_SERVICE': 'Parcel Service',
   };
 
   static const Map<String, String> _vehicleTypeTamilMap = {
     'All': '\u0B85\u0BA9\u0BC8\u0BA4\u0BCD\u0BA4\u0BC1\u0BAE\u0BCD',
-    'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
-    'AUTO': '\u0B86\u0B9F\u0BCD\u0B9F\u0BCB',
-    'BIKE': '\u0BAA\u0BC8\u0B95\u0BCD',
-    'SMALL_BUS': '\u0B9A\u0BBF\u0BB1\u0BBF\u0BAF \u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
     'BUS': '\u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
+    'LORRY': '\u0BB2\u0BBE\u0BB0\u0BBF',
+    'SMALL_BUS': '\u0BAE\u0BBF\u0BA9\u0BBF \u0BAA\u0BB8\u0BCD',
+    'RENT': '\u0BB5\u0BBE\u0B9F\u0B95\u0BC8',
+    'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
+    'PARCEL_SERVICE': '\u0BAA\u0BBE\u0BB0\u0BCD\u0B9A\u0BB2\u0BCD',
   };
 
   static const Map<String, IconData> _vehicleTypeIcons = {
-    'CAR': Icons.directions_car,
-    'AUTO': Icons.electric_rickshaw,
-    'BIKE': Icons.two_wheeler,
-    'SMALL_BUS': Icons.airport_shuttle,
     'BUS': Icons.directions_bus,
+    'LORRY': Icons.local_shipping,
+    'SMALL_BUS': Icons.airport_shuttle,
+    'RENT': Icons.car_rental,
+    'CAR': Icons.directions_car,
+    'PARCEL_SERVICE': Icons.inventory_2,
   };
 
   @override
