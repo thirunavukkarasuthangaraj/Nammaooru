@@ -32,7 +32,8 @@ export class PostLimitsComponent implements OnInit {
     { value: 'LABOURS', label: 'Labours' },
     { value: 'FARM_PRODUCTS', label: 'Farm Products' },
     { value: 'TRAVELS', label: 'Travels' },
-    { value: 'RENTAL', label: 'Rentals' }
+    { value: 'RENTAL', label: 'Rentals' },
+    { value: 'REAL_ESTATE', label: 'Real Estate' }
   ];
 
   // Paid post config
@@ -88,7 +89,7 @@ export class PostLimitsComponent implements OnInit {
       next: (response: any) => {
         const features = response.data || response || [];
         // Filter to only post-related features
-        const postFeatures = ['PARCEL_SERVICE', 'MARKETPLACE', 'LABOURS', 'FARM_PRODUCTS', 'TRAVELS', 'RENTAL'];
+        const postFeatures = ['PARCEL_SERVICE', 'MARKETPLACE', 'LABOURS', 'FARM_PRODUCTS', 'TRAVELS', 'RENTAL', 'REAL_ESTATE'];
         this.globalLimits = features.filter((f: FeatureConfig) => postFeatures.includes(f.featureName));
         this.globalLoading = false;
       },
