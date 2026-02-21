@@ -8,7 +8,7 @@ echo "🚀 Starting Backend Deployment..."
 
 # Configuration
 PROJECT_DIR="/opt/shop-management"
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="docker compose.yml"
 API_URL="https://api.nammaoorudelivary.in/api/version"
 
 # Colors
@@ -27,7 +27,7 @@ cd $PROJECT_DIR
 
 # Step 1: Build new image (--no-cache ensures fresh build with latest code)
 log_step "Building new backend image..."
-DOCKER_BUILDKIT=1 docker-compose -f $COMPOSE_FILE build --no-cache --build-arg MAVEN_OPTS="-Xmx512m" backend
+DOCKER_BUILDKIT=1 docker compose -f $COMPOSE_FILE build --no-cache --build-arg MAVEN_OPTS="-Xmx512m" backend
 log_info "Backend image built successfully"
 
 # Step 2: Check current API status
@@ -42,7 +42,7 @@ fi
 # Step 3: Recreate backend container with new image
 log_step "Stopping old backend and starting new one..."
 DEPLOY_START=$(date '+%Y-%m-%d %H:%M:%S.%3N')
-docker-compose -f $COMPOSE_FILE up -d --force-recreate --no-deps backend
+docker compose -f $COMPOSE_FILE up -d --force-recreate --no-deps backend
 log_info "New backend container started"
 
 # Step 4: Wait for new backend to be healthy
