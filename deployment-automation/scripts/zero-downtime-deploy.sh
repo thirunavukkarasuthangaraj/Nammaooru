@@ -42,7 +42,7 @@ cd $PROJECT_DIR
 # Step 1: Build new image (CPU limited to avoid killing running app)
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 log_step "Building new backend image (CPU limited to 50%)..."
-DOCKER_BUILDKIT=1 docker-compose -f $COMPOSE_FILE build --build-arg MAVEN_OPTS="-Xmx512m" backend
+DOCKER_BUILDKIT=1 docker-compose -f $COMPOSE_FILE build --no-cache --build-arg MAVEN_OPTS="-Xmx512m" backend
 
 # Step 2: Get current backend
 OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
