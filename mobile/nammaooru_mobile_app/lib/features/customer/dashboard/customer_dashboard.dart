@@ -526,16 +526,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           'subtitleKey': 'fromLocation',
           'imageKey': 'imageUrls',
         },
-        'parcel': {
-          'icon': Icons.local_shipping_rounded,
-          'color': const Color(0xFFE65100),
-          'label': 'Parcel Service',
-          'labelTamil': 'பார்சல் சேவை',
-          'screen': const ParcelScreen(),
-          'titleKey': 'serviceName',
-          'subtitleKey': 'fromLocation',
-          'imageKey': 'imageUrls',
-        },
         'realEstate': {
           'icon': Icons.home_rounded,
           'color': const Color(0xFFAD1457),
@@ -951,11 +941,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         case 'travel':
           Navigator.push(context, MaterialPageRoute(
             builder: (_) => TravelPostDetailScreen(post: postData),
-          ));
-          return;
-        case 'parcel':
-          Navigator.push(context, MaterialPageRoute(
-            builder: (_) => ParcelPostDetailScreen(post: postData),
           ));
           return;
         case 'marketplace':
@@ -2051,8 +2036,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen()));
     } else if (route.contains('travels')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
-    } else if (route.contains('parcels')) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()));
     } else if (route.contains('real-estate')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen()));
     } else if (route.contains('rentals')) {
@@ -2215,13 +2198,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               subtitle: languageProvider.getText('Car, Bus for rent', 'கார், பேருந்து வாடகை'),
               color: const Color(0xFF00897B),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen())),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.local_shipping_rounded,
-              title: languageProvider.getText('Parcel Service', 'பார்சல் சேவை'),
-              subtitle: languageProvider.getText('Courier & delivery', 'கூரியர் & டெலிவரி'),
-              color: const Color(0xFFE65100),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
             ),
             _buildModernCategoryTile(
               icon: Icons.home_work_rounded,

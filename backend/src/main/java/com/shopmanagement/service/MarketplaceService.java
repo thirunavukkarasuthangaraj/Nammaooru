@@ -328,6 +328,11 @@ public class MarketplaceService {
             }
         }
 
+        // Delete image file before soft-deleting
+        if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
+            fileUploadService.deleteFile(post.getImageUrl());
+        }
+
         post.setStatus(PostStatus.DELETED);
         marketplacePostRepository.save(post);
         log.info("Marketplace post soft-deleted: id={}, validTo={}", id, post.getValidTo());

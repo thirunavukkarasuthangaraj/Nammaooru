@@ -329,6 +329,15 @@ public class FarmerProductService {
             }
         }
 
+        // Delete image files before soft-deleting
+        if (post.getImageUrls() != null && !post.getImageUrls().isEmpty()) {
+            for (String url : post.getImageUrls().split(",")) {
+                if (!url.trim().isEmpty()) {
+                    fileUploadService.deleteFile(url.trim());
+                }
+            }
+        }
+
         post.setStatus(PostStatus.DELETED);
         farmerProductRepository.save(post);
         log.info("Farmer product soft-deleted: id={}, validTo={}", id, post.getValidTo());

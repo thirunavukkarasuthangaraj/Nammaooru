@@ -24,9 +24,10 @@ import '../features/customer/screens/labour_screen.dart';
 import '../features/customer/screens/create_labour_screen.dart';
 import '../features/customer/screens/travel_screen.dart';
 import '../features/customer/screens/create_travel_screen.dart';
-import '../features/customer/screens/parcel_screen.dart';
-import '../features/customer/screens/create_parcel_screen.dart';
+// import '../features/customer/screens/parcel_screen.dart';
+// import '../features/customer/screens/create_parcel_screen.dart';
 import '../features/customer/screens/panchayat_screen.dart';
+import '../features/customer/screens/my_posts_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -156,16 +157,15 @@ class AppRouter {
             builder: (context, state) => const CreateTravelScreen(),
           ),
           GoRoute(
-            path: '/customer/parcels',
-            builder: (context, state) => const ParcelScreen(),
-          ),
-          GoRoute(
-            path: '/customer/parcels/create',
-            builder: (context, state) => const CreateParcelScreen(),
-          ),
-          GoRoute(
             path: '/customer/village',
             builder: (context, state) => const PanchayatScreen(),
+          ),
+          GoRoute(
+            path: '/customer/my-posts',
+            builder: (context, state) {
+              final module = state.uri.queryParameters['module'];
+              return MyPostsScreen(initialModule: module);
+            },
           ),
         ],
       ),

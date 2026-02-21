@@ -2,7 +2,9 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
+import com.shopmanagement.entity.FeatureConfig;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.repository.FeatureConfigRepository;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.SettingService;
 import com.shopmanagement.service.UserPostLimitService;
@@ -17,9 +19,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,10 +31,25 @@ public class MyPostStatsController {
     private final UserRepository userRepository;
     private final UserPostLimitService userPostLimitService;
     private final SettingService settingService;
+    private final FeatureConfigRepository featureConfigRepository;
 
-    private static final String[] FEATURE_NAMES = {
-        "MARKETPLACE", "FARM_PRODUCTS", "LABOURS", "TRAVELS",
-        "PARCEL_SERVICE", "RENTAL", "REAL_ESTATE"
+    // All post-based features with their SQL count subqueries
+    // Order matters: each entry produces 2 columns (total, paid) in the SQL result
+    private static final String[][] POST_FEATURES = {
+        {"MARKETPLACE",     "(SELECT COUNT(*) FROM marketplace_posts WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM marketplace_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"FARM_PRODUCTS",   "(SELECT COUNT(*) FROM farmer_products WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM farmer_products WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"LABOURS",         "(SELECT COUNT(*) FROM labour_posts WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM labour_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"TRAVELS",         "(SELECT COUNT(*) FROM travel_posts WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM travel_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"PARCEL_SERVICE",  "(SELECT COUNT(*) FROM parcel_service_posts WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM parcel_service_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"RENTAL",          "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"REAL_ESTATE",     "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
     };
 
     private static final Map<String, String> DURATION_SETTING_KEYS = Map.of(
@@ -56,23 +72,6 @@ public class MyPostStatsController {
         "REAL_ESTATE", "90"
     );
 
-    private static final String COUNT_QUERY =
-        "SELECT " +
-        "(SELECT COUNT(*) FROM marketplace_posts WHERE seller_user_id = :uid AND status != 'DELETED') AS marketplace_total, " +
-        "(SELECT COUNT(*) FROM marketplace_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS marketplace_paid, " +
-        "(SELECT COUNT(*) FROM farmer_products WHERE seller_user_id = :uid AND status != 'DELETED') AS farmer_total, " +
-        "(SELECT COUNT(*) FROM farmer_products WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS farmer_paid, " +
-        "(SELECT COUNT(*) FROM labour_posts WHERE seller_user_id = :uid AND status != 'DELETED') AS labour_total, " +
-        "(SELECT COUNT(*) FROM labour_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS labour_paid, " +
-        "(SELECT COUNT(*) FROM travel_posts WHERE seller_user_id = :uid AND status != 'DELETED') AS travel_total, " +
-        "(SELECT COUNT(*) FROM travel_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS travel_paid, " +
-        "(SELECT COUNT(*) FROM parcel_service_posts WHERE seller_user_id = :uid AND status != 'DELETED') AS parcel_total, " +
-        "(SELECT COUNT(*) FROM parcel_service_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS parcel_paid, " +
-        "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status != 'DELETED') AS rental_total, " +
-        "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS rental_paid, " +
-        "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status != 'DELETED') AS realestate_total, " +
-        "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status != 'DELETED' AND is_paid = true) AS realestate_paid";
-
     @GetMapping("/api/posts/my-stats")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMyPostStats() {
@@ -82,30 +81,51 @@ public class MyPostStatsController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
             Long userId = user.getId();
 
-            // Single native query for all 7 module counts
-            Query query = entityManager.createNativeQuery(COUNT_QUERY);
-            query.setParameter("uid", userId);
-            Object[] row = (Object[]) query.getSingleResult();
+            // Step 1: Get active features from feature_configs DB
+            List<FeatureConfig> activeFeatures = featureConfigRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
+            Set<String> activeNames = activeFeatures.stream()
+                    .map(FeatureConfig::getFeatureName)
+                    .collect(Collectors.toSet());
 
-            Map<String, Map<String, Integer>> counts = new LinkedHashMap<>();
-            counts.put("MARKETPLACE", buildCounts(row, 0));
-            counts.put("FARM_PRODUCTS", buildCounts(row, 2));
-            counts.put("LABOURS", buildCounts(row, 4));
-            counts.put("TRAVELS", buildCounts(row, 6));
-            counts.put("PARCEL_SERVICE", buildCounts(row, 8));
-            counts.put("RENTAL", buildCounts(row, 10));
-            counts.put("REAL_ESTATE", buildCounts(row, 12));
-
-            // Post limits
-            Map<String, Integer> limits = new HashMap<>();
-            for (String featureName : FEATURE_NAMES) {
-                limits.put(featureName, userPostLimitService.getEffectiveLimit(userId, featureName));
+            // Step 2: Build SQL only for active post features
+            List<String[]> activePostFeatures = new ArrayList<>();
+            for (String[] pf : POST_FEATURES) {
+                if (activeNames.contains(pf[0])) {
+                    activePostFeatures.add(pf);
+                }
             }
 
-            // Pricing config from Settings DB
+            Map<String, Map<String, Integer>> counts = new LinkedHashMap<>();
+
+            if (!activePostFeatures.isEmpty()) {
+                // Build dynamic SQL
+                StringBuilder sql = new StringBuilder("SELECT ");
+                for (int i = 0; i < activePostFeatures.size(); i++) {
+                    if (i > 0) sql.append(", ");
+                    sql.append(activePostFeatures.get(i)[1]).append(", ");
+                    sql.append(activePostFeatures.get(i)[2]);
+                }
+
+                Query query = entityManager.createNativeQuery(sql.toString());
+                query.setParameter("uid", userId);
+                Object[] row = (Object[]) query.getSingleResult();
+
+                for (int i = 0; i < activePostFeatures.size(); i++) {
+                    counts.put(activePostFeatures.get(i)[0], buildCounts(row, i * 2));
+                }
+            }
+
+            // Step 3: Post limits (only for active features)
+            Map<String, Integer> limits = new HashMap<>();
+            for (String[] pf : activePostFeatures) {
+                limits.put(pf[0], userPostLimitService.getEffectiveLimit(userId, pf[0]));
+            }
+
+            // Step 4: Pricing config (only for active features)
             String globalDefaultPrice = settingService.getSettingValue("paid_post.price", "15");
             Map<String, Map<String, Object>> pricing = new LinkedHashMap<>();
-            for (String featureName : FEATURE_NAMES) {
+            for (String[] pf : activePostFeatures) {
+                String featureName = pf[0];
                 int price = Integer.parseInt(
                     settingService.getSettingValue("paid_post.price." + featureName, globalDefaultPrice));
                 String durationKey = DURATION_SETTING_KEYS.getOrDefault(featureName, "marketplace.post.duration_days");
@@ -121,10 +141,28 @@ public class MyPostStatsController {
                 pricing.put(featureName, config);
             }
 
+            // Step 5: Module metadata from feature_configs (display name, icon, color, route)
+            Map<String, Map<String, String>> modules = new LinkedHashMap<>();
+            Set<String> postFeatureNames = Arrays.stream(POST_FEATURES)
+                    .map(pf -> pf[0])
+                    .collect(Collectors.toSet());
+            for (FeatureConfig fc : activeFeatures) {
+                if (postFeatureNames.contains(fc.getFeatureName())) {
+                    Map<String, String> meta = new HashMap<>();
+                    meta.put("displayName", fc.getDisplayName());
+                    meta.put("displayNameTamil", fc.getDisplayNameTamil());
+                    meta.put("icon", fc.getIcon());
+                    meta.put("color", fc.getColor());
+                    meta.put("route", fc.getRoute());
+                    modules.put(fc.getFeatureName(), meta);
+                }
+            }
+
             Map<String, Object> result = new HashMap<>();
             result.put("counts", counts);
             result.put("limits", limits);
             result.put("pricing", pricing);
+            result.put("modules", modules);
 
             return ResponseUtil.success(result, "Post stats retrieved successfully");
         } catch (Exception e) {

@@ -362,6 +362,15 @@ public class TravelPostService {
             }
         }
 
+        // Delete image files before soft-deleting
+        if (post.getImageUrls() != null && !post.getImageUrls().isEmpty()) {
+            for (String url : post.getImageUrls().split(",")) {
+                if (!url.trim().isEmpty()) {
+                    fileUploadService.deleteFile(url.trim());
+                }
+            }
+        }
+
         post.setStatus(PostStatus.DELETED);
         travelPostRepository.save(post);
         log.info("Travel post soft-deleted: id={}, validTo={}", id, post.getValidTo());

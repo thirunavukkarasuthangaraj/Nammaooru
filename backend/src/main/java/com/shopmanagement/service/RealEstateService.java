@@ -274,6 +274,19 @@ public class RealEstateService {
             }
         }
 
+        // Delete image files before soft-deleting
+        if (post.getImageUrls() != null && !post.getImageUrls().isEmpty()) {
+            for (String url : post.getImageUrls().split(",")) {
+                if (!url.trim().isEmpty()) {
+                    fileUploadService.deleteFile(url.trim());
+                }
+            }
+        }
+        // Delete video file if present
+        if (post.getVideoUrl() != null && !post.getVideoUrl().isEmpty()) {
+            fileUploadService.deleteFile(post.getVideoUrl());
+        }
+
         post.setStatus(PostStatus.DELETED);
         realEstatePostRepository.save(post);
         log.info("Real estate post soft-deleted: id={}, validTo={}", id, post.getValidTo());

@@ -16,6 +16,8 @@ public interface FeatureConfigRepository extends JpaRepository<FeatureConfig, Lo
 
     Optional<FeatureConfig> findByFeatureName(String featureName);
 
+    List<FeatureConfig> findByIsActiveTrueOrderByDisplayOrderAsc();
+
     @Query(value = "SELECT * FROM feature_configs f WHERE f.is_active = true AND (" +
            "f.latitude IS NULL OR f.longitude IS NULL OR " +
            "(6371 * acos(cos(radians(:lat)) * cos(radians(f.latitude)) * " +

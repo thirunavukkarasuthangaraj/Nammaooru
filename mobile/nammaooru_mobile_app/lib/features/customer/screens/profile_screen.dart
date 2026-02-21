@@ -26,12 +26,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   bool _isLoggingOut = false;
 
-  // Post counts
+  // Post counts (keyed by displayName from API)
   Map<String, Map<String, int>> _postCounts = {};
   Map<String, int> _postLimits = {};
   Map<String, Map<String, dynamic>> _postPricing = {};
+  // Module metadata from API (keyed by displayName)
+  Map<String, Color> _moduleColors = {};
+  Map<String, IconData> _moduleIcons = {};
   bool _isLoadingPosts = true;
   bool _postsExpanded = false;
+
+  // Icon string -> IconData mapping (same as dashboard)
+  static const _iconMap = <String, IconData>{
+    'shopping_basket_rounded': Icons.shopping_basket_rounded,
+    'restaurant_rounded': Icons.restaurant_rounded,
+    'storefront_rounded': Icons.storefront_rounded,
+    'eco_rounded': Icons.eco_rounded,
+    'construction_rounded': Icons.construction_rounded,
+    'directions_bus_rounded': Icons.directions_bus_rounded,
+    'local_shipping_rounded': Icons.local_shipping_rounded,
+    'directions_car_rounded': Icons.directions_car_rounded,
+    'home_work_rounded': Icons.home_work_rounded,
+    'vpn_key_rounded': Icons.vpn_key_rounded,
+    'account_balance_rounded': Icons.account_balance_rounded,
+  };
+
+  static IconData _mapIcon(String? iconName) {
+    return _iconMap[iconName] ?? Icons.grid_view_rounded;
+  }
+
+  static Color _parseColor(String? colorStr) {
+    if (colorStr == null || colorStr.isEmpty) return const Color(0xFF2196F3);
+    try {
+      final hex = colorStr.replaceFirst('#', '');
+      return Color(int.parse('FF$hex', radix: 16));
+    } catch (_) {
+      return const Color(0xFF2196F3);
+    }
+  }
 
   @override
   void initState() {
@@ -284,18 +316,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    // Module key mapping: backend feature name -> display name
-    const moduleKeyMap = {
-      'MARKETPLACE': 'Marketplace',
-      'FARM_PRODUCTS': 'Farm Products',
-      'LABOURS': 'Labours',
-      'TRAVELS': 'Travels',
-      'PARCEL_SERVICE': 'Parcel',
-      'RENTAL': 'Rental',
-      'REAL_ESTATE': 'Real Estate',
-    };
-
     final counts = <String, Map<String, int>>{};
+    final colors = <String, Color>{};
+    final icons = <String, IconData>{};
 
     try {
       final response = await ApiClient.get('/posts/my-stats');
@@ -304,10 +327,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (data is Map && data['data'] != null) {
           final statsData = data['data'] as Map;
 
+          // Parse module metadata from API (dynamic — no hardcoded maps)
+          final modulesData = statsData['modules'] as Map? ?? {};
+          final keyToDisplayName = <String, String>{};
+          for (final entry in modulesData.entries) {
+            final key = entry.key.toString();
+            final meta = entry.value as Map? ?? {};
+            final displayName = meta['displayName']?.toString() ?? key;
+            keyToDisplayName[key] = displayName;
+            colors[displayName] = _parseColor(meta['color']?.toString());
+            icons[displayName] = _mapIcon(meta['icon']?.toString());
+          }
+
           // Parse counts
           final countsData = statsData['counts'] as Map? ?? {};
           for (final entry in countsData.entries) {
-            final displayName = moduleKeyMap[entry.key];
+            final displayName = keyToDisplayName[entry.key.toString()];
             if (displayName != null && entry.value is Map) {
               final c = entry.value as Map;
               counts[displayName] = {
@@ -322,11 +357,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final limitsData = statsData['limits'] as Map? ?? {};
           _postLimits = limitsData.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0));
 
-          // Parse pricing
+          // Parse pricing (keyed by displayName)
           final pricingData = statsData['pricing'] as Map? ?? {};
           final parsedPricing = <String, Map<String, dynamic>>{};
           for (final entry in pricingData.entries) {
-            final displayName = moduleKeyMap[entry.key];
+            final displayName = keyToDisplayName[entry.key.toString()];
             if (displayName != null && entry.value is Map) {
               final p = entry.value as Map;
               parsedPricing[displayName] = {
@@ -344,6 +379,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _postCounts = counts;
+        _moduleColors = colors;
+        _moduleIcons = icons;
         _isLoadingPosts = false;
       });
     }
@@ -666,25 +703,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       totalAll += c['total'] ?? 0;
     }
 
-    final moduleColors = {
-      'Marketplace': const Color(0xFF2196F3),
-      'Farm Products': const Color(0xFF2E7D32),
-      'Labours': const Color(0xFF1565C0),
-      'Travels': const Color(0xFF00897B),
-      'Parcel': const Color(0xFFE65100),
-      'Rental': const Color(0xFFFF6F00),
-      'Real Estate': const Color(0xFF5C6BC0),
-    };
-
-    final moduleIcons = {
-      'Marketplace': Icons.storefront_rounded,
-      'Farm Products': Icons.eco_rounded,
-      'Labours': Icons.construction_rounded,
-      'Travels': Icons.directions_bus_rounded,
-      'Parcel': Icons.local_shipping_rounded,
-      'Rental': Icons.vpn_key_rounded,
-      'Real Estate': Icons.home_work_rounded,
-    };
+    // Module display properties come from API (dynamic — no hardcoded maps)
+    final moduleColors = _moduleColors;
+    final moduleIcons = _moduleIcons;
 
     return Container(
       decoration: BoxDecoration(
@@ -720,6 +741,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Expanded(
                     child: Text('My Posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                   ),
+                  GestureDetector(
+                    onTap: () => context.push('/customer/my-posts'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('View All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          const SizedBox(width: 2),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Icon(
                     _postsExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                     color: Colors.grey[400],
@@ -823,69 +863,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final price = pricing?['price'] ?? 0;
               final days = pricing?['durationDays'] ?? 30;
 
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(icon, color: color, size: 16),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    ),
-                    SizedBox(
-                      width: 42,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('$free', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50)), textAlign: TextAlign.center),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 42,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF9800).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('$paid', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)), textAlign: TextAlign.center),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 42,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              return InkWell(
+                onTap: () => context.push('/customer/my-posts?module=$name'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('$total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color), textAlign: TextAlign.center),
+                        child: Icon(icon, color: color, size: 16),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 52,
-                      child: Text('\u20B9$price', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 42,
-                      child: Text('${days}d', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      ),
+                      SizedBox(
+                        width: 42,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('$free', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50)), textAlign: TextAlign.center),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 42,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF9800).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('$paid', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)), textAlign: TextAlign.center),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 42,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('$total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color), textAlign: TextAlign.center),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 52,
+                        child: Text('\u20B9$price', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 42,
+                        child: Text('${days}d', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.center),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }),
