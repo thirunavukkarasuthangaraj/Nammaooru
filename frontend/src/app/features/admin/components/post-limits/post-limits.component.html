@@ -9,10 +9,41 @@
     </div>
   </div>
 
+  <!-- ===== SECTION 0: Global Free Post Limit ===== -->
+  <div class="section-header">
+    <h3><mat-icon>lock_open</mat-icon> Global Free Post Limit</h3>
+    <p class="section-subtitle">Number of free posts allowed across all modules before payment is required.</p>
+  </div>
+
+  <div *ngIf="globalFreePostLimitLoading" class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading...</p>
+  </div>
+
+  <mat-card *ngIf="!globalFreePostLimitLoading" class="paid-post-card">
+    <mat-card-content>
+      <div class="paid-post-form">
+        <div class="paid-post-fields">
+          <mat-form-field>
+            <mat-label>Free Posts Before Payment</mat-label>
+            <input matInput type="number" [(ngModel)]="globalFreePostLimit" min="-1" placeholder="1">
+            <mat-hint>0 = all posts require payment, 1 = first post free then pay, 2 = two free posts, -1 = unlimited (all free)</mat-hint>
+          </mat-form-field>
+        </div>
+        <div class="paid-post-actions">
+          <button mat-raised-button color="primary" (click)="saveGlobalFreePostLimit()" [disabled]="globalFreePostLimitSaving">
+            <mat-icon>save</mat-icon>
+            {{ globalFreePostLimitSaving ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <!-- ===== SECTION 1: Global Limits ===== -->
   <div class="section-header">
-    <h3><mat-icon>public</mat-icon> Global Limits</h3>
-    <p class="section-subtitle">Default post limits applied to all users. Set 0 for unlimited.</p>
+    <h3><mat-icon>public</mat-icon> Per-Module Limits</h3>
+    <p class="section-subtitle">Default post limits per module applied to all users. Set 0 for unlimited.</p>
   </div>
 
   <div *ngIf="globalLoading" class="loading-container">

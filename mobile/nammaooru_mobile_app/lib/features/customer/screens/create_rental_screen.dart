@@ -11,6 +11,7 @@ import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../services/rental_service.dart';
 import '../widgets/voice_input_button.dart';
+import '../widgets/post_payment_handler.dart';
 import '../../../core/utils/image_compressor.dart';
 
 class CreateRentalScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
   String _selectedPriceUnit = 'per_month';
   final List<File> _selectedImages = [];
   bool _isSubmitting = false;
+  int? _paidTokenId;
   double? _latitude;
   double? _longitude;
 
@@ -211,8 +213,10 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
     );
   }
 
-  Future<void> _submitPost() async {
+  Future<void> _submitPost({int? paidTokenId}) async {
     if (!_formKey.currentState!.validate()) return;
+
+    final tokenToUse = paidTokenId ?? _paidTokenId;
 
     setState(() {
       _isSubmitting = true;
@@ -232,11 +236,16 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
         imagePaths: _selectedImages.map((f) => f.path).toList(),
         latitude: _latitude,
         longitude: _longitude,
+        paidTokenId: tokenToUse,
       );
 
       if (mounted) {
         if (result['success'] == true) {
+          _paidTokenId = null;
           _showSuccessDialog();
+        } else if (PostPaymentHandler.isLimitReached(result)) {
+          setState(() { _isSubmitting = false; });
+          _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -262,6 +271,20 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
         });
       }
     }
+  }
+
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'RENTAL',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId;
+        _submitPost(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment();
   }
 
   void _showSuccessDialog() {

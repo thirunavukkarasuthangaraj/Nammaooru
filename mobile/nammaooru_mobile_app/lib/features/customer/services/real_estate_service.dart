@@ -124,9 +124,10 @@ class RealEstateService {
     required String phone,
     List<String>? imagePaths,
     String? videoPath,
+    int? paidTokenId,
   }) async {
     try {
-      Logger.api('Creating real estate post: $title, type: $propertyType');
+      Logger.api('Creating real estate post: $title, type: $propertyType, paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'title': title,
@@ -134,6 +135,10 @@ class RealEstateService {
         'listingType': listingType.toUpperCase().replaceAll(' ', '_'),
         'phone': phone,
       };
+
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
 
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;

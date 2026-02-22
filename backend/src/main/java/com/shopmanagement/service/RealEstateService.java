@@ -38,6 +38,7 @@ public class RealEstateService {
     private final SettingService settingService;
     private final UserPostLimitService userPostLimitService;
     private final GlobalPostLimitService globalPostLimitService;
+    private final PostPaymentService postPaymentService;
 
     @Transactional
     public RealEstatePost createPost(String title, String description, PropertyType propertyType,
@@ -45,12 +46,12 @@ public class RealEstateService {
                                       Integer bedrooms, Integer bathrooms, String location,
                                       Double latitude, Double longitude, String phone,
                                       List<MultipartFile> images, MultipartFile video,
-                                      String username) throws IOException {
+                                      String username, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Check global post limit (1 free post across all modules)
-        globalPostLimitService.checkGlobalPostLimit(user.getId(), null);
+        // Check global post limit (configurable free posts across all modules)
+        globalPostLimitService.checkGlobalPostLimit(user.getId(), paidTokenId);
 
         // Check post limit (user-specific override > global FeatureConfig limit)
         int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "REAL_ESTATE");
@@ -58,7 +59,12 @@ public class RealEstateService {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = realEstatePostRepository.countByOwnerUserIdAndStatusIn(user.getId(), activeStatuses);
             if (activeCount >= postLimit) {
-                throw new RuntimeException("LIMIT_REACHED");
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
             }
         }
 
@@ -103,6 +109,7 @@ public class RealEstateService {
                 .ownerName(user.getFullName())
                 .ownerPhone(phone)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .isPaid(paidTokenId != null)
                 .build();
 
         // Set validity dates
@@ -113,18 +120,26 @@ public class RealEstateService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
-        // Balance day inheritance: inherit remaining validity from most recently deleted post
-        realEstatePostRepository.findTopByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
-                user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
-            if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
-                post.setValidTo(deleted.getValidTo());
-                log.info("Real estate post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
-            }
-        });
+        // Balance day inheritance: free posts inherit remaining validity from most recently deleted post
+        if (paidTokenId == null) {
+            realEstatePostRepository.findTopByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
+                    user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+                if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                    post.setValidTo(deleted.getValidTo());
+                    log.info("Real estate post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+                }
+            });
+        }
 
         RealEstatePost saved = realEstatePostRepository.save(post);
-        log.info("Real estate post created: id={}, title={}, type={}, owner={}, autoApproved={}, validTo={}",
-                saved.getId(), title, propertyType, username, autoApprove, saved.getValidTo());
+
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Real estate post created: id={}, title={}, type={}, owner={}, autoApproved={}, paid={}, validTo={}",
+                saved.getId(), title, propertyType, username, autoApprove, paidTokenId != null, saved.getValidTo());
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your property listing '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");

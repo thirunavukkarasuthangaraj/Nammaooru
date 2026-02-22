@@ -11,6 +11,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../services/real_estate_service.dart';
 import '../widgets/voice_input_button.dart';
+import '../widgets/post_payment_handler.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import '../../../core/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1813,6 +1814,7 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
   final List<XFile> _images = [];
   XFile? _video;
   bool _isSubmitting = false;
+  int? _paidTokenId;
 
   final ImagePicker _picker = ImagePicker();
   final RealEstateService _realEstateService = RealEstateService();
@@ -2177,71 +2179,78 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
     );
   }
 
-  Future<void> _submitForm() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isSubmitting = true);
+  Future<void> _submitForm({int? paidTokenId}) async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-      try {
-        // Parse area to integer (remove non-numeric characters)
-        final areaStr = _areaController.text.replaceAll(RegExp(r'[^0-9]'), '');
-        final areaSqft = int.tryParse(areaStr);
+    final tokenToUse = paidTokenId ?? _paidTokenId;
 
-        final result = await _realEstateService.createPost(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          propertyType: _propertyType,
-          listingType: _listingType,
-          price: double.tryParse(_priceController.text.replaceAll(',', '')),
-          areaSqft: areaSqft,
-          bedrooms: int.tryParse(_bedroomsController.text),
-          bathrooms: int.tryParse(_bathroomsController.text),
-          location: _locationController.text.trim(),
-          phone: _phoneController.text.trim(),
-          imagePaths: _images.map((img) => img.path).toList(),
-          videoPath: _video?.path,
-        );
+    setState(() => _isSubmitting = true);
 
-        setState(() => _isSubmitting = false);
+    try {
+      // Parse area to integer (remove non-numeric characters)
+      final areaStr = _areaController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      final areaSqft = int.tryParse(areaStr);
 
-        if (result['success'] == true) {
-          if (mounted) {
-            _showPropertySuccessDialog();
-          }
-        } else if (_isLimitReached(result)) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Post limit reached! You cannot create more property listings.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['message'] ?? 'Failed to post property'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
+      final result = await _realEstateService.createPost(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        propertyType: _propertyType,
+        listingType: _listingType,
+        price: double.tryParse(_priceController.text.replaceAll(',', '')),
+        areaSqft: areaSqft,
+        bedrooms: int.tryParse(_bedroomsController.text),
+        bathrooms: int.tryParse(_bathroomsController.text),
+        location: _locationController.text.trim(),
+        phone: _phoneController.text.trim(),
+        imagePaths: _images.map((img) => img.path).toList(),
+        videoPath: _video?.path,
+        paidTokenId: tokenToUse,
+      );
+
+      setState(() => _isSubmitting = false);
+
+      if (result['success'] == true) {
+        _paidTokenId = null;
+        if (mounted) {
+          _showPropertySuccessDialog();
         }
-      } catch (e) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } else if (PostPaymentHandler.isLimitReached(result)) {
+        if (mounted) {
+          _handleLimitReached();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to post property'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  bool _isLimitReached(Map<String, dynamic> result) {
-    final message = result['message']?.toString() ?? '';
-    final statusCode = result['statusCode']?.toString() ?? '';
-    return message.contains('LIMIT_REACHED') || statusCode == 'LIMIT_REACHED';
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'REAL_ESTATE',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId;
+        _submitForm(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment();
   }
 
   void _showPropertySuccessDialog() {

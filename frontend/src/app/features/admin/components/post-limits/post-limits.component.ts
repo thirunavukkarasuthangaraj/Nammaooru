@@ -11,6 +11,11 @@ import { SettingsService } from '../../../../core/services/settings.service';
   styleUrls: ['./post-limits.component.scss']
 })
 export class PostLimitsComponent implements OnInit {
+  // Global free post limit
+  globalFreePostLimit: number = 1;
+  globalFreePostLimitLoading = true;
+  globalFreePostLimitSaving = false;
+
   // Global limits
   globalLimits: FeatureConfig[] = [];
   globalLoading = true;
@@ -68,6 +73,7 @@ export class PostLimitsComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
+    this.loadGlobalFreePostLimit();
     this.loadGlobalLimits();
     this.loadLimits();
     this.loadPaidPostConfig();
@@ -78,6 +84,44 @@ export class PostLimitsComponent implements OnInit {
       userIdentifier: ['', [Validators.required]],
       featureName: ['', Validators.required],
       maxPosts: [5, [Validators.required, Validators.min(0)]]
+    });
+  }
+
+  // ===== Global Free Post Limit =====
+
+  loadGlobalFreePostLimit(): void {
+    this.globalFreePostLimitLoading = true;
+    this.settingsService.getAllSettings().subscribe({
+      next: (settings) => {
+        for (const s of settings) {
+          if (s.key === 'global.free_post_limit') {
+            this.globalFreePostLimit = parseInt(s.value, 10);
+            if (isNaN(this.globalFreePostLimit)) this.globalFreePostLimit = 1;
+          }
+        }
+        this.globalFreePostLimitLoading = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to load global free post limit', 'Close', { duration: 3000 });
+        this.globalFreePostLimitLoading = false;
+      }
+    });
+  }
+
+  saveGlobalFreePostLimit(): void {
+    this.globalFreePostLimitSaving = true;
+    const settings: { [key: string]: string } = {
+      'global.free_post_limit': String(this.globalFreePostLimit)
+    };
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.snackBar.open('Global free post limit saved successfully', 'Close', { duration: 3000 });
+        this.globalFreePostLimitSaving = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to save global free post limit', 'Close', { duration: 3000 });
+        this.globalFreePostLimitSaving = false;
+      }
     });
   }
 

@@ -40,18 +40,35 @@ public class RentalPostService {
     private final EmailService emailService;
     private final SettingService settingService;
     private final GlobalPostLimitService globalPostLimitService;
+    private final UserPostLimitService userPostLimitService;
+    private final PostPaymentService postPaymentService;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public RentalPost createPost(String title, String description, BigDecimal price, String priceUnit,
                                   String phone, String category, String location,
                                   List<MultipartFile> images, String username,
-                                  BigDecimal latitude, BigDecimal longitude) throws IOException {
+                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Check global post limit (1 free post across all modules)
-        globalPostLimitService.checkGlobalPostLimit(user.getId(), null);
+        // Check global post limit (configurable free posts across all modules)
+        globalPostLimitService.checkGlobalPostLimit(user.getId(), paidTokenId);
+
+        // Check per-module post limit (user-specific override > global FeatureConfig limit)
+        int postLimit = userPostLimitService.getEffectiveLimit(user.getId(), "RENTAL");
+        if (postLimit > 0) {
+            List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+            long activeCount = rentalPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+            if (activeCount >= postLimit) {
+                if (paidTokenId == null) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
+                if (!postPaymentService.hasValidToken(paidTokenId, user.getId())) {
+                    throw new RuntimeException("Invalid or expired payment token");
+                }
+            }
+        }
 
         // Upload images
         List<String> imageUrlList = new ArrayList<>();
@@ -90,6 +107,7 @@ public class RentalPostService {
                 .latitude(latitude)
                 .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .isPaid(paidTokenId != null)
                 .build();
 
         int durationDays = Integer.parseInt(
@@ -99,19 +117,26 @@ public class RentalPostService {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
         }
 
-        // Balance day inheritance: inherit remaining validity from most recently deleted post
-        rentalPostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
-                user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
-            if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
-                post.setValidTo(deleted.getValidTo());
-                log.info("Rental post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
-            }
-        });
+        // Balance day inheritance: free posts inherit remaining validity from most recently deleted post
+        if (paidTokenId == null) {
+            rentalPostRepository.findTopBySellerUserIdAndStatusOrderByUpdatedAtDesc(
+                    user.getId(), PostStatus.DELETED).ifPresent(deleted -> {
+                if (deleted.getValidTo() != null && deleted.getValidTo().isAfter(LocalDateTime.now())) {
+                    post.setValidTo(deleted.getValidTo());
+                    log.info("Rental post inheriting balance days from deleted post id={}, validTo={}", deleted.getId(), deleted.getValidTo());
+                }
+            });
+        }
 
         RentalPost saved = rentalPostRepository.save(post);
 
-        log.info("Rental post created: id={}, title={}, category={}, seller={}, autoApproved={}",
-                saved.getId(), title, category, username, autoApprove);
+        // Consume paid token if used
+        if (paidTokenId != null) {
+            postPaymentService.consumeToken(paidTokenId, user.getId(), saved.getId());
+        }
+
+        log.info("Rental post created: id={}, title={}, category={}, seller={}, autoApproved={}, paid={}",
+                saved.getId(), title, category, username, autoApprove, paidTokenId != null);
 
         if (autoApprove) {
             notifySellerPostStatus(saved, "Your rental post '" + saved.getTitle() + "' has been auto-approved and is now visible to others.");

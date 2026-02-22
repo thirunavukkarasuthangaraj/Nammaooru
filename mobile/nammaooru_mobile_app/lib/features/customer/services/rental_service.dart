@@ -80,14 +80,19 @@ class RentalService {
     List<String>? imagePaths,
     double? latitude,
     double? longitude,
+    int? paidTokenId,
   }) async {
     try {
-      Logger.api('Creating rental post: $title');
+      Logger.api('Creating rental post: $title, paidTokenId: $paidTokenId');
 
       final formMap = <String, dynamic>{
         'title': title,
         'phone': phone,
       };
+
+      if (paidTokenId != null) {
+        formMap['paidTokenId'] = paidTokenId.toString();
+      }
 
       if (description != null && description.isNotEmpty) {
         formMap['description'] = description;
