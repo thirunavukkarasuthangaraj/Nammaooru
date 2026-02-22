@@ -91,6 +91,15 @@ public class SettingService {
                 .map(Setting::getSettingValue)
                 .orElse(defaultValue);
     }
+
+    public String getPublicSettingValue(String key) {
+        Setting setting = settingRepository.findBySettingKey(key)
+                .orElseThrow(() -> new RuntimeException("Setting not found with key: " + key));
+        if (!setting.getIsActive() || setting.getScope() != Setting.SettingScope.GLOBAL) {
+            throw new RuntimeException("Setting not available: " + key);
+        }
+        return setting.getSettingValue();
+    }
     
     @Transactional
     public SettingResponse updateSetting(Long id, SettingRequest request) {

@@ -9,6 +9,8 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/language_selector.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/services/post_login_service.dart';
+import '../../../shared/widgets/privacy_policy_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -62,6 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
           final isNowLoggedIn = authProvider.isAuthenticated;
 
           if (isNowLoggedIn) {
+            // Show privacy policy on first login
+            final prefs = await SharedPreferences.getInstance();
+            final hasSeenPolicy = prefs.getBool('privacy_policy_seen') ?? false;
+            if (!hasSeenPolicy && mounted) {
+              await PrivacyPolicyDialog.show(context);
+              await prefs.setBool('privacy_policy_seen', true);
+            }
+
             // Check if we can go back (user came from another page)
             if (Navigator.of(context).canPop()) {
               // Return to previous page with success result

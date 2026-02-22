@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/travel_service.dart';
+import '../services/bus_timing_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import 'create_travel_screen.dart';
 import 'travel_post_detail_screen.dart';
@@ -45,6 +47,18 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   bool _myPostsLoaded = false;
   Set<int> _selectedForRenewal = {};
   bool _isRenewing = false;
+
+  // Bus Timing tab
+  final BusTimingService _busTimingService = BusTimingService();
+  final TextEditingController _busSearchController = TextEditingController();
+  List<dynamic> _busTimings = [];
+  List<_BusRouteGroup> _busRouteGroups = [];
+  bool _isBusLoading = true;
+  String? _busErrorMessage;
+  String _selectedBusLocation = '';
+  List<String> _busLocationOptions = [];
+  String? _busExpandedKey;
+  bool _busTimingsLoaded = false;
 
   static const Color _travelTeal = Color(0xFF00897B);
 
@@ -80,10 +94,13 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && !_myPostsLoaded) {
         _loadMyPosts();
+      }
+      if (_tabController.index == 2 && !_busTimingsLoaded) {
+        _loadBusTimings();
       }
     });
     _scrollController.addListener(_onScroll);
@@ -94,6 +111,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   void dispose() {
     _tabController.dispose();
     _scrollController.dispose();
+    _busSearchController.dispose();
     super.dispose();
   }
 
@@ -389,6 +407,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
           tabs: [
             Tab(text: langProvider.getText('Browse', '\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95')),
             Tab(text: '${langProvider.getText('My Posts', '\u0B8E\u0BA9\u0BCD \u0BAA\u0BA4\u0BBF\u0BB5\u0BC1\u0B95\u0BB3\u0BCD')}${_myPosts.isNotEmpty ? ' (${_myPosts.length})' : ''}'),
+            Tab(text: langProvider.getText('Bus Timing', '\u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1 \u0BA8\u0BC7\u0BB0\u0BAE\u0BCD')),
           ],
         ),
       ),
@@ -397,6 +416,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
         children: [
           _buildBrowseTab(),
           _buildMyPostsTab(),
+          _buildBusTimingTab(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -1302,4 +1322,460 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
       },
     );
   }
+
+  // --- Tab 3: Bus Timing ---
+
+  Future<void> _loadBusTimings() async {
+    setState(() {
+      _isBusLoading = true;
+      _busErrorMessage = null;
+    });
+
+    try {
+      final response = await _busTimingService.getActiveBusTimings();
+
+      if (response['success'] == true) {
+        final data = response['data'] as List<dynamic>? ?? [];
+        final locations = <String>{};
+        for (final t in data) {
+          if (t['locationArea'] != null && t['locationArea'].toString().isNotEmpty) {
+            locations.add(t['locationArea'].toString());
+          }
+        }
+
+        setState(() {
+          _busTimings = data;
+          _busLocationOptions = locations.toList()..sort();
+          _isBusLoading = false;
+          _busTimingsLoaded = true;
+        });
+        _applyBusFilters();
+      } else {
+        setState(() {
+          _busErrorMessage = response['message'] ?? 'Failed to load bus timings';
+          _isBusLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _busErrorMessage = 'Could not connect to server';
+        _isBusLoading = false;
+      });
+    }
+  }
+
+  int _parseBusTimeForSort(String time) {
+    if (time.isEmpty) return 0;
+    try {
+      final t = time.toUpperCase().trim();
+      final isPM = t.contains('PM');
+      final cleaned = t.replaceAll(RegExp(r'[APM\s]'), '');
+      final parts = cleaned.split(':');
+      var hour = int.parse(parts[0]);
+      final min = parts.length > 1 ? int.parse(parts[1]) : 0;
+      if (isPM && hour != 12) hour += 12;
+      if (!isPM && hour == 12) hour = 0;
+      return hour * 60 + min;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  void _applyBusFilters() {
+    final search = _busSearchController.text.toLowerCase().trim();
+
+    final filtered = _busTimings.where((t) {
+      if (_selectedBusLocation.isNotEmpty && t['locationArea'] != _selectedBusLocation) {
+        return false;
+      }
+      if (search.isNotEmpty) {
+        final busNumber = (t['busNumber'] ?? '').toString().toLowerCase();
+        final busName = (t['busName'] ?? '').toString().toLowerCase();
+        final routeFrom = (t['routeFrom'] ?? '').toString().toLowerCase();
+        final routeTo = (t['routeTo'] ?? '').toString().toLowerCase();
+        final viaStops = (t['viaStops'] ?? '').toString().toLowerCase();
+        return busNumber.contains(search) ||
+            busName.contains(search) ||
+            routeFrom.contains(search) ||
+            routeTo.contains(search) ||
+            viaStops.contains(search);
+      }
+      return true;
+    }).toList();
+
+    final Map<String, List<dynamic>> groupMap = {};
+    for (final t in filtered) {
+      final from = (t['routeFrom'] ?? '').toString().trim();
+      final to = (t['routeTo'] ?? '').toString().trim();
+      final key = '$from \u2192 $to';
+      groupMap.putIfAbsent(key, () => []);
+      groupMap[key]!.add(t);
+    }
+
+    final groups = <_BusRouteGroup>[];
+    for (final entry in groupMap.entries) {
+      entry.value.sort((a, b) {
+        final timeA = _parseBusTimeForSort(a['departureTime'] ?? '');
+        final timeB = _parseBusTimeForSort(b['departureTime'] ?? '');
+        return timeA.compareTo(timeB);
+      });
+      groups.add(_BusRouteGroup(route: entry.key, timings: entry.value));
+    }
+    groups.sort((a, b) => a.route.compareTo(b.route));
+
+    setState(() {
+      _busRouteGroups = groups;
+      _busExpandedKey = null;
+    });
+  }
+
+  Widget _buildBusTimingTab() {
+    return Column(
+      children: [
+        // Search bar
+        Container(
+          color: _travelTeal,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: TextField(
+            controller: _busSearchController,
+            onChanged: (_) => _applyBusFilters(),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search bus number, route...',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+              prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.7)),
+              suffixIcon: _busSearchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.7)),
+                      onPressed: () {
+                        _busSearchController.clear();
+                        _applyBusFilters();
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.15),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ),
+        // Location filter chips
+        if (_busLocationOptions.isNotEmpty)
+          Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                _buildBusFilterChip('All', ''),
+                ..._busLocationOptions.map((loc) => _buildBusFilterChip(loc, loc)),
+              ],
+            ),
+          ),
+        // Content
+        Expanded(child: _buildBusBody()),
+      ],
+    );
+  }
+
+  Widget _buildBusFilterChip(String label, String value) {
+    final isSelected = _selectedBusLocation == value;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: FilterChip(
+        label: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+        selected: isSelected,
+        selectedColor: _travelTeal,
+        backgroundColor: Colors.white,
+        checkmarkColor: Colors.white,
+        side: BorderSide(color: isSelected ? _travelTeal : Colors.grey[300]!),
+        onSelected: (_) {
+          setState(() => _selectedBusLocation = value);
+          _applyBusFilters();
+        },
+      ),
+    );
+  }
+
+  Widget _buildBusBody() {
+    if (_isBusLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_busErrorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(_busErrorMessage!, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadBusTimings,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(backgroundColor: _travelTeal, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_busRouteGroups.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.directions_bus_rounded, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              _busSearchController.text.isNotEmpty || _selectedBusLocation.isNotEmpty
+                  ? 'No bus timings match your search'
+                  : 'No bus timings available',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadBusTimings,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: _busRouteGroups.length,
+        itemBuilder: (context, groupIndex) {
+          return _buildBusRouteGroupCard(_busRouteGroups[groupIndex], groupIndex);
+        },
+      ),
+    );
+  }
+
+  Widget _buildBusRouteGroupCard(_BusRouteGroup group, int groupIndex) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [Colors.blue[700]!, Colors.blue[500]!]),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.directions_bus, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(group.route, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                  child: Text('${group.timings.length} bus${group.timings.length > 1 ? 'es' : ''}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                ),
+              ],
+            ),
+          ),
+          ...List.generate(group.timings.length, (timingIndex) {
+            final timing = group.timings[timingIndex];
+            final key = '$groupIndex-$timingIndex';
+            final isExpanded = _busExpandedKey == key;
+            final isLast = timingIndex == group.timings.length - 1;
+            return _buildBusTimingRow(timing, key, isExpanded, isLast);
+          }),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, String>> _parseBusStops(String? viaStops) {
+    if (viaStops == null || viaStops.isEmpty) return [];
+    try {
+      final parsed = jsonDecode(viaStops);
+      if (parsed is List) {
+        return parsed.map<Map<String, String>>((s) => {
+          'name': (s['name'] ?? '').toString(),
+          'time': (s['time'] ?? '').toString(),
+        }).where((s) => s['name']!.isNotEmpty).toList();
+      }
+    } catch (_) {
+      if (viaStops.contains(',') || viaStops.trim().isNotEmpty) {
+        return viaStops.split(',').map((s) => {'name': s.trim(), 'time': ''}).where((s) => s['name']!.isNotEmpty).toList();
+      }
+    }
+    return [];
+  }
+
+  Widget _buildBusTimingRow(dynamic timing, String key, bool isExpanded, bool isLast) {
+    final busType = timing['busType'] ?? 'GOVERNMENT';
+    final isGovt = busType == 'GOVERNMENT';
+    final fare = timing['fare'];
+    final depTime = timing['departureTime'] ?? '';
+    final arrTime = timing['arrivalTime'] ?? '';
+    final stops = _parseBusStops(timing['viaStops']?.toString());
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _busExpandedKey = isExpanded ? null : key),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 58,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(depTime, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green[800])),
+                      Text(arrTime, style: TextStyle(fontSize: 11, color: Colors.red[600])),
+                    ],
+                  ),
+                ),
+                Container(width: 1, height: 32, margin: const EdgeInsets.symmetric(horizontal: 10), color: Colors.grey[200]),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isGovt ? Colors.blue[50] : Colors.orange[50],
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: isGovt ? Colors.blue[200]! : Colors.orange[200]!),
+                        ),
+                        child: Text(timing['busNumber'] ?? '', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isGovt ? Colors.blue[800] : Colors.orange[800])),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: isGovt ? Colors.blue[700] : Colors.orange[700], borderRadius: BorderRadius.circular(3)),
+                        child: Text(isGovt ? 'Govt' : 'Pvt', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
+                      ),
+                      if (stops.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text('${stops.length} stops', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      ],
+                    ],
+                  ),
+                ),
+                if (fare != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Text('\u20B9${fare is double ? fare.toStringAsFixed(0) : fare}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green[700])),
+                  ),
+                Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 20, color: Colors.grey[400]),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded)
+          Container(
+            color: Colors.grey[50],
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (timing['busName'] != null && timing['busName'].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(timing['busName'], style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                  ),
+                _buildBusRouteTimeline(timing, stops),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 13, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(_getBusOperatingDaysLabel(timing['operatingDays'] ?? 'DAILY'), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    const SizedBox(width: 16),
+                    Icon(Icons.location_on, size: 13, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(timing['locationArea'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        if (!isLast && !isExpanded) Divider(height: 1, color: Colors.grey[200]),
+      ],
+    );
+  }
+
+  Widget _buildBusRouteTimeline(dynamic timing, List<Map<String, String>> stops) {
+    return Column(
+      children: [
+        _buildBusTimelineRow(color: Colors.green[600]!, dotSize: 10, name: timing['routeFrom'] ?? '', time: timing['departureTime'] ?? '', timeBg: const Color(0xFFE8F5E9), timeColor: const Color(0xFF2E7D32), isFirst: true, isLast: stops.isEmpty, isBold: true),
+        for (int i = 0; i < stops.length; i++)
+          _buildBusTimelineRow(color: Colors.orange[600]!, dotSize: 7, name: stops[i]['name'] ?? '', time: stops[i]['time'] ?? '', timeBg: const Color(0xFFFFF3E0), timeColor: const Color(0xFFE65100), isFirst: false, isLast: false, isBold: false),
+        _buildBusTimelineRow(color: Colors.red[600]!, dotSize: 10, name: timing['routeTo'] ?? '', time: timing['arrivalTime'] ?? '', timeBg: const Color(0xFFFFEBEE), timeColor: const Color(0xFFC62828), isFirst: false, isLast: true, isBold: true),
+      ],
+    );
+  }
+
+  Widget _buildBusTimelineRow({required Color color, required double dotSize, required String name, required String time, required Color timeBg, required Color timeColor, required bool isFirst, required bool isLast, required bool isBold}) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 24,
+            child: Column(
+              children: [
+                if (!isFirst) Expanded(child: Container(width: 2, color: Colors.grey[300])) else const Expanded(child: SizedBox()),
+                Container(width: dotSize, height: dotSize, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                if (!isLast) Expanded(child: Container(width: 2, color: Colors.grey[300])) else const Expanded(child: SizedBox()),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: isBold ? 6 : 4),
+              child: Text(name, style: TextStyle(fontWeight: isBold ? FontWeight.w600 : FontWeight.normal, fontSize: isBold ? 14 : 13, color: isBold ? Colors.black87 : Colors.grey[700])),
+            ),
+          ),
+          if (time.isNotEmpty)
+            Container(
+              margin: EdgeInsets.symmetric(vertical: isBold ? 4 : 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: timeBg, borderRadius: BorderRadius.circular(6)),
+              child: Text(time, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isBold ? 12 : 11, color: timeColor)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _getBusOperatingDaysLabel(String days) {
+    switch (days) {
+      case 'DAILY': return 'Daily';
+      case 'WEEKDAYS': return 'Mon-Fri';
+      case 'WEEKENDS': return 'Sat-Sun';
+      default: return days;
+    }
+  }
+}
+
+class _BusRouteGroup {
+  final String route;
+  final List<dynamic> timings;
+  _BusRouteGroup({required this.route, required this.timings});
 }

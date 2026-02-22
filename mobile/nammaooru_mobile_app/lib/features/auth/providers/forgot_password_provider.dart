@@ -83,10 +83,11 @@ class ForgotPasswordProvider extends ChangeNotifier {
   Future<bool> verifyOtp(String otp) async {
     _setLoading(true);
     _setError(null);
+    _lastOtp = otp;
 
     try {
       final response = await _apiService.verifyPasswordResetOtp(_email, otp);
-      
+
       if (response['statusCode'] == '0000') {
         _nextStep();
         return true;
@@ -101,6 +102,43 @@ class ForgotPasswordProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
+  String _lastOtp = '';
+  String get lastOtp => _lastOtp;
+
+  /// Verify OTP, set dummy password, return true if all succeeded
+  Future<bool> verifyAndResetWithDummyPassword(String otp) async {
+    _setLoading(true);
+    _setError(null);
+    _lastOtp = otp;
+
+    try {
+      // Step 1: Verify OTP
+      final verifyResponse = await _apiService.verifyPasswordResetOtp(_email, otp);
+      if (verifyResponse['statusCode'] != '0000') {
+        _setError(verifyResponse['message'] ?? 'Invalid or expired OTP');
+        return false;
+      }
+
+      // Step 2: Set dummy password (mobile number as password)
+      final dummyPassword = _email; // use mobile number as password
+      final resetResponse = await _apiService.resetPasswordWithOtp(_email, otp, dummyPassword);
+      if (resetResponse['statusCode'] != '0000') {
+        _setError(resetResponse['message'] ?? 'Failed to reset password');
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      _setError('Network error. Please check your connection and try again.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// The dummy password used (mobile number)
+  String get dummyPassword => _email;
 
   Future<bool> resetPassword(String otp, String newPassword) async {
     _setLoading(true);

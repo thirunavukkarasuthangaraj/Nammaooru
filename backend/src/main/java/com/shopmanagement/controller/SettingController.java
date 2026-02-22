@@ -217,6 +217,13 @@ public class SettingController {
         return ResponseEntity.ok(settings);
     }
     
+    @GetMapping("/public/{key}")
+    public ResponseEntity<String> getPublicSettingValue(@PathVariable String key) {
+        log.info("Fetching public setting value for key: {}", key);
+        String value = settingService.getPublicSettingValue(key);
+        return ResponseEntity.ok(value);
+    }
+
     @GetMapping("/enums")
     public ResponseEntity<Map<String, Object>> getSettingEnums() {
         return ResponseEntity.ok(Map.of(

@@ -2041,7 +2041,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     } else if (route.contains('rentals')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()));
     } else if (route.contains('bus-timing')) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen()));
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
     } else if (route.contains('village') || route.contains('panchayat')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()));
     }
@@ -2213,13 +2213,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               subtitle: languageProvider.getText('Shops, Houses & more', 'கடை, வீடு & மேலும்'),
               color: const Color(0xFFFF6F00),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen())),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.directions_bus_rounded,
-              title: languageProvider.getText('Bus Timing', 'பேருந்து நேரம்'),
-              subtitle: languageProvider.getText('Schedules & routes', 'அட்டவணை'),
-              color: const Color(0xFF9C27B0),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BusTimingScreen())),
             ),
             _buildModernCategoryTile(
               icon: Icons.account_balance_rounded,

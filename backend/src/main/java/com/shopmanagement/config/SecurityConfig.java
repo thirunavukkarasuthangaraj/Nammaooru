@@ -105,6 +105,7 @@ public class SecurityConfig {
                                 "/api/post-payments/config",  // Public: Get payment config for mobile
                                 "/api/villages",  // Public: View active villages for mobile
                                 "/api/feature-config/visible",  // Public: Get visible features for mobile
+                                "/api/settings/public/**",  // Public: Get public settings (privacy policy, etc.)
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
                                 "/uploads/**",
                                 "/shops/**",

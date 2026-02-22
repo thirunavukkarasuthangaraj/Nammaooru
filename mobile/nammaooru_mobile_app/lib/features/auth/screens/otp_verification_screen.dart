@@ -14,10 +14,12 @@ import '../../../shared/widgets/custom_app_bar.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
+  final String? phoneNumber;
 
   const OtpVerificationScreen({
     super.key,
     required this.email,
+    this.phoneNumber,
   });
 
   @override
@@ -269,7 +271,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'We sent a 6-digit code to ${widget.email}',
+          widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty
+              ? 'We sent a 6-digit code to +91 ${widget.phoneNumber}'
+              : 'We sent a 6-digit code to ${widget.email}',
           style: const TextStyle(
             fontSize: 14,
             color: Colors.black54,

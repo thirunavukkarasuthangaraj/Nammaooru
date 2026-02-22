@@ -15,6 +15,7 @@ import '../../../shared/widgets/language_selector.dart';
 import '../../../core/api/api_client.dart';
 import '../../../shared/services/location_service.dart';
 import 'payment_history_screen.dart';
+import '../../../shared/widgets/privacy_policy_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -692,6 +693,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Navigator.push(context, MaterialPageRoute(
             builder: (context) => const PaymentHistoryScreen(),
           ));
+        }),
+        _buildActionRow(_t('Privacy Policy', 'தனியுரிமை கொள்கை'), Icons.privacy_tip_outlined, () {
+          PrivacyPolicyDialog.show(context);
         }),
       ],
     );
