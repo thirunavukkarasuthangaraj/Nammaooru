@@ -174,6 +174,17 @@ public class NotificationService {
         log.info("Notification sent to {} users", recipientIds.size());
     }
 
+    /**
+     * Convert relative image URL to full public URL for FCM
+     */
+    private String resolveImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) return null;
+        // Already a full URL
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) return imageUrl;
+        // Relative path - prepend the API base URL
+        return "https://api.nammaoorudelivary.in" + imageUrl;
+    }
+
     public void sendBroadcastPushNotifications(NotificationRequest request, List<Long> recipientIds) {
         try {
             log.info("📱 Sending FCM push notifications for broadcast to {} recipients", recipientIds.size());
@@ -203,13 +214,15 @@ public class NotificationService {
             int successCount = 0;
             int failCount = 0;
 
+            String fullImageUrl = resolveImageUrl(request.getImageUrl());
+
             for (UserFcmToken fcmToken : fcmTokens) {
                 try {
                     firebaseNotificationService.sendPromotionalNotification(
                             request.getTitle(),
                             request.getMessage(),
                             fcmToken.getFcmToken(),
-                            request.getImageUrl()
+                            fullImageUrl
                     );
                     successCount++;
                 } catch (Exception e) {
@@ -239,6 +252,7 @@ public class NotificationService {
     @Async
     public void sendPushToUser(Long userId, String title, String message, java.util.Map<String, String> data, String imageUrl) {
         try {
+            String fullImageUrl = resolveImageUrl(imageUrl);
             List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
             if (fcmTokens.isEmpty()) {
                 log.debug("No FCM tokens found for user {}", userId);
@@ -249,10 +263,10 @@ public class NotificationService {
                 try {
                     if (data != null && !data.isEmpty()) {
                         firebaseNotificationService.sendNotificationWithData(
-                                title, message, fcmToken.getFcmToken(), data, imageUrl);
+                                title, message, fcmToken.getFcmToken(), data, fullImageUrl);
                     } else {
                         firebaseNotificationService.sendPromotionalNotification(
-                                title, message, fcmToken.getFcmToken(), imageUrl);
+                                title, message, fcmToken.getFcmToken(), fullImageUrl);
                     }
                     log.info("Push notification sent to user {} on device {}", userId, fcmToken.getDeviceType());
                 } catch (Exception e) {
