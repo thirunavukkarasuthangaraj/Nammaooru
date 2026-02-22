@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io' show Platform;
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import '../app/routes.dart';
 
 class LocalNotificationService {
@@ -110,7 +112,22 @@ class LocalNotificationService {
     }
   }
 
-  /// Show a local notification
+  /// Download image from URL and return as bytes
+  Future<Uint8List?> _downloadImage(String imageUrl) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl)).timeout(
+        const Duration(seconds: 10),
+      );
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+    } catch (e) {
+      debugPrint('❌ Error downloading notification image: $e');
+    }
+    return null;
+  }
+
+  /// Show a local notification (with optional image support)
   Future<void> showNotification({
     required int id,
     required String title,
@@ -119,6 +136,7 @@ class LocalNotificationService {
     String? channelId,
     String? channelName,
     String? channelDescription,
+    String? imageUrl,
     Importance importance = Importance.high,
     Priority priority = Priority.high,
   }) async {
@@ -128,6 +146,21 @@ class LocalNotificationService {
     }
 
     try {
+      // Try to download image for BigPictureStyle
+      BigPictureStyleInformation? bigPictureStyle;
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        final imageBytes = await _downloadImage(imageUrl);
+        if (imageBytes != null) {
+          bigPictureStyle = BigPictureStyleInformation(
+            ByteArrayAndroidBitmap(imageBytes),
+            contentTitle: title,
+            summaryText: body,
+            hideExpandedLargeIcon: true,
+          );
+          debugPrint('🖼️ Image loaded for notification: $imageUrl');
+        }
+      }
+
       // Android notification details
       final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
         channelId ?? 'nammaooru_notifications',
@@ -139,6 +172,7 @@ class LocalNotificationService {
         enableVibration: true,
         playSound: true,
         icon: '@mipmap/ic_launcher',
+        styleInformation: bigPictureStyle,
       );
 
       // iOS notification details
@@ -211,6 +245,7 @@ class LocalNotificationService {
   Future<void> showPromotionNotification({
     required String title,
     required String message,
+    String? imageUrl,
   }) async {
     await showNotification(
       id: DateTime.now().millisecondsSinceEpoch,
@@ -220,6 +255,7 @@ class LocalNotificationService {
       channelId: 'promotion_notifications',
       channelName: 'Promotions',
       channelDescription: 'Promotional offers and discounts',
+      imageUrl: imageUrl,
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
     );
@@ -230,6 +266,7 @@ class LocalNotificationService {
     required String title,
     required String message,
     String? payload,
+    String? imageUrl,
   }) async {
     await showNotification(
       id: DateTime.now().millisecondsSinceEpoch,
@@ -239,6 +276,7 @@ class LocalNotificationService {
       channelId: 'general_notifications',
       channelName: 'General',
       channelDescription: 'General app notifications',
+      imageUrl: imageUrl,
     );
   }
 

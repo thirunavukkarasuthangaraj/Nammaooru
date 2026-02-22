@@ -148,6 +148,12 @@ class FirebaseNotificationService {
       final body = message.notification?.body ?? notification.body;
       final type = notification.type.toLowerCase();
 
+      // Get image URL from FCM notification or data payload
+      final imageUrl = message.notification?.android?.imageUrl
+          ?? message.notification?.apple?.imageUrl
+          ?? message.data['imageUrl']
+          ?? '';
+
       // Build payload for routing on tap
       final category = message.data['category'] ?? '';
       final referenceId = message.data['referenceId'] ?? '';
@@ -180,11 +186,13 @@ class FirebaseNotificationService {
               title: title,
               message: body,
               payload: 'post/$category/$referenceId',
+              imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
             );
           } else {
             await LocalNotificationService.instance.showPromotionNotification(
               title: title,
               message: body,
+              imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
             );
           }
           break;
@@ -199,6 +207,7 @@ class FirebaseNotificationService {
             title: title,
             message: body,
             payload: 'post/$category/$referenceId',
+            imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
           );
           break;
 
@@ -209,12 +218,14 @@ class FirebaseNotificationService {
               title: title,
               message: body,
               payload: 'post/$category/$referenceId',
+              imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
             );
           } else {
             await LocalNotificationService.instance.showGeneralNotification(
               title: title,
               message: body,
               payload: type,
+              imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
             );
           }
           break;
