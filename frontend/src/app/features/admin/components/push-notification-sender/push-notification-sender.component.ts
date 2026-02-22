@@ -11,11 +11,17 @@ import { PushNotificationService, PushNotificationRequest } from '../../../../co
 export class PushNotificationSenderComponent implements OnInit {
   notificationForm!: FormGroup;
   loading = false;
+  uploading = false;
   useLocationFilter = false;
   recipientTypes = ['ALL_CUSTOMERS', 'SPECIFIC_USER'];
   notificationTypes: string[] = [];
   priorities: string[] = [];
   radiusOptions = [5, 10, 25, 50, 100];
+
+  // Image upload
+  selectedFile: File | null = null;
+  imagePreview: string | null = null;
+  uploadedImageUrl: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -62,6 +68,72 @@ export class PushNotificationSenderComponent implements OnInit {
     }
   }
 
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.snackBar.open('Please select an image file', 'Close', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        this.snackBar.open('Image size must be less than 2MB', 'Close', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+        return;
+      }
+
+      this.selectedFile = file;
+
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.imagePreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+
+      // Upload immediately
+      this.uploadImage(file);
+    }
+  }
+
+  uploadImage(file: File): void {
+    this.uploading = true;
+    this.pushNotificationService.uploadNotificationImage(file).subscribe({
+      next: (response) => {
+        this.uploading = false;
+        this.uploadedImageUrl = response.url;
+        this.snackBar.open('Image uploaded successfully', 'Close', {
+          duration: 2000,
+          panelClass: ['success-snackbar']
+        });
+      },
+      error: (error) => {
+        this.uploading = false;
+        console.error('Image upload failed:', error);
+        this.snackBar.open('Failed to upload image', 'Close', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+        this.removeImage();
+      }
+    });
+  }
+
+  removeImage(): void {
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.uploadedImageUrl = null;
+  }
+
   private loadEnums(): void {
     this.pushNotificationService.getNotificationEnums().subscribe({
       next: (enums) => {
@@ -83,6 +155,14 @@ export class PushNotificationSenderComponent implements OnInit {
       return;
     }
 
+    if (this.uploading) {
+      this.snackBar.open('Please wait for image upload to complete', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
+      return;
+    }
+
     this.loading = true;
     const formValue = this.notificationForm.value;
     const request: PushNotificationRequest = {
@@ -94,6 +174,11 @@ export class PushNotificationSenderComponent implements OnInit {
       recipientId: formValue.recipientId,
       sendPush: true
     };
+
+    // Add image URL if uploaded
+    if (this.uploadedImageUrl) {
+      request.imageUrl = this.uploadedImageUrl;
+    }
 
     // Add location targeting if enabled
     if (this.useLocationFilter && formValue.latitude && formValue.longitude && formValue.radiusKm) {
@@ -118,6 +203,7 @@ export class PushNotificationSenderComponent implements OnInit {
           type: 'INFO',
           recipientType: 'ALL_CUSTOMERS'
         });
+        this.removeImage();
       },
       error: (error) => {
         this.loading = false;

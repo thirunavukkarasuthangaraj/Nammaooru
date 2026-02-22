@@ -63,12 +63,19 @@ public class FirebaseNotificationService {
     }
 
     public void sendPromotionalNotification(String title, String message, String customerToken) {
+        sendPromotionalNotification(title, message, customerToken, null);
+    }
+
+    public void sendPromotionalNotification(String title, String message, String customerToken, String imageUrl) {
         try {
             Map<String, String> data = new HashMap<>();
             data.put("type", "promotion");
             data.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                data.put("imageUrl", imageUrl);
+            }
 
-            sendPushNotification(customerToken, title, message, data);
+            sendPushNotification(customerToken, title, message, data, imageUrl);
 
         } catch (Exception e) {
             log.error("Error sending promotional notification", e);
@@ -76,6 +83,10 @@ public class FirebaseNotificationService {
     }
 
     public void sendNotificationWithData(String title, String message, String token, Map<String, String> data) {
+        sendNotificationWithData(title, message, token, data, null);
+    }
+
+    public void sendNotificationWithData(String title, String message, String token, Map<String, String> data, String imageUrl) {
         try {
             if (data == null) {
                 data = new HashMap<>();
@@ -83,7 +94,10 @@ public class FirebaseNotificationService {
             if (!data.containsKey("timestamp")) {
                 data.put("timestamp", String.valueOf(System.currentTimeMillis()));
             }
-            sendPushNotification(token, title, message, data);
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                data.put("imageUrl", imageUrl);
+            }
+            sendPushNotification(token, title, message, data, imageUrl);
         } catch (Exception e) {
             log.error("Error sending notification with data", e);
         }
@@ -154,17 +168,28 @@ public class FirebaseNotificationService {
     }
 
     private void sendPushNotification(String token, String title, String body, Map<String, String> data) throws FirebaseMessagingException {
+        sendPushNotification(token, title, body, data, null);
+    }
+
+    private void sendPushNotification(String token, String title, String body, Map<String, String> data, String imageUrl) throws FirebaseMessagingException {
         try {
             log.info("📡 Building Firebase message...");
 
             // Determine sound file based on notification type
             String soundFile = determineSoundFile(data.get("type"), data.get("status"));
 
-            // Create notification with sound
-            Notification notification = Notification.builder()
+            // Create notification with image support
+            Notification.Builder notificationBuilder = Notification.builder()
                     .setTitle(title)
-                    .setBody(body)
-                    .build();
+                    .setBody(body);
+
+            // Add image to notification if provided
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                notificationBuilder.setImage(imageUrl);
+                log.info("🖼️ Adding image to notification: {}", imageUrl);
+            }
+
+            Notification notification = notificationBuilder.build();
 
             // Add sound to data payload for Flutter to handle
             data.put("sound", soundFile);

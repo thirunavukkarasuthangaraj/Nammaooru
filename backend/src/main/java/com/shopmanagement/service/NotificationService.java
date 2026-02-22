@@ -63,7 +63,7 @@ public class NotificationService {
 
             // Send push notification if requested
             if (request.getSendPush() != null && request.getSendPush()) {
-                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage(), pushData);
+                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage(), pushData, request.getImageUrl());
             }
 
             return mapToResponse(savedNotification);
@@ -89,7 +89,7 @@ public class NotificationService {
             // Send push notifications if requested
             if (request.getSendPush() != null && request.getSendPush()) {
                 for (Long recipientId : request.getRecipientIds()) {
-                    sendPushToUser(recipientId, request.getTitle(), request.getMessage(), pushData);
+                    sendPushToUser(recipientId, request.getTitle(), request.getMessage(), pushData, request.getImageUrl());
                 }
             }
 
@@ -208,7 +208,8 @@ public class NotificationService {
                     firebaseNotificationService.sendPromotionalNotification(
                             request.getTitle(),
                             request.getMessage(),
-                            fcmToken.getFcmToken()
+                            fcmToken.getFcmToken(),
+                            request.getImageUrl()
                     );
                     successCount++;
                 } catch (Exception e) {
@@ -227,11 +228,16 @@ public class NotificationService {
 
     @Async
     public void sendPushToUser(Long userId, String title, String message) {
-        sendPushToUser(userId, title, message, null);
+        sendPushToUser(userId, title, message, null, null);
     }
 
     @Async
     public void sendPushToUser(Long userId, String title, String message, java.util.Map<String, String> data) {
+        sendPushToUser(userId, title, message, data, null);
+    }
+
+    @Async
+    public void sendPushToUser(Long userId, String title, String message, java.util.Map<String, String> data, String imageUrl) {
         try {
             List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
             if (fcmTokens.isEmpty()) {
@@ -243,10 +249,10 @@ public class NotificationService {
                 try {
                     if (data != null && !data.isEmpty()) {
                         firebaseNotificationService.sendNotificationWithData(
-                                title, message, fcmToken.getFcmToken(), data);
+                                title, message, fcmToken.getFcmToken(), data, imageUrl);
                     } else {
                         firebaseNotificationService.sendPromotionalNotification(
-                                title, message, fcmToken.getFcmToken());
+                                title, message, fcmToken.getFcmToken(), imageUrl);
                     }
                     log.info("Push notification sent to user {} on device {}", userId, fcmToken.getDeviceType());
                 } catch (Exception e) {

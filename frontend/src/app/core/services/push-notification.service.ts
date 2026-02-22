@@ -13,6 +13,7 @@ export interface PushNotificationRequest {
   recipientType?: 'ALL_CUSTOMERS' | 'SPECIFIC_USER';
   recipientId?: number;
   sendPush?: boolean;
+  imageUrl?: string;
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
@@ -34,8 +35,23 @@ export interface NotificationResponse {
 })
 export class PushNotificationService {
   private readonly API_URL = `${environment.apiUrl}/notifications`;
+  private readonly UPLOAD_URL = `${environment.apiUrl}/uploads`;
 
   constructor(private http: HttpClient) {}
+
+  /**
+   * Upload notification image
+   */
+  uploadNotificationImage(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<any>(`${this.UPLOAD_URL}/notification`, formData).pipe(
+      catchError(error => {
+        console.error('Error uploading notification image:', error);
+        return throwError(() => error);
+      })
+    );
+  }
 
   /**
    * Send a broadcast notification to all customers
@@ -50,6 +66,11 @@ export class PushNotificationService {
       recipientType: 'ALL_CUSTOMERS',
       sendPush: true
     };
+
+    // Add image URL if provided
+    if (request.imageUrl) {
+      payload.imageUrl = request.imageUrl;
+    }
 
     // Add location-based targeting if provided
     if (request.latitude && request.longitude && request.radiusKm) {
@@ -74,7 +95,7 @@ export class PushNotificationService {
    * Uses the /api/notifications endpoint
    */
   sendNotificationToUser(request: PushNotificationRequest): Observable<NotificationResponse> {
-    const payload = {
+    const payload: any = {
       title: request.title,
       message: request.message,
       priority: request.priority,
@@ -83,6 +104,11 @@ export class PushNotificationService {
       recipientId: request.recipientId,
       sendPush: true
     };
+
+    // Add image URL if provided
+    if (request.imageUrl) {
+      payload.imageUrl = request.imageUrl;
+    }
 
     return this.http.post<NotificationResponse>(this.API_URL, payload).pipe(
       map(response => {
