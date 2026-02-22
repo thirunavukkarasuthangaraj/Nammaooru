@@ -35,8 +35,9 @@ cp -r $SOURCE_BUILD $NEW_RELEASE_DIR
 
 # Step 3: Set correct permissions
 log_info "Setting permissions..."
-chown -R www-data:www-data $NEW_RELEASE_DIR
 chmod -R 755 $NEW_RELEASE_DIR
+# chown to www-data is optional - chmod 755 gives read access to all users including nginx
+chown -R www-data:www-data $NEW_RELEASE_DIR 2>/dev/null || log_warn "chown skipped (not root), files are still readable via chmod 755"
 
 # Step 4: Verify new build
 log_info "Verifying new build..."
