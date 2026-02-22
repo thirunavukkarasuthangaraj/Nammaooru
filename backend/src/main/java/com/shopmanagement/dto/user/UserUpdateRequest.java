@@ -24,9 +24,7 @@ public class UserUpdateRequest {
     private String email;
     
     // Password is optional for updates - only validate if provided
-    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
-    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$", 
-             message = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character")
+    @Size(min = 4, max = 100, message = "Password must be between 4 and 100 characters")
     private String password;
     
     @Size(max = 100, message = "First name cannot exceed 100 characters")

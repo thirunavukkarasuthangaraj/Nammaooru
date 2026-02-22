@@ -165,10 +165,10 @@ public class ForgotPasswordOtpController {
                 return ResponseEntity.ok(response);
             }
 
-            if (newPassword.length() < 8) {
+            if (newPassword.length() < 4) {
                 ApiResponse<Void> response = ApiResponse.<Void>builder()
                         .statusCode(ResponseConstants.VALIDATION_ERROR)
-                        .message("Password must be at least 8 characters long")
+                        .message("Password must be at least 4 characters long")
                         .timestamp(LocalDateTime.now())
                         .path(webRequest.getDescription(false).replace("uri=", ""))
                         .build();

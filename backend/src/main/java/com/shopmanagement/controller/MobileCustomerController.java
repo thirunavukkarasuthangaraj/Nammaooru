@@ -312,7 +312,7 @@ public class MobileCustomerController {
                 "appName", "NammaOoru",
                 "version", "1.0.0",
                 "otpValidityMinutes", 10,
-                "minPasswordLength", 8,
+                "minPasswordLength", 4,
                 "maxOtpAttemptsPerDay", 5,
                 "supportedCountries", new String[]{"IN"},
                 "features", Map.of(

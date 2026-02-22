@@ -107,10 +107,10 @@ public class PasswordResetController {
                 ));
             }
             
-            if (newPassword.length() < 8) {
+            if (newPassword.length() < 4) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "status", "error",
-                    "message", "Password must be at least 8 characters long"
+                    "message", "Password must be at least 4 characters long"
                 ));
             }
             

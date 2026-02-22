@@ -382,7 +382,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              _buildButton('Verify & Login', () => _verifyAndLogin(provider)),
+              _buildButton('Verify Code', () => _verifyOtp(provider)),
               if (provider.errorMessage != null) ...[
                 const SizedBox(height: 12),
                 _buildErrorBox(provider.errorMessage!),

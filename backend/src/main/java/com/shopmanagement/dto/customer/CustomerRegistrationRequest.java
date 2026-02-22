@@ -65,6 +65,6 @@ public class CustomerRegistrationRequest {
     private String referredBy;
 
     // Optional password for account creation
-    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
+    @Size(min = 4, max = 100, message = "Password must be between 4 and 100 characters")
     private String password;
 }

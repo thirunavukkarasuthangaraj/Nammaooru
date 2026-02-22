@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../../core/api/api_client.dart';
 import '../../core/localization/language_provider.dart';
 
@@ -37,6 +38,7 @@ class _PrivacyPolicyDialogState extends State<PrivacyPolicyDialog> {
       final response = await ApiClient.get(
         '/settings/public/$key',
         includeAuth: false,
+        options: Options(responseType: ResponseType.plain),
       );
 
       if (mounted) {

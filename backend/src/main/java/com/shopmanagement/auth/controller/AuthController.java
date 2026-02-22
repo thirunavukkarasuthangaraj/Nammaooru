@@ -135,9 +135,9 @@ public class AuthController {
             }
             
             // Validate password strength
-            if (rawPassword.length() < 8) {
+            if (rawPassword.length() < 4) {
                 return ResponseEntity.badRequest().body(
-                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Password must be at least 8 characters long"));
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Password must be at least 4 characters long"));
             }
             
             String hashedPassword = passwordEncoder.encode(rawPassword);
@@ -455,9 +455,9 @@ public class AuthController {
             }
 
             // Validate password strength
-            if (newPassword.length() < 8) {
+            if (newPassword.length() < 4) {
                 return ResponseEntity.badRequest().body(
-                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Password must be at least 8 characters long"));
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Password must be at least 4 characters long"));
             }
 
             // Find user
