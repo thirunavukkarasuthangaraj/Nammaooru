@@ -2036,6 +2036,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen()));
     } else if (route.contains('travels')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
+    } else if (route.contains('parcels')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()));
     } else if (route.contains('real-estate')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen()));
     } else if (route.contains('rentals')) {
@@ -2201,18 +2203,25 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen())),
             ),
             _buildModernCategoryTile(
-              icon: Icons.home_work_rounded,
-              title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
-              subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு, விற்கு & வாடகை'),
-              color: const Color(0xFF5C6BC0),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen())),
-            ),
-            _buildModernCategoryTile(
               icon: Icons.vpn_key_rounded,
               title: languageProvider.getText('Rent', 'வாடகை'),
               subtitle: languageProvider.getText('Shops, Houses & more', 'கடை, வீடு & மேலும்'),
               color: const Color(0xFFFF6F00),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.local_shipping_rounded,
+              title: languageProvider.getText('Packers & Movers', 'பேக்கர்ஸ் & மூவர்ஸ்'),
+              subtitle: languageProvider.getText('Moving services', 'இடமாற்ற சேவை'),
+              color: const Color(0xFFE65100),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
+            ),
+            _buildModernCategoryTile(
+              icon: Icons.home_work_rounded,
+              title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
+              subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு, விற்கு & வாடகை'),
+              color: const Color(0xFF5C6BC0),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen())),
             ),
             _buildModernCategoryTile(
               icon: Icons.account_balance_rounded,
