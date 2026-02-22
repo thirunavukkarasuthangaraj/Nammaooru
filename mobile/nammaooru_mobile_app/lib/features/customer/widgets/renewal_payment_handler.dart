@@ -70,8 +70,10 @@ class RenewalPaymentHandler {
     }
 
     final int totalBase = pricePerPost * count;
-    final int processingFeePaise = (totalBase * 2.36).ceil();
-    final int totalAmountPaise = (totalBase * 100) + processingFeePaise;
+    final int singleProcessingFee = config['processingFeePaise'] ?? (pricePerPost * 2.36).ceil();
+    final int processingFeePaise = singleProcessingFee * count;
+    final int singleTotal = config['totalAmountPaise'] ?? ((pricePerPost * 100) + singleProcessingFee);
+    final int totalAmountPaise = singleTotal * count;
     final String feeDisplay = (processingFeePaise / 100.0).toStringAsFixed(2);
     final String totalDisplay = (totalAmountPaise / 100.0).toStringAsFixed(2);
 

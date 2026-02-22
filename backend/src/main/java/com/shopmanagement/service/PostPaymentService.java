@@ -35,7 +35,10 @@ public class PostPaymentService {
         return razorpayConfig.isTestMode();
     }
 
-    private static final double PROCESSING_FEE_PERCENT = 2.36; // Razorpay 2% + 18% GST
+    private double getProcessingFeePercent() {
+        return Double.parseDouble(
+                settingService.getSettingValue("paid_post.processing_fee_percent", "2.36"));
+    }
 
     private static final Map<String, String> DURATION_SETTING_KEYS = Map.of(
             "MARKETPLACE", "marketplace.post.duration_days",
@@ -43,7 +46,8 @@ public class PostPaymentService {
             "LABOURS", "labours.post.duration_days",
             "TRAVELS", "travels.post.duration_days",
             "PARCEL_SERVICE", "parcel_service.post.duration_days",
-            "REAL_ESTATE", "real_estate.post.duration_days"
+            "REAL_ESTATE", "real_estate.post.duration_days",
+            "RENTAL", "rental.post.duration_days"
     );
 
     private static final Map<String, String> DURATION_DEFAULTS = Map.of(
@@ -52,7 +56,8 @@ public class PostPaymentService {
             "LABOURS", "60",
             "TRAVELS", "30",
             "PARCEL_SERVICE", "60",
-            "REAL_ESTATE", "90"
+            "REAL_ESTATE", "90",
+            "RENTAL", "30"
     );
 
     public Map<String, Object> getPaymentConfig(String postType) {
@@ -70,7 +75,7 @@ public class PostPaymentService {
             price = Integer.parseInt(globalDefault);
         }
 
-        int processingFeePaise = (int) Math.ceil(price * PROCESSING_FEE_PERCENT);
+        int processingFeePaise = (int) Math.ceil(price * getProcessingFeePercent());
         int totalAmountPaise = (price * 100) + processingFeePaise;
 
         // Per-type post duration
@@ -101,7 +106,7 @@ public class PostPaymentService {
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
 
         // Calculate processing fee and total
-        int processingFeePaise = (int) Math.ceil(priceInRupees * PROCESSING_FEE_PERCENT);
+        int processingFeePaise = (int) Math.ceil(priceInRupees * getProcessingFeePercent());
         int totalAmountPaise = (priceInRupees * 100) + processingFeePaise;
 
         String orderId;
@@ -194,7 +199,7 @@ public class PostPaymentService {
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
 
         int totalBaseAmount = pricePerPost * count;
-        int processingFeePaise = (int) Math.ceil(totalBaseAmount * PROCESSING_FEE_PERCENT);
+        int processingFeePaise = (int) Math.ceil(totalBaseAmount * getProcessingFeePercent());
         int totalAmountPaise = (totalBaseAmount * 100) + processingFeePaise;
 
         String orderId;
@@ -218,8 +223,8 @@ public class PostPaymentService {
                     .userId(userId)
                     .razorpayOrderId(orderId)
                     .amount(pricePerPost)
-                    .processingFee((int) Math.ceil(pricePerPost * PROCESSING_FEE_PERCENT))
-                    .totalAmount((pricePerPost * 100) + (int) Math.ceil(pricePerPost * PROCESSING_FEE_PERCENT))
+                    .processingFee((int) Math.ceil(pricePerPost * getProcessingFeePercent()))
+                    .totalAmount((pricePerPost * 100) + (int) Math.ceil(pricePerPost * getProcessingFeePercent()))
                     .currency(currency)
                     .postType(postType)
                     .build();
