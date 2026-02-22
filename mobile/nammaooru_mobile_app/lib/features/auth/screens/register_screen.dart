@@ -7,6 +7,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/theme/village_theme.dart';
 import 'otp_verification_screen.dart';
+import '../../../shared/widgets/privacy_policy_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -410,25 +411,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(fontSize: 13, color: Colors.white),
               ),
               GestureDetector(
-                onTap: () => _launchUrl('https://nammaoorudelivary.in/terms-and-conditions'),
+                onTap: () => PrivacyPolicyDialog.show(context),
                 child: const Text(
-                  'Terms',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-              const Text(
-                ' & ',
-                style: TextStyle(fontSize: 13, color: Colors.white),
-              ),
-              GestureDetector(
-                onTap: () => _launchUrl('https://nammaoorudelivary.in/privacy-policy'),
-                child: const Text(
-                  'Privacy Policy',
+                  'Terms & Privacy Policy',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.white,

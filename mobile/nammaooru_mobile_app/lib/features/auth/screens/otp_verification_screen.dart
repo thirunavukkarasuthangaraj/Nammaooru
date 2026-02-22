@@ -11,6 +11,8 @@ import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
+import '../../../shared/widgets/privacy_policy_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -104,6 +106,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           'Account verified successfully! Welcome to NammaOoru!',
         );
         await Future.delayed(const Duration(seconds: 1));
+        // Show privacy policy on first login (registration)
+        final prefs = await SharedPreferences.getInstance();
+        final hasSeenPolicy = prefs.getBool('privacy_policy_seen') ?? false;
+        if (!hasSeenPolicy && mounted) {
+          await PrivacyPolicyDialog.show(context);
+          await prefs.setBool('privacy_policy_seen', true);
+        }
         // User is now authenticated, redirect to appropriate dashboard based on role
         // Use context.go() so the ShellRoute (bottom nav) is included
         if (authProvider.isCustomer) {
