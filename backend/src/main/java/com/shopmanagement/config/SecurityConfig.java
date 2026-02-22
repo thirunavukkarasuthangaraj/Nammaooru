@@ -106,6 +106,7 @@ public class SecurityConfig {
                                 "/api/villages",  // Public: View active villages for mobile
                                 "/api/feature-config/visible",  // Public: Get visible features for mobile
                                 "/api/settings/public/**",  // Public: Get public settings (privacy policy, etc.)
+                                "/api/service-area/**",  // Public: Service area check (no auth needed)
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
                                 "/uploads/**",
                                 "/shops/**",

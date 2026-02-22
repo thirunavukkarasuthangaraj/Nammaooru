@@ -11,6 +11,14 @@ import { SettingsService } from '../../../../core/services/settings.service';
   styleUrls: ['./post-limits.component.scss']
 })
 export class PostLimitsComponent implements OnInit {
+  // Service area restriction
+  serviceAreaEnabled = false;
+  serviceAreaLat = 12.4955;
+  serviceAreaLng = 78.5514;
+  serviceAreaRadius = 50;
+  serviceAreaLoading = true;
+  serviceAreaSaving = false;
+
   // Global free post limit
   globalFreePostLimit: number = 1;
   globalFreePostLimitLoading = true;
@@ -73,6 +81,7 @@ export class PostLimitsComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
+    this.loadServiceAreaConfig();
     this.loadGlobalFreePostLimit();
     this.loadGlobalLimits();
     this.loadLimits();
@@ -84,6 +93,47 @@ export class PostLimitsComponent implements OnInit {
       userIdentifier: ['', [Validators.required]],
       featureName: ['', Validators.required],
       maxPosts: [5, [Validators.required, Validators.min(0)]]
+    });
+  }
+
+  // ===== Service Area Restriction =====
+
+  loadServiceAreaConfig(): void {
+    this.serviceAreaLoading = true;
+    this.settingsService.getAllSettings().subscribe({
+      next: (settings) => {
+        for (const s of settings) {
+          if (s.key === 'service.area.enabled') this.serviceAreaEnabled = s.value === 'true';
+          if (s.key === 'service.area.center.latitude') this.serviceAreaLat = parseFloat(s.value) || 12.4955;
+          if (s.key === 'service.area.center.longitude') this.serviceAreaLng = parseFloat(s.value) || 78.5514;
+          if (s.key === 'service.area.radius.km') this.serviceAreaRadius = parseInt(s.value, 10) || 50;
+        }
+        this.serviceAreaLoading = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to load service area config', 'Close', { duration: 3000 });
+        this.serviceAreaLoading = false;
+      }
+    });
+  }
+
+  saveServiceAreaConfig(): void {
+    this.serviceAreaSaving = true;
+    const settings: { [key: string]: string } = {
+      'service.area.enabled': String(this.serviceAreaEnabled),
+      'service.area.center.latitude': String(this.serviceAreaLat),
+      'service.area.center.longitude': String(this.serviceAreaLng),
+      'service.area.radius.km': String(this.serviceAreaRadius)
+    };
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.snackBar.open('Service area config saved successfully', 'Close', { duration: 3000 });
+        this.serviceAreaSaving = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to save service area config', 'Close', { duration: 3000 });
+        this.serviceAreaSaving = false;
+      }
     });
   }
 

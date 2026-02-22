@@ -52,6 +52,8 @@ import '../screens/labour_post_detail_screen.dart';
 import '../screens/travel_post_detail_screen.dart';
 import '../screens/parcel_post_detail_screen.dart';
 import '../screens/panchayat_screen.dart';
+import '../../../core/services/service_area_service.dart';
+import '../../../shared/widgets/service_area_dialog.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -85,12 +87,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   // Featured posts from all categories for banner carousel
   List<Map<String, dynamic>> _featuredPosts = [];
 
+  bool _serviceAreaBlocked = false;
+
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
   final _promoService = PromoCodeService();
   final _marketplaceService = MarketplaceService();
   final _featureConfigService = FeatureConfigService();
   final _apiService = ApiService();
+  final _serviceAreaService = ServiceAreaService();
 
   @override
   void initState() {
@@ -106,10 +111,46 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     _loadFeatureConfig();
     // Get location, then load dashboard data (shops need location)
     await _getCurrentLocationOnStartup();
+
+    // Check service area restriction after getting location
+    await _checkServiceArea();
+    if (_serviceAreaBlocked) return; // Don't load dashboard data if blocked
+
     _loadDashboardData();
     // Refresh feature config with actual GPS coordinates if available
     if (_userLatitude != null && _userLongitude != null) {
       _loadFeatureConfig();
+    }
+  }
+
+  Future<void> _checkServiceArea() async {
+    // Skip if no location available (fail-open)
+    if (_userLatitude == null || _userLongitude == null) return;
+
+    try {
+      final result = await _serviceAreaService.checkServiceArea(
+        _userLatitude!,
+        _userLongitude!,
+      );
+
+      // Fail-open: if null response, allow access
+      if (result == null) return;
+
+      final allowed = result['allowed'] == true;
+      if (!allowed && mounted) {
+        setState(() => _serviceAreaBlocked = true);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => ServiceAreaDialog(
+            message: result['message'] ?? 'Service is not available in your area.',
+            radiusKm: (result['radiusKm'] as num?)?.toDouble(),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Service area check error: $e');
+      // Fail-open: allow access on error
     }
   }
 

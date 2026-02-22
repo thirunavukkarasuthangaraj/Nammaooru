@@ -9,6 +9,56 @@
     </div>
   </div>
 
+  <!-- ===== SERVICE AREA RESTRICTION ===== -->
+  <div class="section-header">
+    <h3><mat-icon>location_on</mat-icon> Service Area Restriction</h3>
+    <p class="section-subtitle">Restrict the app to a geographic area. Users outside the radius will see "Service Not Available".</p>
+  </div>
+
+  <div *ngIf="serviceAreaLoading" class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading...</p>
+  </div>
+
+  <mat-card *ngIf="!serviceAreaLoading" class="paid-post-card">
+    <mat-card-content>
+      <div class="paid-post-form">
+        <div class="paid-post-toggle">
+          <mat-slide-toggle [(ngModel)]="serviceAreaEnabled" color="primary">
+            Enable Service Area Restriction
+          </mat-slide-toggle>
+          <span class="toggle-hint" *ngIf="serviceAreaEnabled">Users outside the radius will be blocked</span>
+          <span class="toggle-hint" *ngIf="!serviceAreaEnabled">App is available everywhere (no geo restriction)</span>
+        </div>
+
+        <div class="paid-post-fields" *ngIf="serviceAreaEnabled">
+          <mat-form-field>
+            <mat-label>Center Latitude</mat-label>
+            <input matInput type="number" [(ngModel)]="serviceAreaLat" step="0.0001" placeholder="12.4955">
+            <mat-hint>Latitude of service area center</mat-hint>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Center Longitude</mat-label>
+            <input matInput type="number" [(ngModel)]="serviceAreaLng" step="0.0001" placeholder="78.5514">
+            <mat-hint>Longitude of service area center</mat-hint>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Radius (km)</mat-label>
+            <input matInput type="number" [(ngModel)]="serviceAreaRadius" min="1" max="500" placeholder="50">
+            <mat-hint>Service area radius in kilometers</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="paid-post-actions">
+          <button mat-raised-button color="primary" (click)="saveServiceAreaConfig()" [disabled]="serviceAreaSaving">
+            <mat-icon>save</mat-icon>
+            {{ serviceAreaSaving ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <!-- ===== SECTION 0: Global Free Post Limit ===== -->
   <div class="section-header">
     <h3><mat-icon>lock_open</mat-icon> Global Free Post Limit</h3>
