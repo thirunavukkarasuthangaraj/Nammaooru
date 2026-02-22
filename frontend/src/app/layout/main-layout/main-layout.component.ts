@@ -138,7 +138,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
-        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
+        { title: 'Packers & Movers', icon: 'local_shipping', route: '/admin/parcels', badge: null },
         { title: 'Rentals', icon: 'vpn_key', route: '/admin/rentals', badge: null },
         { title: 'All Reports', icon: 'report', route: '/admin/all-reports', badge: null }
       ]
@@ -230,7 +230,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Farmer Products', icon: 'eco', route: '/admin/farmer-products', badge: null },
         { title: 'Labours', icon: 'construction', route: '/admin/labours', badge: null },
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
-        { title: 'Parcel Services', icon: 'local_shipping', route: '/admin/parcels', badge: null },
+        { title: 'Packers & Movers', icon: 'local_shipping', route: '/admin/parcels', badge: null },
         { title: 'Rentals', icon: 'vpn_key', route: '/admin/rentals', badge: null },
         { title: 'All Reports', icon: 'report', route: '/admin/all-reports', badge: null }
       ]

@@ -214,7 +214,7 @@ export class TravelManagementComponent implements OnInit {
       case 'SMALL_BUS': return 'Mini Bus';
       case 'RENT': return 'Rent';
       case 'CAR': return 'Car';
-      case 'PARCEL_SERVICE': return 'Parcel Service';
+      case 'PARCEL_SERVICE': return 'Packers & Movers';
       case 'BIKE': return 'Bike';
       case 'AUTO': return 'Auto';
       default: return type;

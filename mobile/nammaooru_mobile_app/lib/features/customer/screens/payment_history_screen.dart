@@ -101,7 +101,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       case 'TRAVELS':
         return lang.getText('Travels', '\u0BAA\u0BAF\u0BA3\u0B99\u0BCD\u0B95\u0BB3\u0BCD');
       case 'PARCEL_SERVICE':
-        return lang.getText('Parcel Service', '\u0BAA\u0BBE\u0BB0\u0BCD\u0B9A\u0BB2\u0BCD \u0B9A\u0BC7\u0BB5\u0BC8');
+        return lang.getText('Packers & Movers', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd');
       default:
         return postType ?? lang.getText('Unknown', '\u0BA4\u0BC6\u0BB0\u0BBF\u0BAF\u0BBE\u0BA4');
     }

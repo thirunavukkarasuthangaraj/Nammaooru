@@ -498,7 +498,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8'),
+          langProvider.getText('Packers & Movers', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: _parcelOrange,
@@ -592,7 +592,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
           Icon(Icons.local_shipping_outlined, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            langProvider.getText('No parcel services listed yet', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8\u0b95\u0bb3\u0bcd \u0b87\u0ba9\u0bcd\u0ba9\u0bc1\u0bae\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0b9f\u0baa\u0bcd\u0baa\u0b9f\u0bb5\u0bbf\u0bb2\u0bcd\u0bb2\u0bc8'),
+            langProvider.getText('No packers & movers listed yet', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd \u0b87\u0ba9\u0bcd\u0ba9\u0bc1\u0bae\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0b9f\u0baa\u0bcd\u0baa\u0b9f\u0bb5\u0bbf\u0bb2\u0bcd\u0bb2\u0bc8'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -608,7 +608,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
           ElevatedButton.icon(
             onPressed: () => _navigateToCreatePost(),
             icon: const Icon(Icons.add),
-            label: Text(langProvider.getText('Add Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
+            label: Text(langProvider.getText('Add Packers & Movers', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
             style: ElevatedButton.styleFrom(
               backgroundColor: _parcelOrange,
               foregroundColor: Colors.white,
@@ -908,7 +908,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
             ElevatedButton.icon(
               onPressed: () => _navigateToCreatePost(),
               icon: const Icon(Icons.add),
-              label: Text(langProvider.getText('Add Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
+              label: Text(langProvider.getText('Add Packers & Movers', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95')),
               style: ElevatedButton.styleFrom(backgroundColor: _parcelOrange, foregroundColor: Colors.white),
             ),
           ],

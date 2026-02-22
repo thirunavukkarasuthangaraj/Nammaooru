@@ -98,7 +98,7 @@ export class PostDashboardComponent implements OnInit {
       'farmer': 'Farmer Products',
       'labour': 'Labour',
       'travel': 'Travel',
-      'parcel': 'Parcel Service',
+      'parcel': 'Packers & Movers',
       'realEstate': 'Real Estate',
       'rental': 'Rentals'
     };
@@ -135,7 +135,7 @@ export class PostDashboardComponent implements OnInit {
   getPostTitle(post: any, category: string): string {
     if (category === 'combos') return post.name || 'Combo';
     if (category === 'labour') return post.name || 'Labour Post';
-    if (category === 'parcel') return post.serviceName || 'Parcel Service';
+    if (category === 'parcel') return post.serviceName || 'Packers & Movers';
     return post.title || 'Post';
   }
 

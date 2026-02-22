@@ -27,7 +27,7 @@ export class PostLimitsComponent implements OnInit {
   lookupLoading = false;
 
   featureNames = [
-    { value: 'PARCEL_SERVICE', label: 'Parcel Service' },
+    { value: 'PARCEL_SERVICE', label: 'Packers & Movers' },
     { value: 'MARKETPLACE', label: 'Marketplace' },
     { value: 'LABOURS', label: 'Labours' },
     { value: 'FARM_PRODUCTS', label: 'Farm Products' },
@@ -50,7 +50,7 @@ export class PostLimitsComponent implements OnInit {
     { key: 'FARM_PRODUCTS', label: 'Farmer Products' },
     { key: 'LABOURS', label: 'Labours' },
     { key: 'TRAVELS', label: 'Travels' },
-    { key: 'PARCEL_SERVICE', label: 'Parcel Services' },
+    { key: 'PARCEL_SERVICE', label: 'Packers & Movers' },
     { key: 'REAL_ESTATE', label: 'Real Estate' },
     { key: 'RENTAL', label: 'Rentals' },
   ];

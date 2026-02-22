@@ -95,7 +95,7 @@ export class PaymentHistoryComponent implements OnInit {
       'FARM_PRODUCTS': 'Farm Products',
       'LABOURS': 'Labours',
       'TRAVELS': 'Travels',
-      'PARCEL_SERVICE': 'Parcel Service',
+      'PARCEL_SERVICE': 'Packers & Movers',
       'REAL_ESTATE': 'Real Estate'
     };
     return labels[postType] || postType;

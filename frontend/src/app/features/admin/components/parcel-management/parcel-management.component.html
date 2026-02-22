@@ -1,7 +1,7 @@
 <div class="parcel-management">
   <div class="header">
-    <h2>Parcel Service Management</h2>
-    <p class="subtitle">Review and manage parcel service listing posts</p>
+    <h2>Packers & Movers Management</h2>
+    <p class="subtitle">Review and manage packers & movers listing posts</p>
   </div>
 
   <!-- Tabs -->
@@ -40,8 +40,8 @@
   <div *ngIf="!loading && posts.length === 0" class="empty-state">
     <mat-icon class="empty-icon">local_shipping</mat-icon>
     <h3>No posts found</h3>
-    <p *ngIf="activeTab === 'pending'">No parcel service listings are waiting for approval.</p>
-    <p *ngIf="activeTab === 'all'">No parcel service posts yet.</p>
+    <p *ngIf="activeTab === 'pending'">No packers & movers listings are waiting for approval.</p>
+    <p *ngIf="activeTab === 'all'">No packers & movers posts yet.</p>
   </div>
 
   <!-- Posts table -->

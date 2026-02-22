@@ -198,7 +198,7 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          post['serviceName'] ?? langProvider.getText('Parcel Details', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd'),
+          post['serviceName'] ?? langProvider.getText('Service Details', '\u0b9a\u0bc7\u0bb5\u0bc8 \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         backgroundColor: _parcelOrange,

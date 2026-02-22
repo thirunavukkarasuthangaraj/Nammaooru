@@ -330,8 +330,8 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
             const SizedBox(height: 8),
             Text(
               langProvider.getText(
-                'Your parcel service listing has been submitted and is now visible to others.',
-                '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b9a\u0bae\u0bb0\u0bcd\u0baa\u0bcd\u0baa\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0ba4\u0bc1, \u0b87\u0baa\u0bcd\u0baa\u0bcb\u0ba4\u0bc1 \u0bae\u0bb1\u0bcd\u0bb1\u0bb5\u0bb0\u0bcd\u0b95\u0bb3\u0bc1\u0b95\u0bcd\u0b95\u0bc1\u0ba4\u0bcd \u0ba4\u0bc6\u0bb0\u0bbf\u0baf\u0bc1\u0bae\u0bcd.',
+                'Your listing has been submitted and is now visible to others.',
+                '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b9a\u0bae\u0bb0\u0bcd\u0baa\u0bcd\u0baa\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0ba4\u0bc1, \u0b87\u0baa\u0bcd\u0baa\u0bcb\u0ba4\u0bc1 \u0bae\u0bb1\u0bcd\u0bb1\u0bb5\u0bb0\u0bcd\u0b95\u0bb3\u0bc1\u0b95\u0bcd\u0b95\u0bc1\u0ba4\u0bcd \u0ba4\u0bc6\u0bb0\u0bbf\u0baf\u0bc1\u0bae\u0bcd.',
               ),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[600]),
@@ -361,7 +361,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Add Parcel Service', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95'),
+          langProvider.getText('Add Packers & Movers', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: _parcelOrange,
@@ -388,7 +388,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 keyboardType: TextInputType.text,
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
-                  langProvider.getText('e.g., Fast Parcel Delivery', '\u0b8e.\u0b95\u0bbe., \u0bb5\u0bc7\u0b95 \u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9f\u0bc6\u0bb2\u0bbf\u0bb5\u0bb0\u0bbf'),
+                  langProvider.getText('e.g., Fast Packers & Movers', '\u0b8e.\u0b95\u0bbe., \u0bb5\u0bc7\u0b95 \u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd'),
                 ).copyWith(suffixIcon: VoiceInputButton(controller: _serviceNameController)),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -482,7 +482,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 keyboardType: TextInputType.text,
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
-                  langProvider.getText('e.g., Rs. 50 per kg, Rs. 200 per parcel', '\u0b8e.\u0b95\u0bbe., \u0bb0\u0bc2. 50 \u0b95\u0bbf\u0bb2\u0bcb\u0bb5\u0bc1\u0b95\u0bcd\u0b95\u0bc1, \u0bb0\u0bc2. 200 \u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bc1\u0b95\u0bcd\u0b95\u0bc1'),
+                  langProvider.getText('e.g., Rs. 5000 per trip, Rs. 200 per km', '\u0b8e.\u0b95\u0bbe., \u0bb0\u0bc2. 5000 \u0b92\u0bb0\u0bc1 \u0baa\u0baf\u0ba3\u0ba4\u0bcd\u0ba4\u0bbf\u0bb1\u0bcd\u0b95\u0bc1, \u0bb0\u0bc2. 200 \u0b95\u0bbf.\u0bae\u0bc0\u0b95\u0bcd\u0b95\u0bc1'),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -581,7 +581,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 maxLines: 3,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
-                  langProvider.getText('Additional details about the parcel service...', '\u0baa\u0bbe\u0bb0\u0bcd\u0b9a\u0bb2\u0bcd \u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bb1\u0bcd\u0bb1\u0bbf\u0baf \u0b95\u0bc2\u0b9f\u0bc1\u0ba4\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd...'),
+                  langProvider.getText('Additional details about the service...', '\u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bb1\u0bcd\u0bb1\u0bbf\u0baf \u0b95\u0bc2\u0b9f\u0bc1\u0ba4\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd...'),
                 ).copyWith(
                   suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),

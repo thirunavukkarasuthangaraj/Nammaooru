@@ -35,7 +35,7 @@ export class MarketplaceConfigComponent implements OnInit {
     { key: 'FARM_PRODUCTS', prefix: 'farmer', label: 'Farmer Products', icon: 'agriculture', color: '#33691E', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'LABOURS', prefix: 'labour', label: 'Labours', icon: 'engineering', color: '#1565C0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'TRAVELS', prefix: 'travel', label: 'Travels', icon: 'directions_car', color: '#00897B', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
-    { key: 'PARCEL_SERVICE', prefix: 'parcel', label: 'Parcel Services', icon: 'local_shipping', color: '#E65100', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'PARCEL_SERVICE', prefix: 'parcel', label: 'Packers & Movers', icon: 'local_shipping', color: '#E65100', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'REAL_ESTATE', prefix: 'realestate', label: 'Real Estate', icon: 'apartment', color: '#AD1457', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'RENTAL', prefix: 'rental', label: 'Rentals', icon: 'vpn_key', color: '#FF6F00', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
   ];

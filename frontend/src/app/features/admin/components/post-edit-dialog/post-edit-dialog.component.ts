@@ -60,7 +60,7 @@ export class PostEditDialogComponent implements OnInit {
         { value: 'SMALL_BUS', label: 'Mini Bus' },
         { value: 'RENT', label: 'Rent' },
         { value: 'CAR', label: 'Car' },
-        { value: 'PARCEL_SERVICE', label: 'Parcel Service' }
+        { value: 'PARCEL_SERVICE', label: 'Packers & Movers' }
       ]},
       { key: 'fromLocation', label: 'From Location', type: 'text' },
       { key: 'toLocation', label: 'To Location', type: 'text' },
@@ -146,7 +146,7 @@ export class PostEditDialogComponent implements OnInit {
   private titleMap: Record<string, string> = {
     labour: 'Edit Labour Post',
     travel: 'Edit Travel Post',
-    parcel: 'Edit Parcel Service Post',
+    parcel: 'Edit Packers & Movers Post',
     marketplace: 'Edit Marketplace Post',
     farmer: 'Edit Farmer Product',
     realEstate: 'Edit Real Estate Post'

@@ -33,6 +33,6 @@ class AppConstants {
   static const Map<String, String> serviceCategories = {
     'GROCERY': 'Grocery',
     'FOOD': 'Food',
-    'PARCEL': 'Parcel',
+    'PARCEL': 'Packers & Movers',
   };
 }

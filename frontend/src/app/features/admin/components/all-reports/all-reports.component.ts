@@ -48,7 +48,7 @@ export class AllReportsComponent implements OnInit {
     { key: 'farmer', label: 'Farmer Products', icon: 'eco' },
     { key: 'labour', label: 'Labours', icon: 'construction' },
     { key: 'travel', label: 'Travels', icon: 'directions_car' },
-    { key: 'parcel', label: 'Parcel Services', icon: 'local_shipping' },
+    { key: 'parcel', label: 'Packers & Movers', icon: 'local_shipping' },
     { key: 'rental', label: 'Rentals', icon: 'vpn_key' },
     { key: 'realestate', label: 'Real Estate', icon: 'home_work' }
   ];
