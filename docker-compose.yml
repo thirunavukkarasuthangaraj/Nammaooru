@@ -67,7 +67,7 @@ services:
       - "8080"
     volumes:
       # Mount host directory for persistent file storage (production)
-      - /opt/shop-management/uploads:/app/uploads
+      - /mnt/HC_Volume_104749884:/app/uploads
       # Mount firebase-config directory (read-only for security)
       - ./firebase-config:/app/firebase-config:ro
     networks:
