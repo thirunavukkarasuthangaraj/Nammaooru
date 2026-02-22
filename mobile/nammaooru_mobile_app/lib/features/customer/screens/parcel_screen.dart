@@ -1200,10 +1200,11 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                           ],
                         ),
                       ],
-                      if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED') ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED')
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () async {
@@ -1219,41 +1220,41 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                                 label: const Text('Unavailable', style: TextStyle(fontSize: 12)),
                               ),
                             ),
+                          if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED')
                             const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: () => _showEditParcelSheet(post),
-                              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
-                              tooltip: 'Edit',
-                            ),
-                            IconButton(
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Delete Listing?'),
-                                    content: const Text('This action cannot be undone.'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true) {
-                                  final result = await _parcelService.deletePost(post['id']);
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
-                                    );
-                                    if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
-                                  }
+                          IconButton(
+                            onPressed: () => _showEditParcelSheet(post),
+                            icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                            tooltip: 'Edit',
+                          ),
+                          IconButton(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Delete Listing?'),
+                                  content: const Text('This action cannot be undone.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                final result = await _parcelService.deletePost(post['id']);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                                  );
+                                  if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); }
                                 }
-                              },
-                              icon: const Icon(Icons.delete_outline, color: Colors.red),
-                              tooltip: 'Delete',
-                            ),
-                          ],
-                        ),
-                      ],
+                              }
+                            },
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            tooltip: 'Delete',
+                          ),
+                        ],
+                      ),
                       if (status == 'SOLD') ...[
                         const SizedBox(height: 8),
                         Row(

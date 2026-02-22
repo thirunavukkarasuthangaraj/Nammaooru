@@ -436,8 +436,8 @@ public class LabourPostService {
             throw new RuntimeException("You can only edit your own posts");
         }
 
-        if (post.getStatus() != PostStatus.APPROVED && post.getStatus() != PostStatus.CORRECTION_REQUIRED) {
-            throw new RuntimeException("Only approved or correction-required posts can be edited");
+        if (post.getStatus() == PostStatus.DELETED || post.getStatus() == PostStatus.REJECTED) {
+            throw new RuntimeException("Deleted or rejected posts cannot be edited");
         }
 
         if (updates.containsKey("name")) post.setName((String) updates.get("name"));

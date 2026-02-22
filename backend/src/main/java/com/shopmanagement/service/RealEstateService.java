@@ -388,8 +388,8 @@ public class RealEstateService {
             throw new RuntimeException("You can only edit your own posts");
         }
 
-        if (post.getStatus() != PostStatus.APPROVED) {
-            throw new RuntimeException("Only approved posts can be edited");
+        if (post.getStatus() == PostStatus.DELETED || post.getStatus() == PostStatus.REJECTED) {
+            throw new RuntimeException("Deleted or rejected posts cannot be edited");
         }
 
         if (updates.containsKey("title")) post.setTitle((String) updates.get("title"));
