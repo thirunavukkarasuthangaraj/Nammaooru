@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Zero Downtime Frontend Deployment Script
+# Zero Downtime Frontend Deployment Script (v2)
 # Run this ON THE SERVER after uploading new build
 # Usage: ./zero-downtime-frontend-deploy.sh
 
