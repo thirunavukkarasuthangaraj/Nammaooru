@@ -16,7 +16,7 @@ export class SettingsComponent implements OnInit {
   // Settings from API
   settings: Setting[] = [];
 
-  categories = ['General', 'Email', 'Notifications', 'Security', 'Shop'];
+  categories: string[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -43,6 +43,11 @@ export class SettingsComponent implements OnInit {
     this.settingsService.getAllSettings().subscribe({
       next: (settings) => {
         this.settings = settings;
+        // Build categories dynamically from API data
+        const seen = new Set<string>();
+        this.categories = settings
+          .map(s => s.category)
+          .filter(c => c && !seen.has(c) && seen.add(c));
         this.settingsForm = this.createForm();
         this.loading = false;
       },
