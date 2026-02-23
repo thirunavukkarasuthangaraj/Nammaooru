@@ -393,6 +393,14 @@ public class SettingService {
         createDefaultSettingIfNotExists("post.image.limit", "3",
                 "Maximum number of images allowed per post (applies to all modules)", "POST_CONFIG", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
+        // Content Moderation settings
+        createDefaultSettingIfNotExists("content.moderation.provider", "OFF",
+                "Image moderation provider: OFF, NUDENET, GEMINI", "CONTENT_MODERATION", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+        createDefaultSettingIfNotExists("content.moderation.nudenet.url", "http://localhost:8085/classify",
+                "NudeNet classifier API URL (Docker: notaitech/nudenet:classifier)", "CONTENT_MODERATION", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+        createDefaultSettingIfNotExists("content.moderation.threshold", "0.6",
+                "NSFW confidence threshold (0.0-1.0). Images above this are blocked", "CONTENT_MODERATION", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     
