@@ -73,12 +73,13 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
     }
 
     try {
-      final locationService = LocationService();
       double? lat, lng;
       try {
-        final position = await locationService.getCurrentPosition();
-        lat = position.latitude;
-        lng = position.longitude;
+        final position = await LocationService.instance.getCurrentPosition();
+        if (position != null && position.latitude != null && position.longitude != null) {
+          lat = position.latitude;
+          lng = position.longitude;
+        }
       } catch (_) {}
 
       final response = await _service.getApprovedPosts(

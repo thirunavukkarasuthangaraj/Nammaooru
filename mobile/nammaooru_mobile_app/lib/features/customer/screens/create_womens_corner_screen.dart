@@ -75,10 +75,11 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
 
   Future<void> _fetchLocation() async {
     try {
-      final locationService = LocationService();
-      final position = await locationService.getCurrentPosition();
-      _latitude = position.latitude;
-      _longitude = position.longitude;
+      final position = await LocationService.instance.getCurrentPosition();
+      if (position != null && position.latitude != null && position.longitude != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+      }
     } catch (_) {}
   }
 
