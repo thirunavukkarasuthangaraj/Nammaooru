@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../../core/api/api_client.dart';
 import '../../core/localization/language_provider.dart';
+import '../../services/contact_config_service.dart';
 
 class PrivacyPolicyDialog extends StatefulWidget {
   const PrivacyPolicyDialog({super.key});
@@ -23,6 +24,7 @@ class _PrivacyPolicyDialogState extends State<PrivacyPolicyDialog> {
   String? _content;
   bool _isLoading = true;
   String? _error;
+  final _contact = ContactConfigService.instance;
 
   @override
   void initState() {
@@ -32,6 +34,9 @@ class _PrivacyPolicyDialogState extends State<PrivacyPolicyDialog> {
 
   Future<void> _fetchPrivacyPolicy() async {
     try {
+      // Fetch contact config and privacy policy in parallel
+      await _contact.fetch();
+
       final langProvider = Provider.of<LanguageProvider>(context, listen: false);
       final key = langProvider.showTamil ? 'PRIVACY_POLICY_TA' : 'PRIVACY_POLICY_EN';
 
@@ -42,8 +47,15 @@ class _PrivacyPolicyDialogState extends State<PrivacyPolicyDialog> {
       );
 
       if (mounted) {
+        String text = response.data?.toString() ?? '';
+        // Replace placeholders with dynamic contact values
+        text = text
+            .replaceAll('{{support.phone}}', _contact.phone)
+            .replaceAll('{{support.whatsapp}}', _contact.whatsapp)
+            .replaceAll('{{support.email}}', _contact.email)
+            .replaceAll('{{support.website}}', _contact.website);
         setState(() {
-          _content = response.data?.toString() ?? '';
+          _content = text;
           _isLoading = false;
         });
       }

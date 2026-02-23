@@ -380,8 +380,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   Future<void> _openWhatsApp(BuildContext context) async {
     final number = _contact.whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
-    final message = 'Hi! I need help with NammaOoru app.';
-    final whatsappUrl = Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(message)}');
+    final whatsappUrl = Uri.parse('https://wa.me/91$number');
 
     if (await canLaunchUrl(whatsappUrl)) {
       await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);

@@ -69,7 +69,6 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     'SMALL_BUS': 'Mini Bus',
     'RENT': 'Rent',
     'CAR': 'Car',
-    'PARCEL_SERVICE': 'Packers & Movers',
   };
 
   static const Map<String, String> _vehicleTypeTamilMap = {
@@ -79,7 +78,6 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     'SMALL_BUS': '\u0BAE\u0BBF\u0BA9\u0BBF \u0BAA\u0BB8\u0BCD',
     'RENT': '\u0BB5\u0BBE\u0B9F\u0B95\u0BC8',
     'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
-    'PARCEL_SERVICE': '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd',
   };
 
   static const Map<String, IconData> _vehicleTypeIcons = {
@@ -88,7 +86,6 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     'SMALL_BUS': Icons.airport_shuttle,
     'RENT': Icons.car_rental,
     'CAR': Icons.directions_car,
-    'PARCEL_SERVICE': Icons.inventory_2,
   };
 
   @override

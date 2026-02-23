@@ -1105,45 +1105,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildContactSupportCard() {
     final supportNumber = _contact.phone;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () async {
-          final Uri launchUri = Uri(
-            scheme: 'tel',
-            path: supportNumber,
-          );
-          try {
-            if (await canLaunchUrl(launchUri)) {
-              await launchUrl(launchUri);
-            } else {
-              if (mounted) {
-                Helpers.showSnackBar(context, 'Could not launch phone call', isError: true);
-              }
-            }
-          } catch (e) {
-            if (mounted) {
-              Helpers.showSnackBar(context, 'Error: $e', isError: true);
-            }
-          }
-        },
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.06),
-                blurRadius: 24,
-                offset: const Offset(0, 6),
-                spreadRadius: 0,
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
+            spreadRadius: 0,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -1152,7 +1132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
-                    Icons.phone_in_talk_rounded,
+                    Icons.support_agent_rounded,
                     color: AppColors.primary,
                     size: 26,
                   ),
@@ -1183,14 +1163,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 18,
-                  color: AppColors.primary.withOpacity(0.6),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final Uri launchUri = Uri(scheme: 'tel', path: supportNumber);
+                      try {
+                        if (await canLaunchUrl(launchUri)) {
+                          await launchUrl(launchUri);
+                        } else if (mounted) {
+                          Helpers.showSnackBar(context, 'Could not launch phone call', isError: true);
+                        }
+                      } catch (e) {
+                        if (mounted) Helpers.showSnackBar(context, 'Error: $e', isError: true);
+                      }
+                    },
+                    icon: const Icon(Icons.phone_rounded, size: 20),
+                    label: Text(_t('Call', 'அழைப்பு')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final number = _contact.whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
+                      final whatsappUrl = Uri.parse('https://wa.me/91$number');
+                      try {
+                        if (await canLaunchUrl(whatsappUrl)) {
+                          await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+                        } else if (mounted) {
+                          Helpers.showSnackBar(context, 'WhatsApp not installed', isError: true);
+                        }
+                      } catch (e) {
+                        if (mounted) Helpers.showSnackBar(context, 'Error: $e', isError: true);
+                      }
+                    },
+                    icon: const Icon(Icons.chat_rounded, size: 20),
+                    label: Text(_t('WhatsApp', 'வாட்ஸ்அப்')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
