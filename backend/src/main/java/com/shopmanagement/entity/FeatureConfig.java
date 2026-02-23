@@ -64,6 +64,10 @@ public class FeatureConfig {
     @Builder.Default
     private Integer maxPostsPerUser = 0;
 
+    @Column(name = "max_images_per_post")
+    @Builder.Default
+    private Integer maxImagesPerPost = 3;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

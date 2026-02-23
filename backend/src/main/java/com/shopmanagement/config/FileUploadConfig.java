@@ -72,5 +72,9 @@ public class FileUploadConfig implements WebMvcConfigurer {
                     "file:" + imagePath + "/delivery-partners/",
                     "file:" + deliveryPartnerDocumentPath + "/"
                 );
+
+        // Serve feature config images
+        registry.addResourceHandler("/uploads/feature-configs/**")
+                .addResourceLocations("file:" + imagePath + "/feature-configs/");
     }
 }

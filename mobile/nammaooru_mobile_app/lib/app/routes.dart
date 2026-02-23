@@ -28,6 +28,8 @@ import '../features/customer/screens/create_travel_screen.dart';
 // import '../features/customer/screens/create_parcel_screen.dart';
 import '../features/customer/screens/panchayat_screen.dart';
 import '../features/customer/screens/my_posts_screen.dart';
+import '../features/customer/screens/womens_corner_screen.dart';
+import '../features/customer/screens/create_womens_corner_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -155,6 +157,14 @@ class AppRouter {
           GoRoute(
             path: '/customer/travels/create',
             builder: (context, state) => const CreateTravelScreen(),
+          ),
+          GoRoute(
+            path: '/customer/womens-corner',
+            builder: (context, state) => const WomensCornerScreen(),
+          ),
+          GoRoute(
+            path: '/customer/womens-corner/create',
+            builder: (context, state) => const CreateWomensCornerScreen(),
           ),
           GoRoute(
             path: '/customer/village',

@@ -52,6 +52,7 @@ import '../screens/labour_post_detail_screen.dart';
 import '../screens/travel_post_detail_screen.dart';
 import '../screens/parcel_post_detail_screen.dart';
 import '../screens/panchayat_screen.dart';
+import '../screens/womens_corner_screen.dart';
 import '../../../core/services/service_area_service.dart';
 import '../../../shared/widgets/service_area_dialog.dart';
 
@@ -2251,9 +2252,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen())),
             ),
             _buildModernCategoryTile(
+              icon: Icons.auto_awesome_rounded,
+              title: languageProvider.getText("Women's Corner", '\u0BAA\u0BC6\u0BA3\u0BCD\u0B95\u0BB3\u0BCD \u0BAA\u0B95\u0BC1\u0BA4\u0BBF'),
+              subtitle: languageProvider.getText('Beauty & Fashion', '\u0B85\u0BB4\u0B95\u0BC1 & \u0B86\u0B9F\u0BC8'),
+              color: const Color(0xFFE91E63),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen())),
+            ),
+            _buildModernCategoryTile(
               icon: Icons.local_shipping_rounded,
-              title: languageProvider.getText('Packers & Movers', 'பேக்கர்ஸ் & மூவர்ஸ்'),
-              subtitle: languageProvider.getText('Moving services', 'இடமாற்ற சேவை'),
+              title: languageProvider.getText('Packers & Movers', '\u0BAA\u0BC7\u0B95\u0BCD\u0B95\u0BB0\u0BCD\u0BB8\u0BCD & \u0BAE\u0BC2\u0BB5\u0BB0\u0BCD\u0BB8\u0BCD'),
+              subtitle: languageProvider.getText('Moving services', '\u0B87\u0B9F\u0BAE\u0BBE\u0BB1\u0BCD\u0BB1 \u0B9A\u0BC7\u0BB5\u0BC8'),
               color: const Color(0xFFE65100),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
             ),

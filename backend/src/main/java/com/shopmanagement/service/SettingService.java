@@ -376,6 +376,23 @@ public class SettingService {
         createDefaultSettingIfNotExists("support.website", "https://nammaooru.com",
                 "Official website URL", "CONTACT", Setting.SettingType.URL, Setting.SettingScope.GLOBAL);
 
+        // Women's Corner settings
+        createDefaultSettingIfNotExists("womens_corner.post.duration_days", "30",
+                "How many days a women's corner post stays visible (0 = no expiry)", "WOMENS_CORNER", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("womens_corner.post.auto_approve", "true",
+                "Auto-approve new women's corner posts (skip pending approval)", "WOMENS_CORNER", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("womens_corner.post.visible_statuses", "[\"APPROVED\"]",
+                "Which women's corner post statuses are visible to the public", "WOMENS_CORNER", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("womens_corner.post.report_threshold", "5",
+                "Number of reports needed before auto-flagging a women's corner post", "WOMENS_CORNER", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        // Post Config (global image limit)
+        createDefaultSettingIfNotExists("post.image.limit", "3",
+                "Maximum number of images allowed per post (applies to all modules)", "POST_CONFIG", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     

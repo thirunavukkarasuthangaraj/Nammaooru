@@ -31,6 +31,11 @@ public class FeatureConfigService {
 
     @Transactional
     public FeatureConfig update(Long id, FeatureConfig updated) {
+        return update(id, updated, null);
+    }
+
+    @Transactional
+    public FeatureConfig update(Long id, FeatureConfig updated, String newImageUrl) {
         FeatureConfig existing = featureConfigRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Feature config not found: " + id));
         existing.setFeatureName(updated.getFeatureName());
@@ -39,13 +44,17 @@ public class FeatureConfigService {
         existing.setIcon(updated.getIcon());
         existing.setColor(updated.getColor());
         existing.setRoute(updated.getRoute());
-        existing.setImageUrl(updated.getImageUrl());
+        // Only update imageUrl if a new image was uploaded
+        if (newImageUrl != null) {
+            existing.setImageUrl(newImageUrl);
+        }
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
         existing.setRadiusKm(updated.getRadiusKm());
         existing.setIsActive(updated.getIsActive());
         existing.setDisplayOrder(updated.getDisplayOrder());
         existing.setMaxPostsPerUser(updated.getMaxPostsPerUser());
+        existing.setMaxImagesPerPost(updated.getMaxImagesPerPost());
         return featureConfigRepository.save(existing);
     }
 

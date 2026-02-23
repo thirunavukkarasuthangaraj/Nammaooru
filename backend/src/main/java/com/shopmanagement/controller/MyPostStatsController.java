@@ -50,6 +50,8 @@ public class MyPostStatsController {
                             "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
         {"REAL_ESTATE",     "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status != 'DELETED')",
                             "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
+        {"WOMENS_CORNER",   "(SELECT COUNT(*) FROM womens_corner_posts WHERE seller_user_id = :uid AND status != 'DELETED')",
+                            "(SELECT COUNT(*) FROM womens_corner_posts WHERE seller_user_id = :uid AND status != 'DELETED' AND is_paid = true)"},
     };
 
     private static final Map<String, String> DURATION_SETTING_KEYS = Map.of(
@@ -59,7 +61,8 @@ public class MyPostStatsController {
         "TRAVELS", "travels.post.duration_days",
         "PARCEL_SERVICE", "parcel_service.post.duration_days",
         "RENTAL", "rental.post.duration_days",
-        "REAL_ESTATE", "real_estate.post.duration_days"
+        "REAL_ESTATE", "real_estate.post.duration_days",
+        "WOMENS_CORNER", "womens_corner.post.duration_days"
     );
 
     private static final Map<String, String> DURATION_DEFAULTS = Map.of(
@@ -69,7 +72,8 @@ public class MyPostStatsController {
         "TRAVELS", "30",
         "PARCEL_SERVICE", "60",
         "RENTAL", "30",
-        "REAL_ESTATE", "90"
+        "REAL_ESTATE", "90",
+        "WOMENS_CORNER", "30"
     );
 
     @GetMapping("/api/posts/my-stats")

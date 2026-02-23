@@ -44,6 +44,36 @@
             <input matInput formControlName="route" placeholder="e.g. /customer/shops?category=grocery">
           </mat-form-field>
         </div>
+
+        <!-- Image Upload -->
+        <div class="form-row image-upload-row">
+          <div class="image-upload-section">
+            <label class="upload-label">Feature Image</label>
+            <div class="image-upload-area">
+              <!-- Existing image (when editing) -->
+              <div *ngIf="editingImageUrl && !imagePreview" class="image-preview">
+                <img [src]="getImageUrl(editingImageUrl)" alt="Current image">
+                <span class="image-label">Current image</span>
+              </div>
+              <!-- New image preview -->
+              <div *ngIf="imagePreview" class="image-preview">
+                <img [src]="imagePreview" alt="New image preview">
+                <button mat-icon-button class="remove-image-btn" (click)="removeImage()" type="button">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              <!-- Upload button -->
+              <div class="upload-btn-wrapper">
+                <button mat-stroked-button type="button" (click)="fileInput.click()">
+                  <mat-icon>cloud_upload</mat-icon>
+                  {{ imagePreview ? 'Change Image' : 'Upload Image' }}
+                </button>
+                <input #fileInput type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="form-row">
           <mat-form-field>
             <mat-label>Latitude</mat-label>
@@ -65,6 +95,11 @@
             <mat-label>Max Posts Per User</mat-label>
             <input matInput type="number" formControlName="maxPostsPerUser" placeholder="0 = unlimited">
             <mat-hint>0 = unlimited</mat-hint>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Max Images Per Post</mat-label>
+            <input matInput type="number" formControlName="maxImagesPerPost" placeholder="3">
+            <mat-hint>Image count allowed per post</mat-hint>
           </mat-form-field>
         </div>
         <div class="form-actions">
@@ -89,6 +124,14 @@
       <ng-container matColumnDef="displayOrder">
         <th mat-header-cell *matHeaderCellDef>Order</th>
         <td mat-cell *matCellDef="let f">{{ f.displayOrder }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="image">
+        <th mat-header-cell *matHeaderCellDef>Image</th>
+        <td mat-cell *matCellDef="let f">
+          <img *ngIf="f.imageUrl" [src]="getImageUrl(f.imageUrl)" class="feature-thumb" alt="Feature image">
+          <span *ngIf="!f.imageUrl" class="text-muted">-</span>
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="featureName">
@@ -135,6 +178,13 @@
         <td mat-cell *matCellDef="let f">
           <span *ngIf="f.maxPostsPerUser === 0 || !f.maxPostsPerUser" class="text-muted">Unlimited</span>
           <span *ngIf="f.maxPostsPerUser > 0">{{ f.maxPostsPerUser }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="maxImagesPerPost">
+        <th mat-header-cell *matHeaderCellDef>Image Count</th>
+        <td mat-cell *matCellDef="let f">
+          <span>{{ f.maxImagesPerPost || 3 }}</span>
         </td>
       </ng-container>
 

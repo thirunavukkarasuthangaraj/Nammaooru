@@ -13,6 +13,7 @@ import '../services/labour_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../services/post_config_service.dart';
 
 class CreateLabourScreen extends StatefulWidget {
   const CreateLabourScreen({super.key});
@@ -32,7 +33,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
 
   String _selectedCategory = 'GENERAL_LABOUR';
   final List<File> _selectedImages = [];
-  static const int _maxImages = 3;
+  int _maxImages = 3;
   bool _isSubmitting = false;
   int? _paidTokenId;
   double? _latitude;
@@ -96,6 +97,16 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   void initState() {
     super.initState();
     _prefillData();
+    _loadImageLimit();
+  }
+
+  Future<void> _loadImageLimit() async {
+    await PostConfigService.instance.fetch();
+    if (mounted) {
+      setState(() {
+        _maxImages = PostConfigService.instance.imageLimit;
+      });
+    }
   }
 
   @override

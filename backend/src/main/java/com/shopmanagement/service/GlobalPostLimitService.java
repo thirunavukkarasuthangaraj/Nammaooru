@@ -23,7 +23,8 @@ public class GlobalPostLimitService {
         "(SELECT COUNT(*) FROM travel_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
         "(SELECT COUNT(*) FROM parcel_service_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
         "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
-        "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED'))";
+        "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM womens_corner_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED'))";
 
     /**
      * Checks if user has exceeded the global free post limit across ALL modules.

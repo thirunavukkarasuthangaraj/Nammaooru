@@ -99,6 +99,9 @@ public class SecurityConfig {
                                 "/api/parcels/*",  // Public: View single parcel post by ID
                                 "/api/rentals",  // Public: View approved rental posts
                                 "/api/rentals/*",  // Public: View single rental post by ID
+                                "/api/womens-corner/categories",  // Public: View women's corner categories
+                                "/api/womens-corner/posts",  // Public: View approved women's corner posts
+                                "/api/womens-corner/posts/*",  // Public: View single women's corner post by ID
                                 "/api/delivery/confirmation/**",  // Allow OTP verification
                                 "/api/customer/shops/**",
                                 "/api/featured-posts",  // Public: Get featured posts for mobile banner

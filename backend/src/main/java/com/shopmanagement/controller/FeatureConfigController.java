@@ -4,12 +4,15 @@ import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.entity.FeatureConfig;
 import com.shopmanagement.service.FeatureConfigService;
+import com.shopmanagement.service.FileUploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -19,6 +22,7 @@ import java.util.List;
 public class FeatureConfigController {
 
     private final FeatureConfigService featureConfigService;
+    private final FileUploadService fileUploadService;
 
     @GetMapping("/visible")
     public ResponseEntity<ApiResponse<List<FeatureConfig>>> getVisibleFeatures(
@@ -45,10 +49,44 @@ public class FeatureConfigController {
         }
     }
 
-    @PostMapping("/admin")
+    @PostMapping(value = "/admin", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<FeatureConfig>> createFeature(@RequestBody FeatureConfig config) {
+    public ResponseEntity<ApiResponse<FeatureConfig>> createFeature(
+            @RequestParam("featureName") String featureName,
+            @RequestParam("displayName") String displayName,
+            @RequestParam(value = "displayNameTamil", required = false) String displayNameTamil,
+            @RequestParam(value = "icon", required = false) String icon,
+            @RequestParam(value = "color", required = false) String color,
+            @RequestParam(value = "route", required = false) String route,
+            @RequestParam(value = "latitude", required = false) BigDecimal latitude,
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude,
+            @RequestParam(value = "radiusKm", required = false) Double radiusKm,
+            @RequestParam(value = "displayOrder", required = false) Integer displayOrder,
+            @RequestParam(value = "maxPostsPerUser", required = false) Integer maxPostsPerUser,
+            @RequestParam(value = "maxImagesPerPost", required = false) Integer maxImagesPerPost,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
         try {
+            String imageUrl = null;
+            if (image != null && !image.isEmpty()) {
+                imageUrl = fileUploadService.uploadFile(image, "feature-configs");
+            }
+
+            FeatureConfig config = FeatureConfig.builder()
+                    .featureName(featureName)
+                    .displayName(displayName)
+                    .displayNameTamil(displayNameTamil)
+                    .icon(icon)
+                    .color(color)
+                    .route(route)
+                    .imageUrl(imageUrl)
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .radiusKm(radiusKm != null ? radiusKm : 50.0)
+                    .displayOrder(displayOrder != null ? displayOrder : 0)
+                    .maxPostsPerUser(maxPostsPerUser != null ? maxPostsPerUser : 0)
+                    .maxImagesPerPost(maxImagesPerPost != null ? maxImagesPerPost : 3)
+                    .build();
+
             FeatureConfig created = featureConfigService.create(config);
             return ResponseUtil.success(created, "Feature config created successfully");
         } catch (Exception e) {
@@ -57,13 +95,46 @@ public class FeatureConfigController {
         }
     }
 
-    @PutMapping("/admin/{id}")
+    @PutMapping(value = "/admin/{id}", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<FeatureConfig>> updateFeature(
             @PathVariable Long id,
-            @RequestBody FeatureConfig config) {
+            @RequestParam("featureName") String featureName,
+            @RequestParam("displayName") String displayName,
+            @RequestParam(value = "displayNameTamil", required = false) String displayNameTamil,
+            @RequestParam(value = "icon", required = false) String icon,
+            @RequestParam(value = "color", required = false) String color,
+            @RequestParam(value = "route", required = false) String route,
+            @RequestParam(value = "latitude", required = false) BigDecimal latitude,
+            @RequestParam(value = "longitude", required = false) BigDecimal longitude,
+            @RequestParam(value = "radiusKm", required = false) Double radiusKm,
+            @RequestParam(value = "displayOrder", required = false) Integer displayOrder,
+            @RequestParam(value = "maxPostsPerUser", required = false) Integer maxPostsPerUser,
+            @RequestParam(value = "maxImagesPerPost", required = false) Integer maxImagesPerPost,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
         try {
-            FeatureConfig updated = featureConfigService.update(id, config);
+            String imageUrl = null;
+            if (image != null && !image.isEmpty()) {
+                imageUrl = fileUploadService.uploadFile(image, "feature-configs");
+            }
+
+            FeatureConfig config = FeatureConfig.builder()
+                    .featureName(featureName)
+                    .displayName(displayName)
+                    .displayNameTamil(displayNameTamil)
+                    .icon(icon)
+                    .color(color)
+                    .route(route)
+                    .imageUrl(imageUrl)
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .radiusKm(radiusKm != null ? radiusKm : 50.0)
+                    .displayOrder(displayOrder != null ? displayOrder : 0)
+                    .maxPostsPerUser(maxPostsPerUser != null ? maxPostsPerUser : 0)
+                    .maxImagesPerPost(maxImagesPerPost != null ? maxImagesPerPost : 3)
+                    .build();
+
+            FeatureConfig updated = featureConfigService.update(id, config, imageUrl);
             return ResponseUtil.success(updated, "Feature config updated successfully");
         } catch (Exception e) {
             log.error("Error updating feature config", e);

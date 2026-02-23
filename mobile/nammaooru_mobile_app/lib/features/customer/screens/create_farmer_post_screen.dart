@@ -13,6 +13,7 @@ import '../services/farmer_products_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../services/post_config_service.dart';
 
 class CreateFarmerPostScreen extends StatefulWidget {
   const CreateFarmerPostScreen({super.key});
@@ -33,7 +34,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
   String _selectedCategory = 'Vegetables';
   String _selectedUnit = 'kg';
   final List<File> _selectedImages = [];
-  static const int _maxImages = 5;
+  int _maxImages = 5;
   bool _isSubmitting = false;
   int? _paidTokenId;
   double? _latitude;
@@ -83,6 +84,16 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
   void initState() {
     super.initState();
     _prefillData();
+    _loadImageLimit();
+  }
+
+  Future<void> _loadImageLimit() async {
+    await PostConfigService.instance.fetch();
+    if (mounted) {
+      setState(() {
+        _maxImages = PostConfigService.instance.imageLimit;
+      });
+    }
   }
 
   @override

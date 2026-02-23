@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FeatureConfigService, FeatureConfig } from '../../services/feature-config.service';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-feature-config-management',
@@ -14,10 +15,13 @@ export class FeatureConfigManagementComponent implements OnInit {
   showForm = false;
   editingId: number | null = null;
   featureForm!: FormGroup;
+  selectedImage: File | null = null;
+  imagePreview: string | null = null;
+  editingImageUrl: string | null = null;
 
   displayedColumns: string[] = [
-    'displayOrder', 'featureName', 'displayName', 'displayNameTamil',
-    'icon', 'color', 'radiusKm', 'maxPostsPerUser', 'active', 'actions'
+    'displayOrder', 'image', 'featureName', 'displayName', 'displayNameTamil',
+    'icon', 'color', 'radiusKm', 'maxPostsPerUser', 'maxImagesPerPost', 'active', 'actions'
   ];
 
   constructor(
@@ -44,7 +48,8 @@ export class FeatureConfigManagementComponent implements OnInit {
       radiusKm: [50],
       displayOrder: [0],
       isActive: [true],
-      maxPostsPerUser: [0]
+      maxPostsPerUser: [0],
+      maxImagesPerPost: [3]
     });
   }
 
@@ -62,14 +67,44 @@ export class FeatureConfigManagementComponent implements OnInit {
     });
   }
 
+  getImageUrl(imageUrl: string): string {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('http')) return imageUrl;
+    const base = environment.apiUrl.replace('/api', '');
+    return `${base}${imageUrl}`;
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedImage = input.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.imagePreview = reader.result as string;
+      };
+      reader.readAsDataURL(this.selectedImage);
+    }
+  }
+
+  removeImage(): void {
+    this.selectedImage = null;
+    this.imagePreview = null;
+  }
+
   openAddForm(): void {
     this.editingId = null;
-    this.featureForm.reset({ radiusKm: 50, displayOrder: 0, isActive: true, maxPostsPerUser: 0 });
+    this.selectedImage = null;
+    this.imagePreview = null;
+    this.editingImageUrl = null;
+    this.featureForm.reset({ radiusKm: 50, displayOrder: 0, isActive: true, maxPostsPerUser: 0, maxImagesPerPost: 3 });
     this.showForm = true;
   }
 
   openEditForm(feature: FeatureConfig): void {
     this.editingId = feature.id!;
+    this.selectedImage = null;
+    this.imagePreview = null;
+    this.editingImageUrl = feature.imageUrl || null;
     this.featureForm.patchValue({
       featureName: feature.featureName,
       displayName: feature.displayName,
@@ -82,7 +117,8 @@ export class FeatureConfigManagementComponent implements OnInit {
       radiusKm: feature.radiusKm,
       displayOrder: feature.displayOrder,
       isActive: feature.isActive,
-      maxPostsPerUser: feature.maxPostsPerUser || 0
+      maxPostsPerUser: feature.maxPostsPerUser || 0,
+      maxImagesPerPost: feature.maxImagesPerPost || 3
     });
     this.showForm = true;
   }
@@ -90,6 +126,9 @@ export class FeatureConfigManagementComponent implements OnInit {
   cancelForm(): void {
     this.showForm = false;
     this.editingId = null;
+    this.selectedImage = null;
+    this.imagePreview = null;
+    this.editingImageUrl = null;
   }
 
   saveFeature(): void {
@@ -98,19 +137,23 @@ export class FeatureConfigManagementComponent implements OnInit {
     const config: FeatureConfig = this.featureForm.value;
 
     if (this.editingId) {
-      this.featureConfigService.updateFeature(this.editingId, config).subscribe({
+      this.featureConfigService.updateFeature(this.editingId, config, this.selectedImage || undefined).subscribe({
         next: () => {
           this.snackBar.open('Feature updated successfully', 'Close', { duration: 3000 });
           this.showForm = false;
+          this.selectedImage = null;
+          this.imagePreview = null;
           this.loadFeatures();
         },
         error: () => this.snackBar.open('Failed to update feature', 'Close', { duration: 3000 })
       });
     } else {
-      this.featureConfigService.createFeature(config).subscribe({
+      this.featureConfigService.createFeature(config, this.selectedImage || undefined).subscribe({
         next: () => {
           this.snackBar.open('Feature created successfully', 'Close', { duration: 3000 });
           this.showForm = false;
+          this.selectedImage = null;
+          this.imagePreview = null;
           this.loadFeatures();
         },
         error: () => this.snackBar.open('Failed to create feature', 'Close', { duration: 3000 })
