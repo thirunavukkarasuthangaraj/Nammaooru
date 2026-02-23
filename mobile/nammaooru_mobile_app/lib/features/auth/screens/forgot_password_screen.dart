@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 import 'dart:ui';
 import '../providers/forgot_password_provider.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -14,7 +15,7 @@ class ForgotPasswordScreen extends StatefulWidget {
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with CodeAutoFill {
   final _emailController = TextEditingController();
   final _otpController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -31,7 +32,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   int _resendTimer = 0;
 
   @override
+  void codeUpdated() {
+    // Called by CodeAutoFill when SMS is read via broadcast receiver
+    if (code != null && code!.isNotEmpty) {
+      // Extract 6-digit OTP from the SMS text
+      final otpMatch = RegExp(r'\d{6}').firstMatch(code!);
+      if (otpMatch != null) {
+        final otp = otpMatch.group(0)!;
+        _otpController.text = otp;
+        setState(() {});
+        // Auto-verify after filling
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _otpController.text.length == 6) {
+            final provider = Provider.of<ForgotPasswordProvider>(context, listen: false);
+            if (provider.currentStep == ForgotPasswordStep.otp) {
+              _verifyOtp(provider);
+            }
+          }
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    cancel(); // Stop SMS listener
     _emailController.dispose();
     _otpController.dispose();
     _passwordController.dispose();
@@ -485,6 +510,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final success = await provider.sendOtp(_emailController.text.trim());
       if (mounted && success) {
         _startResendTimer();
+        // Start listening for SMS via broadcast receiver
+        listenForCode();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Verification code sent!'), backgroundColor: Color(0xFF4CAF50)),
         );
@@ -559,6 +586,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final success = await provider.resendOtp();
     if (mounted && success) {
       _startResendTimer();
+      // Re-start listening for SMS via broadcast receiver
+      listenForCode();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Code sent again!'), backgroundColor: Color(0xFF4CAF50)),
       );

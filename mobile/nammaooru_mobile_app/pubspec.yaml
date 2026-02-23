@@ -59,6 +59,9 @@ dependencies:
     sdk: flutter
   intl: 0.20.2
   
+  # SMS Auto-fill (OTP auto-read from SMS)
+  sms_autofill: ^2.4.0
+
   # JWT
   jwt_decode: ^0.3.1
   cached_network_image: ^3.4.1

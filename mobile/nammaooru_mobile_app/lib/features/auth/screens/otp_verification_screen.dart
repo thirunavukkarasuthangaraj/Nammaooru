@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 import 'dart:async';
 import 'dart:ui';
 import '../../../core/auth/auth_provider.dart';
@@ -28,7 +29,7 @@ class OtpVerificationScreen extends StatefulWidget {
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _OtpVerificationScreenState extends State<OtpVerificationScreen> with CodeAutoFill {
   final _formKey = GlobalKey<FormState>();
   final _otpController = TextEditingController();
 
@@ -37,13 +38,34 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   bool _canResend = false;
 
   @override
+  void codeUpdated() {
+    // Called by CodeAutoFill when SMS is read via broadcast receiver
+    if (code != null && code!.isNotEmpty) {
+      final otpMatch = RegExp(r'\d{6}').firstMatch(code!);
+      if (otpMatch != null) {
+        _otpController.text = otpMatch.group(0)!;
+        setState(() {});
+        // Auto-verify after filling
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _otpController.text.length == 6) {
+            _handleVerifyOtp();
+          }
+        });
+      }
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     _startTimer();
+    // Start listening for SMS via broadcast receiver
+    listenForCode();
   }
 
   @override
   void dispose() {
+    cancel(); // Stop SMS listener
     _timer?.cancel();
     _otpController.dispose();
     super.dispose();
@@ -151,6 +173,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         );
         _clearOtp();
         _startTimer();
+        // Re-start listening for SMS
+        listenForCode();
       } else if (authProvider.errorMessage != null) {
         Helpers.showSnackBar(
           context,
@@ -318,6 +342,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           keyboardType: TextInputType.number,
           maxLength: 6,
           textAlign: TextAlign.center,
+          autofillHints: const [AutofillHints.oneTimeCode],
           style: const TextStyle(
             fontSize: 24,
             letterSpacing: 8,
