@@ -7,9 +7,9 @@ import com.razorpay.Utils;
 import com.shopmanagement.entity.PostPayment;
 import com.shopmanagement.config.RazorpayConfig;
 import com.shopmanagement.repository.PostPaymentRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,14 +22,25 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PostPaymentService {
 
     private final PostPaymentRepository postPaymentRepository;
     private final RazorpayClient razorpayClient;
     private final RazorpayConfig razorpayConfig;
+
     private final SettingService settingService;
+
+    @Autowired
+    public PostPaymentService(PostPaymentRepository postPaymentRepository,
+                              @Autowired(required = false) RazorpayClient razorpayClient,
+                              RazorpayConfig razorpayConfig,
+                              SettingService settingService) {
+        this.postPaymentRepository = postPaymentRepository;
+        this.razorpayClient = razorpayClient;
+        this.razorpayConfig = razorpayConfig;
+        this.settingService = settingService;
+    }
 
     private boolean isTestMode() {
         return razorpayConfig.isTestMode();
