@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
@@ -25,6 +26,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isVerifying = false;
   Timer? _timer;
   int _resendTimer = 0;
 
@@ -104,24 +106,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               SafeArea(
                 child: Consumer<ForgotPasswordProvider>(
                   builder: (context, provider, child) {
-                    if (provider.isLoading) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _getLoadingMessage(provider.currentStep),
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
                     return Center(
                       child: SingleChildScrollView(
                         child: Container(
@@ -150,17 +134,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
       ),
     );
-  }
-
-  String _getLoadingMessage(ForgotPasswordStep step) {
-    switch (step) {
-      case ForgotPasswordStep.email:
-        return 'Sending OTP...';
-      case ForgotPasswordStep.otp:
-        return 'Verifying OTP...';
-      case ForgotPasswordStep.password:
-        return 'Resetting password...';
-    }
   }
 
   Widget _buildCurrentStep(ForgotPasswordProvider provider) {
@@ -261,27 +234,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildButton(String text, VoidCallback onPressed) {
+  Widget _buildButton(String text, VoidCallback onPressed, {bool isLoading = false}) {
     return Container(
       width: double.infinity,
       height: 50,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4CAF50), Color(0xFF45A049)],
+        gradient: LinearGradient(
+          colors: isLoading
+              ? [const Color(0xFF81C784), const Color(0xFF81C784)]
+              : [const Color(0xFF4CAF50), const Color(0xFF45A049)],
         ),
       ),
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                text,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+              ),
       ),
     );
   }
@@ -316,7 +301,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 decoration: _inputDecoration(hint: 'Mobile Number', icon: Icons.phone),
               ),
               const SizedBox(height: 24),
-              _buildButton('Send Verification Code', () => _sendOtp(provider)),
+              _buildButton('Send Verification Code', () => _sendOtp(provider), isLoading: provider.isLoading),
               if (provider.errorMessage != null) ...[
                 const SizedBox(height: 12),
                 _buildErrorBox(provider.errorMessage!),
@@ -353,6 +338,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 textAlign: TextAlign.center,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50)),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Enter the code';
@@ -360,6 +347,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   return null;
                 },
                 decoration: _inputDecoration(hint: '------', icon: Icons.pin_outlined),
+                onChanged: (value) {
+                  setState(() {}); // Update UI
+                  if (value.length == 6) {
+                    // Auto-verify when all 6 digits are entered
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && _otpController.text.length == 6) {
+                        _verifyOtp(provider);
+                      }
+                    });
+                  }
+                },
               ),
               const SizedBox(height: 12),
               Row(
@@ -382,7 +380,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              _buildButton('Verify Code', () => _verifyOtp(provider)),
+              _buildButton('Verify Code', () => _verifyOtp(provider), isLoading: provider.isLoading),
               if (provider.errorMessage != null) ...[
                 const SizedBox(height: 12),
                 _buildErrorBox(provider.errorMessage!),
@@ -433,7 +431,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _buildButton('Update Password', () => _resetPassword(provider)),
+              _buildButton('Update Password', () => _resetPassword(provider), isLoading: provider.isLoading),
               if (provider.errorMessage != null) ...[
                 const SizedBox(height: 12),
                 _buildErrorBox(provider.errorMessage!),
@@ -495,13 +493,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _verifyOtp(ForgotPasswordProvider provider) async {
-    if (_otpFormKey.currentState!.validate()) {
+    // Guard against double-submission (auto-verify + manual button tap)
+    if (_isVerifying || provider.isLoading) return;
+    if (!_otpFormKey.currentState!.validate()) return;
+
+    _isVerifying = true;
+    try {
       final success = await provider.verifyOtp(_otpController.text.trim());
       if (mounted && success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Code verified!'), backgroundColor: Color(0xFF4CAF50)),
         );
       }
+    } finally {
+      _isVerifying = false;
     }
   }
 
