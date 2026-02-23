@@ -48,6 +48,11 @@ public class BulkImportRequest {
     private String imagePath; // Path to image file or URL
     private String imageFolder; // Subfolder to organize images (e.g., "electronics", "groceries")
 
+    // Shop-level barcodes
+    private String barcode1;
+    private String barcode2;
+    private String barcode3;
+
     // For tracking
     private Integer rowNumber;
 }

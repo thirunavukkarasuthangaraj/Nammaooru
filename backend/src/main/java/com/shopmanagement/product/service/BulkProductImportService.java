@@ -214,43 +214,43 @@ public class BulkProductImportService {
 
     /**
      * Parse a single row from Excel
-     * Standard Column Mapping (0-indexed) - Updated to match actual Excel format:
-     * A(0):  name           - Product name (required)
-     * B(1):  nameTamil      - Tamil name
-     * C(2):  description    - Product description
-     * D(3):  descriptionTa  - Tamil description (SKIP)
-     * E(4):  categoryName   - Category name (auto-created if not exists)
-     * F(5):  brand          - Brand name
-     * G(6):  sku            - SKU code (used to find existing products)
-     * H(7):  (SKIP)         - Search Query
-     * I(8):  (SKIP)         - Download Link
-     * J(9):  baseUnit       - Unit of measurement (kg, piece, etc.)
-     * K(10): baseWeight     - Weight value
-     * L(11): originalPrice  - MRP/Original price
-     * M(12): sellingPrice   - Selling price
-     * N(13): discountPct    - Discount percentage
-     * O(14): costPrice      - Cost price
-     * P(15): stockQuantity  - Current stock
-     * Q(16): minStockLevel  - Minimum stock alert level
-     * R(17): maxStockLevel  - Maximum stock level
-     * S(18): trackInventory - Track inventory (TRUE/FALSE)
-     * T(19): status         - ACTIVE/INACTIVE
-     * U(20): isFeatured     - Featured product (TRUE/FALSE)
-     * V(21): isAvailable    - Available for sale (TRUE/FALSE)
-     * W(22): (SKIP)         - Reserved/Empty
-     * X(23): tags           - Comma-separated tags
-     * Y(24): specifications - Product specifications
-     * Z(25): imagePath      - Image filename (e.g., product.jpg)
-     * AA(26): imageFolder   - Subfolder under /uploads/products/master/
+     * Standard Column Mapping (0-indexed) - Matches user's Excel headers:
+     * A(0):  name               - Product name (required)
+     * B(1):  nameTamil          - Tamil name
+     * C(2):  description        - Product description
+     * D(3):  descriptionTamil   - Tamil description (SKIP)
+     * E(4):  categoryName       - Category name (auto-created if not exists)
+     * F(5):  brand              - Brand name
+     * G(6):  sku                - SKU code (used to find existing products)
+     * H(7):  searchQuery        - (SKIP)
+     * I(8):  downloadLink       - (SKIP)
+     * J(9):  baseUnit           - Unit of measurement (kg, piece, etc.)
+     * K(10): baseWeight         - Weight value
+     * L(11): originalPrice      - MRP/Original price
+     * M(12): discountPercentage - Discount percentage
+     * N(13): sellingPrice       - Selling price
+     * O(14): costPrice          - Cost price
+     * P(15): stockQuantity      - Current stock
+     * Q(16): minStockLevel      - Minimum stock alert level
+     * R(17): maxStockLevel      - Maximum stock level
+     * S(18): trackInventory     - Track inventory (TRUE/FALSE)
+     * T(19): status             - ACTIVE/INACTIVE
+     * U(20): isFeatured         - Featured product (TRUE/FALSE)
+     * V(21): isAvailable        - Available for sale (TRUE/FALSE)
+     * W(22): tags               - Comma-separated tags
+     * X(23): imagePath          - Image filename (e.g., product.jpg)
+     * Y(24): barcode            - Master product barcode
+     * Z(25): barcode1           - Shop-level barcode 1
+     * AA(26): barcode2          - Shop-level barcode 2
+     * AB(27): barcode3          - Shop-level barcode 3
      */
     private BulkImportRequest parseRow(Row row, int rowNumber) {
         String categoryName = getCellValueAsString(row.getCell(4));  // E: categoryName
         // DON'T lookup category here - do it inside the REQUIRES_NEW transaction
 
         String name = getCellValueAsString(row.getCell(0));          // A: Item Name
-        String tags = getCellValueAsString(row.getCell(23));         // X: tags
-        String imagePath = getCellValueAsString(row.getCell(24));    // Y: imagePath (was in Z but user's Excel has it in Y)
-        String imageFolder = getCellValueAsString(row.getCell(25));  // Z: imageFolder
+        String tags = getCellValueAsString(row.getCell(22));         // W: tags
+        String imagePath = getCellValueAsString(row.getCell(23));    // X: imagePath
 
         log.info("parseRow #{}: name='{}', category='{}', imagePath='{}'", rowNumber, name, categoryName, imagePath);
 
@@ -265,8 +265,8 @@ public class BulkProductImportService {
                 .baseUnit(getCellValueAsString(row.getCell(9)))               // J(9)
                 .baseWeight(getCellValueAsBigDecimal(row.getCell(10)))        // K(10)
                 .originalPrice(getCellValueAsBigDecimal(row.getCell(11)))     // L(11)
-                .sellingPrice(getCellValueAsBigDecimal(row.getCell(12)))      // M(12)
-                .discountPercentage(getCellValueAsBigDecimal(row.getCell(13)))// N(13)
+                .discountPercentage(getCellValueAsBigDecimal(row.getCell(12)))// M(12)
+                .sellingPrice(getCellValueAsBigDecimal(row.getCell(13)))      // N(13)
                 .costPrice(getCellValueAsBigDecimal(row.getCell(14)))         // O(14)
                 .stockQuantity(getCellValueAsInteger(row.getCell(15)))        // P(15)
                 .minStockLevel(getCellValueAsInteger(row.getCell(16)))        // Q(16)
@@ -275,11 +275,13 @@ public class BulkProductImportService {
                 .status(getCellValueAsString(row.getCell(19)))                // T(19)
                 .isFeatured(getCellValueAsBoolean(row.getCell(20)))           // U(20)
                 .isAvailable(getCellValueAsBoolean(row.getCell(21)))          // V(21)
-                .tags(tags)                                                    // X(23)
-                .specifications(null)                                          // Not used in current Excel
-                .imagePath(imagePath)                                          // Y(24)
-                .imageFolder(imageFolder)                                      // Z(25)
-                .barcode(null)
+                .tags(tags)                                                    // W(22)
+                .imagePath(imagePath)                                          // X(23)
+                .imageFolder(null)                                             // Not in Excel
+                .barcode(getCellValueAsString(row.getCell(24)))               // Y(24)
+                .barcode1(getCellValueAsString(row.getCell(25)))              // Z(25)
+                .barcode2(getCellValueAsString(row.getCell(26)))              // AA(26)
+                .barcode3(getCellValueAsString(row.getCell(27)))              // AB(27)
                 .build();
     }
 
@@ -581,6 +583,10 @@ public class BulkProductImportService {
                 .customName(request.getCustomName())
                 .customDescription(request.getCustomDescription())
                 .tags(request.getTags())
+                .barcode(request.getBarcode())
+                .barcode1(request.getBarcode1())
+                .barcode2(request.getBarcode2())
+                .barcode3(request.getBarcode3())
                 .build();
     }
 
