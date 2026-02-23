@@ -100,6 +100,13 @@ public class SettingService {
         }
         return setting.getSettingValue();
     }
+
+    public Map<String, String> getPublicSettingsByCategory(String category) {
+        List<Setting> settings = settingRepository.findByCategoryAndScope(category, Setting.SettingScope.GLOBAL);
+        return settings.stream()
+                .filter(Setting::getIsActive)
+                .collect(Collectors.toMap(Setting::getSettingKey, Setting::getSettingValue));
+    }
     
     @Transactional
     public SettingResponse updateSetting(Long id, SettingRequest request) {
@@ -355,6 +362,19 @@ public class SettingService {
 
         createDefaultSettingIfNotExists("paid_post.currency", "INR",
                 "Currency for paid posts", "PAID_POSTS", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+
+        // Contact / Support settings
+        createDefaultSettingIfNotExists("support.phone", "6374217724",
+                "Support phone number displayed in the app", "CONTACT", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("support.whatsapp", "6374217724",
+                "WhatsApp number for customer support", "CONTACT", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("support.email", "support@nammaooru.com",
+                "Support email address", "CONTACT", Setting.SettingType.EMAIL, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("support.website", "https://nammaooru.com",
+                "Official website URL", "CONTACT", Setting.SettingType.URL, Setting.SettingScope.GLOBAL);
 
         log.info("Default settings initialization completed");
     }

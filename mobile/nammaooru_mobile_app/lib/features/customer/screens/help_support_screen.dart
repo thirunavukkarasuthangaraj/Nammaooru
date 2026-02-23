@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../services/contact_config_service.dart';
 
-class HelpSupportScreen extends StatelessWidget {
+class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({Key? key}) : super(key: key);
 
-  // Village-friendly support contact details
-  static const String supportPhoneNumber = '+91 9876543210';
-  static const String whatsappNumber = '+91 9876543210';
-  static const String supportEmail = 'support@nammaooru.com';
-  static const String officialWebsite = 'https://nammaooru.com';
+  @override
+  State<HelpSupportScreen> createState() => _HelpSupportScreenState();
+}
+
+class _HelpSupportScreenState extends State<HelpSupportScreen> {
+  final _contact = ContactConfigService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _contact.fetch().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,25 +247,25 @@ class HelpSupportScreen extends StatelessWidget {
             _buildContactItem(
               icon: Icons.phone,
               title: 'Customer Support',
-              value: supportPhoneNumber,
+              value: _contact.phone,
               onTap: () => _makePhoneCall(context),
             ),
             _buildContactItem(
               icon: Icons.chat,
               title: 'WhatsApp Support',
-              value: whatsappNumber,
+              value: _contact.whatsapp,
               onTap: () => _openWhatsApp(context),
             ),
             _buildContactItem(
               icon: Icons.email,
               title: 'Email Support',
-              value: supportEmail,
+              value: _contact.email,
               onTap: () => _sendEmail(context),
             ),
             _buildContactItem(
               icon: Icons.web,
               title: 'Website',
-              value: officialWebsite,
+              value: _contact.website,
               onTap: () => _openWebsite(context),
             ),
           ],
@@ -360,7 +370,7 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   Future<void> _makePhoneCall(BuildContext context) async {
-    final uri = Uri(scheme: 'tel', path: supportPhoneNumber);
+    final uri = Uri(scheme: 'tel', path: _contact.phone);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
@@ -369,9 +379,10 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   Future<void> _openWhatsApp(BuildContext context) async {
+    final number = _contact.whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
     final message = 'Hi! I need help with NammaOoru app.';
-    final whatsappUrl = Uri.parse('https://wa.me/$whatsappNumber?text=${Uri.encodeComponent(message)}');
-    
+    final whatsappUrl = Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(message)}');
+
     if (await canLaunchUrl(whatsappUrl)) {
       await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
     } else {
@@ -382,10 +393,10 @@ class HelpSupportScreen extends StatelessWidget {
   Future<void> _sendEmail(BuildContext context) async {
     final emailUri = Uri(
       scheme: 'mailto',
-      path: supportEmail,
+      path: _contact.email,
       query: 'subject=NammaOoru App Support&body=Hi, I need help with...',
     );
-    
+
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);
     } else {
@@ -394,8 +405,8 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   Future<void> _openWebsite(BuildContext context) async {
-    final websiteUrl = Uri.parse(officialWebsite);
-    
+    final websiteUrl = Uri.parse(_contact.website);
+
     if (await canLaunchUrl(websiteUrl)) {
       await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
     } else {

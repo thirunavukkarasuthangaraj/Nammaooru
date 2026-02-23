@@ -224,6 +224,13 @@ public class SettingController {
         return ResponseEntity.ok(value);
     }
 
+    @GetMapping("/public/category/{category}")
+    public ResponseEntity<Map<String, String>> getPublicSettingsByCategory(@PathVariable String category) {
+        log.info("Fetching public settings for category: {}", category);
+        Map<String, String> settings = settingService.getPublicSettingsByCategory(category);
+        return ResponseEntity.ok(settings);
+    }
+
     @GetMapping("/enums")
     public ResponseEntity<Map<String, Object>> getSettingEnums() {
         return ResponseEntity.ok(Map.of(

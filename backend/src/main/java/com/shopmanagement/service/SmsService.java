@@ -37,10 +37,15 @@ public class SmsService {
 
     @Value("${msg91.template.otp:}")
     private String msg91OtpTemplateId;
-    
+
+    @Value("${msg91.template.forgot-password:}")
+    private String msg91ForgotPasswordTemplateId;
+
     // SMS Templates - Must match DLT approved template
-    // DLT Template ID: 1207176226012464195
+    // DLT Template ID: 1207176226012464195 | MSG91 Template ID: 690f78375bceb56a7e591805
     private static final String OTP_TEMPLATE = "Your OTP to complete your Namma Ooru Registration is %s. It is valid for %d minutes. - NAMMAO";
+    // DLT Template ID: 1207177176721454484 | MSG91 Template ID: 699c2a8bf9f067a42101e683
+    private static final String FORGOT_PASSWORD_TEMPLATE = "Your Namma Ooru verification code is %s. It is valid for %d minutes. Do not share this with anyone. - NAMMAO";
     private static final String WELCOME_TEMPLATE = "Welcome to NammaOoru! Your account has been created successfully. Start shopping now! -NammaOoru";
     private static final String ORDER_CONFIRMATION_TEMPLATE = "Your order #%s has been confirmed. Amount: ₹%.2f. Track your order in the app. -NammaOoru";
     private static final String ORDER_UPDATE_TEMPLATE = "Order #%s update: %s. Check the app for details. -NammaOoru";
@@ -50,6 +55,12 @@ public class SmsService {
     public CompletableFuture<Boolean> sendOtpSms(String mobileNumber, String otp, int validityMinutes) {
         String message = String.format(OTP_TEMPLATE, otp, validityMinutes);
         return sendSms(mobileNumber, message, "OTP");
+    }
+
+    @Async
+    public CompletableFuture<Boolean> sendForgotPasswordOtpSms(String mobileNumber, String otp, int validityMinutes) {
+        String message = String.format(FORGOT_PASSWORD_TEMPLATE, otp, validityMinutes);
+        return sendSms(mobileNumber, message, "FORGOT_PASSWORD");
     }
     
     @Async
@@ -85,11 +96,11 @@ public class SmsService {
             log.info("SMS disabled. Would send {} SMS to {}: {}", purpose, mobileNumber, message);
             return CompletableFuture.completedFuture(true);
         }
-        
+
         try {
             // Format mobile number (ensure it's in correct format)
             String formattedNumber = formatMobileNumber(mobileNumber);
-            
+
             boolean success = false;
             switch (smsProvider.toUpperCase()) {
                 case "TEXTLOCAL":
@@ -99,7 +110,7 @@ public class SmsService {
                     success = sendViaTwilio(formattedNumber, message);
                     break;
                 case "MSG91":
-                    success = sendViaMsg91(formattedNumber, message);
+                    success = sendViaMsg91(formattedNumber, message, purpose);
                     break;
                 case "MOCK":
                 default:
@@ -163,9 +174,9 @@ public class SmsService {
         }
     }
     
-    private boolean sendViaMsg91(String mobileNumber, String message) {
+    private boolean sendViaMsg91(String mobileNumber, String message, String purpose) {
         try {
-            log.info("Sending SMS via MSG91 to {}: {}", mobileNumber, message);
+            log.info("Sending SMS via MSG91 to {} for purpose {}: {}", mobileNumber, purpose, message);
 
             // Format mobile number - remove country code if present
             String formattedNumber = mobileNumber.replaceAll("\\D", "");
@@ -173,24 +184,35 @@ public class SmsService {
                 formattedNumber = formattedNumber.substring(2);
             }
 
+            // Pick the correct flow_id based on purpose
+            String flowId = resolveFlowId(purpose);
+            if (flowId == null || flowId.isEmpty()) {
+                log.error("No MSG91 flow_id configured for purpose: {}", purpose);
+                return false;
+            }
+
             // MSG91 Flow API - for sending templated messages
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("authkey", apiKey);
 
-            // Extract OTP from message
+            // Extract OTP and validity from message
             String otpCode = extractOtpFromMessage(message);
+            String validityMinutes = extractValidityFromMessage(message);
 
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("flow_id", msg91OtpTemplateId);  // Use flow_id instead of template_id
+            requestBody.put("flow_id", flowId);
 
             // Recipients array
             Map<String, Object> recipient = new HashMap<>();
             recipient.put("mobiles", "91" + formattedNumber);  // Must include country code
 
-            // Variables for template
+            // Variables for template (##var## and ##var2## in order)
             if (otpCode != null) {
-                recipient.put("var", otpCode);  // Single variable for ##var##
+                recipient.put("var", otpCode);
+            }
+            if (validityMinutes != null) {
+                recipient.put("var2", validityMinutes);
             }
 
             requestBody.put("recipients", new Object[]{recipient});
@@ -200,8 +222,8 @@ public class SmsService {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            log.info("MSG91 Flow API Request - URL: {}, Flow ID: {}, Mobile: 91{}, OTP: {}",
-                flowApiUrl, msg91OtpTemplateId, formattedNumber, otpCode);
+            log.info("MSG91 Flow API Request - URL: {}, Flow ID: {}, Mobile: 91{}, Purpose: {}",
+                flowApiUrl, flowId, formattedNumber, purpose);
             log.info("MSG91 Request Body: {}", requestBody);
 
             ResponseEntity<String> response = restTemplate.postForEntity(
@@ -216,6 +238,24 @@ public class SmsService {
             log.error("Error sending SMS via MSG91: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+    private String resolveFlowId(String purpose) {
+        if ("FORGOT_PASSWORD".equalsIgnoreCase(purpose) || "PASSWORD_RESET".equalsIgnoreCase(purpose)) {
+            return msg91ForgotPasswordTemplateId;
+        }
+        // Default to registration OTP template
+        return msg91OtpTemplateId;
+    }
+
+    private String extractValidityFromMessage(String message) {
+        // Extract validity minutes - pattern: "valid for X minutes"
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("valid for (\\d+) minutes");
+        java.util.regex.Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 
     private String extractOtpFromMessage(String message) {

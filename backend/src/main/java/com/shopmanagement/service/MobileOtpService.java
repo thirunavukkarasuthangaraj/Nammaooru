@@ -486,7 +486,11 @@ public class MobileOtpService {
     public void sendOtpViaSms(String mobileNumber, String otp, String purpose) {
         log.info("Sending pre-generated OTP via SMS to: {} for purpose: {}", mobileNumber, purpose);
         try {
-            smsService.sendOtpSms(mobileNumber, otp, otpExpiryMinutes);
+            if ("PASSWORD_RESET".equalsIgnoreCase(purpose) || "FORGOT_PASSWORD".equalsIgnoreCase(purpose)) {
+                smsService.sendForgotPasswordOtpSms(mobileNumber, otp, otpExpiryMinutes);
+            } else {
+                smsService.sendOtpSms(mobileNumber, otp, otpExpiryMinutes);
+            }
             log.info("OTP sent successfully via SMS to: {}", mobileNumber);
         } catch (Exception e) {
             log.error("Failed to send OTP via SMS to: {}", mobileNumber, e);

@@ -226,6 +226,7 @@ msg91:
     id: ${MSG91_SENDER_ID:NAMMAO}
   template:
     otp: ${MSG91_OTP_TEMPLATE_ID:}
+    forgot-password: ${MSG91_FORGOT_PASSWORD_TEMPLATE_ID:}
     order-confirmation: ${MSG91_ORDER_CONFIRMATION_TEMPLATE_ID:nammaooru}
     order-status: ${MSG91_ORDER_STATUS_TEMPLATE_ID:nammaooru}
     order-delivered: ${MSG91_ORDER_DELIVERED_TEMPLATE_ID:nammaooru}

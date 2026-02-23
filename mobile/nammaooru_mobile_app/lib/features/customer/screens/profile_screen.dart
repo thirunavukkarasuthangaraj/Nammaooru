@@ -16,6 +16,7 @@ import '../../../core/api/api_client.dart';
 import '../../../shared/services/location_service.dart';
 import 'payment_history_screen.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
+import '../../../services/contact_config_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -73,11 +74,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
   }
 
+  final _contact = ContactConfigService.instance;
+
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
     _loadPostCounts();
+    _contact.fetch().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadUserProfile() async {
@@ -1097,7 +1103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildContactSupportCard() {
-    const supportNumber = '6374217724';
+    final supportNumber = _contact.phone;
 
     return Material(
       color: Colors.transparent,
