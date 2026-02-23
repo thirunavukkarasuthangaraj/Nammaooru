@@ -2086,6 +2086,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()));
     } else if (route.contains('bus-timing')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
+    } else if (route.contains('womens-corner')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen()));
     } else if (route.contains('village') || route.contains('panchayat')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()));
     }
