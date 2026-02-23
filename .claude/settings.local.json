@@ -269,7 +269,8 @@
       "Bash(\"C:/Users/MVNLA/AppData/Local/Android/Sdk/platform-tools/adb.exe\" connect 192.168.1.6:41503)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzdXBlcmFkbWluIiwiZXhwIjoxODAzMDU1NDU1LCJpYXQiOjE3NzE1MTk0NTV9.CRYABEILSbRvSXf9F0jpUG8-wDW4QuIwBXkDL9xlUS4\")",
       "Bash(dart analyze:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(head:*)"
     ],
     "deny": [],
     "ask": [],
