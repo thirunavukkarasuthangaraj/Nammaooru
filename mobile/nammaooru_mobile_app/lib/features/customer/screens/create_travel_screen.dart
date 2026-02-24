@@ -331,7 +331,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId);
       },
-      onPaymentCancelled: () {},
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
     );
     handler.startPayment();
   }
@@ -345,7 +345,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId, isBanner: true);
       },
-      onPaymentCancelled: () {},
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
     );
     handler.startPayment(includeBanner: true);
   }

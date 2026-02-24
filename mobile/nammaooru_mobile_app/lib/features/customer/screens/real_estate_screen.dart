@@ -2248,7 +2248,7 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         _paidTokenId = tokenId;
         _submitForm(paidTokenId: tokenId);
       },
-      onPaymentCancelled: () {},
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
     );
     handler.startPayment();
   }

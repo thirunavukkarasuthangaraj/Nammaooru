@@ -268,7 +268,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId, isBanner: true);
       },
-      onPaymentCancelled: () {},
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
     );
     handler.startPayment(includeBanner: true);
   }
@@ -282,7 +282,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _paidTokenId = tokenId; // Store token for retry if post creation fails
         _submitPost(paidTokenId: tokenId);
       },
-      onPaymentCancelled: () {},
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
     );
     handler.startPayment();
   }
