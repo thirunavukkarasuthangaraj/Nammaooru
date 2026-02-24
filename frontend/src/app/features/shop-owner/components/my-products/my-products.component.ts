@@ -19,6 +19,7 @@ import { BulkPriceUpdateDialogComponent } from '../bulk-price-update-dialog/bulk
 import { BrowseMasterProductsDialogComponent, ProductAssignmentResult } from '../browse-master-products-dialog/browse-master-products-dialog.component';
 import { ProductEditDialogComponent } from '../product-edit-dialog/product-edit-dialog.component';
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface MasterProduct {
   id?: number;
@@ -148,7 +149,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     private shopContext: ShopContextService,
     private shopOwnerProductService: ShopOwnerProductService,
     private offlineStorage: OfflineStorageService,
-    private elementRef: ElementRef
+    private elementRef: ElementRef,
+    private swalService: SwalService
   ) {}
 
   // Scroll event handler for infinite scroll (called from template)
@@ -1188,7 +1190,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       });
   }
 
-  deleteProduct(product: ShopProduct): void {
+  async deleteProduct(product: ShopProduct): Promise<void> {
     if (this.usingFallbackData) {
       // Remove from local array for demo
       this.products = this.products.filter(p => p.id !== product.id);
@@ -1197,7 +1199,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete ${product.customName}?`)) {
+    const result = await this.swalService.confirmDelete(product.customName);
+    if (result.isConfirmed) {
       console.log('Deleting product:', product.id);
 
       // Check if this is an offline-created product (negative ID)
@@ -1217,11 +1220,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
             this.offlineStorage.removeProductFromCache(product.id).catch(err =>
               console.warn('Failed to remove product from cache:', err)
             );
-            this.snackBar.open('Product deleted successfully', 'Close', { duration: 2000 });
+            this.swalService.success('Deleted!', 'Product deleted successfully');
           },
           error: (error) => {
             console.error('Error deleting product:', error);
-            this.handleError('Failed to delete product');
+            this.swalService.error('Error', 'Failed to delete product');
           }
         });
     }
@@ -1346,9 +1349,9 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  bulkDeleteProducts(): void {
+  async bulkDeleteProducts(): Promise<void> {
     if (this.selectedProducts.length === 0) {
-      this.snackBar.open('Please select products to delete', 'Close', { duration: 2000 });
+      this.swalService.warning('No Selection', 'Please select products to delete');
       return;
     }
 
@@ -1356,21 +1359,56 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     const productNames = this.selectedProducts.slice(0, 3).map(p => p.customName).join(', ');
     const displayNames = count > 3 ? `${productNames} and ${count - 3} more` : productNames;
 
-    // Confirmation 1: Initial warning
-    if (!confirm(`WARNING: You are about to delete ${count} product(s).\n\n${displayNames}\n\nDo you want to proceed?`)) {
-      return;
-    }
+    // Confirmation 1: Initial warning with product names
+    const step1 = await this.swalService.custom({
+      title: `Delete ${count} Product(s)?`,
+      html: `<p>You are about to delete:</p><p><strong>${displayNames}</strong></p>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, proceed',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      reverseButtons: true
+    });
+    if (!step1.isConfirmed) return;
 
-    // Confirmation 2: Second confirmation with stronger warning
-    if (!confirm(`FINAL WARNING: This will permanently delete ${count} product(s) from your shop.\n\nThis action CANNOT be undone.\n\nAre you absolutely sure?`)) {
-      return;
-    }
+    // Confirmation 2: Final warning
+    const step2 = await this.swalService.custom({
+      title: 'FINAL WARNING',
+      html: `<p>This will <strong>permanently delete ${count} product(s)</strong> from your shop.</p><p style="color:#ef4444;font-weight:bold;">This action CANNOT be undone.</p>`,
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonText: 'Delete permanently',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      reverseButtons: true
+    });
+    if (!step2.isConfirmed) return;
 
     // Confirmation 3: For large deletions (50+), require typing DELETE
     if (count >= 50) {
-      const typed = prompt(`You are deleting ${count} products. Type "DELETE" to confirm:`);
-      if (typed !== 'DELETE') {
-        this.snackBar.open('Deletion cancelled. You must type DELETE to confirm.', 'Close', { duration: 3000 });
+      const step3 = await this.swalService.custom({
+        title: `Type "DELETE" to confirm`,
+        html: `<p>You are deleting <strong>${count} products</strong>. This is a large operation.</p>`,
+        icon: 'warning',
+        input: 'text',
+        inputPlaceholder: 'Type DELETE here',
+        showCancelButton: true,
+        confirmButtonText: 'Confirm Delete',
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        reverseButtons: true,
+        inputValidator: (value) => {
+          if (value !== 'DELETE') {
+            return 'You must type DELETE to confirm';
+          }
+          return null;
+        }
+      });
+      if (!step3.isConfirmed) {
+        this.swalService.info('Cancelled', 'Deletion cancelled.');
         return;
       }
     }
@@ -1381,13 +1419,15 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       this.products = this.products.filter(p => !selectedIds.includes(p.id));
       this.clearProductSelection();
       this.applyFilters();
-      this.snackBar.open(`${count} products deleted (demo mode)`, 'Close', { duration: 2000 });
+      this.swalService.success('Deleted!', `${count} products deleted (demo mode)`);
       return;
     }
 
     // Delete products via API
     const productIds = this.selectedProducts.map(p => p.id);
     console.log('Bulk deleting products:', productIds);
+
+    this.swalService.loading('Deleting...', `Removing ${count} products`);
 
     this.http.post(`${this.apiUrl}/shop-products/bulk-delete`, { productIds })
       .pipe(takeUntil(this.destroy$))
@@ -1403,10 +1443,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
               console.warn('Failed to remove product from cache:', err)
             );
           });
-          this.snackBar.open(`${count} products deleted successfully`, 'Close', { duration: 3000 });
+          this.swalService.success('Deleted!', `${count} products deleted successfully`);
         },
         error: (error) => {
           console.error('Error bulk deleting products:', error);
+          this.swalService.close();
           // Fallback: delete one by one
           this.bulkDeleteOneByOne(productIds);
         }

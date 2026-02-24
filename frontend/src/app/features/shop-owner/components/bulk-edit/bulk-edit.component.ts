@@ -7,6 +7,7 @@ import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
 import { VersionService } from '../../../../core/services/version.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineCategories } from '../category-create-dialog/category-create-dialog.component';
 
@@ -88,7 +89,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private offlineStorage: OfflineStorageService,
     private versionService: VersionService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private swalService: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -746,11 +748,16 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   }
 
   // Discard all changes
-  discardChanges(): void {
+  async discardChanges(): Promise<void> {
     if (this.modifiedProducts.size === 0) return;
 
-    const confirmed = confirm(`Discard all ${this.modifiedProducts.size} unsaved changes?`);
-    if (!confirmed) return;
+    const result = await this.swalService.confirm(
+      'Discard Changes?',
+      `Discard all ${this.modifiedProducts.size} unsaved changes?`,
+      'Yes, discard',
+      'Cancel'
+    );
+    if (!result.isConfirmed) return;
 
     // Restore original values
     this.modifiedProducts.forEach((product) => {
@@ -770,7 +777,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     });
 
     this.modifiedProducts.clear();
-    this.snackBar.open('All changes discarded', 'Close', { duration: 2000 });
+    this.swalService.success('Discarded', 'All changes discarded');
   }
 
   // Get product image
@@ -980,8 +987,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   // Remove image
   async removeImage(product: BulkEditProduct): Promise<void> {
-    const confirmed = confirm('Remove this product image?');
-    if (!confirmed) return;
+    const result = await this.swalService.confirm('Remove Image?', 'Remove this product image?', 'Yes, remove', 'Cancel');
+    if (!result.isConfirmed) return;
 
     this.uploadingImageFor = product.id;
 

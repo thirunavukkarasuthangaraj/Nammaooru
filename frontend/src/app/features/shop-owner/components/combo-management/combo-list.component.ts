@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../core/services/auth.service';
 import { OfflineStorageService, CachedCombo } from '../../../../core/services/offline-storage.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { ComboFormComponent } from './combo-form.component';
 
 interface ComboItem {
@@ -53,7 +54,8 @@ export class ComboListComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private offlineStorage: OfflineStorageService
+    private offlineStorage: OfflineStorageService,
+    private swalService: SwalService
   ) {}
 
   ngOnDestroy(): void {
@@ -249,17 +251,19 @@ export class ComboListComponent implements OnInit, OnDestroy {
     });
   }
 
-  deleteCombo(combo: Combo): void {
+  async deleteCombo(combo: Combo): Promise<void> {
     if (!this.shopId) return;
-    if (!confirm(`Are you sure you want to delete "${combo.name}"?`)) return;
+
+    const result = await this.swalService.confirmDelete(combo.name);
+    if (!result.isConfirmed) return;
 
     this.http.delete(`${environment.apiUrl}/shops/${this.shopId}/combos/${combo.id}`).subscribe({
       next: () => {
         this.combos = this.combos.filter(c => c.id !== combo.id);
-        this.showSnackBar('Combo deleted successfully', 'success');
+        this.swalService.success('Deleted!', 'Combo deleted successfully');
       },
       error: () => {
-        this.showSnackBar('Failed to delete combo', 'error');
+        this.swalService.error('Error', 'Failed to delete combo');
       }
     });
   }

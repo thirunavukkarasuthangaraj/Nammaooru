@@ -4,6 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../core/services/auth.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { ShopPromoFormComponent } from './shop-promo-form.component';
 
 export interface PromoCode {
@@ -41,7 +42,8 @@ export class ShopPromoListComponent implements OnInit {
     private http: HttpClient,
     private authService: AuthService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private swalService: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -124,18 +126,17 @@ export class ShopPromoListComponent implements OnInit {
     });
   }
 
-  deletePromo(promo: PromoCode): void {
-    if (!confirm(`Are you sure you want to delete "${promo.title}"?`)) {
-      return;
-    }
+  async deletePromo(promo: PromoCode): Promise<void> {
+    const result = await this.swalService.confirmDelete(promo.title);
+    if (!result.isConfirmed) return;
 
     this.http.delete(`${environment.apiUrl}/shop-owner/promotions/${promo.id}`).subscribe({
       next: () => {
         this.promoCodes = this.promoCodes.filter(p => p.id !== promo.id);
-        this.showSnackBar('Promo code deleted', 'success');
+        this.swalService.success('Deleted!', 'Promo code deleted');
       },
       error: (error) => {
-        this.showSnackBar(error.error?.message || 'Failed to delete promo code', 'error');
+        this.swalService.error('Error', error.error?.message || 'Failed to delete promo code');
       }
     });
   }
