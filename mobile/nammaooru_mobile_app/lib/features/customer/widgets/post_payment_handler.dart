@@ -76,11 +76,11 @@ class PostPaymentHandler {
     int displayTotal;
     int displayProcessingFee;
 
+    final bool limitReached = config['limitReached'] == true;
+
     if (includeBanner && bannerEnabled) {
       // Banner payment - show combined breakdown
-      // The actual amounts will come from the create-order response
-      // For the dialog, show estimated breakdown
-      final int estPostFee = price; // may be 0 if limit not reached, backend handles
+      final int estPostFee = limitReached ? price : 0;
       final int estBannerFee = bannerPrice;
       final int estBase = estPostFee + estBannerFee;
       final int estProcessing = (estBase * 236 / 10000).ceil();
@@ -141,6 +141,14 @@ class PostPaymentHandler {
             ),
             child: Column(
               children: [
+                if (limitReached) ...[
+                  _buildPriceRow(
+                    lang.getText('Post Fee', 'பதிவு கட்டணம்'),
+                    '\u20B9$estPostFee.00',
+                    isBold: false,
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 _buildPriceRow(
                   lang.getText('Banner Fee', 'பேனர் கட்டணம்'),
                   '\u20B9$estBannerFee.00',

@@ -34,7 +34,8 @@ public class PostPaymentController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getConfig(
             @RequestParam(required = false) String postType) {
         try {
-            Map<String, Object> config = postPaymentService.getPaymentConfig(postType);
+            User user = getCurrentUser();
+            Map<String, Object> config = postPaymentService.getPaymentConfig(postType, user.getId());
             return ResponseUtil.success(config, "Payment config retrieved");
         } catch (Exception e) {
             log.error("Error getting payment config", e);

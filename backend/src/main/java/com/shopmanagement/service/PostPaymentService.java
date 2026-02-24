@@ -86,7 +86,7 @@ public class PostPaymentService {
             "RENTAL", "30"
     );
 
-    public Map<String, Object> getPaymentConfig(String postType) {
+    public Map<String, Object> getPaymentConfig(String postType, Long userId) {
         boolean enabled = Boolean.parseBoolean(
                 settingService.getSettingValue("paid_post.enabled", "true"));
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
@@ -124,6 +124,9 @@ public class PostPaymentService {
             bannerPrice = Integer.parseInt(bannerGlobalDefault);
         }
 
+        // Check if user's free limit is reached
+        boolean limitReached = userId != null && isLimitReached(userId);
+
         Map<String, Object> config = new HashMap<>();
         config.put("enabled", enabled);
         config.put("price", price);
@@ -135,6 +138,7 @@ public class PostPaymentService {
         config.put("durationDays", durationDays);
         config.put("bannerEnabled", bannerEnabled);
         config.put("bannerPrice", bannerPrice);
+        config.put("limitReached", limitReached);
         return config;
     }
 
