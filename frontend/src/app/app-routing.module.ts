@@ -8,11 +8,13 @@ import { MainLayoutComponent } from './layout/main-layout/main-layout.component'
 import { RoleTestComponent } from './shared/components/role-test/role-test.component';
 import { PrivacyPolicyComponent } from './shared/components/privacy-policy/privacy-policy.component';
 import { TermsConditionsComponent } from './shared/components/terms-conditions/terms-conditions.component';
+import { HomeRedirectGuard } from './core/guards/home-redirect.guard';
 
 const routes: Routes = [
   {
     path: '',
-    redirectTo: '/shop-owner',
+    canActivate: [HomeRedirectGuard],
+    children: [],
     pathMatch: 'full'
   },
   {
@@ -118,7 +120,7 @@ const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '/dashboard'
+    redirectTo: ''
   }
 ];
 

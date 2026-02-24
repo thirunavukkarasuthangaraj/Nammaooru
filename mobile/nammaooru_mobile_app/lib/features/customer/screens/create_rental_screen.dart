@@ -13,6 +13,7 @@ import '../services/rental_service.dart';
 import '../widgets/voice_input_button.dart';
 import '../widgets/post_payment_handler.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../services/post_config_service.dart';
 
 class CreateRentalScreen extends StatefulWidget {
   const CreateRentalScreen({super.key});
@@ -33,6 +34,7 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
   String _selectedCategory = 'HOUSE';
   String _selectedPriceUnit = 'per_month';
   final List<File> _selectedImages = [];
+  int _maxImages = 3;
   bool _isSubmitting = false;
   int? _paidTokenId;
   double? _latitude;
@@ -100,6 +102,20 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
       _fetchPhoneFromProfile();
     }
     _getLocation();
+    _loadImageLimit();
+  }
+
+  Future<void> _loadImageLimit() async {
+    try {
+      await PostConfigService.instance.fetch();
+      if (mounted) {
+        setState(() {
+          _maxImages = PostConfigService.instance.imageLimit;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading image limit: $e');
+    }
   }
 
   Future<void> _fetchPhoneFromProfile() async {
@@ -152,10 +168,10 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      if (_selectedImages.length >= 5) {
+      if (_selectedImages.length >= _maxImages) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Maximum 5 images allowed')),
+            SnackBar(content: Text('Maximum $_maxImages images allowed')),
           );
         }
         return;
@@ -595,9 +611,22 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          langProvider.getText('Photos (up to 5)', 'புகைப்படங்கள் (5 வரை)'),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: VillageTheme.primaryText),
+        Row(
+          children: [
+            Text(
+              langProvider.getText('Photos', 'புகைப்படங்கள்'),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: VillageTheme.primaryText),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_selectedImages.length}/$_maxImages',
+              style: TextStyle(
+                fontSize: 13,
+                color: _selectedImages.length >= _maxImages ? Colors.orange : Colors.grey[500],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -606,7 +635,7 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
             scrollDirection: Axis.horizontal,
             children: [
               // Add photo button
-              if (_selectedImages.length < 5)
+              if (_selectedImages.length < _maxImages)
                 GestureDetector(
                   onTap: _showImageSourceDialog,
                   child: Container(
@@ -624,7 +653,7 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
                         Icon(Icons.add_a_photo, size: 32, color: Colors.grey[400]),
                         const SizedBox(height: 4),
                         Text(
-                          '${_selectedImages.length}/5',
+                          langProvider.getText('Add Photo', 'புகைப்படம்'),
                           style: TextStyle(color: Colors.grey[500], fontSize: 12),
                         ),
                       ],

@@ -34,7 +34,16 @@
       }
 
       .clear-btn {
-        height: 56px;
+        height: 40px;
+        color: #64748b;
+        border-color: #cbd5e1;
+        font-size: 13px;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
       }
     }
   }

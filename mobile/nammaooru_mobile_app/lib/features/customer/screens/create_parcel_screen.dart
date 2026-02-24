@@ -13,6 +13,7 @@ import '../services/parcel_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../services/post_config_service.dart';
 
 class CreateParcelScreen extends StatefulWidget {
   const CreateParcelScreen({super.key});
@@ -35,7 +36,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
 
   String _selectedServiceType = 'DOOR_TO_DOOR';
   final List<File> _selectedImages = [];
-  static const int _maxImages = 3;
+  int _maxImages = 3;
   bool _isSubmitting = false;
   int? _paidTokenId;
   double? _latitude;
@@ -83,6 +84,20 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
       _fetchPhoneFromProfile();
     }
     _getLocation();
+    _loadImageLimit();
+  }
+
+  Future<void> _loadImageLimit() async {
+    try {
+      await PostConfigService.instance.fetch();
+      if (mounted) {
+        setState(() {
+          _maxImages = PostConfigService.instance.imageLimit;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading image limit: $e');
+    }
   }
 
   Future<void> _fetchPhoneFromProfile() async {

@@ -33,9 +33,9 @@
         </mat-select>
       </mat-form-field>
 
-      <button mat-raised-button color="primary" (click)="clearFilters()" class="clear-btn">
+      <button mat-stroked-button (click)="clearFilters()" class="clear-btn">
         <mat-icon>clear</mat-icon>
-        Clear Filters
+        Clear
       </button>
     </div>
   </div>
@@ -151,98 +151,52 @@
         <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
         <mat-cell *matCellDef="let user">
           <div class="actions-container">
-            <!-- Status Toggle -->
-            <mat-slide-toggle 
-              [checked]="user.isActive" 
-              (change)="toggleUserStatus(user)"
-              [matTooltip]="user.isActive ? 'User is Active - Click to Deactivate' : 'User is Inactive - Click to Activate'"
-              [color]="user.isActive ? 'primary' : 'warn'"
-              class="status-toggle">
-            </mat-slide-toggle>
-            
-            <!-- Action buttons -->
-            <div class="action-buttons">
-              <button mat-icon-button 
-                      (click)="viewUser(user)"
-                      matTooltip="View Details"
-                      color="primary"
-                      class="action-btn view-btn">
-                <mat-icon>visibility</mat-icon>
-              </button>
-              
-              <button mat-icon-button 
-                      (click)="editUser(user)"
-                      matTooltip="Edit User"
-                      color="accent"
-                      class="action-btn edit-btn">
-                <mat-icon>edit</mat-icon>
-              </button>
-              
-              <!-- Document buttons for delivery partners - conditional based on document status -->
-              <ng-container *ngIf="user.role === 'DELIVERY_PARTNER'">
-                <!-- Show "View Documents" if documents exist -->
-                <button *ngIf="hasDocuments(user.id)"
-                        mat-raised-button
-                        (click)="viewDocuments(user)"
-                        matTooltip="View Uploaded Documents"
-                        color="primary"
-                        class="action-btn view-doc-btn"
-                        style="margin-right: 4px; font-size: 11px;">
-                  <mat-icon style="font-size: 16px;">folder_open</mat-icon>
-                  View Docs
-                </button>
+            <button mat-icon-button
+                    (click)="viewUser(user); $event.stopPropagation()"
+                    matTooltip="View"
+                    class="action-btn">
+              <mat-icon>visibility</mat-icon>
+            </button>
 
-                <!-- Show "Add Documents" if no documents exist -->
-                <button *ngIf="!hasDocuments(user.id)"
-                        mat-raised-button
-                        (click)="addDocuments(user)"
-                        matTooltip="Add Documents"
-                        color="accent"
-                        class="action-btn add-doc-btn"
-                        style="margin-right: 4px; font-size: 11px;">
-                  <mat-icon style="font-size: 16px;">add_circle</mat-icon>
-                  Add Docs
-                </button>
-              </ng-container>
+            <button mat-icon-button
+                    (click)="editUser(user); $event.stopPropagation()"
+                    matTooltip="Edit"
+                    class="action-btn">
+              <mat-icon>edit</mat-icon>
+            </button>
 
-              <button mat-icon-button [matMenuTriggerFor]="menu"
-                      matTooltip="More Actions"
-                      class="action-btn more-btn">
-                <mat-icon>more_vert</mat-icon>
-              </button>
-            </div>
+            <button mat-icon-button [matMenuTriggerFor]="menu"
+                    (click)="$event.stopPropagation()"
+                    matTooltip="More"
+                    class="action-btn">
+              <mat-icon>more_vert</mat-icon>
+            </button>
             
             <mat-menu #menu="matMenu" class="user-actions-menu">
-              <!-- Delivery Partner Document Management - conditional based on document status -->
-              <ng-container *ngIf="user.role === 'DELIVERY_PARTNER'">
-                <!-- If documents exist, show view and manage options -->
-                <ng-container *ngIf="hasDocuments(user.id)">
-                  <button mat-menu-item (click)="viewDocuments(user)" class="primary-menu-item">
-                    <mat-icon color="primary">folder_open</mat-icon>
-                    <span><strong>View Documents</strong></span>
-                  </button>
-                  <button mat-menu-item (click)="manageDocuments(user)">
-                    <mat-icon color="accent">upload_file</mat-icon>
-                    <span>Manage Documents</span>
-                  </button>
-                </ng-container>
+              <button mat-menu-item (click)="toggleUserStatus(user)">
+                <mat-icon [style.color]="user.isActive ? '#ef4444' : '#22c55e'">{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
+                <span>{{ user.isActive ? 'Deactivate' : 'Activate' }}</span>
+              </button>
 
-                <!-- If no documents, show add option prominently -->
-                <ng-container *ngIf="!hasDocuments(user.id)">
-                  <button mat-menu-item (click)="addDocuments(user)" class="primary-menu-item">
-                    <mat-icon color="accent">add_circle</mat-icon>
-                    <span><strong>Add Documents</strong></span>
-                  </button>
-                  <button mat-menu-item (click)="manageDocuments(user)">
-                    <mat-icon color="primary">upload_file</mat-icon>
-                    <span>Upload Documents</span>
-                  </button>
-                </ng-container>
+              <ng-container *ngIf="user.role === 'DELIVERY_PARTNER'">
                 <mat-divider></mat-divider>
+                <button *ngIf="hasDocuments(user.id)" mat-menu-item (click)="viewDocuments(user)">
+                  <mat-icon>folder_open</mat-icon>
+                  <span>View Documents</span>
+                </button>
+                <button *ngIf="!hasDocuments(user.id)" mat-menu-item (click)="addDocuments(user)">
+                  <mat-icon>add_circle</mat-icon>
+                  <span>Add Documents</span>
+                </button>
+                <button mat-menu-item (click)="manageDocuments(user)">
+                  <mat-icon>upload_file</mat-icon>
+                  <span>Manage Documents</span>
+                </button>
               </ng-container>
 
+              <mat-divider></mat-divider>
               <button mat-menu-item (click)="resetPassword(user)">
-                <mat-icon color="primary">lock_reset</mat-icon>
+                <mat-icon>lock_reset</mat-icon>
                 <span>Reset Password</span>
               </button>
 

@@ -194,6 +194,10 @@ public class AuthService {
 
         var jwtToken = jwtService.generateToken(user);
 
+        // Update last login timestamp
+        user.setLastLogin(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
         return AuthResponse.builder()
                 .accessToken(jwtToken)
                 .tokenType("Bearer")
