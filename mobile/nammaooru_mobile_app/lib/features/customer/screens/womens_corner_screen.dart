@@ -7,6 +7,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/womens_corner_service.dart';
 import 'womens_corner_detail_screen.dart';
 import 'create_womens_corner_screen.dart';
@@ -21,23 +22,18 @@ class WomensCornerScreen extends StatefulWidget {
 class _WomensCornerScreenState extends State<WomensCornerScreen> {
   static const Color _primaryColor = Color(0xFFE91E63);
   final WomensCornerService _service = WomensCornerService();
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _searchDebounce;
 
-  List<Map<String, dynamic>> _categories = [];
+  List<String> _categories = ['All'];
   List<Map<String, dynamic>> _posts = [];
-  bool _isLoadingCategories = true;
-  bool _isLoadingPosts = true;
+  bool _isLoading = true;
   String? _selectedCategory;
-  String _searchQuery = '';
-  double _radiusKm = 50;
+  String _searchText = '';
+  double _selectedRadius = 50.0;
   int _currentPage = 0;
   bool _hasMore = true;
-  bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
-  final GlobalKey _postsHeaderKey = GlobalKey();
-
-  static const List<double> _radiusOptions = [10, 25, 50, 100, 200];
+  double? _userLatitude;
+  double? _userLongitude;
 
   @override
   void initState() {
@@ -50,14 +46,12 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    _searchController.dispose();
-    _searchDebounce?.cancel();
     super.dispose();
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (_hasMore && !_isLoadingMore) {
+      if (!_isLoading && _hasMore) {
         _loadMorePosts();
       }
     }
@@ -66,40 +60,40 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
   Future<void> _loadCategories() async {
     final categories = await _service.getCategories();
     if (mounted) {
+      final names = categories
+          .map((c) => c['name']?.toString() ?? '')
+          .where((n) => n.isNotEmpty)
+          .toList();
       setState(() {
-        _categories = categories;
-        _isLoadingCategories = false;
+        _categories = ['All', ...names];
       });
     }
   }
 
-  Future<void> _loadPosts({bool reset = true}) async {
-    if (reset) {
-      setState(() {
-        _isLoadingPosts = true;
-        _currentPage = 0;
-        _posts = [];
-        _hasMore = true;
-      });
+  Future<void> _loadPosts() async {
+    setState(() {
+      _isLoading = true;
+      _currentPage = 0;
+    });
+
+    // Fetch GPS in background
+    if (_userLatitude == null || _userLongitude == null) {
+      LocationService.instance.getCurrentPosition().then((position) {
+        if (position != null && position.latitude != null && position.longitude != null) {
+          _userLatitude = position.latitude;
+          _userLongitude = position.longitude;
+        }
+      }).catchError((_) {});
     }
 
     try {
-      double? lat, lng;
-      try {
-        final position = await LocationService.instance.getCurrentPosition();
-        if (position != null && position.latitude != null && position.longitude != null) {
-          lat = position.latitude;
-          lng = position.longitude;
-        }
-      } catch (_) {}
-
       final response = await _service.getApprovedPosts(
-        page: _currentPage,
+        page: 0,
         category: _selectedCategory,
-        latitude: lat,
-        longitude: lng,
-        radiusKm: _radiusKm,
-        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
       );
 
       if (mounted) {
@@ -112,114 +106,60 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
         }
 
         setState(() {
-          if (reset) {
-            _posts = newPosts;
-          } else {
-            _posts.addAll(newPosts);
-          }
-          _hasMore = newPosts.length >= 20;
-          _isLoadingPosts = false;
-          _isLoadingMore = false;
+          _posts = newPosts;
+          _hasMore = (data is Map ? data['hasNext'] : null) ?? newPosts.length >= 20;
+          _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoadingPosts = false;
-          _isLoadingMore = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
   Future<void> _loadMorePosts() async {
-    _isLoadingMore = true;
     _currentPage++;
-    await _loadPosts(reset: false);
+    try {
+      final response = await _service.getApprovedPosts(
+        page: _currentPage,
+        category: _selectedCategory,
+        latitude: _userLatitude,
+        longitude: _userLongitude,
+        radiusKm: _selectedRadius,
+        search: _searchText.isNotEmpty ? _searchText : null,
+      );
+
+      if (mounted) {
+        final data = response['data'];
+        List<Map<String, dynamic>> newPosts = [];
+        if (data is Map && data['content'] is List) {
+          newPosts = List<Map<String, dynamic>>.from(data['content']);
+        } else if (data is List) {
+          newPosts = List<Map<String, dynamic>>.from(data);
+        }
+
+        setState(() {
+          _posts.addAll(newPosts);
+          _hasMore = (data is Map ? data['hasNext'] : null) ?? newPosts.length >= 20;
+        });
+      }
+    } catch (e) {
+      _currentPage--;
+    }
   }
 
-  void _onCategoryTap(String? categoryName) {
+  void _onCategorySelected(String category) {
     setState(() {
-      _selectedCategory = _selectedCategory == categoryName ? null : categoryName;
+      _selectedCategory = category == 'All' ? null : category;
     });
     _loadPosts();
-    // Scroll down to posts section after loading
-    Future.delayed(const Duration(milliseconds: 300), () {
-      final keyContext = _postsHeaderKey.currentContext;
-      if (keyContext != null && _scrollController.hasClients) {
-        final box = keyContext.findRenderObject() as RenderBox;
-        final position = box.localToGlobal(Offset.zero).dy;
-        final appBarHeight = MediaQuery.of(context).padding.top + kToolbarHeight;
-        final scrollTo = _scrollController.offset + position - appBarHeight;
-        _scrollController.animateTo(
-          scrollTo.clamp(0, _scrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
-  void _onSearchChanged(String query) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() => _searchQuery = query.trim());
-      _loadPosts();
-    });
-  }
-
-  void _showRadiusFilter(LanguageProvider langProvider) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                langProvider.getText('Filter by Radius', '\u0B86\u0BB0\u0BC8 \u0BB5\u0B9F\u0BBF\u0B95\u0B9F\u0BCD\u0B9F\u0BC1'),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _radiusOptions.map((r) {
-                  final isSelected = _radiusKm == r;
-                  return ChoiceChip(
-                    label: Text('${r.toInt()} km'),
-                    selected: isSelected,
-                    selectedColor: _primaryColor,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey[700],
-                      fontWeight: FontWeight.w600,
-                    ),
-                    onSelected: (_) {
-                      setState(() => _radiusKm = r);
-                      Navigator.pop(ctx);
-                      _loadPosts();
-                    },
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  String _getCategoryLabel(String cat) {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    // Return Tamil if available, else original
+    return langProvider.getText(cat, cat);
   }
 
   String _formatPrice(dynamic price) {
@@ -250,209 +190,67 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          // Radius filter button
-          GestureDetector(
-            onTap: () => _showRadiusFilter(langProvider),
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.tune, size: 16, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${_radiusKm.toInt()} km',
-                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
+      ),
+      body: Column(
+        children: [
+          PostFilterBar(
+            categories: _categories,
+            selectedCategory: _selectedCategory,
+            onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
+            selectedRadius: _selectedRadius,
+            onRadiusChanged: (radius) {
+              setState(() => _selectedRadius = radius ?? 50.0);
+              _loadPosts();
+            },
+            searchText: _searchText,
+            onSearchSubmitted: (text) {
+              setState(() => _searchText = text);
+              _loadPosts();
+            },
+            accentColor: _primaryColor,
+            categoryLabelBuilder: _getCategoryLabel,
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _posts.isEmpty
+                    ? _buildEmptyState(langProvider)
+                    : RefreshIndicator(
+                        color: _primaryColor,
+                        onRefresh: _loadPosts,
+                        child: Builder(builder: (context) {
+                          final carouselPosts = _buildCarouselPosts();
+                          final hasCarousel = carouselPosts.isNotEmpty;
+                          final offset = hasCarousel ? 1 : 0;
+                          return ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _posts.length + offset + (_hasMore ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (hasCarousel && index == 0) {
+                                return _FeaturedBannerCarousel(
+                                  posts: carouselPosts,
+                                  onPostTap: (post) => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => WomensCornerDetailScreen(post: post)),
+                                  ),
+                                  accentColor: _primaryColor,
+                                );
+                              }
+                              final postIndex = index - offset;
+                              if (postIndex == _posts.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(child: CircularProgressIndicator()),
+                                );
+                              }
+                              return _buildPostCard(_posts[postIndex]);
+                            },
+                          );
+                        }),
+                      ),
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        color: _primaryColor,
-        onRefresh: () async {
-          await _loadCategories();
-          await _loadPosts();
-        },
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // Search Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
-                child: SizedBox(
-                  height: 40,
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: langProvider.getText('Search services...', '\u0B9A\u0BC7\u0BB5\u0BC8\u0B95\u0BB3\u0BC8 \u0BA4\u0BC7\u0B9F\u0BC1...'),
-                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                      prefixIcon: Icon(Icons.search, color: _primaryColor.withOpacity(0.6), size: 20),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.close, color: Colors.grey[400], size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                                _loadPosts();
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _primaryColor.withOpacity(0.5), width: 1.5),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Categories - horizontal scroll chips
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: _buildCategoriesSection(langProvider),
-              ),
-            ),
-
-            // Posts Header
-            SliverToBoxAdapter(
-              child: Padding(
-                key: _postsHeaderKey,
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.auto_awesome, color: _primaryColor, size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        _selectedCategory != null
-                            ? _selectedCategory!
-                            : langProvider.getText('Near You', '\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B85\u0BB0\u0BC1\u0B95\u0BBF\u0BB2\u0BCD'),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    if (!_isLoadingPosts)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${_posts.length}',
-                          style: TextStyle(fontSize: 10, color: _primaryColor, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Featured Carousel
-            if (!_isLoadingPosts && _buildCarouselPosts().isNotEmpty)
-              SliverToBoxAdapter(
-                child: _FeaturedBannerCarousel(
-                  posts: _buildCarouselPosts(),
-                  onPostTap: (post) => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => WomensCornerDetailScreen(post: post)),
-                  ),
-                  accentColor: _primaryColor,
-                ),
-              ),
-
-            // Posts Grid
-            if (_isLoadingPosts)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_posts.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.auto_awesome, size: 48, color: Colors.grey[300]),
-                      const SizedBox(height: 12),
-                      Text(
-                        langProvider.getText('No posts yet', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1\u0B95\u0BB3\u0BCD \u0B87\u0BB2\u0BCD\u0BB2\u0BC8'),
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                      ),
-                      if (_searchQuery.isNotEmpty || _selectedCategory != null) ...[
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                              _selectedCategory = null;
-                            });
-                            _loadPosts();
-                          },
-                          icon: const Icon(Icons.refresh, size: 18),
-                          label: Text(langProvider.getText('Clear filters', '\u0BB5\u0B9F\u0BBF\u0B95\u0B9F\u0BCD\u0B9F\u0BBF \u0B85\u0BB4\u0BBF')),
-                          style: TextButton.styleFrom(foregroundColor: _primaryColor),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.68,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index >= _posts.length) {
-                        return const Center(child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(),
-                        ));
-                      }
-                      return _buildPostGridCard(_posts[index], langProvider);
-                    },
-                    childCount: _posts.length + (_hasMore ? 1 : 0),
-                  ),
-                ),
-              ),
-
-            // Bottom spacing
-            const SliverToBoxAdapter(child: SizedBox(height: 80)),
-          ],
-        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -476,83 +274,43 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
     );
   }
 
-  Widget _buildCategoriesSection(LanguageProvider langProvider) {
-    if (_isLoadingCategories) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-      );
-    }
-
-    if (_categories.isEmpty) return const SizedBox.shrink();
-
-    return SizedBox(
-      height: 34,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemCount: _categories.length + 1, // +1 for "All"
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            final isSelected = _selectedCategory == null;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => _onCategoryTap(null),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected ? _primaryColor : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? _primaryColor : Colors.grey[300]!),
-                  ),
-                  child: Text(
-                    langProvider.getText('All', '\u0B85\u0BA9\u0BC8\u0BA4\u0BCD\u0BA4\u0BC1\u0BAE\u0BCD'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : Colors.grey[700],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }
-
-          final cat = _categories[index - 1];
-          final isSelected = _selectedCategory == cat['name'];
-          final color = _parseColor(cat['color']) ?? _primaryColor;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => _onCategoryTap(cat['name']),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? color : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isSelected ? color : Colors.grey[300]!),
-                ),
-                child: Text(
-                  cat['name'] ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : Colors.grey[700],
-                  ),
-                ),
-              ),
+  Widget _buildEmptyState(LanguageProvider langProvider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.auto_awesome, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            langProvider.getText('No posts yet', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1\u0B95\u0BB3\u0BCD \u0B87\u0BB2\u0BCD\u0BB2\u0BC8'),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            langProvider.getText('Be the first to post!', '\u0BAE\u0BC1\u0BA4\u0BB2\u0BBF\u0BB2\u0BCD \u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BC6\u0BAF\u0BCD\u0BAF\u0BC1\u0B99\u0BCD\u0B95\u0BB3\u0BCD!'),
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          if (_searchText.isNotEmpty || _selectedCategory != null) ...[
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _searchText = '';
+                  _selectedCategory = null;
+                });
+                _loadPosts();
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              label: Text(langProvider.getText('Clear filters', '\u0BB5\u0B9F\u0BBF\u0B95\u0B9F\u0BCD\u0B9F\u0BBF \u0B85\u0BB4\u0BBF')),
+              style: TextButton.styleFrom(foregroundColor: _primaryColor),
             ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildPostGridCard(Map<String, dynamic> post, LanguageProvider langProvider) {
+  Widget _buildPostCard(Map<String, dynamic> post) {
     final imageUrls = post['imageUrls']?.toString() ?? '';
     final firstImage = imageUrls.isNotEmpty
         ? ImageUrlHelper.getFullImageUrl(imageUrls.split(',').first.trim())
@@ -560,134 +318,147 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
     final price = _formatPrice(post['price']);
     final category = post['category'] ?? '';
     final location = post['location'] ?? '';
+    final title = post['title'] ?? '';
+    final description = post['description'] ?? '';
 
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => WomensCornerDetailScreen(post: post)),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => WomensCornerDetailScreen(post: post)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image
-            Expanded(
-              flex: 3,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    firstImage != null
-                        ? CachedNetworkImage(
-                            imageUrl: firstImage,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => Container(
-                              color: _primaryColor.withOpacity(0.08),
-                              child: Icon(Icons.auto_awesome, size: 40, color: _primaryColor.withOpacity(0.3)),
-                            ),
-                          )
-                        : Container(
-                            color: _primaryColor.withOpacity(0.08),
-                            child: Icon(Icons.auto_awesome, size: 40, color: _primaryColor.withOpacity(0.3)),
+            if (firstImage != null)
+              Stack(
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: firstImage,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      height: 200,
+                      color: _primaryColor.withOpacity(0.08),
+                      child: Icon(Icons.auto_awesome, size: 50, color: _primaryColor.withOpacity(0.3)),
+                    ),
+                  ),
+                  // Category badge
+                  if (category.isNotEmpty)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          category,
+                          style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  // Price badge
+                  if (price.isNotEmpty)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4),
+                          ],
+                        ),
+                        child: Text(
+                          price,
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _primaryColor),
+                        ),
+                      ),
+                    ),
+                ],
+              )
+            else
+              Container(
+                height: 120,
+                width: double.infinity,
+                color: _primaryColor.withOpacity(0.08),
+                child: Icon(Icons.auto_awesome, size: 50, color: _primaryColor.withOpacity(0.3)),
+              ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  if (description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (location.isNotEmpty) ...[
+                        Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            location,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                           ),
-                    // Category badge
-                    if (category.isNotEmpty)
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        ),
+                      ],
+                      if (category.isNotEmpty && location.isNotEmpty)
+                        const SizedBox(width: 12),
+                      if (category.isNotEmpty && firstImage == null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: _primaryColor.withOpacity(0.85),
-                            borderRadius: BorderRadius.circular(10),
+                            color: _primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             category,
-                            style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 11, color: _primaryColor),
                           ),
                         ),
-                      ),
-                    // Price badge
-                    if (price.isNotEmpty)
-                      Positioned(
-                        bottom: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4),
-                            ],
-                          ),
-                          child: Text(
-                            price,
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _primaryColor),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            // Content
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post['title'] ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, height: 1.2),
-                    ),
-                    const Spacer(),
-                    if (location.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, size: 12, color: Colors.grey[400]),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Color? _parseColor(String? hex) {
-    if (hex == null || hex.isEmpty) return null;
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) hex = 'FF$hex';
-    return Color(int.tryParse('0x$hex') ?? 0xFFE91E63);
   }
 }
 
@@ -754,7 +525,7 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           child: Row(
             children: [
               Icon(Icons.star, color: widget.accentColor, size: 20),
