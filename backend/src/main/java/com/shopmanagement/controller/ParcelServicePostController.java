@@ -44,13 +44,14 @@ public class ParcelServicePostController {
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "latitude", required = false) BigDecimal latitude,
             @RequestParam(value = "longitude", required = false) BigDecimal longitude,
-            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId,
+            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner) {
         try {
             String username = getCurrentUsername();
             ParcelServicePost post = parcelServicePostService.createPost(
                     serviceName, phone, serviceType, fromLocation, toLocation, priceInfo,
                     address, timings, description, images, username,
-                    latitude, longitude, paidTokenId);
+                    latitude, longitude, paidTokenId, isBanner);
             return ResponseUtil.created(post, "Parcel service listing submitted successfully");
         } catch (Exception e) {
             log.error("Error creating parcel service post", e);

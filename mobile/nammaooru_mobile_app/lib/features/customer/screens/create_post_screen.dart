@@ -33,6 +33,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _selectedCategory = 'Other';
   File? _selectedImage;
   bool _isSubmitting = false;
+  bool _wantsBanner = false;
   int? _paidTokenId;
   double? _latitude;
   double? _longitude;
@@ -190,11 +191,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 
-  Future<void> _submitPost({int? paidTokenId}) async {
+  Future<void> _submitPost({int? paidTokenId, bool isBanner = false}) async {
     if (!_formKey.currentState!.validate()) return;
+
+    // If user wants banner and no token yet, start payment flow first
+    if (_wantsBanner && paidTokenId == null && _paidTokenId == null) {
+      _handleBannerPayment();
+      return;
+    }
 
     // Use stored token if available (retry after failed post creation)
     final tokenToUse = paidTokenId ?? _paidTokenId;
+    final bannerFlag = isBanner || _wantsBanner;
 
     setState(() {
       _isSubmitting = true;
@@ -214,6 +222,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         paidTokenId: tokenToUse,
         latitude: _latitude,
         longitude: _longitude,
+        isBanner: bannerFlag,
       );
 
       if (mounted) {
@@ -248,6 +257,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         });
       }
     }
+  }
+
+  void _handleBannerPayment() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'MARKETPLACE',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId;
+        _submitPost(paidTokenId: tokenId, isBanner: true);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment(includeBanner: true);
   }
 
   void _handleLimitReached() {
@@ -481,7 +504,57 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // Banner toggle
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _wantsBanner ? Colors.amber.shade400 : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: _wantsBanner ? Colors.amber.shade700 : Colors.grey.shade400,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            langProvider.getText('Feature as Banner', 'பேனராக காட்டு'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: _wantsBanner ? Colors.amber.shade900 : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            langProvider.getText(
+                              'Show at top of listings (paid)',
+                              'பட்டியல்களின் மேலே காட்டு (கட்டணம்)',
+                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _wantsBanner,
+                      activeColor: Colors.amber.shade700,
+                      onChanged: (val) => setState(() => _wantsBanner = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Submit button
               SizedBox(

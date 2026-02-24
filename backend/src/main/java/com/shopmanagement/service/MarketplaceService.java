@@ -48,14 +48,14 @@ public class MarketplaceService {
                                        String phone, String category, String location,
                                        MultipartFile image, MultipartFile voice,
                                        String username, BigDecimal latitude, BigDecimal longitude) throws IOException {
-        return createPost(title, description, price, phone, category, location, image, voice, username, latitude, longitude, null);
+        return createPost(title, description, price, phone, category, location, image, voice, username, latitude, longitude, null, false);
     }
 
     @Transactional
     public MarketplacePost createPost(String title, String description, BigDecimal price,
                                        String phone, String category, String location,
                                        MultipartFile image, MultipartFile voice,
-                                       String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
+                                       String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -105,7 +105,7 @@ public class MarketplaceService {
                 .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
-                .featured(paidTokenId != null)
+                .featured(isBanner)
                 .build();
 
         // Set validity dates

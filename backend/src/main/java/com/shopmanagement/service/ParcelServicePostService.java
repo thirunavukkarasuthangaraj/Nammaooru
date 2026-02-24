@@ -52,7 +52,7 @@ public class ParcelServicePostService {
                                          String address, String timings, String description,
                                          List<MultipartFile> images, String username,
                                          BigDecimal latitude, BigDecimal longitude) throws IOException {
-        return createPost(serviceName, phone, serviceTypeStr, fromLocation, toLocation, priceInfo, address, timings, description, images, username, latitude, longitude, null);
+        return createPost(serviceName, phone, serviceTypeStr, fromLocation, toLocation, priceInfo, address, timings, description, images, username, latitude, longitude, null, false);
     }
 
     @Transactional
@@ -60,7 +60,7 @@ public class ParcelServicePostService {
                                          String fromLocation, String toLocation, String priceInfo,
                                          String address, String timings, String description,
                                          List<MultipartFile> images, String username,
-                                         BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
+                                         BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -122,7 +122,7 @@ public class ParcelServicePostService {
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
-                .featured(paidTokenId != null)
+                .featured(isBanner)
                 .build();
 
         // Set validity dates

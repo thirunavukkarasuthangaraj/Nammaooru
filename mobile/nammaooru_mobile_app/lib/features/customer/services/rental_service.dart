@@ -81,6 +81,7 @@ class RentalService {
     double? latitude,
     double? longitude,
     int? paidTokenId,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating rental post: $title, paidTokenId: $paidTokenId');
@@ -92,6 +93,9 @@ class RentalService {
 
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
 
       if (description != null && description.isNotEmpty) {

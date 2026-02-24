@@ -393,6 +393,37 @@ public class SettingService {
         createDefaultSettingIfNotExists("post.image.limit", "3",
                 "Maximum number of images allowed per post (applies to all modules)", "POST_CONFIG", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
+        // Banner settings (paid featured post promotion)
+        createDefaultSettingIfNotExists("banner.enabled", "true",
+                "Enable banner/featured post promotion", "PAID_POSTS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price", "20",
+                "Default banner price in INR (global fallback)", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.MARKETPLACE", "20",
+                "Banner price for Marketplace posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.FARM_PRODUCTS", "20",
+                "Banner price for Farm Products posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.LABOURS", "20",
+                "Banner price for Labour posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.TRAVELS", "20",
+                "Banner price for Travel posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.PARCEL_SERVICE", "20",
+                "Banner price for Parcel Service posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.RENTAL", "20",
+                "Banner price for Rental posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.REAL_ESTATE", "20",
+                "Banner price for Real Estate posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("banner.price.WOMENS_CORNER", "20",
+                "Banner price for Women's Corner posts", "PAID_POSTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
         // Content Moderation settings
         createDefaultSettingIfNotExists("content.moderation.provider", "OFF",
                 "Image moderation provider: OFF, NUDENET, GEMINI", "CONTENT_MODERATION", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);

@@ -38,7 +38,7 @@ class PostPaymentHandler {
   }
 
   /// Show the payment dialog and initiate Razorpay
-  Future<void> startPayment() async {
+  Future<void> startPayment({bool includeBanner = false}) async {
     final lang = Provider.of<LanguageProvider>(context, listen: false);
 
     // Get config first
@@ -59,10 +59,8 @@ class PostPaymentHandler {
     final String currency = config['currency'] ?? 'INR';
     final String keyId = config['razorpayKeyId'] ?? '';
     final int durationDays = config['durationDays'] ?? 30;
-
-    // Format amounts for display
-    final String feeDisplay = (processingFeePaise / 100.0).toStringAsFixed(2);
-    final String totalDisplay = (totalAmountPaise / 100.0).toStringAsFixed(2);
+    final bool bannerEnabled = config['bannerEnabled'] == true;
+    final int bannerPrice = config['bannerPrice'] ?? 20;
 
     if (!enabled || keyId.isEmpty) {
       _showError(lang.getText(
@@ -72,7 +70,194 @@ class PostPaymentHandler {
       return;
     }
 
-    // Show confirmation dialog with fee breakdown
+    // Build the dialog content based on whether banner is included
+    Widget dialogContent;
+    String dialogTitle;
+    int displayTotal;
+    int displayProcessingFee;
+
+    if (includeBanner && bannerEnabled) {
+      // Banner payment - show combined breakdown
+      // The actual amounts will come from the create-order response
+      // For the dialog, show estimated breakdown
+      final int estPostFee = price; // may be 0 if limit not reached, backend handles
+      final int estBannerFee = bannerPrice;
+      final int estBase = estPostFee + estBannerFee;
+      final int estProcessing = (estBase * 236 / 10000).ceil();
+      final int estTotal = estBase * 100 + estProcessing;
+
+      displayTotal = estTotal;
+      displayProcessingFee = estProcessing;
+
+      dialogTitle = lang.getText('Banner Post Payment', 'பேனர் பதிவு கட்டணம்');
+      final String feeDisplay = (estProcessing / 100.0).toStringAsFixed(2);
+      final String totalDisplay = (estTotal / 100.0).toStringAsFixed(2);
+
+      dialogContent = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            lang.getText(
+              'Your post will be featured as a banner at the top of listings.',
+              'உங்கள் பதிவு பட்டியல்களின் மேலே பேனராக இடம்பெறும்.',
+            ),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.timer_outlined, size: 18, color: Colors.blue.shade700),
+                const SizedBox(width: 6),
+                Text(
+                  lang.getText(
+                    'Post will be active for $durationDays days',
+                    'பதிவு $durationDays நாட்கள் செயலில் இருக்கும்',
+                  ),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              children: [
+                _buildPriceRow(
+                  lang.getText('Banner Fee', 'பேனர் கட்டணம்'),
+                  '\u20B9$estBannerFee.00',
+                  isBold: false,
+                  color: Colors.purple.shade700,
+                ),
+                const SizedBox(height: 8),
+                _buildPriceRow(
+                  lang.getText('Transaction Fee', 'பரிவர்த்தனை கட்டணம்'),
+                  '\u20B9$feeDisplay',
+                  isBold: false,
+                  color: Colors.orange.shade700,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1, color: Colors.grey.shade300),
+                ),
+                _buildPriceRow(
+                  lang.getText('Total', 'மொத்தம்'),
+                  '\u20B9$totalDisplay',
+                  isBold: true,
+                  color: Colors.green.shade700,
+                  fontSize: 20,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Regular paid post flow
+      dialogTitle = lang.getText('Post Limit Reached', 'பதிவு வரம்பு எட்டியது');
+      final String feeDisplay = (processingFeePaise / 100.0).toStringAsFixed(2);
+      final String totalDisplay = (totalAmountPaise / 100.0).toStringAsFixed(2);
+      displayTotal = totalAmountPaise;
+
+      dialogContent = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            lang.getText(
+              'You have reached your free post limit. Pay to publish this post.',
+              'உங்கள் இலவச பதிவு வரம்பை எட்டிவிட்டீர்கள். பதிவை வெளியிட செலுத்தவும்.',
+            ),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.timer_outlined, size: 18, color: Colors.blue.shade700),
+                const SizedBox(width: 6),
+                Text(
+                  lang.getText(
+                    'Post will be active for $durationDays days',
+                    'பதிவு $durationDays நாட்கள் செயலில் இருக்கும்',
+                  ),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              children: [
+                _buildPriceRow(
+                  lang.getText('Post Fee', 'பதிவு கட்டணம்'),
+                  '\u20B9$price.00',
+                  isBold: false,
+                ),
+                const SizedBox(height: 8),
+                _buildPriceRow(
+                  lang.getText('Transaction Fee', 'பரிவர்த்தனை கட்டணம்'),
+                  '\u20B9$feeDisplay',
+                  isBold: false,
+                  color: Colors.orange.shade700,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1, color: Colors.grey.shade300),
+                ),
+                _buildPriceRow(
+                  lang.getText('Total', 'மொத்தம்'),
+                  '\u20B9$totalDisplay',
+                  isBold: true,
+                  color: Colors.green.shade700,
+                  fontSize: 20,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    final String finalTotalDisplay = (displayTotal / 100.0).toStringAsFixed(2);
+
+    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -80,92 +265,20 @@ class PostPaymentHandler {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.info_outline, color: Color(0xFF1565C0)),
+            Icon(
+              includeBanner ? Icons.star : Icons.info_outline,
+              color: includeBanner ? Colors.amber : const Color(0xFF1565C0),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                lang.getText('Post Limit Reached', 'பதிவு வரம்பு எட்டியது'),
+                dialogTitle,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              lang.getText(
-                'You have reached your free post limit. Pay to publish this post.',
-                'உங்கள் இலவச பதிவு வரம்பை எட்டிவிட்டீர்கள். பதிவை வெளியிட செலுத்தவும்.',
-              ),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.timer_outlined, size: 18, color: Colors.blue.shade700),
-                  const SizedBox(width: 6),
-                  Text(
-                    lang.getText(
-                      'Post will be active for $durationDays days',
-                      'பதிவு $durationDays நாட்கள் செயலில் இருக்கும்',
-                    ),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  _buildPriceRow(
-                    lang.getText('Post Fee', 'பதிவு கட்டணம்'),
-                    '\u20B9$price.00',
-                    isBold: false,
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPriceRow(
-                    lang.getText('Transaction Fee', 'பரிவர்த்தனை கட்டணம்'),
-                    '\u20B9$feeDisplay',
-                    isBold: false,
-                    color: Colors.orange.shade700,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(height: 1, color: Colors.grey.shade300),
-                  ),
-                  _buildPriceRow(
-                    lang.getText('Total', 'மொத்தம்'),
-                    '\u20B9$totalDisplay',
-                    isBold: true,
-                    color: Colors.green.shade700,
-                    fontSize: 20,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        content: dialogContent,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -173,11 +286,11 @@ class PostPaymentHandler {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1565C0),
+              backgroundColor: includeBanner ? Colors.amber.shade700 : const Color(0xFF1565C0),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(lang.getText('Pay \u20B9$totalDisplay', '\u20B9$totalDisplay செலுத்து')),
+            child: Text(lang.getText('Pay \u20B9$finalTotalDisplay', '\u20B9$finalTotalDisplay செலுத்து')),
           ),
         ],
       ),
@@ -189,7 +302,7 @@ class PostPaymentHandler {
     }
 
     // Create order on backend
-    final orderResult = await PostPaymentService.createOrder(postType);
+    final orderResult = await PostPaymentService.createOrder(postType, includeBanner: includeBanner);
     if (orderResult['success'] != true) {
       _showError(orderResult['message'] ?? 'Failed to create order');
       return;
@@ -217,7 +330,7 @@ class PostPaymentHandler {
       'amount': amount,
       'currency': currency,
       'name': 'NammaOoru',
-      'description': 'Post Payment',
+      'description': includeBanner ? 'Banner Post Payment' : 'Post Payment',
       'order_id': orderId,
       'theme': {'color': '#1565C0'},
     };

@@ -49,14 +49,14 @@ public class FarmerProductService {
                                      String phone, String category, String location,
                                      String unit, List<MultipartFile> images,
                                      String username, BigDecimal latitude, BigDecimal longitude) throws IOException {
-        return createPost(title, description, price, phone, category, location, unit, images, username, latitude, longitude, null);
+        return createPost(title, description, price, phone, category, location, unit, images, username, latitude, longitude, null, false);
     }
 
     @Transactional
     public FarmerProduct createPost(String title, String description, BigDecimal price,
                                      String phone, String category, String location,
                                      String unit, List<MultipartFile> images,
-                                     String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
+                                     String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -110,7 +110,7 @@ public class FarmerProductService {
                 .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
-                .featured(paidTokenId != null)
+                .featured(isBanner)
                 .build();
 
         // Set validity dates

@@ -51,14 +51,14 @@ public class LabourPostService {
                                   String experience, String location, String description,
                                   List<MultipartFile> images, String username,
                                   BigDecimal latitude, BigDecimal longitude) throws IOException {
-        return createPost(name, phone, categoryStr, experience, location, description, images, username, latitude, longitude, null);
+        return createPost(name, phone, categoryStr, experience, location, description, images, username, latitude, longitude, null, false);
     }
 
     @Transactional
     public LabourPost createPost(String name, String phone, String categoryStr,
                                   String experience, String location, String description,
                                   List<MultipartFile> images, String username,
-                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
+                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -117,7 +117,7 @@ public class LabourPostService {
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
-                .featured(paidTokenId != null)
+                .featured(isBanner)
                 .build();
 
         // Set validity dates

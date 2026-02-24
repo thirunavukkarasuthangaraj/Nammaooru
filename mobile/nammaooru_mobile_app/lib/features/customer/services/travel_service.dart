@@ -81,6 +81,7 @@ class TravelService {
     double? latitude,
     double? longitude,
     int? paidTokenId,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating travel post: $title ($vehicleType), paidTokenId: $paidTokenId');
@@ -93,6 +94,9 @@ class TravelService {
 
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
 
       if (fromLocation != null && fromLocation.isNotEmpty) {

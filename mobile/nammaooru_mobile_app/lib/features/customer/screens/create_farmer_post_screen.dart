@@ -36,6 +36,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
   final List<File> _selectedImages = [];
   int _maxImages = 5;
   bool _isSubmitting = false;
+  bool _wantsBanner = false;
   int? _paidTokenId;
   double? _latitude;
   double? _longitude;
@@ -266,10 +267,16 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     );
   }
 
-  Future<void> _submitPost({int? paidTokenId}) async {
+  Future<void> _submitPost({int? paidTokenId, bool isBanner = false}) async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_wantsBanner && paidTokenId == null && _paidTokenId == null) {
+      _handleBannerPayment();
+      return;
+    }
+
     final tokenToUse = paidTokenId ?? _paidTokenId;
+    final bannerFlag = isBanner || _wantsBanner;
 
     setState(() {
       _isSubmitting = true;
@@ -290,6 +297,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
             ? _selectedImages.map((f) => f.path).toList()
             : null,
         paidTokenId: tokenToUse,
+        isBanner: bannerFlag,
         latitude: _latitude,
         longitude: _longitude,
       );
@@ -340,6 +348,20 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
       onPaymentCancelled: () {},
     );
     handler.startPayment();
+  }
+
+  void _handleBannerPayment() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'FARM_PRODUCTS',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId;
+        _submitPost(paidTokenId: tokenId, isBanner: true);
+      },
+      onPaymentCancelled: () {},
+    );
+    handler.startPayment(includeBanner: true);
   }
 
   void _showSuccessDialog() {
@@ -589,6 +611,56 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
                 },
               ),
               const SizedBox(height: 24),
+
+              // Banner toggle
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _wantsBanner ? Colors.amber.shade400 : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: _wantsBanner ? Colors.amber.shade700 : Colors.grey.shade400,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            langProvider.getText('Feature as Banner', '\u0BAA\u0BC7\u0BA9\u0BB0\u0BBE\u0B95 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: _wantsBanner ? Colors.amber.shade900 : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            langProvider.getText(
+                              'Show at top of listings (paid)',
+                              '\u0BAA\u0B9F\u0BCD\u0B9F\u0BBF\u0BAF\u0BB2\u0BCD\u0B95\u0BB3\u0BBF\u0BA9\u0BCD \u0BAE\u0BC7\u0BB2\u0BC7 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1 (\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD)',
+                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _wantsBanner,
+                      activeColor: Colors.amber.shade700,
+                      onChanged: (val) => setState(() => _wantsBanner = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Submit button
               SizedBox(

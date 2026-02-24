@@ -43,13 +43,14 @@ public class TravelPostController {
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "latitude", required = false) BigDecimal latitude,
             @RequestParam(value = "longitude", required = false) BigDecimal longitude,
-            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId,
+            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner) {
         try {
             String username = getCurrentUsername();
             TravelPost post = travelPostService.createPost(
                     title, phone, vehicleType, fromLocation, toLocation, price,
                     seatsAvailable, description, images, username,
-                    latitude, longitude, paidTokenId);
+                    latitude, longitude, paidTokenId, isBanner);
             return ResponseUtil.created(post, "Travel listing submitted successfully");
         } catch (Exception e) {
             log.error("Error creating travel post", e);

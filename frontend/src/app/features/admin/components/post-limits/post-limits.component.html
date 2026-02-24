@@ -222,6 +222,49 @@
     </div>
   </div>
 
+  <!-- Banner Pricing Section -->
+  <div class="config-section">
+    <h3><mat-icon>star</mat-icon> Banner Pricing</h3>
+    <p class="section-subtitle">Users can pay an additional fee to feature their post as a banner at the top of listings.</p>
+
+    <mat-card class="paid-post-card">
+      <mat-card-content>
+        <div class="paid-post-form">
+          <div class="paid-post-toggle">
+            <mat-slide-toggle [(ngModel)]="bannerEnabled" color="warn" (change)="saveBannerConfig()">
+              Enable Banner / Featured Posts
+            </mat-slide-toggle>
+            <span class="toggle-hint" *ngIf="bannerEnabled">Users can pay to feature their post as a banner</span>
+            <span class="toggle-hint" *ngIf="!bannerEnabled">Banner promotion is disabled</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div *ngIf="bannerEnabled" class="pricing-grid" style="margin-top: 16px;">
+      <div class="pricing-row pricing-header">
+        <span class="pricing-label">Post Type</span>
+        <span class="pricing-value">Banner Price (&#8377;)</span>
+      </div>
+      <div class="pricing-row" *ngFor="let type of postTypes">
+        <span class="pricing-label">{{ type.label }}</span>
+        <div class="pricing-input">
+          <span class="currency-prefix">&#8377;</span>
+          <input type="number"
+                 [(ngModel)]="bannerPrices[type.key]"
+                 min="1" max="1000"
+                 class="price-input">
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="bannerEnabled" class="config-actions">
+      <button mat-raised-button color="accent" (click)="saveBannerPrices()" [disabled]="savingBannerPrices">
+        {{ savingBannerPrices ? 'Saving...' : 'Save Banner Prices' }}
+      </button>
+    </div>
+  </div>
+
   <!-- ===== SECTION 3: Post Type Settings ===== -->
   <div class="section-header">
     <h3><mat-icon>tune</mat-icon> Post Type Settings</h3>

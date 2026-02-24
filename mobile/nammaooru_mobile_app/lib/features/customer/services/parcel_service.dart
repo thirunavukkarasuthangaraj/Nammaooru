@@ -82,6 +82,7 @@ class ParcelService {
     double? latitude,
     double? longitude,
     int? paidTokenId,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating parcel post: $serviceName ($serviceType), paidTokenId: $paidTokenId');
@@ -94,6 +95,9 @@ class ParcelService {
 
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
 
       if (fromLocation != null && fromLocation.isNotEmpty) {

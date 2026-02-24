@@ -47,7 +47,8 @@ public class RealEstateController {
             @RequestParam("phone") String phone,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "video", required = false) MultipartFile video,
-            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId,
+            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner) {
         try {
             String username = getCurrentUsername();
             PropertyType propType = PropertyType.valueOf(propertyType.toUpperCase());
@@ -56,7 +57,7 @@ public class RealEstateController {
             RealEstatePost post = realEstateService.createPost(
                     title, description, propType, listType, price, areaSqft,
                     bedrooms, bathrooms, location, latitude, longitude, phone,
-                    images, video, username, paidTokenId);
+                    images, video, username, paidTokenId, isBanner);
             return ResponseUtil.created(post, "Property listing submitted for approval");
         } catch (IllegalArgumentException e) {
             log.error("Invalid property/listing type", e);

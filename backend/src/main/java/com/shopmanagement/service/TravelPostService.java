@@ -52,7 +52,7 @@ public class TravelPostService {
                                   Integer seatsAvailable, String description,
                                   List<MultipartFile> images, String username,
                                   BigDecimal latitude, BigDecimal longitude) throws IOException {
-        return createPost(title, phone, vehicleTypeStr, fromLocation, toLocation, price, seatsAvailable, description, images, username, latitude, longitude, null);
+        return createPost(title, phone, vehicleTypeStr, fromLocation, toLocation, price, seatsAvailable, description, images, username, latitude, longitude, null, false);
     }
 
     @Transactional
@@ -60,7 +60,7 @@ public class TravelPostService {
                                   String fromLocation, String toLocation, String price,
                                   Integer seatsAvailable, String description,
                                   List<MultipartFile> images, String username,
-                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
+                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -121,7 +121,7 @@ public class TravelPostService {
                 .sellerName(user.getFullName())
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
-                .featured(paidTokenId != null)
+                .featured(isBanner)
                 .build();
 
         // Set validity dates

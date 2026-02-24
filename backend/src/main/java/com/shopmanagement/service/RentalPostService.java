@@ -48,7 +48,7 @@ public class RentalPostService {
     public RentalPost createPost(String title, String description, BigDecimal price, String priceUnit,
                                   String phone, String category, String location,
                                   List<MultipartFile> images, String username,
-                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId) throws IOException {
+                                  BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -108,6 +108,7 @@ public class RentalPostService {
                 .longitude(longitude)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
+                .featured(isBanner)
                 .build();
 
         int durationDays = Integer.parseInt(

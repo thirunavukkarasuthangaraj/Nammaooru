@@ -81,6 +81,7 @@ class MarketplaceService {
     int? paidTokenId,
     double? latitude,
     double? longitude,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating marketplace post: $title, paidTokenId: $paidTokenId');
@@ -104,6 +105,9 @@ class MarketplaceService {
       }
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
       if (latitude != null) {
         formMap['latitude'] = latitude.toString();

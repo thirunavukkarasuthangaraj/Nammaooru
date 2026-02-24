@@ -112,6 +112,7 @@ class WomensCornerService {
     int? paidTokenId,
     double? latitude,
     double? longitude,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating women\'s corner post: $title, paidTokenId: $paidTokenId');
@@ -123,6 +124,9 @@ class WomensCornerService {
 
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
       if (latitude != null) {
         formMap['latitude'] = latitude.toString();

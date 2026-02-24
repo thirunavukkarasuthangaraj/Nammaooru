@@ -102,6 +102,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         return lang.getText('Travels', '\u0BAA\u0BAF\u0BA3\u0B99\u0BCD\u0B95\u0BB3\u0BCD');
       case 'PARCEL_SERVICE':
         return lang.getText('Packers & Movers', '\u0baa\u0bc7\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b9a\u0bcd & \u0bae\u0bc2\u0bb5\u0bb0\u0bcd\u0b9a\u0bcd');
+      case 'RENTAL':
+        return lang.getText('Rentals', '\u0BB5\u0BBE\u0B9F\u0B95\u0BC8');
+      case 'REAL_ESTATE':
+        return lang.getText('Real Estate', '\u0BA8\u0BBF\u0BB2\u0BAE\u0BCD');
+      case 'WOMENS_CORNER':
+        return lang.getText("Women's Corner", '\u0BAA\u0BC6\u0BA3\u0BCD\u0B95\u0BB3\u0BCD \u0BAE\u0BC2\u0BB2\u0BC8');
       default:
         return postType ?? lang.getText('Unknown', '\u0BA4\u0BC6\u0BB0\u0BBF\u0BAF\u0BBE\u0BA4');
     }
@@ -119,6 +125,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         return Icons.directions_car;
       case 'PARCEL_SERVICE':
         return Icons.local_shipping;
+      case 'RENTAL':
+        return Icons.vpn_key;
+      case 'REAL_ESTATE':
+        return Icons.apartment;
+      case 'WOMENS_CORNER':
+        return Icons.auto_awesome;
       default:
         return Icons.receipt_long;
     }
@@ -291,6 +303,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     final status = payment['status'] as String?;
     final createdAt = payment['createdAt'] as String?;
     final razorpayOrderId = payment['razorpayOrderId'] as String?;
+    final bool includesBanner = payment['includesBanner'] == true;
+    final int bannerAmount = payment['bannerAmount'] ?? 0;
 
     // Calculate display amounts
     final double feeRupees = processingFeePaise / 100.0;
@@ -360,25 +374,59 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                   ),
                 ),
                 const SizedBox(width: VillageTheme.spacingS),
-                // Status badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.3),
-                      width: 1,
+                // Status & banner badges
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        _getStatusLabel(status, lang),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    _getStatusLabel(status, lang),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                    if (includesBanner) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(VillageTheme.chipRadius),
+                          border: Border.all(
+                            color: Colors.amber.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 12, color: Colors.amber.shade700),
+                            const SizedBox(width: 3),
+                            Text(
+                              lang.getText('Banner', '\u0BAA\u0BC7\u0BA9\u0BB0\u0BCD'),
+                              style: TextStyle(
+                                color: Colors.amber.shade700,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -396,6 +444,14 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     lang.getText('Post Fee', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD'),
                     '\u20B9$baseAmount.00',
                   ),
+                  if (includesBanner && bannerAmount > 0) ...[
+                    const SizedBox(height: 4),
+                    _buildAmountRow(
+                      lang.getText('Banner Fee', '\u0BAA\u0BC7\u0BA9\u0BB0\u0BCD \u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD'),
+                      '\u20B9$bannerAmount.00',
+                      isSmall: true,
+                    ),
+                  ],
                   if (feeRupees > 0) ...[
                     const SizedBox(height: 4),
                     _buildAmountRow(

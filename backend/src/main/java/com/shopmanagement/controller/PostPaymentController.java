@@ -45,14 +45,15 @@ public class PostPaymentController {
     @PostMapping("/create-order")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createOrder(
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, Object> request) {
         try {
             User user = getCurrentUser();
-            String postType = request.get("postType");
+            String postType = (String) request.get("postType");
             if (postType == null || postType.isEmpty()) {
                 return ResponseUtil.badRequest("postType is required");
             }
-            Map<String, Object> order = postPaymentService.createOrder(user.getId(), postType);
+            boolean includeBanner = Boolean.TRUE.equals(request.get("includeBanner"));
+            Map<String, Object> order = postPaymentService.createOrder(user.getId(), postType, includeBanner);
             return ResponseUtil.success(order, "Order created");
         } catch (Exception e) {
             log.error("Error creating payment order", e);

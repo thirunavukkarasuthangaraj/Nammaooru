@@ -46,7 +46,7 @@ public class RealEstateService {
                                       Integer bedrooms, Integer bathrooms, String location,
                                       Double latitude, Double longitude, String phone,
                                       List<MultipartFile> images, MultipartFile video,
-                                      String username, Long paidTokenId) throws IOException {
+                                      String username, Long paidTokenId, boolean isBanner) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -110,6 +110,7 @@ public class RealEstateService {
                 .ownerPhone(phone)
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
+                .isFeatured(isBanner)
                 .build();
 
         // Set validity dates

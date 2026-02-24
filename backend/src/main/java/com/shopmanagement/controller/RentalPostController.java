@@ -41,12 +41,13 @@ public class RentalPostController {
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "latitude", required = false) BigDecimal latitude,
             @RequestParam(value = "longitude", required = false) BigDecimal longitude,
-            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId,
+            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner) {
         try {
             String username = getCurrentUsername();
             RentalPost post = rentalPostService.createPost(
                     title, description, price, priceUnit, phone, category, location,
-                    images, username, latitude, longitude, paidTokenId);
+                    images, username, latitude, longitude, paidTokenId, isBanner);
             return ResponseUtil.created(post, "Rental post submitted for approval");
         } catch (Exception e) {
             log.error("Error creating rental post", e);

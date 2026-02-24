@@ -61,6 +61,14 @@ public class PostPayment {
     @Column(name = "consumed_post_id")
     private Long consumedPostId;
 
+    @Column(name = "includes_banner")
+    @Builder.Default
+    private Boolean includesBanner = false;
+
+    @Column(name = "banner_amount")
+    @Builder.Default
+    private Integer bannerAmount = 0;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

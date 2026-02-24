@@ -79,6 +79,7 @@ class LabourService {
     double? latitude,
     double? longitude,
     int? paidTokenId,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating labour post: $name ($category), paidTokenId: $paidTokenId');
@@ -91,6 +92,9 @@ class LabourService {
 
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
 
       if (experience != null && experience.isNotEmpty) {

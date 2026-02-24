@@ -81,6 +81,7 @@ class FarmerProductsService {
     int? paidTokenId,
     double? latitude,
     double? longitude,
+    bool isBanner = false,
   }) async {
     try {
       Logger.api('Creating farmer product post: $title, paidTokenId: $paidTokenId');
@@ -92,6 +93,9 @@ class FarmerProductsService {
 
       if (paidTokenId != null) {
         formMap['paidTokenId'] = paidTokenId.toString();
+      }
+      if (isBanner) {
+        formMap['isBanner'] = 'true';
       }
       if (latitude != null) {
         formMap['latitude'] = latitude.toString();

@@ -89,6 +89,11 @@ export class PostLimitsComponent implements OnInit {
   // Per-type pricing
   postTypePrices: { [key: string]: number } = {};
   savingPrices = false;
+
+  // Banner pricing
+  bannerEnabled = false;
+  bannerPrices: { [key: string]: number } = {};
+  savingBannerPrices = false;
   postTypes = [
     { key: 'MARKETPLACE', label: 'Marketplace (Buy & Sell)' },
     { key: 'FARM_PRODUCTS', label: 'Farmer Products' },
@@ -366,11 +371,29 @@ export class PostLimitsComponent implements OnInit {
               }
             }
           }
+          // Load banner config
+          if (s.key === 'banner.enabled') this.bannerEnabled = s.value === 'true';
+          const bannerPrefix = 'banner.price.';
+          if (s.key.startsWith(bannerPrefix)) {
+            const postType = s.key.substring(bannerPrefix.length);
+            this.bannerPrices[postType] = parseInt(s.value, 10) || 20;
+          }
+          if (s.key === 'banner.price') {
+            const fallbackBannerPrice = parseInt(s.value, 10) || 20;
+            for (const pt of this.postTypes) {
+              if (this.bannerPrices[pt.key] === undefined) {
+                this.bannerPrices[pt.key] = fallbackBannerPrice;
+              }
+            }
+          }
         }
         // Ensure all post types have a default price
         for (const pt of this.postTypes) {
           if (this.postTypePrices[pt.key] === undefined) {
             this.postTypePrices[pt.key] = 10;
+          }
+          if (this.bannerPrices[pt.key] === undefined) {
+            this.bannerPrices[pt.key] = 20;
           }
         }
         this.paidPostLoading = false;
@@ -476,6 +499,36 @@ export class PostLimitsComponent implements OnInit {
       error: () => {
         this.snackBar.open('Failed to save post type prices', 'Close', { duration: 3000 });
         this.savingPrices = false;
+      }
+    });
+  }
+
+  // ===== Banner Pricing =====
+
+  saveBannerConfig(): void {
+    const settings: { [key: string]: string } = {
+      'banner.enabled': String(this.bannerEnabled)
+    };
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => this.snackBar.open('Banner config saved', 'Close', { duration: 3000 }),
+      error: () => this.snackBar.open('Failed to save banner config', 'Close', { duration: 3000 })
+    });
+  }
+
+  saveBannerPrices(): void {
+    this.savingBannerPrices = true;
+    const settings: { [key: string]: string } = {};
+    for (const pt of this.postTypes) {
+      settings[`banner.price.${pt.key}`] = String(this.bannerPrices[pt.key] || 20);
+    }
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.snackBar.open('Banner prices saved successfully', 'Close', { duration: 3000 });
+        this.savingBannerPrices = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to save banner prices', 'Close', { duration: 3000 });
+        this.savingBannerPrices = false;
       }
     });
   }

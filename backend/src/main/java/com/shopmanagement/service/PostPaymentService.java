@@ -7,6 +7,8 @@ import com.razorpay.Utils;
 import com.shopmanagement.entity.PostPayment;
 import com.shopmanagement.config.RazorpayConfig;
 import com.shopmanagement.repository.PostPaymentRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,18 +30,31 @@ public class PostPaymentService {
     private final PostPaymentRepository postPaymentRepository;
     private final RazorpayClient razorpayClient;
     private final RazorpayConfig razorpayConfig;
-
     private final SettingService settingService;
+    private final EntityManager entityManager;
+
+    private static final String GLOBAL_COUNT_QUERY =
+        "SELECT " +
+        "(SELECT COUNT(*) FROM marketplace_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM farmer_products WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM labour_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM travel_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM parcel_service_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM rental_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM real_estate_posts WHERE owner_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED')) + " +
+        "(SELECT COUNT(*) FROM womens_corner_posts WHERE seller_user_id = :uid AND status IN ('PENDING_APPROVAL', 'APPROVED'))";
 
     @Autowired
     public PostPaymentService(PostPaymentRepository postPaymentRepository,
                               @Autowired(required = false) RazorpayClient razorpayClient,
                               RazorpayConfig razorpayConfig,
-                              SettingService settingService) {
+                              SettingService settingService,
+                              EntityManager entityManager) {
         this.postPaymentRepository = postPaymentRepository;
         this.razorpayClient = razorpayClient;
         this.razorpayConfig = razorpayConfig;
         this.settingService = settingService;
+        this.entityManager = entityManager;
     }
 
     private boolean isTestMode() {
@@ -97,6 +112,18 @@ public class PostPaymentService {
             durationDays = Integer.parseInt(settingService.getSettingValue(durationKey, durationDefault));
         }
 
+        // Banner config
+        boolean bannerEnabled = Boolean.parseBoolean(
+                settingService.getSettingValue("banner.enabled", "true"));
+        String bannerGlobalDefault = settingService.getSettingValue("banner.price", "20");
+        int bannerPrice;
+        if (postType != null && !postType.isEmpty()) {
+            bannerPrice = Integer.parseInt(
+                    settingService.getSettingValue("banner.price." + postType, bannerGlobalDefault));
+        } else {
+            bannerPrice = Integer.parseInt(bannerGlobalDefault);
+        }
+
         Map<String, Object> config = new HashMap<>();
         config.put("enabled", enabled);
         config.put("price", price);
@@ -106,19 +133,38 @@ public class PostPaymentService {
         config.put("razorpayKeyId", isTestMode() ? "TEST_MODE" : razorpayConfig.getActiveKeyId());
         config.put("testMode", isTestMode());
         config.put("durationDays", durationDays);
+        config.put("bannerEnabled", bannerEnabled);
+        config.put("bannerPrice", bannerPrice);
         return config;
     }
 
     @Transactional
     public Map<String, Object> createOrder(Long userId, String postType) throws RazorpayException {
+        return createOrder(userId, postType, false);
+    }
+
+    @Transactional
+    public Map<String, Object> createOrder(Long userId, String postType, boolean includeBanner) throws RazorpayException {
         String globalDefault = settingService.getSettingValue("paid_post.price", "10");
-        int priceInRupees = Integer.parseInt(
+        int postPriceRupees = Integer.parseInt(
                 settingService.getSettingValue("paid_post.price." + postType, globalDefault));
         String currency = settingService.getSettingValue("paid_post.currency", "INR");
 
-        // Calculate processing fee and total
-        int processingFeePaise = (int) Math.ceil(priceInRupees * getProcessingFeePercent());
-        int totalAmountPaise = (priceInRupees * 100) + processingFeePaise;
+        // Check if free limit is reached - if not, post fee is 0
+        boolean limitReached = isLimitReached(userId);
+        int postFee = limitReached ? postPriceRupees : 0;
+
+        // Banner fee
+        int bannerFee = 0;
+        if (includeBanner) {
+            String bannerGlobalDefault = settingService.getSettingValue("banner.price", "20");
+            bannerFee = Integer.parseInt(
+                    settingService.getSettingValue("banner.price." + postType, bannerGlobalDefault));
+        }
+
+        int baseAmount = postFee + bannerFee;
+        int processingFeePaise = (int) Math.ceil(baseAmount * getProcessingFeePercent());
+        int totalAmountPaise = (baseAmount * 100) + processingFeePaise;
 
         String orderId;
         if (isTestMode()) {
@@ -137,7 +183,9 @@ public class PostPaymentService {
         PostPayment payment = PostPayment.builder()
                 .userId(userId)
                 .razorpayOrderId(orderId)
-                .amount(priceInRupees)
+                .amount(postFee)
+                .bannerAmount(bannerFee)
+                .includesBanner(includeBanner)
                 .processingFee(processingFeePaise)
                 .totalAmount(totalAmountPaise)
                 .currency(currency)
@@ -145,13 +193,15 @@ public class PostPaymentService {
                 .build();
 
         postPaymentRepository.save(payment);
-        log.info("Created order: orderId={}, userId={}, postType={}, base={}, fee={}p, total={}p, testMode={}",
-                orderId, userId, postType, priceInRupees, processingFeePaise, totalAmountPaise, isTestMode());
+        log.info("Created order: orderId={}, userId={}, postType={}, postFee={}, bannerFee={}, fee={}p, total={}p, testMode={}",
+                orderId, userId, postType, postFee, bannerFee, processingFeePaise, totalAmountPaise, isTestMode());
 
         Map<String, Object> result = new HashMap<>();
         result.put("orderId", orderId);
         result.put("amount", totalAmountPaise);
-        result.put("basePrice", priceInRupees);
+        result.put("basePrice", postFee);
+        result.put("bannerFee", bannerFee);
+        result.put("includeBanner", includeBanner);
         result.put("processingFeePaise", processingFeePaise);
         result.put("currency", currency);
         result.put("keyId", isTestMode() ? "TEST_MODE" : razorpayConfig.getActiveKeyId());
@@ -318,6 +368,17 @@ public class PostPaymentService {
         postPaymentRepository.save(payment);
         log.info("Payment token consumed: tokenId={}, userId={}, postId={}", tokenId, userId, postId);
         return true;
+    }
+
+    public boolean isLimitReached(Long userId) {
+        int freePostLimit = Integer.parseInt(
+                settingService.getSettingValue("global.free_post_limit", "1"));
+        if (freePostLimit < 0) return false; // unlimited
+        if (freePostLimit == 0) return true;  // no free posts
+        Query query = entityManager.createNativeQuery(GLOBAL_COUNT_QUERY);
+        query.setParameter("uid", userId);
+        long totalActiveCount = ((Number) query.getSingleResult()).longValue();
+        return totalActiveCount >= freePostLimit;
     }
 
     public boolean hasValidToken(Long tokenId, Long userId) {

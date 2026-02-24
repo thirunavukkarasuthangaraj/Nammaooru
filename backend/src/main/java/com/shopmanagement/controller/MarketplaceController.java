@@ -42,11 +42,12 @@ public class MarketplaceController {
             @RequestParam(value = "voice", required = false) MultipartFile voice,
             @RequestParam(value = "latitude", required = false) BigDecimal latitude,
             @RequestParam(value = "longitude", required = false) BigDecimal longitude,
-            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId) {
+            @RequestParam(value = "paidTokenId", required = false) Long paidTokenId,
+            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner) {
         try {
             String username = getCurrentUsername();
             MarketplacePost post = marketplaceService.createPost(
-                    title, description, price, phone, category, location, image, voice, username, latitude, longitude, paidTokenId);
+                    title, description, price, phone, category, location, image, voice, username, latitude, longitude, paidTokenId, isBanner);
             return ResponseUtil.created(post, "Post submitted for approval");
         } catch (Exception e) {
             log.error("Error creating marketplace post", e);

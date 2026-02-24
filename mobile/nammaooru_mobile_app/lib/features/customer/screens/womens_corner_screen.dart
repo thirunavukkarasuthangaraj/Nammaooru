@@ -229,6 +229,13 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
     return '\u20B9${numPrice.toStringAsFixed(0)}';
   }
 
+  List<Map<String, dynamic>> _buildCarouselPosts() {
+    return _posts
+        .where((post) => post['featured'] == true)
+        .take(8)
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -364,6 +371,19 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
                 ),
               ),
             ),
+
+            // Featured Carousel
+            if (!_isLoadingPosts && _buildCarouselPosts().isNotEmpty)
+              SliverToBoxAdapter(
+                child: _FeaturedBannerCarousel(
+                  posts: _buildCarouselPosts(),
+                  onPostTap: (post) => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => WomensCornerDetailScreen(post: post)),
+                  ),
+                  accentColor: _primaryColor,
+                ),
+              ),
 
             // Posts Grid
             if (_isLoadingPosts)
@@ -668,5 +688,183 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
     hex = hex.replaceAll('#', '');
     if (hex.length == 6) hex = 'FF$hex';
     return Color(int.tryParse('0x$hex') ?? 0xFFE91E63);
+  }
+}
+
+// ─── Featured Banner Carousel ───
+
+class _FeaturedBannerCarousel extends StatefulWidget {
+  final List<Map<String, dynamic>> posts;
+  final Function(Map<String, dynamic>) onPostTap;
+  final Color accentColor;
+
+  const _FeaturedBannerCarousel({
+    required this.posts,
+    required this.onPostTap,
+    required this.accentColor,
+  });
+
+  @override
+  State<_FeaturedBannerCarousel> createState() => _FeaturedBannerCarouselState();
+}
+
+class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoSlideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.92);
+    _startAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_pageController.hasClients && widget.posts.length > 1) {
+        final nextPage = (_currentPage + 1) % widget.posts.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  List<String> _parseImageUrls(Map<String, dynamic> post) {
+    final raw = post['imageUrls'] ?? post['imageUrl'] ?? '';
+    if (raw is List) return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    return raw.toString().split(',').where((s) => s.trim().isNotEmpty).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.posts.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            children: [
+              Icon(Icons.star, color: widget.accentColor, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                'Featured',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: widget.accentColor),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemCount: widget.posts.length,
+            itemBuilder: (context, index) {
+              final post = widget.posts[index];
+              final imageUrls = _parseImageUrls(post);
+              final firstImage = imageUrls.isNotEmpty ? imageUrls.first : null;
+
+              return GestureDetector(
+                onTap: () => widget.onPostTap(post),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (firstImage != null)
+                          CachedNetworkImage(
+                            imageUrl: firstImage,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.grey[300]),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image, size: 40, color: Colors.grey),
+                            ),
+                          )
+                        else
+                          Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image, size: 40, color: Colors.grey),
+                          ),
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
+                              stops: const [0.4, 1.0],
+                            ),
+                          ),
+                        ),
+                        // Content
+                        Positioned(
+                          bottom: 12,
+                          left: 14,
+                          right: 14,
+                          child: Text(
+                            post['title'] ?? post['name'] ?? post['serviceName'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Dot indicators
+        if (widget.posts.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.posts.length, (index) {
+              return Container(
+                width: _currentPage == index ? 16 : 6,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: _currentPage == index ? widget.accentColor : Colors.grey[350],
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
+    );
   }
 }

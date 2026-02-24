@@ -37,11 +37,11 @@ class PostPaymentService {
   }
 
   /// Create Razorpay order
-  static Future<Map<String, dynamic>> createOrder(String postType) async {
+  static Future<Map<String, dynamic>> createOrder(String postType, {bool includeBanner = false}) async {
     try {
       final response = await ApiClient.post(
         '/post-payments/create-order',
-        data: {'postType': postType},
+        data: {'postType': postType, 'includeBanner': includeBanner},
       );
       if (_isSuccess(response.data)) {
         return {
