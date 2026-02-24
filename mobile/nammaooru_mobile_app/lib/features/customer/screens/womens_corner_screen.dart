@@ -35,6 +35,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
   bool _hasMore = true;
   bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _postsHeaderKey = GlobalKey();
 
   static const List<double> _radiusOptions = [10, 25, 50, 100, 200];
 
@@ -142,6 +143,21 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
       _selectedCategory = _selectedCategory == categoryName ? null : categoryName;
     });
     _loadPosts();
+    // Scroll down to posts section after loading
+    Future.delayed(const Duration(milliseconds: 300), () {
+      final keyContext = _postsHeaderKey.currentContext;
+      if (keyContext != null && _scrollController.hasClients) {
+        final box = keyContext.findRenderObject() as RenderBox;
+        final position = box.localToGlobal(Offset.zero).dy;
+        final appBarHeight = MediaQuery.of(context).padding.top + kToolbarHeight;
+        final scrollTo = _scrollController.offset + position - appBarHeight;
+        _scrollController.animateTo(
+          scrollTo.clamp(0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _onSearchChanged(String query) {
@@ -265,115 +281,83 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
             // Search Bar
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: langProvider.getText('Search services...', '\u0B9A\u0BC7\u0BB5\u0BC8\u0B95\u0BB3\u0BC8 \u0BA4\u0BC7\u0B9F\u0BC1...'),
-                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                    prefixIcon: Icon(Icons.search, color: _primaryColor.withOpacity(0.6)),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.close, color: Colors.grey[400], size: 20),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                              _loadPosts();
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: Colors.grey[200]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: Colors.grey[200]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: _primaryColor.withOpacity(0.5), width: 1.5),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: langProvider.getText('Search services...', '\u0B9A\u0BC7\u0BB5\u0BC8\u0B95\u0BB3\u0BC8 \u0BA4\u0BC7\u0B9F\u0BC1...'),
+                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                      prefixIcon: Icon(Icons.search, color: _primaryColor.withOpacity(0.6), size: 20),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.close, color: Colors.grey[400], size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                                _loadPosts();
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[200]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[200]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: _primaryColor.withOpacity(0.5), width: 1.5),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
 
-            // Categories Grid
+            // Categories - horizontal scroll chips
             SliverToBoxAdapter(
-              child: _buildCategoriesSection(langProvider),
-            ),
-
-            // Active Filters
-            if (_selectedCategory != null || _searchQuery.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      if (_selectedCategory != null)
-                        Chip(
-                          label: Text(_selectedCategory!, style: const TextStyle(fontSize: 12)),
-                          deleteIcon: const Icon(Icons.close, size: 16),
-                          onDeleted: () => _onCategoryTap(null),
-                          backgroundColor: _primaryColor.withOpacity(0.1),
-                          deleteIconColor: _primaryColor,
-                          labelStyle: TextStyle(color: _primaryColor, fontWeight: FontWeight.w600),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          side: BorderSide.none,
-                        ),
-                      if (_searchQuery.isNotEmpty)
-                        Chip(
-                          label: Text('"$_searchQuery"', style: const TextStyle(fontSize: 12)),
-                          deleteIcon: const Icon(Icons.close, size: 16),
-                          onDeleted: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                            _loadPosts();
-                          },
-                          backgroundColor: Colors.blue.withOpacity(0.1),
-                          deleteIconColor: Colors.blue,
-                          labelStyle: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          side: BorderSide.none,
-                        ),
-                    ],
-                  ),
-                ),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: _buildCategoriesSection(langProvider),
               ),
+            ),
 
             // Posts Header
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                key: _postsHeaderKey,
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
                 child: Row(
                   children: [
-                    Icon(Icons.auto_awesome, color: _primaryColor, size: 20),
-                    const SizedBox(width: 8),
+                    Icon(Icons.auto_awesome, color: _primaryColor, size: 16),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         _selectedCategory != null
                             ? _selectedCategory!
                             : langProvider.getText('Near You', '\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B85\u0BB0\u0BC1\u0B95\u0BBF\u0BB2\u0BCD'),
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    // Post count
                     if (!_isLoadingPosts)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: _primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '${_posts.length}',
-                          style: TextStyle(fontSize: 12, color: _primaryColor, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontSize: 10, color: _primaryColor, fontWeight: FontWeight.w700),
                         ),
                       ),
                   ],
@@ -388,15 +372,17 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
               )
             else if (_posts.isEmpty)
               SliverFillRemaining(
+                hasScrollBody: false,
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.auto_awesome, size: 64, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
+                      Icon(Icons.auto_awesome, size: 48, color: Colors.grey[300]),
+                      const SizedBox(height: 12),
                       Text(
                         langProvider.getText('No posts yet', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1\u0B95\u0BB3\u0BCD \u0B87\u0BB2\u0BCD\u0BB2\u0BC8'),
-                        style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                       ),
                       if (_searchQuery.isNotEmpty || _selectedCategory != null) ...[
                         const SizedBox(height: 12),
@@ -420,13 +406,13 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    childAspectRatio: 0.65,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.68,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -448,7 +434,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
           if (!isLoggedIn) {
@@ -465,8 +451,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
         },
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text(langProvider.getText('Post', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1')),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -474,138 +459,70 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
   Widget _buildCategoriesSection(LanguageProvider langProvider) {
     if (_isLoadingCategories) {
       return const Padding(
-        padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
       );
     }
 
     if (_categories.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 1.6,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: _categories.length,
+    return SizedBox(
+      height: 34,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemCount: _categories.length + 1, // +1 for "All"
         itemBuilder: (context, index) {
-          final cat = _categories[index];
+          if (index == 0) {
+            final isSelected = _selectedCategory == null;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => _onCategoryTap(null),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected ? _primaryColor : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isSelected ? _primaryColor : Colors.grey[300]!),
+                  ),
+                  child: Text(
+                    langProvider.getText('All', '\u0B85\u0BA9\u0BC8\u0BA4\u0BCD\u0BA4\u0BC1\u0BAE\u0BCD'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : Colors.grey[700],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final cat = _categories[index - 1];
           final isSelected = _selectedCategory == cat['name'];
           final color = _parseColor(cat['color']) ?? _primaryColor;
-          final imageUrl = cat['imageUrl'];
 
-          return GestureDetector(
-            onTap: () => _onCategoryTap(cat['name']),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(
-                        colors: [color, color.withOpacity(0.7)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : LinearGradient(
-                        colors: [color.withOpacity(0.08), color.withOpacity(0.03)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? color : color.withOpacity(0.2),
-                  width: isSelected ? 2 : 1,
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => _onCategoryTap(cat['name']),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected ? color : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isSelected ? color : Colors.grey[300]!),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isSelected ? color.withOpacity(0.3) : Colors.black.withOpacity(0.06),
-                    blurRadius: isSelected ? 12 : 8,
-                    offset: const Offset(0, 4),
+                child: Text(
+                  cat['name'] ?? '',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : Colors.grey[700],
                   ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  children: [
-                    // Icon / Image
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withOpacity(0.25) : color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: imageUrl != null && imageUrl.toString().isNotEmpty
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: CachedNetworkImage(
-                                imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
-                                width: 52,
-                                height: 52,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => Icon(
-                                  Icons.auto_awesome,
-                                  size: 28,
-                                  color: isSelected ? Colors.white : color,
-                                ),
-                              ),
-                            )
-                          : Icon(
-                              Icons.auto_awesome,
-                              size: 28,
-                              color: isSelected ? Colors.white : color,
-                            ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Text
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            cat['name'] ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: isSelected ? Colors.white : Colors.grey[800],
-                            ),
-                          ),
-                          if (cat['tamilName'] != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              cat['tamilName'],
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: isSelected ? Colors.white70 : Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    // Selection indicator
-                    if (isSelected)
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.check, size: 16, color: Colors.white),
-                      ),
-                  ],
                 ),
               ),
             ),
@@ -632,7 +549,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.06),
@@ -648,7 +565,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
             Expanded(
               flex: 3,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -710,7 +627,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -1,7 +1,7 @@
 <div class="post-limits-management">
   <div class="page-header">
-    <h2>Post Limits</h2>
-    <p class="subtitle">Manage global post limits for all users and set user-specific overrides.</p>
+    <h2>Post Configuration</h2>
+    <p class="subtitle">Configure limits, pricing, settings and user overrides for all post types.</p>
     <div class="header-actions">
       <button mat-icon-button (click)="loadGlobalLimits(); loadLimits()" matTooltip="Refresh">
         <mat-icon>refresh</mat-icon>
@@ -222,7 +222,89 @@
     </div>
   </div>
 
-  <!-- ===== SECTION 3: User-Specific Overrides ===== -->
+  <!-- ===== SECTION 3: Post Type Settings ===== -->
+  <div class="section-header">
+    <h3><mat-icon>tune</mat-icon> Post Type Settings</h3>
+    <p class="section-subtitle">Configure duration, auto-approve, report threshold and visible statuses per post type.</p>
+  </div>
+
+  <div *ngIf="typeSettingsLoading" class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading post type settings...</p>
+  </div>
+
+  <div *ngIf="!typeSettingsLoading">
+    <div class="type-tabs">
+      <button *ngFor="let pt of postTypeConfigs; let i = index"
+              class="type-tab"
+              [class.active]="selectedTabIndex === i"
+              [style.--tab-color]="pt.color"
+              (click)="selectedTabIndex = i">
+        <mat-icon>{{ pt.icon }}</mat-icon>
+        <span class="tab-label">{{ pt.label }}</span>
+      </button>
+    </div>
+
+    <ng-container *ngFor="let pt of postTypeConfigs; let i = index">
+      <mat-card *ngIf="selectedTabIndex === i" class="paid-post-card" [style.border-top]="'3px solid ' + pt.color">
+        <mat-card-content>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Post Visibility Duration</div>
+              <div class="setting-desc">How long posts remain visible to users</div>
+            </div>
+            <mat-form-field appearance="outline" class="setting-control">
+              <mat-select [(value)]="pt.durationDays">
+                <mat-option *ngFor="let opt of durationOptions" [value]="opt.value">
+                  {{ opt.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Auto Approve Posts</div>
+              <div class="setting-desc">New posts approved automatically without admin review</div>
+            </div>
+            <mat-slide-toggle [(ngModel)]="pt.autoApprove" color="primary"></mat-slide-toggle>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Report Threshold</div>
+              <div class="setting-desc">Reports needed to auto-flag a post</div>
+            </div>
+            <mat-form-field appearance="outline" class="setting-control small">
+              <input matInput type="number" [(ngModel)]="pt.reportThreshold" min="1" max="50">
+            </mat-form-field>
+          </div>
+
+          <div class="setting-block">
+            <div class="setting-label">Visible Statuses</div>
+            <div class="setting-desc">Which post statuses are visible to the public</div>
+            <div class="status-chips">
+              <mat-checkbox *ngFor="let status of allStatuses"
+                [checked]="isStatusChecked(pt, status)"
+                (change)="toggleStatus(pt, status)"
+                color="primary">
+                {{ statusLabels[status] }}
+              </mat-checkbox>
+            </div>
+          </div>
+
+          <div class="paid-post-actions">
+            <button mat-raised-button color="primary" (click)="savePostTypeSettings(pt)" [disabled]="savingType === pt.key">
+              <mat-icon>save</mat-icon>
+              {{ savingType === pt.key ? 'Saving...' : 'Save ' + pt.label + ' Settings' }}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </ng-container>
+  </div>
+
+  <!-- ===== SECTION 4: User-Specific Overrides ===== -->
   <div class="section-header user-section">
     <h3><mat-icon>person</mat-icon> User-Specific Overrides</h3>
     <p class="section-subtitle">Override the global limit for specific users. These take priority over global limits.</p>

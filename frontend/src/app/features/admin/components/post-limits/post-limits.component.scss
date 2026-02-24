@@ -361,6 +361,112 @@
   margin-top: 16px;
 }
 
+// Post Type Settings tabs
+.type-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.type-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 24px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: #666;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    border-color: var(--tab-color, #4caf50);
+    color: var(--tab-color, #4caf50);
+  }
+
+  &.active {
+    background: var(--tab-color, #4caf50);
+    border-color: var(--tab-color, #4caf50);
+    color: white;
+
+    mat-icon {
+      color: white;
+    }
+  }
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.setting-info {
+  flex: 1;
+
+  .setting-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .setting-desc {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+  }
+}
+
+.setting-block {
+  padding: 16px 0;
+
+  .setting-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .setting-desc {
+    font-size: 12px;
+    color: #888;
+    margin: 2px 0 12px 0;
+  }
+}
+
+.setting-control {
+  max-width: 200px;
+
+  &.small {
+    max-width: 100px;
+  }
+
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+}
+
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 @media (max-width: 768px) {
   .post-limits-management {
     padding: 16px;

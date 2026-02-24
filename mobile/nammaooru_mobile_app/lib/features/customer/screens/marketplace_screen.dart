@@ -18,6 +18,7 @@ import '../widgets/renewal_payment_handler.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import 'create_post_screen.dart';
+import 'marketplace_post_detail_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -490,7 +491,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-      onTap: () => _showPostDetails(post),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MarketplacePostDetailScreen(post: post))),
       child: Stack(
         children: [
           Column(

@@ -16,47 +16,6 @@
 
   <div *ngIf="!loading" class="config-content">
 
-    <!-- ===== Pricing Section ===== -->
-    <div class="config-section">
-      <div class="section-title">
-        <mat-icon>payments</mat-icon>
-        <h3>Paid Post Pricing</h3>
-      </div>
-
-      <div class="paid-toggle-row">
-        <mat-slide-toggle [(ngModel)]="paidPostEnabled" color="primary">
-          Enable Paid Posts
-        </mat-slide-toggle>
-        <span class="toggle-hint">{{ paidPostEnabled ? 'Users pay to post beyond free limit' : 'Users blocked at free limit' }}</span>
-        <button mat-flat-button color="primary" class="save-toggle-btn" (click)="savePaidPostConfig()" [disabled]="paidPostSaving">
-          {{ paidPostSaving ? 'Saving...' : 'Save' }}
-        </button>
-      </div>
-
-      <div class="pricing-table" *ngIf="paidPostEnabled">
-        <div class="pricing-header-row">
-          <span>Post Type</span>
-          <span>Price per Post</span>
-        </div>
-        <div class="pricing-row" *ngFor="let pt of postTypes">
-          <div class="type-label">
-            <mat-icon [style.color]="pt.color">{{ pt.icon }}</mat-icon>
-            <span>{{ pt.label }}</span>
-          </div>
-          <div class="price-input-wrap">
-            <span class="rupee">&#8377;</span>
-            <input type="number" [(ngModel)]="postTypePrices[pt.key]" min="1" max="1000">
-          </div>
-        </div>
-        <div class="pricing-actions">
-          <button mat-raised-button color="primary" (click)="saveAllPrices()" [disabled]="savingPrices">
-            <mat-icon>save</mat-icon>
-            {{ savingPrices ? 'Saving...' : 'Save All Prices' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- ===== Post Type Settings ===== -->
     <div class="config-section">
       <div class="section-title">

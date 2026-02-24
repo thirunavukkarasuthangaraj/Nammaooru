@@ -46,7 +46,8 @@ export class PostLimitsComponent implements OnInit {
     { value: 'FARM_PRODUCTS', label: 'Farm Products' },
     { value: 'TRAVELS', label: 'Travels' },
     { value: 'RENTAL', label: 'Rentals' },
-    { value: 'REAL_ESTATE', label: 'Real Estate' }
+    { value: 'REAL_ESTATE', label: 'Real Estate' },
+    { value: 'WOMENS_CORNER', label: "Women's Corner" }
   ];
 
   // Paid post config
@@ -54,6 +55,36 @@ export class PostLimitsComponent implements OnInit {
   paidPostCurrency = 'INR';
   paidPostLoading = true;
   paidPostSaving = false;
+
+  // Post Type Settings (duration, auto-approve, etc.)
+  selectedTabIndex = 0;
+  savingType: string | null = null;
+  typeSettingsLoading = false;
+  postTypeConfigs: { key: string; prefix: string; label: string; icon: string; color: string; durationDays: number; autoApprove: boolean; visibleStatuses: string[]; reportThreshold: number }[] = [
+    { key: 'MARKETPLACE', prefix: 'marketplace', label: 'Marketplace', icon: 'storefront', color: '#4527A0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'FARM_PRODUCTS', prefix: 'farmer', label: 'Farmer Products', icon: 'agriculture', color: '#33691E', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'LABOURS', prefix: 'labour', label: 'Labours', icon: 'engineering', color: '#1565C0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'TRAVELS', prefix: 'travel', label: 'Travels', icon: 'directions_car', color: '#00897B', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'PARCEL_SERVICE', prefix: 'parcel', label: 'Packers & Movers', icon: 'local_shipping', color: '#E65100', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'REAL_ESTATE', prefix: 'realestate', label: 'Real Estate', icon: 'apartment', color: '#AD1457', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'RENTAL', prefix: 'rental', label: 'Rentals', icon: 'vpn_key', color: '#FF6F00', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'WOMENS_CORNER', prefix: 'womens_corner', label: "Women's Corner", icon: 'auto_awesome', color: '#E91E63', durationDays: 30, autoApprove: true, visibleStatuses: ['APPROVED'], reportThreshold: 5 },
+  ];
+
+  durationOptions = [
+    { label: '1 Month', value: 30 },
+    { label: '2 Months', value: 60 },
+    { label: '3 Months', value: 90 },
+    { label: '6 Months', value: 180 },
+    { label: '1 Year', value: 365 },
+    { label: 'No Expiry', value: 0 }
+  ];
+
+  allStatuses = ['APPROVED', 'PENDING_APPROVAL', 'SOLD', 'FLAGGED', 'HOLD', 'HIDDEN', 'CORRECTION_REQUIRED'];
+  statusLabels: { [key: string]: string } = {
+    'APPROVED': 'Approved', 'PENDING_APPROVAL': 'Pending Approval', 'SOLD': 'Sold',
+    'FLAGGED': 'Flagged', 'HOLD': 'Hold', 'HIDDEN': 'Hidden', 'CORRECTION_REQUIRED': 'Correction Required'
+  };
 
   // Per-type pricing
   postTypePrices: { [key: string]: number } = {};
@@ -66,6 +97,7 @@ export class PostLimitsComponent implements OnInit {
     { key: 'PARCEL_SERVICE', label: 'Packers & Movers' },
     { key: 'REAL_ESTATE', label: 'Real Estate' },
     { key: 'RENTAL', label: 'Rentals' },
+    { key: 'WOMENS_CORNER', label: "Women's Corner" },
   ];
 
   displayedColumns: string[] = ['userInfo', 'featureName', 'maxPosts', 'createdAt', 'actions'];
@@ -86,6 +118,7 @@ export class PostLimitsComponent implements OnInit {
     this.loadGlobalLimits();
     this.loadLimits();
     this.loadPaidPostConfig();
+    this.loadPostTypeSettings();
   }
 
   initForm(): void {
@@ -183,7 +216,7 @@ export class PostLimitsComponent implements OnInit {
       next: (response: any) => {
         const features = response.data || response || [];
         // Filter to only post-related features
-        const postFeatures = ['PARCEL_SERVICE', 'MARKETPLACE', 'LABOURS', 'FARM_PRODUCTS', 'TRAVELS', 'RENTAL', 'REAL_ESTATE'];
+        const postFeatures = ['PARCEL_SERVICE', 'MARKETPLACE', 'LABOURS', 'FARM_PRODUCTS', 'TRAVELS', 'RENTAL', 'REAL_ESTATE', 'WOMENS_CORNER'];
         this.globalLimits = features.filter((f: FeatureConfig) => postFeatures.includes(f.featureName));
         this.globalLoading = false;
       },
@@ -363,6 +396,68 @@ export class PostLimitsComponent implements OnInit {
       error: () => {
         this.snackBar.open('Failed to save paid post config', 'Close', { duration: 3000 });
         this.paidPostSaving = false;
+      }
+    });
+  }
+
+  // ===== Post Type Settings =====
+
+  loadPostTypeSettings(): void {
+    this.typeSettingsLoading = true;
+    this.settingsService.getAllSettings().subscribe({
+      next: (settings) => {
+        for (const s of settings) {
+          for (const pt of this.postTypeConfigs) {
+            if (s.key === `${pt.prefix}.post.duration_days`) pt.durationDays = parseInt(s.value, 10) || 30;
+            if (s.key === `${pt.prefix}.post.auto_approve`) pt.autoApprove = s.value === 'true';
+            if (s.key === `${pt.prefix}.post.visible_statuses`) {
+              try { pt.visibleStatuses = JSON.parse(s.value); } catch { pt.visibleStatuses = ['APPROVED']; }
+            }
+            if (s.key === `${pt.prefix}.post.report_threshold`) pt.reportThreshold = parseInt(s.value, 10) || 3;
+          }
+        }
+        this.typeSettingsLoading = false;
+      },
+      error: () => {
+        this.snackBar.open('Failed to load post type settings', 'Close', { duration: 3000 });
+        this.typeSettingsLoading = false;
+      }
+    });
+  }
+
+  isStatusChecked(pt: any, status: string): boolean {
+    return pt.visibleStatuses.includes(status);
+  }
+
+  toggleStatus(pt: any, status: string): void {
+    const idx = pt.visibleStatuses.indexOf(status);
+    if (idx >= 0) {
+      if (pt.visibleStatuses.length > 1) {
+        pt.visibleStatuses.splice(idx, 1);
+      } else {
+        this.snackBar.open('At least one status must be selected', 'OK', { duration: 3000 });
+      }
+    } else {
+      pt.visibleStatuses.push(status);
+    }
+  }
+
+  savePostTypeSettings(pt: any): void {
+    this.savingType = pt.key;
+    const settings: { [key: string]: string } = {
+      [`${pt.prefix}.post.duration_days`]: String(pt.durationDays),
+      [`${pt.prefix}.post.auto_approve`]: String(pt.autoApprove),
+      [`${pt.prefix}.post.visible_statuses`]: JSON.stringify(pt.visibleStatuses),
+      [`${pt.prefix}.post.report_threshold`]: String(pt.reportThreshold)
+    };
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.savingType = null;
+        this.snackBar.open(`${pt.label} settings saved`, 'OK', { duration: 3000 });
+      },
+      error: () => {
+        this.savingType = null;
+        this.snackBar.open(`Failed to save ${pt.label} settings`, 'OK', { duration: 3000 });
       }
     });
   }
