@@ -578,6 +578,36 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           'subtitleKey': 'location',
           'imageKey': 'imageUrls',
         },
+        'rental': {
+          'icon': Icons.vpn_key_rounded,
+          'color': const Color(0xFF6A1B9A),
+          'label': 'Rentals',
+          'labelTamil': 'வாடகை',
+          'screen': const RentalScreen(),
+          'titleKey': 'title',
+          'subtitleKey': 'location',
+          'imageKey': 'imageUrls',
+        },
+        'parcel': {
+          'icon': Icons.local_shipping_rounded,
+          'color': const Color(0xFFEF6C00),
+          'label': 'Packers & Movers',
+          'labelTamil': 'போக்குவரத்து',
+          'screen': const ParcelScreen(),
+          'titleKey': 'serviceName',
+          'subtitleKey': 'fromLocation',
+          'imageKey': 'imageUrls',
+        },
+        'womensCorner': {
+          'icon': Icons.auto_awesome_rounded,
+          'color': const Color(0xFFE91E63),
+          'label': "Women's Corner",
+          'labelTamil': 'பெண்கள் பகுதி',
+          'screen': const WomensCornerScreen(),
+          'titleKey': 'title',
+          'subtitleKey': 'description',
+          'imageKey': 'imageUrls',
+        },
       };
 
       // Parse shop promotions/offers from API
@@ -1001,6 +1031,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             backgroundColor: Colors.transparent,
             builder: (_) => MarketplacePostDetailsSheet(post: mergedData),
           );
+          return;
+        case 'parcel':
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ParcelPostDetailScreen(post: postData),
+          ));
           return;
         case 'realEstate':
           // Transform raw API data to the format PropertyDetailsSheet expects
