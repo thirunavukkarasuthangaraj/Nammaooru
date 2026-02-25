@@ -94,11 +94,12 @@ else
     print_warning "Frontend might not be accessible yet"
 fi
 
-# 6. Clean up old images
+# 6. Clean up old images and build cache
 echo ""
-echo "🧹 Cleaning up old images..."
+echo "🧹 Cleaning up old images and build cache..."
 docker image prune -f
-print_status "Old images cleaned"
+docker builder prune --all -f
+print_status "Old images and build cache cleaned"
 
 # 7. Show running containers
 echo ""
