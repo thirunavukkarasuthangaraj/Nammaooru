@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
@@ -231,6 +232,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       'phone': api['ownerPhone'] ?? '',
       'postedDate': api['createdAt'] != null ? DateTime.tryParse(api['createdAt']) ?? DateTime.now() : DateTime.now(),
       'viewsCount': api['viewsCount'] ?? 0,
+      'featured': api['featured'] ?? api['isFeatured'] ?? false,
+      'imageUrls': api['imageUrls'] ?? '',
     };
   }
 
@@ -322,6 +325,13 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     );
   }
 
+  List<Map<String, dynamic>> _buildCarouselPosts() {
+    return _listings
+        .where((post) => post['featured'] == true || post['isFeatured'] == true)
+        .take(8)
+        .toList();
+  }
+
   Widget _buildBrowseTab() {
     return Column(
       children: [
@@ -354,20 +364,33 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                       ? _buildEmptyState()
                       : RefreshIndicator(
                           onRefresh: () => _fetchListings(refresh: true),
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _filteredListings.length + (_hasMore ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (index == _filteredListings.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(child: CircularProgressIndicator()),
-                                );
-                              }
-                              return _buildPropertyCard(_filteredListings[index]);
-                            },
-                          ),
+                          child: Builder(builder: (context) {
+                            final carouselPosts = _buildCarouselPosts();
+                            final hasCarousel = carouselPosts.isNotEmpty;
+                            final offset = hasCarousel ? 1 : 0;
+                            return ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _filteredListings.length + offset + (_hasMore ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (hasCarousel && index == 0) {
+                                  return _FeaturedBannerCarousel(
+                                    posts: carouselPosts,
+                                    onPostTap: (post) => _showPropertyDetails(post),
+                                    accentColor: const Color(0xFFAD1457),
+                                  );
+                                }
+                                final listIndex = index - offset;
+                                if (listIndex == _filteredListings.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  );
+                                }
+                                return _buildPropertyCard(_filteredListings[listIndex]);
+                              },
+                            );
+                          }),
                         ),
         ),
       ],
@@ -2511,6 +2534,229 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
             ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Featured Banner Carousel (Real Estate) ───
+
+class _FeaturedBannerCarousel extends StatefulWidget {
+  final List<Map<String, dynamic>> posts;
+  final Function(Map<String, dynamic>) onPostTap;
+  final Color accentColor;
+
+  const _FeaturedBannerCarousel({
+    required this.posts,
+    required this.onPostTap,
+    required this.accentColor,
+  });
+
+  @override
+  State<_FeaturedBannerCarousel> createState() => _FeaturedBannerCarouselState();
+}
+
+class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoSlideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.92);
+    _startAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_pageController.hasClients && widget.posts.length > 1) {
+        final nextPage = (_currentPage + 1) % widget.posts.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  List<String> _parseImageUrls(Map<String, dynamic> post) {
+    // Try imageUrls (raw API string), then images (parsed list)
+    final rawUrls = post['imageUrls'];
+    if (rawUrls is String && rawUrls.isNotEmpty) {
+      return rawUrls.split(',').where((s) => s.trim().isNotEmpty).toList();
+    }
+    final images = post['images'];
+    if (images is List) {
+      return images.map((e) => e.toString()).where((s) => s.trim().isNotEmpty).toList();
+    }
+    return [];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.posts.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+          child: Row(
+            children: [
+              Icon(Icons.star, color: widget.accentColor, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                'Featured Properties',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: widget.accentColor),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemCount: widget.posts.length,
+            itemBuilder: (context, index) {
+              final post = widget.posts[index];
+              final imageUrls = _parseImageUrls(post);
+              final firstImage = imageUrls.isNotEmpty ? imageUrls.first.trim() : null;
+              final fullImageUrl = firstImage != null && firstImage.isNotEmpty
+                  ? ImageUrlHelper.getFullImageUrl(firstImage)
+                  : null;
+
+              return GestureDetector(
+                onTap: () => widget.onPostTap(post),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (fullImageUrl != null)
+                          CachedNetworkImage(
+                            imageUrl: fullImageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.grey[300]),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.home, size: 40, color: Colors.grey),
+                            ),
+                          )
+                        else
+                          Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.home, size: 40, color: Colors.grey),
+                          ),
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
+                              stops: const [0.4, 1.0],
+                            ),
+                          ),
+                        ),
+                        // Content overlay
+                        Positioned(
+                          bottom: 12,
+                          left: 14,
+                          right: 14,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                post['title'] ?? '',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (post['price'] != null && post['price'] != 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '\u20B9${post['price']}${post['priceUnit'] == 'month' ? '/mo' : ''}',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Listing type badge
+                        if (post['listingType'] != null)
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: post['listingType'] == 'For Sale' ? Colors.green : Colors.blue,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                post['listingType'],
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Dot indicators
+        if (widget.posts.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.posts.length, (index) {
+              return Container(
+                width: _currentPage == index ? 16 : 6,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: _currentPage == index ? widget.accentColor : Colors.grey[350],
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
