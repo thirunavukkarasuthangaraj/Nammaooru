@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../core/api/api_client.dart';
+import '../core/config/env_config.dart';
 import 'voice_search_service.dart';
 import 'tts_service.dart';
 
@@ -61,41 +64,33 @@ class SmartOrderService {
     return SmartOrderResult(rawInput: text, items: items, mode: 'voice');
   }
 
-  /// MODE 2: Photo → Gemini Vision parse → search products
+  /// MODE 2: Photo → Gemini Vision (direct call) → parse → search products
   Future<SmartOrderResult?> processPhotoOrder(File imageFile) async {
     debugPrint('SmartOrder: Processing photo order...');
     try {
-      final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(
-          imageFile.path,
-          filename: imageFile.path.split('/').last,
-        ),
-      });
+      // Read image and convert to base64
+      final bytes = await imageFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final ext = imageFile.path.split('.').last.toLowerCase();
+      final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
 
-      final response = await ApiClient.post(
-        '/v1/products/search/parse-image',
-        data: formData,
-        options: Options(contentType: 'multipart/form-data'),
-      );
-
-      final data = response.data;
-      if (data == null || data['statusCode'] != '0000') {
-        debugPrint('SmartOrder: Image parse failed: ${data?['message']}');
-        return null;
-      }
-
-      final List<dynamic> parsedItems = data['data']?['items'] ?? [];
+      // Call Gemini Vision API directly (no backend needed)
+      final parsedItems = await _callGeminiVision(base64Image, mimeType);
       debugPrint('SmartOrder: Parsed ${parsedItems.length} items from image');
 
       if (parsedItems.isEmpty) return null;
 
-      // Search for each parsed item
+      // Filter out quantity words and search each item
       List<ParsedItem> items = [];
       for (final itemName in parsedItems) {
         final name = itemName.toString().trim();
         if (name.isEmpty) continue;
-        final matches = await _searchShopProducts(name);
-        items.add(ParsedItem(name: name, matches: matches));
+        // Split each parsed item into product terms (removes quantity words)
+        final terms = _splitIntoTerms(name);
+        for (final term in terms) {
+          final matches = await _searchShopProducts(term);
+          items.add(ParsedItem(name: term, matches: matches));
+        }
       }
 
       final rawText = parsedItems.join(', ');
@@ -104,6 +99,69 @@ class SmartOrderService {
     } catch (e) {
       debugPrint('SmartOrder: Photo order error: $e');
       return null;
+    }
+  }
+
+  /// Call Gemini Vision API directly from the mobile app
+  Future<List<String>> _callGeminiVision(String base64Image, String mimeType) async {
+    // Round-robin key selection
+    final keys = EnvConfig.geminiApiKeys;
+    if (keys.isEmpty) {
+      debugPrint('SmartOrder: No Gemini API keys configured');
+      return [];
+    }
+    final apiKey = keys[Random().nextInt(keys.length)];
+    final url =
+        '${EnvConfig.geminiApiUrl}/${EnvConfig.geminiModel}:generateContent?key=$apiKey';
+
+    final prompt =
+        'Read this image. It may be a handwritten or printed shopping list in Tamil or English. '
+        'Extract ONLY the product/item names. Return a JSON array of item names. '
+        'Example: ["அரிசி", "பருப்பு", "oil", "sugar"]. '
+        'If you cannot read the image or it is not a shopping list, return [].';
+
+    final body = {
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt},
+            {
+              'inline_data': {
+                'mime_type': mimeType,
+                'data': base64Image,
+              }
+            }
+          ]
+        }
+      ]
+    };
+
+    try {
+      final dio = Dio();
+      final response = await dio.post(
+        url,
+        data: body,
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+
+      final data = response.data;
+      final text = data?['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+      debugPrint('SmartOrder: Gemini Vision response: $text');
+
+      // Extract JSON array from response (may be wrapped in markdown)
+      var jsonStr = text.trim();
+      if (jsonStr.contains('[')) {
+        jsonStr = jsonStr.substring(jsonStr.indexOf('['), jsonStr.lastIndexOf(']') + 1);
+      }
+
+      final List<dynamic> parsed = jsonDecode(jsonStr);
+      return parsed.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    } catch (e) {
+      debugPrint('SmartOrder: Gemini Vision API error: $e');
+      return [];
     }
   }
 
