@@ -64,12 +64,6 @@ public class PasswordResetOtpService {
                 return false;
             }
 
-            // Check if there's already a valid OTP
-            if (otpRepository.existsByEmailAndUsedFalseAndExpiryTimeAfter(email, LocalDateTime.now())) {
-                log.info("Valid OTP already exists for email: {}", email);
-                return true; // Don't send multiple OTPs
-            }
-
             // Invalidate any existing OTPs for this email
             otpRepository.markAllOtpAsUsedForEmail(email);
 
@@ -87,20 +81,25 @@ public class PasswordResetOtpService {
 
             otpRepository.save(otpEntity);
 
-            // Send OTP via SMS if user has mobile number
-            if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+            // Send OTP based on what the user entered
+            boolean isMobileIdentifier = identifier.matches("^[+]?[0-9]+$");
+
+            if (isMobileIdentifier) {
+                // User entered phone number → send via SMS
                 try {
-                    // Send the same OTP that was stored in database via SMS
                     mobileOtpService.sendOtpViaSms(user.getMobileNumber(), otp, "PASSWORD_RESET");
                     log.info("Password reset OTP sent via SMS to: {}", user.getMobileNumber());
                 } catch (Exception e) {
-                    log.error("Failed to send OTP via SMS, falling back to email", e);
-                    // Fallback to email if SMS fails
-                    emailService.sendPasswordResetOtpEmail(email, user.getUsername(), otp);
+                    log.error("Failed to send OTP via SMS", e);
                 }
             } else {
-                // Send OTP email if no mobile number
-                emailService.sendPasswordResetOtpEmail(email, user.getUsername(), otp);
+                // User entered email → send via email
+                try {
+                    emailService.sendPasswordResetOtpEmail(email, user.getUsername(), otp);
+                    log.info("Password reset OTP sent via email to: {}", email);
+                } catch (Exception e) {
+                    log.error("Failed to send OTP via email", e);
+                }
             }
 
             log.info("Password reset OTP sent for identifier: {}", identifier);
