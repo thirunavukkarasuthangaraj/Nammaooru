@@ -1430,7 +1430,7 @@ class _FeaturedFarmerCarouselState extends State<_FeaturedFarmerCarousel> {
                       children: [
                         if (firstImage != null)
                           CachedNetworkImage(
-                            imageUrl: firstImage,
+                            imageUrl: ImageUrlHelper.getFullImageUrl(firstImage),
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Container(color: Colors.grey[300]),
                             errorWidget: (context, url, error) => Container(

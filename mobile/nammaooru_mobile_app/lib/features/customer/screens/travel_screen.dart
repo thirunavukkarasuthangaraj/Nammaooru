@@ -1903,7 +1903,7 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                       children: [
                         if (firstImage != null)
                           CachedNetworkImage(
-                            imageUrl: firstImage,
+                            imageUrl: ImageUrlHelper.getFullImageUrl(firstImage),
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Container(color: Colors.grey[300]),
                             errorWidget: (context, url, error) => Container(
