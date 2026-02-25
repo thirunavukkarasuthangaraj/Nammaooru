@@ -108,7 +108,7 @@ public class RealEstateService {
                 .ownerUserId(user.getId())
                 .ownerName(user.getFullName())
                 .ownerPhone(phone)
-                .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .status((autoApprove || paidTokenId != null) ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
                 .isFeatured(isBanner)
                 .build();

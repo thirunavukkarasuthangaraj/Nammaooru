@@ -23,6 +23,7 @@ export class PostDashboardComponent implements OnInit {
   farmerStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   realEstateStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   rentalStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
+  womensCornerStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   isLoading = true;
   errorMessage = '';
 
@@ -54,6 +55,7 @@ export class PostDashboardComponent implements OnInit {
         this.farmerStats = data.farmer || this.farmerStats;
         this.realEstateStats = data.realEstate || this.realEstateStats;
         this.rentalStats = data.rental || this.rentalStats;
+        this.womensCornerStats = data.womensCorner || this.womensCornerStats;
         this.isLoading = false;
       },
       error: (err) => {
@@ -100,7 +102,8 @@ export class PostDashboardComponent implements OnInit {
       'travel': 'Travel',
       'parcel': 'Packers & Movers',
       'realEstate': 'Real Estate',
-      'rental': 'Rentals'
+      'rental': 'Rentals',
+      'womensCorner': "Women's Corner"
     };
     return labels[key] || key;
   }
@@ -114,7 +117,8 @@ export class PostDashboardComponent implements OnInit {
       'travel': 'directions_car',
       'parcel': 'local_shipping',
       'realEstate': 'home',
-      'rental': 'vpn_key'
+      'rental': 'vpn_key',
+      'womensCorner': 'auto_awesome'
     };
     return icons[key] || 'article';
   }
@@ -127,7 +131,8 @@ export class PostDashboardComponent implements OnInit {
       'travel': '/admin/travels',
       'parcel': '/admin/parcels',
       'realEstate': '/admin/real-estate',
-      'rental': '/admin/rentals'
+      'rental': '/admin/rentals',
+      'womensCorner': '/admin/womens-corner'
     };
     return routes[key] || '';
   }

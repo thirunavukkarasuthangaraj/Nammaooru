@@ -25,6 +25,7 @@ public class FeaturedPostsService {
     private final ParcelServicePostRepository parcelServicePostRepository;
     private final RealEstatePostRepository realEstatePostRepository;
     private final RentalPostRepository rentalPostRepository;
+    private final WomensCornerPostRepository womensCornerPostRepository;
     private final ProductComboRepository productComboRepository;
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
@@ -170,6 +171,22 @@ public class FeaturedPostsService {
             result.put("rental", List.of());
         }
 
+        // Women's Corner - paid approved, nearby if location provided
+        try {
+            if (hasLocation) {
+                var wcPosts = womensCornerPostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("womensCorner", wcPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapWomensCorner).toList());
+            } else {
+                var wcPosts = womensCornerPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        WomensCornerPost.PostStatus.APPROVED, top10).getContent();
+                result.put("womensCorner", wcPosts.stream().map(this::mapWomensCorner).toList());
+            }
+        } catch (Exception e) {
+            result.put("womensCorner", List.of());
+        }
+
         return result;
     }
 
@@ -284,6 +301,20 @@ public class FeaturedPostsService {
         m.put("price", p.getPrice());
         m.put("priceUnit", p.getPriceUnit());
         m.put("category", p.getCategory() != null ? p.getCategory().name() : null);
+        m.put("location", p.getLocation());
+        m.put("sellerName", p.getSellerName());
+        m.put("sellerPhone", p.getSellerPhone());
+        return m;
+    }
+
+    private Map<String, Object> mapWomensCorner(WomensCornerPost p) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", p.getId());
+        m.put("title", p.getTitle());
+        m.put("description", p.getDescription());
+        m.put("imageUrls", p.getImageUrls());
+        m.put("price", p.getPrice());
+        m.put("category", p.getCategory());
         m.put("location", p.getLocation());
         m.put("sellerName", p.getSellerName());
         m.put("sellerPhone", p.getSellerPhone());

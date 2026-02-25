@@ -140,6 +140,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
         { title: 'Packers & Movers', icon: 'local_shipping', route: '/admin/parcels', badge: null },
         { title: 'Rentals', icon: 'vpn_key', route: '/admin/rentals', badge: null },
+        { title: "Women's Corner", icon: 'auto_awesome', route: '/admin/womens-corner', badge: null },
         { title: 'All Reports', icon: 'report', route: '/admin/all-reports', badge: null }
       ]
     },
@@ -231,6 +232,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Travels', icon: 'directions_car', route: '/admin/travels', badge: null },
         { title: 'Packers & Movers', icon: 'local_shipping', route: '/admin/parcels', badge: null },
         { title: 'Rentals', icon: 'vpn_key', route: '/admin/rentals', badge: null },
+        { title: "Women's Corner", icon: 'auto_awesome', route: '/admin/womens-corner', badge: null },
         { title: 'All Reports', icon: 'report', route: '/admin/all-reports', badge: null }
       ]
     },

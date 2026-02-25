@@ -13,7 +13,9 @@ import com.shopmanagement.repository.ParcelServicePostRepository;
 import com.shopmanagement.repository.MarketplacePostRepository;
 import com.shopmanagement.repository.FarmerProductRepository;
 import com.shopmanagement.repository.RealEstatePostRepository;
+import com.shopmanagement.entity.WomensCornerPost;
 import com.shopmanagement.repository.RentalPostRepository;
+import com.shopmanagement.repository.WomensCornerPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,7 @@ public class PostDashboardService {
     private final FarmerProductRepository farmerProductRepository;
     private final RealEstatePostRepository realEstatePostRepository;
     private final RentalPostRepository rentalPostRepository;
+    private final WomensCornerPostRepository womensCornerPostRepository;
 
     public Map<String, Map<String, Long>> getDashboardStats() {
         Map<String, Map<String, Long>> stats = new HashMap<>();
@@ -41,6 +44,7 @@ public class PostDashboardService {
         stats.put("farmer", getFarmerStats());
         stats.put("realEstate", getRealEstateStats());
         stats.put("rental", getRentalStats());
+        stats.put("womensCorner", getWomensCornerStats());
         return stats;
     }
 
@@ -111,6 +115,16 @@ public class PostDashboardService {
         stats.put("approved", rentalPostRepository.countByStatus(RentalPost.PostStatus.APPROVED));
         stats.put("rejected", rentalPostRepository.countByStatus(RentalPost.PostStatus.REJECTED));
         stats.put("reported", rentalPostRepository.countByReportCountGreaterThan(0));
+        return stats;
+    }
+
+    private Map<String, Long> getWomensCornerStats() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("total", womensCornerPostRepository.count());
+        stats.put("pending", womensCornerPostRepository.countByStatus(WomensCornerPost.PostStatus.PENDING_APPROVAL));
+        stats.put("approved", womensCornerPostRepository.countByStatus(WomensCornerPost.PostStatus.APPROVED));
+        stats.put("rejected", womensCornerPostRepository.countByStatus(WomensCornerPost.PostStatus.REJECTED));
+        stats.put("reported", womensCornerPostRepository.countByReportCountGreaterThan(0));
         return stats;
     }
 }

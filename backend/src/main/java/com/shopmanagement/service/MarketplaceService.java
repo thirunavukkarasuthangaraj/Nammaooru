@@ -103,7 +103,7 @@ public class MarketplaceService {
                 .location(location)
                 .latitude(latitude)
                 .longitude(longitude)
-                .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .status((autoApprove || paidTokenId != null) ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
                 .featured(isBanner)
                 .build();
