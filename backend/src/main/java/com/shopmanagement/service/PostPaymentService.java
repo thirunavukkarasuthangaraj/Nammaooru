@@ -68,21 +68,21 @@ public class PostPaymentService {
 
     private static final Map<String, String> DURATION_SETTING_KEYS = Map.of(
             "MARKETPLACE", "marketplace.post.duration_days",
-            "FARM_PRODUCTS", "farm_products.post.duration_days",
-            "LABOURS", "labours.post.duration_days",
-            "TRAVELS", "travels.post.duration_days",
-            "PARCEL_SERVICE", "parcel_service.post.duration_days",
-            "REAL_ESTATE", "real_estate.post.duration_days",
+            "FARM_PRODUCTS", "farmer.post.duration_days",
+            "LABOURS", "labour.post.duration_days",
+            "TRAVELS", "travel.post.duration_days",
+            "PARCEL_SERVICE", "parcel.post.duration_days",
+            "REAL_ESTATE", "realestate.post.duration_days",
             "RENTAL", "rental.post.duration_days"
     );
 
     private static final Map<String, String> DURATION_DEFAULTS = Map.of(
             "MARKETPLACE", "30",
-            "FARM_PRODUCTS", "60",
-            "LABOURS", "60",
+            "FARM_PRODUCTS", "30",
+            "LABOURS", "30",
             "TRAVELS", "30",
-            "PARCEL_SERVICE", "60",
-            "REAL_ESTATE", "90",
+            "PARCEL_SERVICE", "30",
+            "REAL_ESTATE", "30",
             "RENTAL", "30"
     );
 

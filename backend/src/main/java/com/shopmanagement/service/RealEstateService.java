@@ -115,7 +115,7 @@ public class RealEstateService {
 
         // Set validity dates
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("real_estate.post.duration_days", "90"));
+                settingService.getSettingValue("realestate.post.duration_days", "30"));
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
@@ -331,7 +331,7 @@ public class RealEstateService {
         post.setReportCount(newCount);
 
         int reportThreshold = Integer.parseInt(
-                settingService.getSettingValue("real_estate.post.report_threshold", "3"));
+                settingService.getSettingValue("realestate.post.report_threshold", "3"));
         if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
             log.warn("Real estate post auto-flagged due to {} reports: id={}, title={}",
@@ -436,7 +436,7 @@ public class RealEstateService {
         }
 
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("real_estate.post.duration_days", "90"));
+                settingService.getSettingValue("realestate.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {

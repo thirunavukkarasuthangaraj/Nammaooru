@@ -115,7 +115,7 @@ public class FarmerProductService {
 
         // Set validity dates
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("farm_products.post.duration_days", "60"));
+                settingService.getSettingValue("farmer.post.duration_days", "30"));
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
@@ -375,7 +375,7 @@ public class FarmerProductService {
         post.setReportCount(newCount);
 
         int reportThreshold = Integer.parseInt(
-                settingService.getSettingValue("farmer_products.post.report_threshold", "3"));
+                settingService.getSettingValue("farmer.post.report_threshold", "3"));
         if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
             log.warn("Farmer product auto-flagged due to {} reports: id={}, title={}", newCount, postId, post.getTitle());
@@ -456,7 +456,7 @@ public class FarmerProductService {
         }
 
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("farm_products.post.duration_days", "60"));
+                settingService.getSettingValue("farmer.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
@@ -535,21 +535,21 @@ public class FarmerProductService {
     }
 
     private List<PostStatus> getVisibleStatuses() {
-        String json = settingService.getSettingValue("farmer_products.post.visible_statuses", "[\"APPROVED\"]");
+        String json = settingService.getSettingValue("farmer.post.visible_statuses", "[\"APPROVED\"]");
         try {
             List<String> statusStrings = objectMapper.readValue(json, new TypeReference<List<String>>() {});
             return statusStrings.stream()
                     .map(s -> PostStatus.valueOf(s.toUpperCase()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("Failed to parse farmer_products visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
+            log.warn("Failed to parse farmer visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
             return List.of(PostStatus.APPROVED);
         }
     }
 
     private LocalDateTime getCutoffDate() {
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("farmer_products.post.duration_days", "30"));
+                settingService.getSettingValue("farmer.post.duration_days", "30"));
         if (durationDays <= 0) {
             return null;
         }

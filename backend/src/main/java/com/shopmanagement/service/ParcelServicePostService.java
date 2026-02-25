@@ -127,7 +127,7 @@ public class ParcelServicePostService {
 
         // Set validity dates
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("parcel_service.post.duration_days", "60"));
+                settingService.getSettingValue("parcel.post.duration_days", "30"));
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
@@ -392,7 +392,7 @@ public class ParcelServicePostService {
         post.setReportCount(newCount);
 
         int reportThreshold = Integer.parseInt(
-                settingService.getSettingValue("parcels.post.report_threshold", "3"));
+                settingService.getSettingValue("parcel.post.report_threshold", "3"));
         if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
             log.warn("Parcel service post auto-flagged due to {} reports: id={}, serviceName={}", newCount, postId, post.getServiceName());
@@ -490,7 +490,7 @@ public class ParcelServicePostService {
         }
 
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("parcel_service.post.duration_days", "60"));
+                settingService.getSettingValue("parcel.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
@@ -569,21 +569,21 @@ public class ParcelServicePostService {
     }
 
     private List<PostStatus> getVisibleStatuses() {
-        String json = settingService.getSettingValue("parcels.post.visible_statuses", "[\"APPROVED\"]");
+        String json = settingService.getSettingValue("parcel.post.visible_statuses", "[\"APPROVED\"]");
         try {
             List<String> statusStrings = objectMapper.readValue(json, new TypeReference<List<String>>() {});
             return statusStrings.stream()
                     .map(s -> PostStatus.valueOf(s.toUpperCase()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("Failed to parse parcels visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
+            log.warn("Failed to parse parcel visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
             return List.of(PostStatus.APPROVED);
         }
     }
 
     private LocalDateTime getCutoffDate() {
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("parcels.post.duration_days", "60"));
+                settingService.getSettingValue("parcel.post.duration_days", "30"));
         if (durationDays <= 0) {
             return null;
         }

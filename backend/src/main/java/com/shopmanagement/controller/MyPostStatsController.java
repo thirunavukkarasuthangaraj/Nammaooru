@@ -56,12 +56,12 @@ public class MyPostStatsController {
 
     private static final Map<String, String> DURATION_SETTING_KEYS = Map.of(
         "MARKETPLACE", "marketplace.post.duration_days",
-        "FARM_PRODUCTS", "farm_products.post.duration_days",
-        "LABOURS", "labours.post.duration_days",
-        "TRAVELS", "travels.post.duration_days",
-        "PARCEL_SERVICE", "parcel_service.post.duration_days",
+        "FARM_PRODUCTS", "farmer.post.duration_days",
+        "LABOURS", "labour.post.duration_days",
+        "TRAVELS", "travel.post.duration_days",
+        "PARCEL_SERVICE", "parcel.post.duration_days",
         "RENTAL", "rental.post.duration_days",
-        "REAL_ESTATE", "real_estate.post.duration_days",
+        "REAL_ESTATE", "realestate.post.duration_days",
         "WOMENS_CORNER", "womens_corner.post.duration_days"
     );
 

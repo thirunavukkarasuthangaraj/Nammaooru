@@ -122,7 +122,7 @@ public class LabourPostService {
 
         // Set validity dates
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("labours.post.duration_days", "60"));
+                settingService.getSettingValue("labour.post.duration_days", "30"));
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
             post.setValidTo(LocalDateTime.now().plusDays(durationDays));
@@ -388,7 +388,7 @@ public class LabourPostService {
         post.setReportCount(newCount);
 
         int reportThreshold = Integer.parseInt(
-                settingService.getSettingValue("labours.post.report_threshold", "3"));
+                settingService.getSettingValue("labour.post.report_threshold", "3"));
         if (newCount >= reportThreshold && post.getStatus() == PostStatus.APPROVED) {
             post.setStatus(PostStatus.FLAGGED);
             log.warn("Labour post auto-flagged due to {} reports: id={}, name={}", newCount, postId, post.getName());
@@ -480,7 +480,7 @@ public class LabourPostService {
         }
 
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("labours.post.duration_days", "60"));
+                settingService.getSettingValue("labour.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
         if (durationDays > 0) {
@@ -559,21 +559,21 @@ public class LabourPostService {
     }
 
     private List<PostStatus> getVisibleStatuses() {
-        String json = settingService.getSettingValue("labours.post.visible_statuses", "[\"APPROVED\"]");
+        String json = settingService.getSettingValue("labour.post.visible_statuses", "[\"APPROVED\"]");
         try {
             List<String> statusStrings = objectMapper.readValue(json, new TypeReference<List<String>>() {});
             return statusStrings.stream()
                     .map(s -> PostStatus.valueOf(s.toUpperCase()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("Failed to parse labours visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
+            log.warn("Failed to parse labour visible_statuses setting, defaulting to APPROVED: {}", e.getMessage());
             return List.of(PostStatus.APPROVED);
         }
     }
 
     private LocalDateTime getCutoffDate() {
         int durationDays = Integer.parseInt(
-                settingService.getSettingValue("labours.post.duration_days", "60"));
+                settingService.getSettingValue("labour.post.duration_days", "30"));
         if (durationDays <= 0) {
             return null;
         }
