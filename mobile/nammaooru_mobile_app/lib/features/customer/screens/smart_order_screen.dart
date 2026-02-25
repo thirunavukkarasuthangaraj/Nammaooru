@@ -48,6 +48,8 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     _service.shopId = widget.shopId;
     _service.shopName = widget.shopName;
     _service.ttsService.initialize();
+    // Load Gemini AI keys from backend (for photo reading)
+    _service.loadAiConfig();
 
     final shopLabel = widget.shopName != null
         ? ' (${widget.shopName})'
@@ -132,7 +134,8 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
         _isProcessing = false;
         _statusMessage = '';
       });
-      _addBotMessage('படத்தை படிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.\nCould not read image. Try again.');
+      final errorDetail = _service.lastError ?? 'Unknown error';
+      _addBotMessage('படத்தை படிக்க முடியவில்லை.\nCould not read image.\nError: $errorDetail');
       return;
     }
 

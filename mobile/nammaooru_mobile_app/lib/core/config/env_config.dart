@@ -24,13 +24,8 @@ class EnvConfig {
   static const String googlePlacesApiKey =
       'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
 
-  // Gemini AI — for photo list reading (Vision API)
-  static const List<String> geminiApiKeys = [
-    'AIzaSyAZDAB-axvYDirGQLL4XmxrLVbyiI2BLOI',
-    'AIzaSyC3rhnK0i2-nr9jMZ3AS2i7ABvjZgjkno0',
-    'AIzaSyDIdOFfZPsubX1jytyeubSSPS5bGOqX-UU',
-    'AIzaSyCpAnofkz9oGJjGEiWKTzt8I4AQKniZLqo',
-  ];
+  // Gemini AI — keys fetched from backend at runtime (not hardcoded)
+  static List<String> geminiApiKeys = [];
   static const String geminiModel = 'gemini-2.5-flash';
   static const String geminiApiUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';

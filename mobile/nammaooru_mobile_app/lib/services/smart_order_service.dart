@@ -43,6 +43,7 @@ class SmartOrderResult {
 class SmartOrderService {
   final VoiceSearchService _voiceService = VoiceSearchService();
   final TtsService _ttsService = TtsService();
+  bool _aiConfigLoaded = false;
 
   /// Shop context — when set, searches within this shop only
   int? shopId;
@@ -50,6 +51,24 @@ class SmartOrderService {
 
   TtsService get ttsService => _ttsService;
   VoiceSearchService get voiceService => _voiceService;
+
+  /// Fetch Gemini AI config (keys) from backend — call once on init
+  Future<void> loadAiConfig() async {
+    if (_aiConfigLoaded && EnvConfig.geminiApiKeys.isNotEmpty) return;
+    try {
+      final response = await ApiClient.get('/mobile/ai-config');
+      final data = response.data;
+      if (data != null && data['statusCode'] == '0000') {
+        final config = data['data'];
+        final List<dynamic> keys = config?['apiKeys'] ?? [];
+        EnvConfig.geminiApiKeys = keys.map((k) => k.toString()).where((k) => k.isNotEmpty).toList();
+        debugPrint('SmartOrder: Loaded ${EnvConfig.geminiApiKeys.length} Gemini API keys from backend');
+        _aiConfigLoaded = true;
+      }
+    } catch (e) {
+      debugPrint('SmartOrder: Failed to load AI config: $e');
+    }
+  }
 
   /// MODE 1: Voice → listen Tamil → search products
   Future<SmartOrderResult?> processVoiceOrder() async {
@@ -64,21 +83,30 @@ class SmartOrderService {
     return SmartOrderResult(rawInput: text, items: items, mode: 'voice');
   }
 
+  /// Last error message for UI display
+  String? lastError;
+
   /// MODE 2: Photo → Gemini Vision (direct call) → parse → search products
   Future<SmartOrderResult?> processPhotoOrder(File imageFile) async {
     debugPrint('SmartOrder: Processing photo order...');
+    lastError = null;
     try {
       // Read image and convert to base64
       final bytes = await imageFile.readAsBytes();
+      debugPrint('SmartOrder: Image size: ${bytes.length} bytes');
       final base64Image = base64Encode(bytes);
       final ext = imageFile.path.split('.').last.toLowerCase();
       final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+      debugPrint('SmartOrder: Calling Gemini Vision (mime: $mimeType, base64 len: ${base64Image.length})');
 
       // Call Gemini Vision API directly (no backend needed)
       final parsedItems = await _callGeminiVision(base64Image, mimeType);
-      debugPrint('SmartOrder: Parsed ${parsedItems.length} items from image');
+      debugPrint('SmartOrder: Parsed ${parsedItems.length} items from image: $parsedItems');
 
-      if (parsedItems.isEmpty) return null;
+      if (parsedItems.isEmpty) {
+        lastError = lastError ?? 'Gemini could not read items from the image';
+        return null;
+      }
 
       // Filter out quantity words and search each item
       List<ParsedItem> items = [];
@@ -98,6 +126,7 @@ class SmartOrderService {
       return SmartOrderResult(rawInput: rawText, items: items, mode: 'photo');
     } catch (e) {
       debugPrint('SmartOrder: Photo order error: $e');
+      lastError = e.toString();
       return null;
     }
   }
@@ -115,10 +144,15 @@ class SmartOrderService {
         '${EnvConfig.geminiApiUrl}/${EnvConfig.geminiModel}:generateContent?key=$apiKey';
 
     final prompt =
-        'Read this image. It may be a handwritten or printed shopping list in Tamil or English. '
-        'Extract ONLY the product/item names. Return a JSON array of item names. '
-        'Example: ["அரிசி", "பருப்பு", "oil", "sugar"]. '
-        'If you cannot read the image or it is not a shopping list, return [].';
+        'This image is a handwritten grocery/shopping list in Tamil or English. '
+        'Rules: '
+        '1. Each LINE = ONE item. Do NOT split words. '
+        '2. Use SINGULAR form: "tomatoes"→"tomato", "onions"→"onion", "eggs"→"egg". '
+        '3. NO DUPLICATES — if same item appears multiple times, include it ONLY ONCE. '
+        '4. Fix handwriting misreads: "toma to"→"tomato", "onli on"→"onion". '
+        '5. Ignore quantities/numbers — only return the product name. '
+        'Return ONLY a JSON array. Example: ["onion", "tomato", "அரிசி", "sugar"]. '
+        'If not a shopping list, return [].';
 
     final body = {
       'contents': [
@@ -158,9 +192,25 @@ class SmartOrderService {
       }
 
       final List<dynamic> parsed = jsonDecode(jsonStr);
-      return parsed.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+      // Deduplicate (case-insensitive) and clean up
+      final seen = <String>{};
+      final results = <String>[];
+      for (final item in parsed) {
+        final name = item.toString().trim().toLowerCase();
+        if (name.isNotEmpty && seen.add(name)) {
+          results.add(item.toString().trim());
+        }
+      }
+      return results;
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final errorBody = e.response?.data;
+      debugPrint('SmartOrder: Gemini Vision API error: $statusCode - $errorBody');
+      lastError = 'Gemini API: ${statusCode ?? "network error"} - ${e.message}';
+      return [];
     } catch (e) {
-      debugPrint('SmartOrder: Gemini Vision API error: $e');
+      debugPrint('SmartOrder: Gemini Vision parse error: $e');
+      lastError = 'Parse error: $e';
       return [];
     }
   }
@@ -240,11 +290,28 @@ class SmartOrderService {
           .toList();
 
       if (words.isEmpty) continue;
-      productTerms.addAll(words);
+      productTerms.addAll(words.map(_removePlural));
     }
 
     debugPrint('SmartOrder: splitIntoTerms "$text" → $productTerms');
     return productTerms.isEmpty ? [text.trim()] : productTerms;
+  }
+
+  /// Remove English plural suffix: tomatos→tomato, tomatoes→tomato, onions→onion
+  String _removePlural(String word) {
+    // Only for English words (Tamil words don't use 's' plurals)
+    if (!RegExp(r'^[a-zA-Z]+$').hasMatch(word) || word.length <= 3) {
+      return word;
+    }
+    final lower = word.toLowerCase();
+    if (lower.endsWith('oes')) {
+      // tomatoes → tomato, potatoes → potato
+      return word.substring(0, word.length - 2);
+    } else if (lower.endsWith('s') && !lower.endsWith('ss')) {
+      // tomatos → tomato, onions → onion, eggs → egg
+      return word.substring(0, word.length - 1);
+    }
+    return word;
   }
 
   /// Search within a specific shop using AI search

@@ -1,5 +1,6 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.config.GeminiConfig;
 import com.shopmanagement.dto.mobile.*;
 import com.shopmanagement.service.CustomerService;
 import com.shopmanagement.service.MobileOtpService;
@@ -27,6 +28,7 @@ public class MobileCustomerController {
     
     private final MobileOtpService mobileOtpService;
     private final CustomerService customerService;
+    private final GeminiConfig geminiConfig;
     
     @PostMapping("/auth/request-otp")
     public ResponseEntity<Map<String, Object>> requestOtpForAuth(
@@ -375,6 +377,22 @@ public class MobileCustomerController {
         }
     }
     
+    /**
+     * Returns Gemini AI config for mobile app (keys, model, url).
+     * This avoids hardcoding API keys in the mobile app source code.
+     */
+    @GetMapping("/ai-config")
+    public ResponseEntity<Map<String, Object>> getAiConfig() {
+        return ResponseEntity.ok(Map.of(
+            "statusCode", "0000",
+            "data", Map.of(
+                "apiKeys", geminiConfig.getApiKeys() != null ? geminiConfig.getApiKeys() : java.util.List.of(),
+                "model", geminiConfig.getModel() != null ? geminiConfig.getModel() : "gemini-2.5-flash",
+                "apiUrl", geminiConfig.getApiUrl() != null ? geminiConfig.getApiUrl() : "https://generativelanguage.googleapis.com/v1beta/models"
+            )
+        ));
+    }
+
     private String extractTokenFromHeader(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
