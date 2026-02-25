@@ -1729,6 +1729,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           // Special Offers Carousel (top)
                           _buildUnifiedOffersCarousel(),
                           const SizedBox(height: 4),
+                        _buildAiOrderBanner(),
+                        const SizedBox(height: 12),
                         _buildServiceCategories(),
                         const SizedBox(height: 24),
                         _buildFeaturedShops(),
@@ -2126,6 +2128,68 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     } else if (route.contains('village') || route.contains('panchayat')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()));
     }
+  }
+
+  Widget _buildAiOrderBanner() {
+    return GestureDetector(
+      onTap: () => context.push('/customer/smart-order'),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4CAF50).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'AI Order / AI ஆர்டர்',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Voice, Photo or Text — order in Tamil!',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 18),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildServiceCategories() {

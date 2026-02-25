@@ -42,8 +42,9 @@ dependencies:
   google_maps_flutter: ^2.13.1
   location: ^8.0.1
 
-  # Voice Search
+  # Voice Search & TTS
   speech_to_text: ^7.3.0
+  flutter_tts: ^4.2.0
 
   # Promo Codes - Using simple UUID without device info to avoid permissions
   uuid: ^4.2.1

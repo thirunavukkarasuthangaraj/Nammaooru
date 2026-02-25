@@ -252,6 +252,72 @@ public class GeminiSearchService {
     }
 
     /**
+     * Call Gemini Vision API with an image for analysis (e.g., reading handwritten shopping lists).
+     * Uses the same round-robin key rotation as text API.
+     */
+    public String callGeminiVisionAPI(String prompt, byte[] imageBytes, String mimeType) {
+        if (!geminiConfig.getEnabled()) {
+            throw new IllegalStateException("Gemini AI is not enabled");
+        }
+
+        String currentApiKey = getNextApiKey();
+
+        try {
+            String url = String.format("%s/%s:generateContent?key=%s",
+                geminiConfig.getApiUrl(), geminiConfig.getModel(), currentApiKey);
+
+            // Encode image to base64
+            String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+
+            // Build multimodal request body with text + image
+            Map<String, Object> requestBody = Map.of(
+                "contents", List.of(
+                    Map.of("parts", List.of(
+                        Map.of("text", prompt),
+                        Map.of("inlineData", Map.of(
+                            "mimeType", mimeType,
+                            "data", base64Image
+                        ))
+                    ))
+                )
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            log.info("Calling Gemini Vision API");
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                url, HttpMethod.POST, entity, String.class
+            );
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode candidates = root.path("candidates");
+
+            if (candidates.isArray() && candidates.size() > 0) {
+                JsonNode content = candidates.get(0).path("content").path("parts");
+                if (content.isArray() && content.size() > 0) {
+                    String responseText = content.get(0).path("text").asText();
+                    log.info("Gemini Vision API response received");
+                    return responseText;
+                }
+            }
+
+            log.warn("No valid response from Gemini Vision API");
+            return "[]";
+
+        } catch (RestClientException e) {
+            log.error("Gemini Vision API timeout: {}", e.getMessage());
+            throw new RuntimeException("Gemini Vision API timeout", e);
+        } catch (Exception e) {
+            log.error("Error calling Gemini Vision API: {}", e.getMessage());
+            throw new RuntimeException("Failed to call Gemini Vision API", e);
+        }
+    }
+
+    /**
      * Check if Gemini AI is enabled
      */
     public boolean isEnabled() {

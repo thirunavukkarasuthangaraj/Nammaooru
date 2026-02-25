@@ -1,9 +1,12 @@
 package com.shopmanagement.product.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shopmanagement.dto.ApiResponse;
 import com.shopmanagement.product.dto.MasterProductResponse;
 import com.shopmanagement.product.dto.VoiceSearchGroupedResponse;
 import com.shopmanagement.product.service.ProductAISearchService;
+import com.shopmanagement.service.GeminiSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -11,8 +14,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/products/search")
@@ -21,6 +27,8 @@ import java.util.List;
 public class ProductAISearchController {
 
     private final ProductAISearchService productAISearchService;
+    private final GeminiSearchService geminiSearchService;
+    private final ObjectMapper objectMapper;
 
     /**
      * Search products using AI (Gemini) based on natural language query
@@ -161,6 +169,63 @@ public class ProductAISearchController {
         } catch (Exception e) {
             log.error("Error during smart search: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error("Smart search failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Parse a photo of a handwritten shopping list using Gemini Vision AI.
+     * Supports Tamil and English handwriting.
+     * Returns a list of parsed item names.
+     */
+    @PostMapping("/parse-image")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> parseShoppingListImage(
+            @RequestParam("image") MultipartFile image
+    ) {
+        log.info("Parse shopping list image: size={}KB, type={}", image.getSize() / 1024, image.getContentType());
+
+        try {
+            byte[] imageBytes = image.getBytes();
+            String mimeType = image.getContentType() != null ? image.getContentType() : "image/jpeg";
+
+            String prompt = "You are reading a handwritten shopping list. " +
+                    "The list may be in Tamil (தமிழ்), English, or a mix of both. " +
+                    "Extract each item from the list. " +
+                    "Return ONLY a valid JSON array of strings, each string being one item with quantity if mentioned. " +
+                    "Example: [\"அரிசி 5kg\", \"பருப்பு 1kg\", \"oil 1 litre\", \"sugar\"]. " +
+                    "If you cannot read the image or it's not a shopping list, return [].";
+
+            String aiResponse = geminiSearchService.callGeminiVisionAPI(prompt, imageBytes, mimeType);
+
+            // Extract JSON array from response (Gemini might wrap it in markdown)
+            String jsonStr = aiResponse.trim();
+            if (jsonStr.contains("[")) {
+                jsonStr = jsonStr.substring(jsonStr.indexOf("["), jsonStr.lastIndexOf("]") + 1);
+            }
+
+            List<String> items;
+            try {
+                items = objectMapper.readValue(jsonStr, new TypeReference<List<String>>() {});
+            } catch (Exception e) {
+                log.warn("Failed to parse AI response as JSON, splitting by lines: {}", aiResponse);
+                items = new ArrayList<>();
+                for (String line : aiResponse.split("\\n")) {
+                    String cleaned = line.trim().replaceFirst("^[-•*\\d.]+\\s*", "");
+                    if (!cleaned.isEmpty() && !cleaned.equals("[]")) {
+                        items.add(cleaned);
+                    }
+                }
+            }
+
+            log.info("Parsed {} items from shopping list image", items.size());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("items", items, "rawText", aiResponse),
+                    "Parsed " + items.size() + " items from image"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error parsing shopping list image: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to parse image: " + e.getMessage()));
         }
     }
 
