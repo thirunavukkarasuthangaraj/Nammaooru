@@ -855,8 +855,43 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
+        SliverToBoxAdapter(child: _buildAiOrderButton()),
         _buildProductGrid(),
       ],
+    );
+  }
+
+  Widget _buildAiOrderButton() {
+    return GestureDetector(
+      onTap: () {
+        context.push('/customer/smart-order', extra: {
+          'shopId': widget.shopId,
+          'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'AI Order — Voice, Photo or Text',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
     );
   }
 

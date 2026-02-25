@@ -120,17 +120,73 @@ class SmartOrderService {
   /// Search items — uses shop-specific endpoint if shopId is set
   Future<List<ParsedItem>> _searchItems(String query) async {
     if (shopId != null) {
-      // Shop-specific: search within this shop's products
-      final matches = await _searchShopProducts(query);
-      if (matches.isNotEmpty) {
-        // Group by splitting query words if possible
-        return [ParsedItem(name: query, matches: matches)];
+      // Shop-specific: split text into individual product terms,
+      // then search each term within the shop using AI search.
+      final terms = _splitIntoTerms(query);
+      debugPrint('SmartOrder: Split "$query" → $terms');
+
+      List<ParsedItem> items = [];
+      for (final term in terms) {
+        final matches = await _searchShopProducts(term);
+        items.add(ParsedItem(name: term, matches: matches));
       }
-      return [ParsedItem(name: query, matches: [])];
+      return items;
     } else {
       // Global: use grouped voice search
       return _searchGrouped(query);
     }
+  }
+
+  /// Tamil/English quantity & unit words to filter out before searching
+  static final Set<String> _quantityWords = {
+    // Tamil numbers
+    'ஒரு', 'இரண்டு', 'மூன்று', 'நான்கு', 'ஐந்து',
+    'ஆறு', 'ஏழு', 'எட்டு', 'ஒன்பது', 'பத்து',
+    'அரை', 'ஒன்றரை', 'இரண்டரை',
+    // Tamil units
+    'கிலோ', 'கிராம்', 'லிட்டர்', 'மில்லி', 'பாக்கெட்', 'டஜன்',
+    'கேஜி', 'லிட்', 'பாக்',
+    // English numbers & units
+    'kg', 'kilo', 'gram', 'grams', 'liter', 'litre', 'ml',
+    'packet', 'pack', 'dozen', 'half', 'quarter',
+    'one', 'two', 'three', 'four', 'five',
+  };
+
+  /// Split voice/text input into individual product terms
+  /// Filters out quantity words (ஒரு, கிலோ, kg, etc.)
+  List<String> _splitIntoTerms(String text) {
+    // Replace Tamil "and" (மற்றும்) and English "and" with comma
+    var normalized = text
+        .replaceAll('மற்றும்', ',')
+        .replaceAll(' and ', ',')
+        .replaceAll('  ', ' ');
+
+    // Split by commas/newlines first
+    var parts = normalized
+        .split(RegExp(r'[,\n]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    List<String> productTerms = [];
+    for (final part in parts) {
+      // Remove quantity/unit words and bare numbers from each part
+      final words = part
+          .split(' ')
+          .map((w) => w.trim())
+          .where((w) => w.isNotEmpty)
+          .where((w) =>
+              !_quantityWords.contains(w.toLowerCase()) &&
+              !RegExp(r'^\d+\.?\d*$').hasMatch(w))
+          .where((w) => w.length > 1)
+          .toList();
+
+      if (words.isEmpty) continue;
+      productTerms.addAll(words);
+    }
+
+    debugPrint('SmartOrder: splitIntoTerms "$text" → $productTerms');
+    return productTerms.isEmpty ? [text.trim()] : productTerms;
   }
 
   /// Search within a specific shop using AI search
@@ -153,7 +209,7 @@ class SmartOrderService {
       final List<dynamic> products = data['data']?['matchedProducts'] ?? [];
       debugPrint('SmartOrder: Found ${products.length} products in shop');
 
-      return products.map<Map<String, dynamic>>((p) => {
+      return products.take(5).map<Map<String, dynamic>>((p) => {
             'id': p['id']?.toString() ?? '',
             'name': p['displayName'] ?? p['name']?.toString() ?? '',
             'nameTamil': p['nameTamil']?.toString() ?? '',
@@ -252,7 +308,6 @@ class SmartOrderService {
 
   /// Speak result summary in Tamil
   Future<void> _speakResult(List<ParsedItem> items) async {
-    final matched = items.where((i) => i.matches.isNotEmpty).length;
     final totalMatches = items.fold<int>(0, (sum, i) => sum + i.matches.length);
 
     String message;

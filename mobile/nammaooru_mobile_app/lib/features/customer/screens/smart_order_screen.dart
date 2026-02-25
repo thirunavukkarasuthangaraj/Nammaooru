@@ -9,6 +9,7 @@ import '../../../shared/models/product_model.dart';
 import '../../../services/smart_order_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/localization/language_provider.dart';
 
 class SmartOrderScreen extends StatefulWidget {
   final int? shopId;
@@ -391,10 +392,22 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
                 // Processing indicator
                 if (_isProcessing) _buildProcessingIndicator(),
 
-                // Results
+                // Results — proper product list
                 if (_result != null) ...[
                   const SizedBox(height: 8),
-                  _buildResultsCard(),
+                  ..._result!.items.map(_buildItemSection),
+                  if (_result!.items.any((i) => i.matches.isNotEmpty && !i.isAdded)) ...[
+                    const SizedBox(height: 12),
+                    _buildAddAllButton(),
+                  ],
+                  const SizedBox(height: 8),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _isProcessing ? null : _startVoiceOrder,
+                      icon: const Icon(Icons.mic, size: 18),
+                      label: const Text('Add more items / மேலும் சேர்'),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -504,92 +517,35 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     );
   }
 
-  Widget _buildResultsCard() {
-    if (_result == null) return const SizedBox.shrink();
-
-    final hasAddableItems = _result!.items
-        .any((i) => i.matches.isNotEmpty && !i.isAdded);
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                const Icon(Icons.receipt_long,
-                    color: VillageTheme.primaryGreen, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Found Items (${_result!.matchedCount}/${_result!.items.length})',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 20),
-
-            // Item list
-            ..._result!.items.map(_buildItemRow),
-
-            // Add all button
-            if (hasAddableItems) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addAllToCart,
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('Add All to Cart / அனைத்தும் சேர்'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: VillageTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-
-            // Voice: add more items
-            const SizedBox(height: 8),
-            Center(
-              child: TextButton.icon(
-                onPressed: _isProcessing ? null : _startVoiceOrder,
-                icon: const Icon(Icons.mic, size: 18),
-                label: const Text('Add more items / மேலும் சேர்'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemRow(ParsedItem item) {
+  /// Section header for each parsed item keyword + product cards below it
+  Widget _buildItemSection(ParsedItem item) {
     final hasMatches = item.matches.isNotEmpty;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Item name with status icon
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Keyword header bar
+        Container(
+          margin: const EdgeInsets.only(top: 8, bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: hasMatches
+                ? VillageTheme.primaryGreen.withOpacity(0.08)
+                : VillageTheme.errorRed.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: hasMatches
+                  ? VillageTheme.primaryGreen.withOpacity(0.2)
+                  : VillageTheme.errorRed.withOpacity(0.2),
+            ),
+          ),
+          child: Row(
             children: [
               Icon(
                 hasMatches
                     ? (item.isAdded ? Icons.check_circle : Icons.search)
                     : Icons.cancel,
-                size: 18,
+                size: 20,
                 color: hasMatches
                     ? (item.isAdded
                         ? VillageTheme.primaryGreen
@@ -599,137 +555,227 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  item.name,
+                  '"${item.name}"',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: hasMatches
                         ? VillageTheme.primaryText
                         : VillageTheme.errorRed,
-                    decoration:
-                        item.isAdded ? TextDecoration.lineThrough : null,
                   ),
                 ),
               ),
               if (item.isAdded)
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: VillageTheme.primaryGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: VillageTheme.primaryGreen,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('Added',
-                      style: TextStyle(
-                          color: VillageTheme.primaryGreen,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Added',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              else if (hasMatches)
+                Text(
+                  '${item.matches.length} found',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
             ],
           ),
+        ),
 
-          // Product matches
-          if (hasMatches && !item.isAdded)
-            Padding(
-              padding: const EdgeInsets.only(left: 26, top: 4),
-              child: Column(
-                children: item.matches
-                    .take(3)
-                    .map((product) => _buildProductMatch(item, product))
-                    .toList(),
-              ),
-            ),
+        // Product cards — large format like search engine
+        if (hasMatches && !item.isAdded)
+          ...item.matches
+              .map((product) => _buildProductCard(item, product)),
 
-          if (!hasMatches)
-            const Padding(
-              padding: EdgeInsets.only(left: 26, top: 2),
-              child: Text(
-                'No match found / கிடைக்கவில்லை',
-                style: TextStyle(
-                    color: VillageTheme.errorRed, fontSize: 12),
-              ),
+        // No match message
+        if (!hasMatches)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: VillageTheme.errorRed.withOpacity(0.3)),
             ),
-        ],
-      ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline,
+                    color: VillageTheme.errorRed, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No matching product found\nபொருள் கிடைக்கவில்லை',
+                    style: TextStyle(
+                        color: VillageTheme.errorRed, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _buildProductMatch(ParsedItem item, Map<String, dynamic> product) {
+  /// Individual product card — large image, name, Tamil name, price, ADD button
+  Widget _buildProductCard(
+      ParsedItem item, Map<String, dynamic> product) {
     final name = product['name'] ?? '';
     final nameTamil = product['nameTamil'] ?? '';
     final price = product['price']?.toString() ?? '0';
     final imageUrl = product['image']?.toString() ?? '';
 
-    return InkWell(
-      onTap: () => _addSingleToCart(item, product),
-      borderRadius: BorderRadius.circular(8),
+    // Respect language toggle — show Tamil first when Tamil is selected
+    final isTamil = Provider.of<LanguageProvider>(context, listen: false)
+            .currentLanguage ==
+        'ta';
+    final primaryName =
+        isTamil && nameTamil.isNotEmpty ? nameTamil : name;
+    final secondaryName =
+        isTamil && nameTamil.isNotEmpty ? name : nameTamil;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.all(10),
         child: Row(
           children: [
-            // Product image
+            // Product image — 72×72
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(10),
               child: imageUrl.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
-                      width: 36,
-                      height: 36,
+                      width: 72,
+                      height: 72,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(
-                        width: 36,
-                        height: 36,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image, size: 16, color: Colors.grey),
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.image,
+                            size: 28, color: Colors.grey),
                       ),
                       errorWidget: (_, __, ___) => Container(
-                        width: 36,
-                        height: 36,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image, size: 16, color: Colors.grey),
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.image,
+                            size: 28, color: Colors.grey),
                       ),
                     )
                   : Container(
-                      width: 36,
-                      height: 36,
-                      color: Colors.grey[200],
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       child: const Icon(Icons.shopping_bag,
-                          size: 16, color: Colors.grey),
+                          size: 28, color: Colors.grey),
                     ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
+
+            // Product details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    nameTamil.isNotEmpty ? '$name ($nameTamil)' : name,
-                    style: const TextStyle(fontSize: 13),
-                    maxLines: 1,
+                    primaryName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  if (secondaryName.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      secondaryName,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Text(
+                    '₹$price',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
+                      fontSize: 18,
+                    ),
                   ),
                 ],
               ),
             ),
-            Text(
-              '₹$price',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: VillageTheme.primaryGreen,
-                fontSize: 14,
+            const SizedBox(width: 8),
+
+            // ADD button
+            SizedBox(
+              height: 40,
+              child: ElevatedButton(
+                onPressed: () => _addSingleToCart(item, product),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: VillageTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text('ADD',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14)),
               ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(Icons.add,
-                  size: 16, color: VillageTheme.primaryGreen),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Add All to Cart — full-width green button
+  Widget _buildAddAllButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton.icon(
+        onPressed: _addAllToCart,
+        icon: const Icon(Icons.add_shopping_cart, size: 22),
+        label: const Text(
+          'Add All to Cart / அனைத்தும் சேர்',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: VillageTheme.primaryGreen,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          elevation: 2,
         ),
       ),
     );

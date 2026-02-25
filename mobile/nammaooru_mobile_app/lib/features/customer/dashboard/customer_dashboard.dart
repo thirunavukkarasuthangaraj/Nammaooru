@@ -1728,9 +1728,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           const SizedBox(height: 8),
                           // Special Offers Carousel (top)
                           _buildUnifiedOffersCarousel(),
-                          const SizedBox(height: 4),
-                        _buildAiOrderBanner(),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 12),
                         _buildServiceCategories(),
                         const SizedBox(height: 24),
                         _buildFeaturedShops(),
@@ -2133,15 +2131,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildAiOrderBanner() {
     return GestureDetector(
       onTap: () {
-        // Navigate to shops — user picks a shop, then uses AI Order inside
-        context.push('/customer/shops');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Select a shop, then tap ✨ AI Order in the top bar'),
-            backgroundColor: Color(0xFF4CAF50),
-            duration: Duration(seconds: 3),
-          ),
-        );
+        // Go directly to Smart Order screen (global mode — searches all shops)
+        context.push('/customer/smart-order');
       },
       child: Container(
         width: double.infinity,
@@ -2186,7 +2177,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Voice, Photo or Text — order in Tamil!',
+                    'Speak, snap a photo, or type your order!',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 12,
