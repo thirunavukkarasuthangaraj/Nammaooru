@@ -103,7 +103,7 @@ public class ParcelServicePostService {
         }
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("parcels.post.auto_approve", "false"));
+                settingService.getSettingValue("parcel.post.auto_approve", "false"));
 
         ParcelServicePost post = ParcelServicePost.builder()
                 .serviceName(serviceName)

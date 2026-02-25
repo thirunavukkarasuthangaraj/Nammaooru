@@ -89,7 +89,7 @@ public class RealEstateService {
         }
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("real_estate.post.auto_approve", "false"));
+                settingService.getSettingValue("realestate.post.auto_approve", "false"));
 
         RealEstatePost post = RealEstatePost.builder()
                 .title(title)

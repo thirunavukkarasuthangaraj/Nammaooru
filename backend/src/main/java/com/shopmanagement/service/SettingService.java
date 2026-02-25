@@ -341,17 +341,82 @@ public class SettingService {
                 "Number of reports needed before auto-flagging a post", "MARKETPLACE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
         // Farmer Products settings
-        createDefaultSettingIfNotExists("farmer_products.post.duration_days", "30",
+        createDefaultSettingIfNotExists("farmer.post.duration_days", "30",
                 "How many days a farmer product post stays visible (0 = no expiry)", "FARMER_PRODUCTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
-        createDefaultSettingIfNotExists("farmer_products.post.auto_approve", "false",
+        createDefaultSettingIfNotExists("farmer.post.auto_approve", "false",
                 "Auto-approve new farmer product posts (skip pending approval)", "FARMER_PRODUCTS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
 
-        createDefaultSettingIfNotExists("farmer_products.post.visible_statuses", "[\"APPROVED\"]",
+        createDefaultSettingIfNotExists("farmer.post.visible_statuses", "[\"APPROVED\"]",
                 "Which farmer product post statuses are visible to the public", "FARMER_PRODUCTS", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
 
-        createDefaultSettingIfNotExists("farmer_products.post.report_threshold", "3",
+        createDefaultSettingIfNotExists("farmer.post.report_threshold", "3",
                 "Number of reports needed before auto-flagging a farmer product post", "FARMER_PRODUCTS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        // Labour settings
+        createDefaultSettingIfNotExists("labour.post.duration_days", "30",
+                "How many days a labour post stays visible (0 = no expiry)", "LABOURS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("labour.post.auto_approve", "false",
+                "Auto-approve new labour posts (skip pending approval)", "LABOURS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("labour.post.visible_statuses", "[\"APPROVED\"]",
+                "Which labour post statuses are visible to the public", "LABOURS", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("labour.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a labour post", "LABOURS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        // Travel settings
+        createDefaultSettingIfNotExists("travel.post.duration_days", "30",
+                "How many days a travel post stays visible (0 = no expiry)", "TRAVELS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("travel.post.auto_approve", "false",
+                "Auto-approve new travel posts (skip pending approval)", "TRAVELS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("travel.post.visible_statuses", "[\"APPROVED\"]",
+                "Which travel post statuses are visible to the public", "TRAVELS", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("travel.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a travel post", "TRAVELS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        // Parcel settings
+        createDefaultSettingIfNotExists("parcel.post.duration_days", "30",
+                "How many days a parcel service post stays visible (0 = no expiry)", "PARCEL_SERVICE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("parcel.post.auto_approve", "false",
+                "Auto-approve new parcel service posts (skip pending approval)", "PARCEL_SERVICE", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("parcel.post.visible_statuses", "[\"APPROVED\"]",
+                "Which parcel service post statuses are visible to the public", "PARCEL_SERVICE", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("parcel.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a parcel service post", "PARCEL_SERVICE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        // Real Estate settings
+        createDefaultSettingIfNotExists("realestate.post.duration_days", "30",
+                "How many days a real estate post stays visible (0 = no expiry)", "REAL_ESTATE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("realestate.post.auto_approve", "false",
+                "Auto-approve new real estate posts (skip pending approval)", "REAL_ESTATE", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("realestate.post.visible_statuses", "[\"APPROVED\"]",
+                "Which real estate post statuses are visible to the public", "REAL_ESTATE", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("realestate.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a real estate post", "REAL_ESTATE", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        // Rental settings
+        createDefaultSettingIfNotExists("rental.post.duration_days", "30",
+                "How many days a rental post stays visible (0 = no expiry)", "RENTAL", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("rental.post.auto_approve", "false",
+                "Auto-approve new rental posts (skip pending approval)", "RENTAL", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("rental.post.visible_statuses", "[\"APPROVED\"]",
+                "Which rental post statuses are visible to the public", "RENTAL", Setting.SettingType.JSON, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("rental.post.report_threshold", "3",
+                "Number of reports needed before auto-flagging a rental post", "RENTAL", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
 
         // Paid Posts settings
         createDefaultSettingIfNotExists("paid_post.enabled", "true",

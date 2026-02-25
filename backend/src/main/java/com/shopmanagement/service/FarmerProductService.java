@@ -93,7 +93,7 @@ public class FarmerProductService {
         String imageUrls = imageUrlList.isEmpty() ? null : String.join(",", imageUrlList);
 
         boolean autoApprove = Boolean.parseBoolean(
-                settingService.getSettingValue("farmer_products.post.auto_approve", "false"));
+                settingService.getSettingValue("farmer.post.auto_approve", "false"));
 
         FarmerProduct post = FarmerProduct.builder()
                 .title(title)
