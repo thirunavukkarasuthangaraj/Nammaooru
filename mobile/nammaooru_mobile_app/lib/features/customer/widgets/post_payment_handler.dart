@@ -83,7 +83,7 @@ class PostPaymentHandler {
       final int estPostFee = limitReached ? price : 0;
       final int estBannerFee = bannerPrice;
       final int estBase = estPostFee + estBannerFee;
-      final int estProcessing = (estBase * 236 / 10000).ceil();
+      final int estProcessing = (estBase * 2.36).ceil(); // paise (matches backend: baseAmount * feePercent)
       final int estTotal = estBase * 100 + estProcessing;
 
       displayTotal = estTotal;
