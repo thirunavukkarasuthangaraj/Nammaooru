@@ -41,6 +41,10 @@ class SmartOrderService {
   final VoiceSearchService _voiceService = VoiceSearchService();
   final TtsService _ttsService = TtsService();
 
+  /// Shop context — when set, searches within this shop only
+  int? shopId;
+  String? shopName;
+
   TtsService get ttsService => _ttsService;
   VoiceSearchService get voiceService => _voiceService;
 
@@ -51,7 +55,7 @@ class SmartOrderService {
     if (text == null || text.trim().isEmpty) return null;
 
     debugPrint('SmartOrder: Voice captured: "$text"');
-    final items = await _searchGrouped(text);
+    final items = await _searchItems(text);
 
     await _speakResult(items);
     return SmartOrderResult(rawInput: text, items: items, mode: 'voice');
@@ -90,7 +94,7 @@ class SmartOrderService {
       for (final itemName in parsedItems) {
         final name = itemName.toString().trim();
         if (name.isEmpty) continue;
-        final matches = await _searchProducts(name);
+        final matches = await _searchShopProducts(name);
         items.add(ParsedItem(name: name, matches: matches));
       }
 
@@ -108,12 +112,75 @@ class SmartOrderService {
     if (text.trim().isEmpty) return null;
     debugPrint('SmartOrder: Processing text order: "$text"');
 
-    final items = await _searchGrouped(text);
+    final items = await _searchItems(text);
     await _speakResult(items);
     return SmartOrderResult(rawInput: text, items: items, mode: 'text');
   }
 
-  /// Search using the grouped voice search endpoint
+  /// Search items — uses shop-specific endpoint if shopId is set
+  Future<List<ParsedItem>> _searchItems(String query) async {
+    if (shopId != null) {
+      // Shop-specific: search within this shop's products
+      final matches = await _searchShopProducts(query);
+      if (matches.isNotEmpty) {
+        // Group by splitting query words if possible
+        return [ParsedItem(name: query, matches: matches)];
+      }
+      return [ParsedItem(name: query, matches: [])];
+    } else {
+      // Global: use grouped voice search
+      return _searchGrouped(query);
+    }
+  }
+
+  /// Search within a specific shop using AI search
+  Future<List<Map<String, dynamic>>> _searchShopProducts(String query) async {
+    if (shopId == null) return _searchGlobalProducts(query);
+
+    try {
+      debugPrint('SmartOrder: Shop search shopId=$shopId query="$query"');
+      final response = await ApiClient.get(
+        '/shops/$shopId/products/ai-search',
+        queryParameters: {'query': query},
+      );
+
+      final data = response.data;
+      if (data == null || data['statusCode'] != '0000') {
+        debugPrint('SmartOrder: Shop AI search failed, trying global');
+        return _searchGlobalProducts(query);
+      }
+
+      final List<dynamic> products = data['data']?['matchedProducts'] ?? [];
+      debugPrint('SmartOrder: Found ${products.length} products in shop');
+
+      return products.map<Map<String, dynamic>>((p) => {
+            'id': p['id']?.toString() ?? '',
+            'name': p['displayName'] ?? p['name']?.toString() ?? '',
+            'nameTamil': p['nameTamil']?.toString() ?? '',
+            'price': p['price']?.toString() ?? '0',
+            'image': _extractImage(p),
+            'shopId': p['shopId']?.toString() ?? shopId.toString(),
+            'shopName': shopName ?? '',
+            'stockQuantity': p['stockQuantity'] ?? 999,
+          }).toList();
+    } catch (e) {
+      debugPrint('SmartOrder: Shop search error: $e');
+      return _searchGlobalProducts(query);
+    }
+  }
+
+  /// Extract first image from product response
+  String _extractImage(dynamic p) {
+    if (p['primaryImageUrl'] != null) return p['primaryImageUrl'].toString();
+    if (p['images'] != null && p['images'] is List && (p['images'] as List).isNotEmpty) {
+      final img = (p['images'] as List).first;
+      if (img is String) return img;
+      if (img is Map) return img['imageUrl']?.toString() ?? '';
+    }
+    return '';
+  }
+
+  /// Global product search (grouped by keyword)
   Future<List<ParsedItem>> _searchGrouped(String query) async {
     try {
       final response = await ApiClient.post(
@@ -123,8 +190,7 @@ class SmartOrderService {
 
       final data = response.data;
       if (data == null || data['statusCode'] != '0000') {
-        // Fallback: treat entire query as single search
-        final matches = await _searchProducts(query);
+        final matches = await _searchGlobalProducts(query);
         return [ParsedItem(name: query, matches: matches)];
       }
 
@@ -152,13 +218,13 @@ class SmartOrderService {
       return items;
     } catch (e) {
       debugPrint('SmartOrder: Grouped search error: $e');
-      final matches = await _searchProducts(query);
+      final matches = await _searchGlobalProducts(query);
       return [ParsedItem(name: query, matches: matches)];
     }
   }
 
-  /// Simple product search fallback
-  Future<List<Map<String, dynamic>>> _searchProducts(String query) async {
+  /// Global product search (flat list)
+  Future<List<Map<String, dynamic>>> _searchGlobalProducts(String query) async {
     try {
       final response = await ApiClient.post(
         '/v1/products/search/voice',
@@ -179,7 +245,7 @@ class SmartOrderService {
             'shopName': '',
           }).toList();
     } catch (e) {
-      debugPrint('SmartOrder: Product search error: $e');
+      debugPrint('SmartOrder: Global search error: $e');
       return [];
     }
   }
@@ -187,15 +253,13 @@ class SmartOrderService {
   /// Speak result summary in Tamil
   Future<void> _speakResult(List<ParsedItem> items) async {
     final matched = items.where((i) => i.matches.isNotEmpty).length;
-    final total = items.length;
+    final totalMatches = items.fold<int>(0, (sum, i) => sum + i.matches.length);
 
     String message;
-    if (matched == 0) {
+    if (totalMatches == 0) {
       message = 'பொருட்கள் கிடைக்கவில்லை. மீண்டும் முயற்சிக்கவும்.';
-    } else if (matched == total) {
-      message = '$matched பொருட்கள் கிடைத்தன. கார்ட்டில் சேர்க்கவா?';
     } else {
-      message = '$total இல் $matched பொருட்கள் கிடைத்தன.';
+      message = '$totalMatches பொருட்கள் கிடைத்தன. கார்ட்டில் சேர்க்கவா?';
     }
 
     await _ttsService.speak(message);

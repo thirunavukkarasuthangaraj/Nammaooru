@@ -11,7 +11,10 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class SmartOrderScreen extends StatefulWidget {
-  const SmartOrderScreen({super.key});
+  final int? shopId;
+  final String? shopName;
+
+  const SmartOrderScreen({super.key, this.shopId, this.shopName});
 
   @override
   State<SmartOrderScreen> createState() => _SmartOrderScreenState();
@@ -40,8 +43,15 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+    // Set shop context if provided
+    _service.shopId = widget.shopId;
+    _service.shopName = widget.shopName;
     _service.ttsService.initialize();
-    _addBotMessage('வணக்கம்! என்ன வேணும்?\nHello! What do you need?');
+
+    final shopLabel = widget.shopName != null
+        ? ' (${widget.shopName})'
+        : '';
+    _addBotMessage('வணக்கம்! என்ன வேணும்?$shopLabel\nHello! What do you need?');
   }
 
   @override
@@ -314,12 +324,19 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     return Scaffold(
       backgroundColor: VillageTheme.lightBackground,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_awesome, size: 22),
-            SizedBox(width: 8),
-            Text('AI Order / AI ஆர்டர்'),
+            const Icon(Icons.auto_awesome, size: 22),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                widget.shopName != null
+                    ? 'AI Order - ${widget.shopName}'
+                    : 'AI Order / AI ஆர்டர்',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         backgroundColor: VillageTheme.primaryGreen,

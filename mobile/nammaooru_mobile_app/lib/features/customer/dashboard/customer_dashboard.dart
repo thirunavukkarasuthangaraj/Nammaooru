@@ -2132,7 +2132,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Widget _buildAiOrderBanner() {
     return GestureDetector(
-      onTap: () => context.push('/customer/smart-order'),
+      onTap: () {
+        // Navigate to shops — user picks a shop, then uses AI Order inside
+        context.push('/customer/shops');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Select a shop, then tap ✨ AI Order in the top bar'),
+            backgroundColor: Color(0xFF4CAF50),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

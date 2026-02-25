@@ -1037,6 +1037,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       actions: [
         IconButton(
+          icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 26),
+          onPressed: () {
+            context.push('/customer/smart-order', extra: {
+              'shopId': widget.shopId,
+              'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
+            });
+          },
+          tooltip: 'AI Order',
+        ),
+        IconButton(
           icon: const Icon(Icons.search, color: Colors.white, size: 28),
           onPressed: () {
             // Scroll to search bar

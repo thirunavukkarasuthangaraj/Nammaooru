@@ -169,7 +169,13 @@ class AppRouter {
           ),
           GoRoute(
             path: '/customer/smart-order',
-            builder: (context, state) => const SmartOrderScreen(),
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return SmartOrderScreen(
+                shopId: extra?['shopId'] as int?,
+                shopName: extra?['shopName'] as String?,
+              );
+            },
           ),
           GoRoute(
             path: '/customer/village',
