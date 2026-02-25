@@ -272,6 +272,52 @@ class WomensCornerService {
     }
   }
 
+  /// Edit a post
+  Future<Map<String, dynamic>> editPost(int postId, Map<String, dynamic> updates) async {
+    try {
+      final response = await ApiClient.put('/womens-corner/posts/$postId/edit', data: updates);
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Post updated',
+      };
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to update post',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
+  /// Renew a post
+  Future<Map<String, dynamic>> renewPost(int postId, {int? paidTokenId}) async {
+    try {
+      String url = '/womens-corner/posts/$postId/renew';
+      if (paidTokenId != null) url += '?paidTokenId=$paidTokenId';
+      final response = await ApiClient.put(url);
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Post renewed',
+      };
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to renew post',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
   /// Report a post
   Future<Map<String, dynamic>> reportPost(int postId, String reason, {String? details}) async {
     try {
