@@ -497,6 +497,10 @@ public class SettingService {
         createDefaultSettingIfNotExists("content.moderation.threshold", "0.6",
                 "NSFW confidence threshold (0.0-1.0). Images above this are blocked", "CONTENT_MODERATION", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
 
+        // Voice Assistant toggle (admin can enable/disable the conversational AI assistant)
+        createDefaultSettingIfNotExists("voice.assistant.enabled", "false",
+                "Enable conversational voice AI assistant in the mobile app", "SYSTEM", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     
