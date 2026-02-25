@@ -108,7 +108,7 @@ public class FarmerProductService {
                 .location(location)
                 .latitude(latitude)
                 .longitude(longitude)
-                .status((autoApprove || paidTokenId != null) ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
                 .featured(isBanner)
                 .build();

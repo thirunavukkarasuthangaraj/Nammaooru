@@ -115,7 +115,7 @@ public class LabourPostService {
                 .longitude(longitude)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName())
-                .status((autoApprove || paidTokenId != null) ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
+                .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
                 .featured(isBanner)
                 .build();
