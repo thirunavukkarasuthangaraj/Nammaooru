@@ -31,10 +31,10 @@ public class GeminiSearchService {
     @Autowired
     public GeminiSearchService(GeminiConfig geminiConfig, RestTemplateBuilder restTemplateBuilder) {
         this.geminiConfig = geminiConfig;
-        // Configure RestTemplate with 10 second timeout for both connection and read
+        // Configure RestTemplate with timeouts (15s read for large AI search prompts)
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(10))
-                .setReadTimeout(Duration.ofSeconds(10))
+                .setReadTimeout(Duration.ofSeconds(15))
                 .build();
     }
 
@@ -81,6 +81,87 @@ public class GeminiSearchService {
             log.error("❌ Error calling Gemini AI: {}", e.getMessage(), e);
             // Fallback to original query if AI fails
             return List.of(query);
+        }
+    }
+
+    /**
+     * AI-powered product search: sends product catalog + query to Gemini,
+     * returns ranked list of matching product IDs.
+     */
+    public List<Long> aiSearchProducts(String query, String productCatalog) {
+        if (!geminiConfig.getEnabled() || query == null || query.trim().isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            log.info("🧠 Gemini AI Product Search - Query: '{}'", query);
+
+            String prompt = "You are a smart product search engine for an Indian grocery/general store.\n" +
+                    "Given the product catalog and customer query, find the most relevant products.\n\n" +
+                    "Rules:\n" +
+                    "- Understand intent, not just keywords (\"breakfast items\" → idli mix, bread, etc.)\n" +
+                    "- Handle Tamil (script + transliteration) naturally\n" +
+                    "- Match synonyms (\"cooking oil\" → sunflower oil, groundnut oil, etc.)\n" +
+                    "- Handle typos and partial words\n" +
+                    "- Return ONLY a JSON array of product IDs, max 20, ordered by relevance\n" +
+                    "- If no products match, return []\n" +
+                    "- Example response: [42, 15, 7, 103]\n\n" +
+                    "Product Catalog (format: id|name|tamilName|category):\n" +
+                    productCatalog + "\n\n" +
+                    "Customer Query: \"" + query + "\"";
+
+            String aiResponse = callGeminiAPI(prompt);
+
+            // Parse the JSON array of IDs from response
+            List<Long> productIds = parseProductIds(aiResponse);
+            log.info("✅ Gemini AI Search returned {} product IDs", productIds.size());
+            return productIds;
+
+        } catch (Exception e) {
+            log.error("❌ Gemini AI Product Search failed: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * Parse a JSON array of product IDs from Gemini response.
+     * Handles responses that may contain markdown formatting or extra text.
+     */
+    private List<Long> parseProductIds(String aiResponse) {
+        if (aiResponse == null || aiResponse.trim().isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            // Extract JSON array from response (may be wrapped in markdown code blocks)
+            String cleaned = aiResponse.trim();
+            // Remove markdown code block if present
+            cleaned = cleaned.replaceAll("```json\\s*", "").replaceAll("```\\s*", "");
+            // Find the JSON array in the response
+            int start = cleaned.indexOf('[');
+            int end = cleaned.lastIndexOf(']');
+            if (start == -1 || end == -1 || end <= start) {
+                log.warn("No JSON array found in Gemini response: {}", aiResponse);
+                return List.of();
+            }
+            cleaned = cleaned.substring(start, end + 1);
+
+            JsonNode arrayNode = objectMapper.readTree(cleaned);
+            if (!arrayNode.isArray()) {
+                return List.of();
+            }
+
+            List<Long> ids = new ArrayList<>();
+            for (JsonNode node : arrayNode) {
+                if (node.isNumber()) {
+                    ids.add(node.asLong());
+                }
+            }
+            return ids;
+
+        } catch (Exception e) {
+            log.warn("Failed to parse product IDs from Gemini response: {}", e.getMessage());
+            return List.of();
         }
     }
 

@@ -27,6 +27,11 @@ public class ProductAISearchService {
     private final ProductMapper productMapper;
     private final GeminiSearchService geminiSearchService;
 
+    // Product catalog cache for Gemini AI search (15-minute TTL)
+    private volatile String cachedCatalog = null;
+    private volatile long cacheTimestamp = 0;
+    private static final long CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
     /**
      * Search products based on natural language query using tag matching
      */
@@ -55,11 +60,79 @@ public class ProductAISearchService {
     }
 
     /**
-     * Search products by keywords in name and nameTamil fields
-     * Supports both English and Tamil search with Gemini transliteration for mixed text
+     * Build compact product catalog for Gemini AI search.
+     * Cached in memory for 15 minutes to avoid rebuilding on every search.
+     * Format: id|name|tamilName|categoryName (one product per line)
+     */
+    private String getProductCatalog() {
+        long now = System.currentTimeMillis();
+        if (cachedCatalog != null && (now - cacheTimestamp) < CACHE_TTL_MS) {
+            return cachedCatalog;
+        }
+
+        log.info("📦 Building product catalog for Gemini AI search...");
+        List<MasterProduct> allProducts = masterProductRepository.findByStatusOrderByCreatedAtDesc(MasterProduct.ProductStatus.ACTIVE);
+
+        StringBuilder catalog = new StringBuilder();
+        for (MasterProduct p : allProducts) {
+            catalog.append(p.getId()).append('|');
+            catalog.append(p.getName() != null ? p.getName() : "").append('|');
+            catalog.append(p.getNameTamil() != null ? p.getNameTamil() : "").append('|');
+            catalog.append(p.getCategory() != null && p.getCategory().getName() != null ? p.getCategory().getName() : "");
+            catalog.append('\n');
+        }
+
+        cachedCatalog = catalog.toString();
+        cacheTimestamp = now;
+        log.info("✅ Product catalog built: {} products, {} chars", allProducts.size(), cachedCatalog.length());
+        return cachedCatalog;
+    }
+
+    /**
+     * Search products by keywords.
+     * Strategy: Try Gemini AI search first (understands intent, synonyms, Tamil).
+     * Fallback to keyword matching if Gemini fails or returns empty.
      */
     private List<MasterProduct> searchProductsByKeywords(String keywords) {
         log.info("Searching products by keywords: {}", keywords);
+
+        // Try Gemini AI search first
+        if (geminiSearchService.isEnabled()) {
+            try {
+                String catalog = getProductCatalog();
+                List<Long> aiProductIds = geminiSearchService.aiSearchProducts(keywords, catalog);
+
+                if (!aiProductIds.isEmpty()) {
+                    List<MasterProduct> aiProducts = masterProductRepository.findAllById(aiProductIds);
+
+                    // Preserve Gemini's ranking order
+                    Map<Long, MasterProduct> productMap = aiProducts.stream()
+                            .collect(Collectors.toMap(MasterProduct::getId, p -> p));
+                    List<MasterProduct> orderedResults = aiProductIds.stream()
+                            .map(productMap::get)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+
+                    log.info("🧠 AI Search returned {} products for '{}'", orderedResults.size(), keywords);
+                    orderedResults.forEach(p -> log.info("  - {} | {} (ID: {})", p.getName(), p.getNameTamil(), p.getId()));
+                    return orderedResults;
+                }
+
+                log.info("🧠 AI Search returned empty, falling back to keyword search");
+            } catch (Exception e) {
+                log.warn("⚠️ AI Search failed, falling back to keyword search: {}", e.getMessage());
+            }
+        }
+
+        // Fallback: keyword matching (original logic)
+        return keywordFallbackSearch(keywords);
+    }
+
+    /**
+     * Original keyword-based search logic used as fallback when Gemini AI is unavailable.
+     */
+    private List<MasterProduct> keywordFallbackSearch(String keywords) {
+        log.info("🔍 Fallback keyword search: {}", keywords);
 
         // Check if query contains Tamil characters and transliterate if needed
         String searchKeywords = keywords;
@@ -353,9 +426,8 @@ public class ProductAISearchService {
     }
 
     /**
-     * Search products with multiple keywords and group results by keyword
-     * Best for voice search with 5-10+ items
-     * Returns organized results grouped by each keyword
+     * Search products with multiple keywords and group results by keyword.
+     * Uses Gemini AI for each keyword group, with fallback to keyword matching.
      */
     public List<VoiceSearchGroupedResponse> voiceSearchGrouped(String voiceQuery) {
         log.info("Grouped voice search query: '{}'", voiceQuery);
@@ -372,33 +444,60 @@ public class ProductAISearchService {
 
             log.info("Parsed {} keywords: {}", keywords.length, Arrays.toString(keywords));
 
+            // Get catalog once for all keywords
+            String catalog = geminiSearchService.isEnabled() ? getProductCatalog() : null;
+
             List<VoiceSearchGroupedResponse> groupedResults = new ArrayList<>();
 
             // For each keyword, find and group matching products
             for (String keyword : keywords) {
-                List<MasterProduct> matchingProducts = findProductsForKeyword(allProducts, keyword);
+                List<MasterProduct> matchingProducts = null;
 
-                // Rank by relevance for this specific keyword
-                List<MasterProduct> rankedProducts = matchingProducts.stream()
-                        .sorted((p1, p2) -> Integer.compare(
-                                calculateKeywordRelevance(p2, keyword),
-                                calculateKeywordRelevance(p1, keyword)
-                        ))
-                        .limit(5) // Top 5 per keyword
-                        .collect(Collectors.toList());
+                // Try Gemini AI search first
+                if (catalog != null) {
+                    try {
+                        List<Long> aiIds = geminiSearchService.aiSearchProducts(keyword, catalog);
+                        if (!aiIds.isEmpty()) {
+                            List<MasterProduct> aiProducts = masterProductRepository.findAllById(aiIds);
+                            Map<Long, MasterProduct> productMap = aiProducts.stream()
+                                    .collect(Collectors.toMap(MasterProduct::getId, p -> p));
+                            matchingProducts = aiIds.stream()
+                                    .map(productMap::get)
+                                    .filter(Objects::nonNull)
+                                    .limit(5)
+                                    .collect(Collectors.toList());
+                            log.info("🧠 AI grouped search for '{}': {} products", keyword, matchingProducts.size());
+                        }
+                    } catch (Exception e) {
+                        log.warn("⚠️ AI grouped search failed for '{}', using fallback: {}", keyword, e.getMessage());
+                    }
+                }
 
-                if (!rankedProducts.isEmpty()) {
-                    List<MasterProductResponse> responses = rankedProducts.stream()
+                // Fallback to keyword matching
+                if (matchingProducts == null || matchingProducts.isEmpty()) {
+                    matchingProducts = findProductsForKeyword(allProducts, keyword);
+                    // Rank by relevance for this specific keyword
+                    matchingProducts = matchingProducts.stream()
+                            .sorted((p1, p2) -> Integer.compare(
+                                    calculateKeywordRelevance(p2, keyword),
+                                    calculateKeywordRelevance(p1, keyword)
+                            ))
+                            .limit(5)
+                            .collect(Collectors.toList());
+                }
+
+                if (!matchingProducts.isEmpty()) {
+                    List<MasterProductResponse> responses = matchingProducts.stream()
                             .map(productMapper::toResponse)
                             .collect(Collectors.toList());
 
                     groupedResults.add(VoiceSearchGroupedResponse.builder()
                             .keyword(keyword)
-                            .count(matchingProducts.size()) // Show total matching, but return top 5
+                            .count(matchingProducts.size())
                             .products(responses)
                             .build());
 
-                    log.info("Keyword '{}': Found {} products, returning top 5", keyword, matchingProducts.size());
+                    log.info("Keyword '{}': returning {} products", keyword, matchingProducts.size());
                 }
             }
 
