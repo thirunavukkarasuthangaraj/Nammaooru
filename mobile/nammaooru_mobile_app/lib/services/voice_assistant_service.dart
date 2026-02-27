@@ -385,7 +385,7 @@ class VoiceAssistantService {
       }
 
       // ── 2+ results: present top 3 options ──
-      final topOptions = item.matches.take(3).toList();
+      final topOptions = item.matches.toList();
       await _presentOptions(topOptions, item.name);
       return; // _presentOptions sets state to awaitingChoice
     }
@@ -774,13 +774,13 @@ class VoiceAssistantService {
     if (q.isEmpty || q.length < 2) return [];
 
     // Step 1: Normal search (direct match, tags, phonetic, fuzzy)
-    var results = _searchEngine.search(q, limit: 5);
+    var results = _searchEngine.search(q, limit: 10);
     if (results.isNotEmpty) return results;
 
     // Step 2: STT correction — handles misrecognized words
     // e.g., "only on" → joins to "onlyon" → fuzzy matches "onion"
     // e.g., "to motto" → joins to "tomotto" → fuzzy matches "tomato"
-    results = _searchEngine.sttCorrectionSearch(q, limit: 5);
+    results = _searchEngine.sttCorrectionSearch(q, limit: 10);
     if (results.isNotEmpty) {
       debugPrint('VoiceAssistant: STT correction found ${results.length} results for "$q"');
     }
@@ -898,7 +898,7 @@ class VoiceAssistantService {
       final List<dynamic> products = data['data']?['matchedProducts'] ?? [];
       debugPrint('VoiceAssistant: AI found ${products.length} products');
 
-      return products.take(5).map<Map<String, dynamic>>((p) {
+      return products.map<Map<String, dynamic>>((p) {
         final baseWeight = p['baseWeight'];
         final baseUnit = (p['baseUnit'] ?? '').toString();
         String weightDisplay = '';
