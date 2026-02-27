@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../services/gemini_voice_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-/// Hold-to-record voice input button — uses GeminiVoiceService for recording
-/// and Gemini backend for transcription. Much better Tamil recognition.
+/// Hold-to-record voice input button — uses device STT.
+/// Tamil text gets sent to Gemini AI search on backend which corrects errors.
 class VoiceInputButton extends StatefulWidget {
   final TextEditingController controller;
 
@@ -15,9 +15,8 @@ class VoiceInputButton extends StatefulWidget {
 
 class _VoiceInputButtonState extends State<VoiceInputButton>
     with TickerProviderStateMixin {
-  final GeminiVoiceService _gemini = GeminiVoiceService();
-  bool _isRecording = false;
-  bool _isTranscribing = false;
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -53,7 +52,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     _removeHint();
     _pulseController.dispose();
     _rippleController.dispose();
-    _gemini.dispose();
+    if (_speech.isListening) _speech.stop();
     super.dispose();
   }
 
@@ -95,57 +94,74 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     _hintOverlay = null;
   }
 
-  Future<void> _startRecording() async {
-    final started = await _gemini.startRecording();
-    if (!started) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Microphone not available'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
+  Future<void> _startListening() async {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          if ((status == 'notListening' || status == 'done') &&
+              mounted &&
+              _isListening) {
+            _stopListening();
+          }
+        },
+        onError: (error) {
+          debugPrint('Voice input error: ${error.errorMsg}');
+          _stopListening();
+        },
+      );
 
-    if (!mounted) return;
-    setState(() => _isRecording = true);
-    _pulseController.repeat(reverse: true);
-    _rippleController.repeat();
+      if (!available) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Speech recognition not available'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() => _isListening = true);
+      _pulseController.repeat(reverse: true);
+      _rippleController.repeat();
+
+      await _speech.listen(
+        onResult: (result) {
+          if (result.recognizedWords.isNotEmpty) {
+            final existing = widget.controller.text;
+            widget.controller.text = existing.isNotEmpty && !existing.endsWith(' ')
+                ? '$existing ${result.recognizedWords}'
+                : '$existing${result.recognizedWords}';
+            widget.controller.selection = TextSelection.fromPosition(
+              TextPosition(offset: widget.controller.text.length),
+            );
+          }
+        },
+        localeId: 'ta-IN',
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.confirmation,
+          cancelOnError: false,
+          partialResults: false,
+        ),
+        pauseFor: const Duration(seconds: 3),
+        listenFor: const Duration(seconds: 30),
+      );
+    } catch (e) {
+      debugPrint('Voice input error: $e');
+      _stopListening();
+    }
   }
 
-  Future<void> _stopRecording() async {
-    if (!_isRecording) return;
-
-    // Stop animations immediately
-    if (mounted) {
-      setState(() {
-        _isRecording = false;
-        _isTranscribing = true;
-      });
-    }
+  Future<void> _stopListening() async {
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() => _isListening = false);
     _pulseController.stop();
     _pulseController.reset();
     _rippleController.stop();
     _rippleController.reset();
-
-    // Transcribe via Gemini
-    final text = await _gemini.stopAndTranscribe();
-
-    if (mounted) {
-      setState(() => _isTranscribing = false);
-    }
-
-    if (text != null && text.isNotEmpty && mounted) {
-      final existing = widget.controller.text;
-      widget.controller.text = existing.isNotEmpty && !existing.endsWith(' ')
-          ? '$existing $text'
-          : '$existing$text';
-      widget.controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: widget.controller.text.length),
-      );
-    }
   }
 
   @override
@@ -154,19 +170,10 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       onTap: _showHoldHint,
       onLongPressStart: (_) async {
         HapticFeedback.mediumImpact();
-        await _startRecording();
+        await _startListening();
       },
-      onLongPressEnd: (_) => _stopRecording(),
-      onLongPressCancel: () {
-        if (_isRecording) {
-          _gemini.stopRecording();
-          if (mounted) setState(() => _isRecording = false);
-          _pulseController.stop();
-          _pulseController.reset();
-          _rippleController.stop();
-          _rippleController.reset();
-        }
-      },
+      onLongPressEnd: (_) => _stopListening(),
+      onLongPressCancel: () => _stopListening(),
       child: AnimatedBuilder(
         animation: Listenable.merge([_pulseAnimation, _rippleAnimation]),
         builder: (context, _) {
@@ -176,7 +183,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (_isRecording)
+                if (_isListening)
                   Transform.scale(
                     scale: 1.0 + _rippleAnimation.value * 1.8,
                     child: Opacity(
@@ -192,32 +199,21 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
                     ),
                   ),
                 Transform.scale(
-                  scale: _isRecording ? _pulseAnimation.value : 1.0,
+                  scale: _isListening ? _pulseAnimation.value : 1.0,
                   child: Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _isRecording
+                      color: _isListening
                           ? Colors.red
-                          : _isTranscribing
-                              ? Colors.orange
-                              : Colors.transparent,
+                          : Colors.transparent,
                     ),
-                    child: _isTranscribing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Icon(
-                            _isRecording ? Icons.mic : Icons.mic_none,
-                            color: _isRecording ? Colors.white : Colors.grey[600],
-                            size: 20,
-                          ),
+                    child: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Colors.white : Colors.grey[600],
+                      size: 20,
+                    ),
                   ),
                 ),
               ],

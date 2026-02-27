@@ -1,108 +1,124 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../core/config/env_config.dart';
-import 'gemini_voice_service.dart';
 
-/// Voice search service — uses GeminiVoiceService for recording + transcription.
-/// GeminiVoiceService is proven to work in Voice Assistant.
+/// Voice search service — uses device STT for mic input,
+/// then Gemini AI search on backend corrects Tamil/English recognition errors.
 class VoiceSearchService {
-  final GeminiVoiceService _gemini = GeminiVoiceService();
+  final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   String _lastWords = '';
   String? _lastError;
 
-  /// Check if microphone permission is available
+  /// Check if speech recognition is available
   Future<bool> initialize() async {
     try {
-      final hasPerms = await _gemini.hasPermission();
-      if (!hasPerms) {
-        _lastError = 'Microphone permission not granted';
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('VoiceSearch: Speech status: $status');
+        },
+        onError: (error) {
+          _lastError = error.errorMsg;
+          debugPrint('VoiceSearch: Speech error: ${error.errorMsg}');
+        },
+      );
+
+      if (!available) {
+        _lastError = 'Speech recognition not available on this device';
       }
-      return hasPerms;
+
+      return available;
     } catch (e) {
-      _lastError = 'Error initializing microphone: $e';
+      _lastError = 'Error initializing speech: $e';
       debugPrint('VoiceSearch: $_lastError');
       return false;
     }
   }
 
-  /// Start recording audio (for tap-to-talk UI)
-  Future<bool> startRecording() async {
-    _lastError = null;
-    final started = await _gemini.startRecording();
-    if (started) {
-      _isListening = true;
-    } else {
-      _lastError = 'Failed to start recording';
-    }
-    return started;
-  }
-
-  /// Stop recording and transcribe via Gemini backend
-  Future<String?> stopAndTranscribe() async {
-    _isListening = false;
-    final text = await _gemini.stopAndTranscribe();
-    if (text != null && text.isNotEmpty) {
-      _lastWords = text;
-      return text;
-    }
-    _lastError = 'No speech detected. Please try again.';
-    return null;
-  }
-
-  /// listen() — starts recording, waits 5 seconds, then transcribes via Gemini.
-  /// Used by screens that call listen() and wait for a result.
+  /// Start listening for voice input
+  /// Uses ta-IN (Tamil India) for better Tamil recognition.
+  /// Even if STT gives wrong text, Gemini AI search on backend corrects it.
   Future<String?> listen({String? localeId}) async {
     debugPrint('VoiceSearch: listen() called');
-    _lastWords = '';
-    _lastError = null;
-
-    final started = await _gemini.startRecording();
-    if (!started) {
-      _lastError = 'Failed to start recording. Check microphone permission.';
-      debugPrint('VoiceSearch: $_lastError');
+    if (!await initialize()) {
+      debugPrint('VoiceSearch: initialize() failed');
       return null;
     }
 
-    _isListening = true;
-    debugPrint('VoiceSearch: Recording started, waiting 5 seconds...');
+    try {
+      _lastWords = '';
+      _isListening = true;
+      _lastError = null;
 
-    // Record for 5 seconds (enough for short grocery queries)
-    await Future.delayed(const Duration(seconds: 5));
+      // Try Tamil first, then fallback to English-India
+      final locale = localeId ?? 'ta-IN';
+      debugPrint('VoiceSearch: Starting with $locale locale...');
 
-    _isListening = false;
-    final text = await _gemini.stopAndTranscribe();
+      await _speech.listen(
+        onResult: (result) {
+          _lastWords = result.recognizedWords;
+          debugPrint('VoiceSearch: Recognized: $_lastWords (confidence: ${result.confidence})');
+        },
+        localeId: locale,
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.confirmation,
+          cancelOnError: false,
+          partialResults: true,
+        ),
+        pauseFor: const Duration(seconds: 5),
+        listenFor: const Duration(seconds: 30),
+      );
 
-    if (text != null && text.isNotEmpty) {
-      _lastWords = text;
-      debugPrint('VoiceSearch: Transcription = "$_lastWords"');
+      // Wait for speech to complete naturally
+      int waited = 0;
+      while (_speech.isListening && waited < 60) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        waited++;
+      }
+
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+
+      _isListening = false;
+
+      if (_lastWords.isEmpty) {
+        _lastError = 'No speech detected. Please try again.';
+        return null;
+      }
+
+      debugPrint('VoiceSearch: Final text: $_lastWords');
       return _lastWords;
+    } catch (e) {
+      _lastError = 'Error during speech recognition: $e';
+      debugPrint('VoiceSearch: $_lastError');
+      _isListening = false;
+      return null;
     }
-
-    _lastError = 'No speech detected. Please try again.';
-    debugPrint('VoiceSearch: $_lastError');
-    return null;
   }
 
-  /// Listen with Tamil locale (same as listen — Gemini handles all languages)
+  /// Listen with Tamil locale specifically
   Future<String?> listenTamil() async {
-    return listen();
+    return listen(localeId: 'ta-IN');
   }
 
-  /// Stop listening/recording
+  /// Stop listening
   Future<void> stopListening() async {
-    if (_gemini.isRecording) {
-      await _gemini.stopRecording();
+    if (_speech.isListening) {
+      await _speech.stop();
     }
     _isListening = false;
   }
 
   /// Call AI search API with voice query
+  /// Gemini AI on backend understands intent even with bad STT text
   Future<List<dynamic>> searchProducts(int shopId, String query) async {
     try {
       debugPrint('VoiceSearch: AI Search: Shop $shopId, Query: "$query"');
 
+      // Gemini AI search - understands intent despite STT errors
       final aiUrl = Uri.parse(
         '${EnvConfig.fullApiUrl}/shops/$shopId/products/ai-search?query=${Uri.encodeComponent(query)}',
       );
@@ -119,6 +135,7 @@ class VoiceSearchService {
 
       if (aiResponse.statusCode == 200) {
         final data = json.decode(aiResponse.body);
+
         if (data['statusCode'] == '0000' && data['data'] != null) {
           final matchedProducts = data['data']['matchedProducts'] ?? [];
           debugPrint('VoiceSearch: Found ${matchedProducts.length} products via AI');
@@ -143,6 +160,7 @@ class VoiceSearchService {
 
       if (searchResponse.statusCode == 200) {
         final data = json.decode(searchResponse.body);
+
         if (data['statusCode'] == '0000' && data['data'] != null) {
           final products = data['data'] is List ? data['data'] : [];
           return products;
@@ -160,20 +178,17 @@ class VoiceSearchService {
   /// Voice search: listen + AI search
   Future<List<dynamic>> voiceSearch(int shopId) async {
     final query = await listen();
+
     if (query == null || query.trim().isEmpty) {
       _lastError = _lastError ?? 'No voice input detected';
       return [];
     }
+
     return await searchProducts(shopId, query);
   }
 
   bool get isListening => _isListening;
-  bool get isRecording => _gemini.isRecording;
   String get lastWords => _lastWords;
   String? get lastError => _lastError;
-  bool get isAvailable => true;
-
-  void dispose() {
-    _gemini.dispose();
-  }
+  bool get isAvailable => _speech.isAvailable;
 }
