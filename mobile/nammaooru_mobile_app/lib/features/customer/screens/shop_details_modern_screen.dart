@@ -1420,38 +1420,9 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                           )
                         : IconButton(
                             icon: const Icon(Icons.mic, color: Color(0xFF2E7D32)),
-                            onPressed: () async {
-                              setState(() {
-                                _isVoiceSearching = true;
-                              });
-                              this.setState(() {
-                                _isVoiceSearching = true;
-                              });
-
-                              final results = await _voiceSearch.voiceSearch(widget.shopId);
-
-                              if (mounted) {
-                                setState(() {
-                                  _isVoiceSearching = false;
-                                });
-                                this.setState(() {
-                                  _isVoiceSearching = false;
-                                  if (results.isNotEmpty) {
-                                    _filteredProducts = results;
-                                  }
-                                });
-
-                                if (results.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('No products found for your voice query'),
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                } else {
-                                  Navigator.pop(context);
-                                }
-                              }
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showVoiceSearchDialog();
                             },
                             tooltip: 'Voice Search (Tamil/English)',
                           ),
@@ -1474,52 +1445,14 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: _isVoiceSearching ? null : () async {
-                      setState(() {
-                        _isVoiceSearching = true;
-                      });
-                      this.setState(() {
-                        _isVoiceSearching = true;
-                      });
-
-                      final results = await _voiceSearch.voiceSearch(widget.shopId);
-
-                      if (mounted) {
-                        setState(() {
-                          _isVoiceSearching = false;
-                        });
-                        this.setState(() {
-                          _isVoiceSearching = false;
-                          if (results.isNotEmpty) {
-                            _filteredProducts = results;
-                          }
-                        });
-
-                        if (results.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No products found for your voice query'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                        } else {
-                          Navigator.pop(context);
-                        }
-                      }
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showVoiceSearchDialog();
                     },
-                    icon: _isVoiceSearching
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.mic, size: 28),
-                    label: Text(
-                      _isVoiceSearching ? 'Listening...' : 'Start Voice Search',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    icon: const Icon(Icons.mic, size: 28),
+                    label: const Text(
+                      'Voice Assistant',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),
@@ -1599,11 +1532,22 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   }
 
   void _showVoiceSearchDialog() {
+    // Navigate to interactive Voice Assistant
+    final shopName = _shop?['name']?.toString() ?? 'Shop';
+    context.push('/customer/voice-assistant', extra: {
+      'shopId': widget.shopId,
+      'shopName': shopName,
+    });
+  }
+
+  // Old voice search dialog removed — now uses Voice Assistant
+  // ignore: unused_element
+  void _showVoiceSearchDialog_old() { return;
     List<dynamic> voiceResults = [];
     bool isSearching = false;
-    String searchStatus = ''; // Track current status: 'listening', 'processing', 'searching'
+    String searchStatus = '';
     String? searchQuery;
-    int countdown = 5; // Countdown timer for silence detection
+    int countdown = 5;
     final TextEditingController searchController = TextEditingController();
 
     Navigator.of(context, rootNavigator: true).push(

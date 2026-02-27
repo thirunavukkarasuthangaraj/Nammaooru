@@ -863,36 +863,11 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
   OverlayEntry? _voiceSearchOverlay;
 
   void _showVoiceSearchDialog() {
-    // Remove existing overlay if any
-    _voiceSearchOverlay?.remove();
-
-    // Create overlay entry
-    _voiceSearchOverlay = OverlayEntry(
-      builder: (context) => VoiceSearchDialog(
-        shopId: widget.shopId,
-        onProductSelected: (product) {
-          // Add product to cart
-          _updateQuantity(
-              product['id'].toString(), 1, product['stockQuantity'] ?? 0);
-
-          // Show confirmation
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Added ${product['displayName']} to cart'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
-        onClose: () {
-          // Remove overlay when close button is clicked
-          _voiceSearchOverlay?.remove();
-          _voiceSearchOverlay = null;
-        },
-      ),
-    );
-
-    // Insert overlay
-    Overlay.of(context).insert(_voiceSearchOverlay!);
+    // Navigate to interactive Voice Assistant instead of simple record dialog
+    context.push('/customer/voice-assistant', extra: {
+      'shopId': int.tryParse(widget.shopId),
+      'shopName': null,
+    });
   }
 
   IconData _getCategoryIcon(String category) {
