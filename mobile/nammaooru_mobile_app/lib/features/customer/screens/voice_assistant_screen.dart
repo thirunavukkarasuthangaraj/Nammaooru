@@ -104,9 +104,21 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
           _recordingSeconds = 0;
         }
       }
-      // Stop recording animation when not recording (e.g., processing started)
-      if (!_isRecording) {
+      // Update recording state from service
+      final nowRecording = _service.isRecordingManually;
+      if (nowRecording && !_isRecording) {
+        _isRecording = true;
+        _pulseController.repeat(reverse: true);
+      } else if (!nowRecording && _isRecording && _service.state != AssistantState.listening) {
+        _isRecording = false;
         _pulseController.stop();
+      }
+      // Auto-listen: when state becomes listening/awaitingChoice, auto-start recording
+      if (_service.state == AssistantState.listening ||
+          _service.state == AssistantState.awaitingChoice) {
+        if (!_service.isRecordingManually) {
+          Future.microtask(() => _service.autoListenAndProcess());
+        }
       }
       // Auto-scroll to bottom
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -234,45 +246,6 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
         Navigator.of(context).pop();
       }
     }
-  }
-
-  /// Toggle voice recording (tap-to-talk)
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      await _stopRecording();
-    } else {
-      await _startRecording();
-    }
-  }
-
-  Future<void> _startRecording() async {
-    // Stop TTS first
-    await _service.ttsService.stop();
-
-    final started = await _service.startManualRecording();
-    if (started && mounted) {
-      setState(() {
-        _isRecording = true;
-        _recordingSeconds = 0;
-      });
-      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() => _recordingSeconds++);
-      });
-      _pulseController.repeat();
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    _recordingTimer?.cancel();
-    _pulseController.stop();
-    if (mounted) {
-      setState(() {
-        _isRecording = false;
-        _recordingSeconds = 0;
-      });
-    }
-    await _service.stopAndProcess();
-    if (mounted) setState(() {});
   }
 
   /// Show cart bottom sheet with qty controls
@@ -1123,23 +1096,20 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   Widget _buildStateIndicator() {
     final state = _service.state;
 
-    // Recording state — show animated mic + timer
+    // Auto-listening state — show animated mic
     if (_isRecording) {
-      final minutes = _recordingSeconds ~/ 60;
-      final seconds = _recordingSeconds % 60;
-      final timeStr = '${minutes.toString().padLeft(1, '0')}:${seconds.toString().padLeft(2, '0')}';
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Center(
           child: Column(
             children: [
-              _buildAnimatedMic(color: Colors.red),
+              _buildAnimatedMic(color: const Color(0xFF6C63FF)),
               const SizedBox(height: 8),
-              Text('Recording... $timeStr',
-                  style: const TextStyle(color: Colors.red, fontSize: 14,
+              const Text('Listening... / கேட்கிறேன்...',
+                  style: TextStyle(color: Color(0xFF6C63FF), fontSize: 14,
                       fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
-              Text('Tap mic to stop / நிறுத்த mic தட்டுங்க',
+              Text('Speak now / இப்போ பேசுங்க',
                   style: TextStyle(color: Colors.grey[500], fontSize: 12)),
             ],
           ),
@@ -1153,18 +1123,27 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
     switch (state) {
       case AssistantState.listening:
-        // Hint — mic button is in bottom bar
+        // Auto-listening — preparing to record
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.mic_none, size: 36, color: Colors.grey[350]),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF6C63FF).withOpacity(0.15),
+                  ),
+                  child: const Icon(Icons.mic, color: Color(0xFF6C63FF), size: 28),
+                ),
                 const SizedBox(height: 8),
-                Text('Tap mic to speak, or type below',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                const Text('Preparing to listen... / தயாராகிறது...',
+                    style: TextStyle(color: Color(0xFF6C63FF), fontSize: 13,
+                        fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                Text('Mic தட்டி பேசுங்க, அல்லது type செய்யுங்க',
+                Text('Or type below / அல்லது type செய்யுங்க',
                     style: TextStyle(color: Colors.grey[400], fontSize: 12)),
               ],
             ),
@@ -1176,13 +1155,21 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.touch_app, size: 32, color: Colors.orange[600]),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.orange.withOpacity(0.15),
+                  ),
+                  child: Icon(Icons.mic, color: Colors.orange[600], size: 28),
+                ),
                 const SizedBox(height: 8),
-                Text('Tap a card, say the number, or type below',
+                Text('Say the number, or tap a card',
                     style: TextStyle(color: Colors.orange[700], fontSize: 13,
                         fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                Text('Card தட்டுங்க, எண் சொல்லுங்க, அல்லது type செய்யுங்க',
+                Text('எண் சொல்லுங்க, அல்லது card தட்டுங்க',
                     style: TextStyle(color: Colors.orange[400], fontSize: 12)),
               ],
             ),
@@ -1324,11 +1311,6 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   Widget _buildBottomBar() {
     final state = _service.state;
     final isActive = state != AssistantState.idle;
-    final isProcessing = state == AssistantState.searching ||
-        state == AssistantState.addingToCart ||
-        state == AssistantState.greeting ||
-        state == AssistantState.presentingOptions;
-    final canRecord = isActive && !isProcessing;
 
     return Container(
       padding: EdgeInsets.only(
@@ -1406,44 +1388,6 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
               icon: const Icon(Icons.send, size: 18, color: Colors.white),
               onPressed: _submitText,
               padding: EdgeInsets.zero,
-            ),
-          ),
-          const SizedBox(width: 8),
-          // BIG MIC BUTTON — tap to start/stop recording
-          GestureDetector(
-            onTap: canRecord || _isRecording ? _toggleRecording : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isRecording
-                    ? Colors.red
-                    : (canRecord ? const Color(0xFF6C63FF) : Colors.grey[300]),
-                boxShadow: _isRecording
-                    ? [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: isProcessing
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Icon(
-                      _isRecording ? Icons.stop : Icons.mic,
-                      color: Colors.white,
-                      size: 28,
-                    ),
             ),
           ),
           const SizedBox(width: 8),

@@ -104,6 +104,9 @@ class VoiceAssistantService {
   /// Whether Gemini is currently recording audio (for UI state)
   bool get isRecordingManually => _geminiVoice.isRecording;
 
+  /// Auto-listen: automatically start recording after TTS finishes
+  bool _isAutoListening = false;
+
   /// Start manual recording (user tapped mic button)
   Future<bool> startManualRecording() async {
     if (useGeminiVoice) {
@@ -116,7 +119,43 @@ class VoiceAssistantService {
     return false;
   }
 
-  /// Stop recording and process result (user tapped mic again)
+  /// Auto-listen: start recording, wait for speech, then process
+  Future<void> autoListenAndProcess() async {
+    if (_stopped || _isAutoListening) return;
+    if (_state != AssistantState.listening && _state != AssistantState.awaitingChoice) return;
+
+    _isAutoListening = true;
+    debugPrint('VoiceAssistant: Auto-listen starting...');
+
+    // Small delay so mic doesn't pick up TTS audio
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (_stopped) { _isAutoListening = false; return; }
+
+    // Start recording
+    final started = await _geminiVoice.startRecording();
+    if (!started || _stopped) {
+      debugPrint('VoiceAssistant: Auto-listen failed to start recording');
+      _isAutoListening = false;
+      return;
+    }
+
+    onStateChanged?.call(); // Notify UI that recording started
+
+    // Record for up to 6 seconds
+    await Future.delayed(const Duration(seconds: 6));
+    if (_stopped) {
+      if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
+      _isAutoListening = false;
+      return;
+    }
+
+    _isAutoListening = false;
+
+    // Process the recording
+    await stopAndProcess();
+  }
+
+  /// Stop recording and process result
   Future<void> stopAndProcess() async {
     if (_stopped) return;
 
@@ -134,7 +173,7 @@ class VoiceAssistantService {
           await _addProductToCart(_pendingOptions!.products.first, 1);
           _pendingOptions = null;
         } else {
-          final msg = 'புரியல. எண் சொல்லுங்க அல்லது கீழே type செய்யுங்க.';
+          final msg = 'புரியல. எண் சொல்லுங்க அல்லது type செய்யுங்க.';
           _addBot(msg, sub: 'Didn\'t understand. Say the number or type below.');
           _setState(AssistantState.awaitingChoice);
         }
@@ -147,8 +186,8 @@ class VoiceAssistantService {
 
       if (text == null || text.trim().isEmpty) {
         _addBot(
-          'குரல் வரல. Mic தட்டி மீண்டும் சொல்லுங்க, அல்லது type செய்யுங்க.',
-          sub: 'Couldn\'t hear. Tap mic to try again, or type below.',
+          'குரல் வரல. மீண்டும் சொல்லுங்க, அல்லது type செய்யுங்க.',
+          sub: 'Couldn\'t hear. Please say again, or type below.',
         );
         _setState(AssistantState.listening);
         return;
@@ -160,6 +199,7 @@ class VoiceAssistantService {
 
   /// Cancel an ongoing recording without processing
   Future<void> cancelRecording() async {
+    _isAutoListening = false;
     if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
     await _voiceService.stopListening();
   }
