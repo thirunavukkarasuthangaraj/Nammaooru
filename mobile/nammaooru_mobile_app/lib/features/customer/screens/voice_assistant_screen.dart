@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +27,10 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFocusNode = FocusNode();
+
+  bool _isRecording = false;
+  int _recordingSeconds = 0;
+  Timer? _recordingTimer;
 
   late AnimationController _pulseController;
   late AnimationController _waveController;
@@ -90,14 +95,18 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   void _onStateChanged() {
     if (mounted) {
       setState(() {});
-      // Animate mic when listening
-      if (_service.state == AssistantState.listening ||
-          _service.state == AssistantState.awaitingChoice) {
-        _pulseController.repeat();
-        _waveController.repeat();
-      } else {
+      // Stop recording if session ended
+      if (_service.state == AssistantState.idle || _service.isStopped) {
+        if (_isRecording) {
+          _recordingTimer?.cancel();
+          _pulseController.stop();
+          _isRecording = false;
+          _recordingSeconds = 0;
+        }
+      }
+      // Stop recording animation when not recording (e.g., processing started)
+      if (!_isRecording) {
         _pulseController.stop();
-        _waveController.stop();
       }
       // Auto-scroll to bottom
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -121,7 +130,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
   @override
   void dispose() {
-    // Full cleanup
+    _recordingTimer?.cancel();
     _service.dispose();
     _pulseController.dispose();
     _waveController.dispose();
@@ -225,6 +234,45 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
         Navigator.of(context).pop();
       }
     }
+  }
+
+  /// Toggle voice recording (tap-to-talk)
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      await _stopRecording();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    // Stop TTS first
+    await _service.ttsService.stop();
+
+    final started = await _service.startManualRecording();
+    if (started && mounted) {
+      setState(() {
+        _isRecording = true;
+        _recordingSeconds = 0;
+      });
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _recordingSeconds++);
+      });
+      _pulseController.repeat();
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    _recordingTimer?.cancel();
+    _pulseController.stop();
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _recordingSeconds = 0;
+      });
+    }
+    await _service.stopAndProcess();
+    if (mounted) setState(() {});
   }
 
   /// Show cart bottom sheet with qty controls
@@ -1074,19 +1122,72 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
   Widget _buildStateIndicator() {
     final state = _service.state;
+
+    // Recording state — show animated mic + timer
+    if (_isRecording) {
+      final minutes = _recordingSeconds ~/ 60;
+      final seconds = _recordingSeconds % 60;
+      final timeStr = '${minutes.toString().padLeft(1, '0')}:${seconds.toString().padLeft(2, '0')}';
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Column(
+            children: [
+              _buildAnimatedMic(color: Colors.red),
+              const SizedBox(height: 8),
+              Text('Recording... $timeStr',
+                  style: const TextStyle(color: Colors.red, fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('Tap mic to stop / நிறுத்த mic தட்டுங்க',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
     IconData icon;
     String label;
     Color color;
 
     switch (state) {
       case AssistantState.listening:
-        icon = Icons.mic;
-        label = 'Listening... / கேட்கிறேன்...';
-        color = const Color(0xFF6C63FF);
+        // Hint — mic button is in bottom bar
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.mic_none, size: 36, color: Colors.grey[350]),
+                const SizedBox(height: 8),
+                Text('Tap mic to speak, or type below',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                const SizedBox(height: 2),
+                Text('Mic தட்டி பேசுங்க, அல்லது type செய்யுங்க',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+              ],
+            ),
+          ),
+        );
       case AssistantState.awaitingChoice:
-        icon = Icons.mic;
-        label = 'Tap a card or say the number / எண் சொல்லுங்க';
-        color = const Color(0xFFFF9800);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.touch_app, size: 32, color: Colors.orange[600]),
+                const SizedBox(height: 8),
+                Text('Tap a card, say the number, or type below',
+                    style: TextStyle(color: Colors.orange[700], fontSize: 13,
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text('Card தட்டுங்க, எண் சொல்லுங்க, அல்லது type செய்யுங்க',
+                    style: TextStyle(color: Colors.orange[400], fontSize: 12)),
+              ],
+            ),
+          ),
+        );
       case AssistantState.presentingOptions:
         icon = Icons.volume_up;
         label = 'Reading options... / விருப்பங்கள்...';
@@ -1112,25 +1213,20 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
       child: Center(
         child: Column(
           children: [
-            // Animated mic/state circle
-            if (state == AssistantState.listening ||
-                state == AssistantState.awaitingChoice)
-              _buildAnimatedMic()
-            else
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withOpacity(0.15),
-                ),
-                child: state == AssistantState.searching
-                    ? const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    : Icon(icon, color: color, size: 28),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withOpacity(0.15),
               ),
+              child: state == AssistantState.searching
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : Icon(icon, color: color, size: 28),
+            ),
             const SizedBox(height: 8),
             Text(label,
                 style: TextStyle(color: color, fontSize: 13,
@@ -1141,7 +1237,11 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     );
   }
 
-  Widget _buildAnimatedMic() {
+  Widget _buildAnimatedMic({Color? color}) {
+    final micColor = color ?? const Color(0xFF6C63FF);
+    final gradientEnd = color != null
+        ? color.withOpacity(0.8)
+        : const Color(0xFF8B7FFF);
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (_, __) {
@@ -1156,7 +1256,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
               height: 80 * scale,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF6C63FF).withOpacity(opacity * 0.3),
+                color: micColor.withOpacity(opacity * 0.3),
               ),
             ),
             // Middle ring
@@ -1165,25 +1265,25 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
               height: 64 * scale,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF6C63FF).withOpacity(opacity * 0.5),
+                color: micColor.withOpacity(opacity * 0.5),
               ),
             ),
             // Inner mic circle
             Container(
               width: 56,
               height: 56,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
+                  colors: [micColor, gradientEnd],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x406C63FF),
+                    color: micColor.withOpacity(0.25),
                     blurRadius: 12,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -1199,11 +1299,23 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
+    // Stop recording if active — user chose to type instead
+    if (_isRecording) {
+      _recordingTimer?.cancel();
+      _pulseController.stop();
+      setState(() {
+        _isRecording = false;
+        _recordingSeconds = 0;
+      });
+      await _service.cancelRecording();
+    }
+
+    // Stop TTS if playing
+    await _service.ttsService.stop();
+
     _textController.clear();
     _textFocusNode.unfocus();
 
-    // Pause voice loop, process text
-    await _service.pause();
     await _service.processTextInput(text);
 
     if (mounted) setState(() {});
@@ -1212,6 +1324,11 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   Widget _buildBottomBar() {
     final state = _service.state;
     final isActive = state != AssistantState.idle;
+    final isProcessing = state == AssistantState.searching ||
+        state == AssistantState.addingToCart ||
+        state == AssistantState.greeting ||
+        state == AssistantState.presentingOptions;
+    final canRecord = isActive && !isProcessing;
 
     return Container(
       padding: EdgeInsets.only(
@@ -1261,13 +1378,23 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _submitText(),
               onTap: () {
-                // Pause voice when user taps text field
-                if (isActive) _service.pause();
+                // Stop TTS when user taps text field
+                _service.ttsService.stop();
+                // Stop recording if active — user chose to type
+                if (_isRecording) {
+                  _recordingTimer?.cancel();
+                  _pulseController.stop();
+                  setState(() {
+                    _isRecording = false;
+                    _recordingSeconds = 0;
+                  });
+                  _service.cancelRecording();
+                }
               },
             ),
           ),
           const SizedBox(width: 8),
-          // Send button
+          // Send button (text)
           Container(
             height: 40,
             width: 40,
@@ -1281,8 +1408,46 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
               padding: EdgeInsets.zero,
             ),
           ),
-          const SizedBox(width: 6),
-          // End button
+          const SizedBox(width: 8),
+          // BIG MIC BUTTON — tap to start/stop recording
+          GestureDetector(
+            onTap: canRecord || _isRecording ? _toggleRecording : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isRecording
+                    ? Colors.red
+                    : (canRecord ? const Color(0xFF6C63FF) : Colors.grey[300]),
+                boxShadow: _isRecording
+                    ? [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: isProcessing
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      _isRecording ? Icons.stop : Icons.mic,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // End/Cart button
           SizedBox(
             height: 40,
             child: ElevatedButton(

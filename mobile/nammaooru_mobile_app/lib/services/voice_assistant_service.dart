@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -98,6 +99,79 @@ class VoiceAssistantService {
 
   VoiceSearchService get voiceService => _voiceService;
   TtsService get ttsService => _ttsService;
+  GeminiVoiceService get geminiVoice => _geminiVoice;
+
+  /// Whether Gemini is currently recording audio (for UI state)
+  bool get isRecordingManually => _geminiVoice.isRecording;
+
+  /// Start manual recording (user tapped mic button)
+  Future<bool> startManualRecording() async {
+    if (useGeminiVoice) {
+      final started = await _geminiVoice.startRecording();
+      if (!started) {
+        debugPrint('VoiceAssistant: Failed to start manual recording');
+      }
+      return started;
+    }
+    return false;
+  }
+
+  /// Stop recording and process result (user tapped mic again)
+  Future<void> stopAndProcess() async {
+    if (_stopped) return;
+
+    if (_state == AssistantState.awaitingChoice && _pendingOptions != null) {
+      // Choice mode — send audio + options to Gemini
+      _setState(AssistantState.searching);
+      final result = await _geminiVoice.stopAndUnderstandChoice(_pendingOptions!.products);
+      if (_stopped) return;
+
+      if (result != null) {
+        await _handleChoice(result);
+      } else {
+        _pendingOptions!.attempts++;
+        if (_pendingOptions!.attempts >= 2) {
+          await _addProductToCart(_pendingOptions!.products.first, 1);
+          _pendingOptions = null;
+        } else {
+          final msg = 'புரியல. எண் சொல்லுங்க அல்லது கீழே type செய்யுங்க.';
+          _addBot(msg, sub: 'Didn\'t understand. Say the number or type below.');
+          _setState(AssistantState.awaitingChoice);
+        }
+      }
+    } else {
+      // Listening mode — transcribe audio
+      _setState(AssistantState.searching);
+      final text = await _geminiVoice.stopAndTranscribe();
+      if (_stopped) return;
+
+      if (text == null || text.trim().isEmpty) {
+        _addBot(
+          'குரல் வரல. Mic தட்டி மீண்டும் சொல்லுங்க, அல்லது type செய்யுங்க.',
+          sub: 'Couldn\'t hear. Tap mic to try again, or type below.',
+        );
+        _setState(AssistantState.listening);
+        return;
+      }
+
+      await processTextInput(text);
+    }
+  }
+
+  /// Cancel an ongoing recording without processing
+  Future<void> cancelRecording() async {
+    if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
+    await _voiceService.stopListening();
+  }
+
+  /// Return to listening state after processing (if session still active)
+  void _returnToListening() {
+    if (!_stopped && _state != AssistantState.idle &&
+        _state != AssistantState.ending &&
+        _state != AssistantState.awaitingChoice) {
+      _setState(AssistantState.listening);
+    }
+  }
 
   // ── End words ──
   static final Set<String> _endWords = {
@@ -163,12 +237,6 @@ class VoiceAssistantService {
     'சரி, நன்றி! மீண்டும் வாங்க.',
   ];
 
-  List<String> get _noVoiceResponses => [
-    'கேக்கல. மீண்டும் சொல்லுங்க.',
-    'குரல் வரல. இன்னொரு தடவை?',
-    'புரியல. மீண்டும் சொல்லுங்க.',
-  ];
-
   String _pick(List<String> list) => list[_rand.nextInt(list.length)];
 
   bool _isEndCommand(String text) {
@@ -211,19 +279,18 @@ class VoiceAssistantService {
     // Make sure products are loaded before searching
     await productFuture;
 
-    await _mainLoop();
+    _setState(AssistantState.listening);
   }
 
   /// Resume after pause (preserves messages)
   Future<void> resumeSession() async {
     if (_stopped) {
       _stopped = false;
-      _setState(AssistantState.listening);
       final msg = 'சரி, தொடருங்க. என்ன வேணும்?';
       _addBot(msg, sub: 'OK, continue. What do you need?');
       await _speak(msg);
       if (_stopped) return;
-      await _mainLoop();
+      _setState(AssistantState.listening);
     }
   }
 
@@ -275,119 +342,8 @@ class VoiceAssistantService {
     await _handleProductSearch(text);
   }
 
-  /// Main loop — two branches: listening (new product) + awaitingChoice (pick from options)
-  /// Uses Gemini Audio for transcription & choice understanding
-  Future<void> _mainLoop() async {
-    while (!_stopped && _state != AssistantState.ending && _state != AssistantState.idle) {
-
-      // ════════════════════════════════════════════════
-      // BRANCH 1: AWAITING CHOICE — user must pick from shown options
-      // Send audio + options context to Gemini in ONE call
-      // ════════════════════════════════════════════════
-      if (_state == AssistantState.awaitingChoice && _pendingOptions != null) {
-        final choiceResult = await _recordAndUnderstandChoice();
-        if (_stopped) return;
-
-        if (choiceResult != null) {
-          await _handleChoice(choiceResult);
-          if (_stopped) return;
-        } else {
-          // Gemini didn't understand
-          _pendingOptions!.attempts++;
-          if (_pendingOptions!.attempts >= 2) {
-            // After 2 failed attempts, auto-select cheapest
-            debugPrint('VoiceAssistant: 2 failed choice attempts, auto-selecting cheapest');
-            await _addProductToCart(_pendingOptions!.products.first, 1);
-            _pendingOptions = null;
-            if (_stopped) return;
-          } else {
-            final retry = 'புரியல. எண் சொல்லுங்க அல்லது தட்டுங்க.';
-            _addBot(retry, sub: 'Didn\'t understand. Say the number or tap a card.');
-            await _speak(retry);
-            if (_stopped) return;
-          }
-        }
-        continue;
-      }
-
-      // ════════════════════════════════════════════════
-      // BRANCH 2: LISTENING — user says a new product name
-      // Record → Gemini transcribe → search → 0/1/many
-      // ════════════════════════════════════════════════
-      _setState(AssistantState.listening);
-
-      String? text;
-
-      if (useGeminiVoice) {
-        final started = await _geminiVoice.startRecording();
-        if (_stopped) return;
-        if (!started) {
-          debugPrint('VoiceAssistant: Recording failed, falling back to device STT');
-          text = await _voiceService.listenTamil();
-          if (_stopped) return;
-        } else {
-          await Future.delayed(const Duration(seconds: 7));
-          if (_stopped) {
-            await _geminiVoice.stopRecording();
-            return;
-          }
-          text = await _geminiVoice.stopAndTranscribe();
-          if (_stopped) return;
-        }
-      } else {
-        text = await _voiceService.listenTamil();
-        if (_stopped) return;
-        if (text == null || text.trim().isEmpty) {
-          text = await _voiceService.listen();
-          if (_stopped) return;
-        }
-      }
-
-      if (text == null || text.trim().isEmpty) {
-        final noVoice = _pick(_noVoiceResponses);
-        _addBot(noVoice, sub: 'Didn\'t hear. Say again.');
-        await _speak(noVoice);
-        if (_stopped) return;
-        continue;
-      }
-
-      _addUser(text);
-
-      if (_isEndCommand(text)) {
-        await _endConversation();
-        return;
-      }
-
-      if (_isRemoveCommand(text)) {
-        await _handleRemove(text);
-        if (_stopped) return;
-        await _speak('சொல்லுங்க');
-        continue;
-      }
-
-      // Search → 0 results (not found) / 1 result (auto-add) / 2+ results (show options)
-      await _handleProductSearch(text);
-      if (_stopped) return;
-    }
-  }
-
-  /// Record audio and send to Gemini with options context for choice understanding
-  Future<Map<String, dynamic>?> _recordAndUnderstandChoice() async {
-    _setState(AssistantState.awaitingChoice);
-    if (!useGeminiVoice || _pendingOptions == null) return null;
-
-    final started = await _geminiVoice.startRecording();
-    if (_stopped) return null;
-    if (!started) return null;
-
-    await Future.delayed(const Duration(seconds: 5));
-    if (_stopped) {
-      await _geminiVoice.stopRecording();
-      return null;
-    }
-
-    return await _geminiVoice.stopAndUnderstandChoice(_pendingOptions!.products);
-  }
+  // Main loop removed — tap-to-talk is now event-driven via
+  // startManualRecording() + stopAndProcess() from the UI
 
   /// Product search with 0/1/many branching:
   /// 0 results → "not found"
@@ -431,9 +387,9 @@ class VoiceAssistantService {
       // ── 2+ results: present top 3 options ──
       final topOptions = item.matches.take(3).toList();
       await _presentOptions(topOptions, item.name);
-      // _presentOptions sets state to awaitingChoice → main loop will handle choice
-      return; // exit search, main loop takes over in awaitingChoice
+      return; // _presentOptions sets state to awaitingChoice
     }
+    _returnToListening();
   }
 
   /// Show 2-3 options to user with TTS reading them out
@@ -508,6 +464,7 @@ class VoiceAssistantService {
       await _speak('$name இல்லை. வேற சொல்லுங்க');
       await refreshProducts();
     }
+    _returnToListening();
   }
 
   /// Handle Gemini's structured choice response
@@ -572,10 +529,6 @@ class VoiceAssistantService {
     _pendingOptions = null;
 
     await _addProductToCart(product, 1);
-    if (!_stopped) {
-      // Continue listening for next product
-      _setState(AssistantState.listening);
-    }
   }
 
   // ── Number words (Tamil + English) ──
@@ -640,6 +593,7 @@ class VoiceAssistantService {
       _addBot('$target கார்ட்டில் இல்லை.', sub: '$target not found in cart');
       await _speak('$target கார்ட்டில் இல்லை');
     }
+    _returnToListening();
   }
 
   Future<void> _showCartSummary() async {
