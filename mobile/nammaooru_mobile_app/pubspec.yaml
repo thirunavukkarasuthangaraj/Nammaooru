@@ -45,6 +45,7 @@ dependencies:
   # Voice Search & TTS
   speech_to_text: ^7.3.0
   flutter_tts: ^4.2.0
+  record: ^4.4.4
 
   # Promo Codes - Using simple UUID without device info to avoid permissions
   uuid: ^4.2.1
@@ -102,4 +103,3 @@ flutter_launcher_icons:
 #     fullscreen: true
 
 # dependency_overrides:
-#   flutter_plugin_android_lifecycle: 2.0.17

@@ -2678,57 +2678,78 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                             ),
                           ),
                         ),
-                        // Content overlay
+                        // Featured badge
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: widget.accentColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star, color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text('Featured', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Price badge
+                        if (post['price'] != null && post['price'] != 0)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4)],
+                              ),
+                              child: Text(
+                                '₹${post['price']}${post['priceUnit'] == 'month' ? '/mo' : ''}',
+                                style: TextStyle(color: widget.accentColor, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        // Title + Location
                         Positioned(
                           bottom: 12,
                           left: 14,
                           right: 14,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 post['title'] ?? '',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (post['price'] != null && post['price'] != 0)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    '\u20B9${post['price']}${post['priceUnit'] == 'month' ? '/mo' : ''}',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
+                              if (post['location'] != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on, color: Colors.white70, size: 14),
+                                    const SizedBox(width: 3),
+                                    Expanded(
+                                      child: Text(
+                                        post['location'] ?? '',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
+                              ],
                             ],
                           ),
                         ),
-                        // Listing type badge
-                        if (post['listingType'] != null)
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: post['listingType'] == 'For Sale' ? Colors.green : Colors.blue,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                post['listingType'],
-                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),

@@ -7,6 +7,7 @@ import '../core/api/api_client.dart';
 import '../core/config/env_config.dart';
 import 'voice_search_service.dart';
 import 'tts_service.dart';
+import 'product_search_engine.dart';
 
 /// Represents a single parsed item from the user's order
 class ParsedItem {
@@ -66,7 +67,17 @@ class SmartOrderService {
         _aiConfigLoaded = true;
       }
     } catch (e) {
-      debugPrint('SmartOrder: Failed to load AI config: $e');
+      debugPrint('SmartOrder: Failed to load AI config from backend: $e');
+    }
+    // Fallback: use built-in keys if backend not available
+    if (EnvConfig.geminiApiKeys.isEmpty) {
+      EnvConfig.geminiApiKeys = const [
+        'AIzaSyAZDAB-axvYDirGQLL4XmxrLVbyiI2BLOI',
+        'AIzaSyC3rhnK0i2-nr9jMZ3AS2i7ABvjZgjkno0',
+        'AIzaSyDIdOFfZPsubX1jytyeubSSPS5bGOqX-UU',
+        'AIzaSyCpAnofkz9oGJjGEiWKTzt8I4AQKniZLqo',
+      ];
+      debugPrint('SmartOrder: Using fallback Gemini API keys');
     }
   }
 
@@ -341,6 +352,7 @@ class SmartOrderService {
             'price': p['price']?.toString() ?? '0',
             'image': _extractImage(p),
             'shopId': p['shopId']?.toString() ?? shopId.toString(),
+            'shopDatabaseId': shopId, // numeric DB ID needed for order creation
             'shopName': shopName ?? '',
             'stockQuantity': p['stockQuantity'] ?? 999,
           }).toList();
@@ -450,6 +462,138 @@ class SmartOrderService {
 
   /// Stop speaking
   Future<void> stopSpeaking() => _ttsService.stop();
+
+  // ══════════════════════════════════════════════════════════════
+  // ── OFFLINE INTELLIGENT SEARCH ENGINE (no internet needed) ──
+  // ══════════════════════════════════════════════════════════════
+
+  final ProductSearchEngine _searchEngine = ProductSearchEngine();
+  List<Map<String, dynamic>> _cachedProducts = [];
+  bool _cacheLoaded = false;
+
+  /// Load all shop products once → index locally for instant search
+  Future<void> _ensureCache() async {
+    if (_cacheLoaded || shopId == null) return;
+    try {
+      final response = await ApiClient.get(
+        '/customer/shops/$shopId/products',
+        queryParameters: {'page': '0', 'size': '2000', 'sortBy': 'name', 'sortDir': 'asc'},
+      );
+      final data = response.data;
+      if (data != null && data['statusCode'] == '0000') {
+        final List<dynamic> products = data['data']?['content'] ?? [];
+        _cachedProducts = products.map<Map<String, dynamic>>((p) {
+          final name = (p['displayName'] ?? p['customName'] ?? '').toString();
+          final nameTamil = (p['nameTamil'] ?? '').toString();
+          final category = (p['categoryName'] ?? p['category'] ?? '').toString();
+          final tags = (p['tags'] ?? '').toString(); // "Rice, அரிசி, Groceries, Aashirvaad"
+          final baseWeight = p['baseWeight'];
+          final baseUnit = (p['baseUnit'] ?? '').toString();
+          // Build weight display: "500g", "1kg", "2litre"
+          String weightDisplay = '';
+          if (baseWeight != null && baseUnit.isNotEmpty) {
+            final w = double.tryParse(baseWeight.toString()) ?? 0;
+            if (w > 0) {
+              weightDisplay = w == w.roundToDouble()
+                  ? '${w.toInt()}$baseUnit'
+                  : '${w.toString()}$baseUnit';
+            }
+          }
+          return {
+            'id': p['id']?.toString() ?? '',
+            'name': name,
+            'nameTamil': nameTamil,
+            'category': category,
+            'tags': tags,
+            'price': p['price']?.toString() ?? '0',
+            'image': _extractImage(p),
+            'shopId': p['shopId']?.toString() ?? shopId.toString(),
+            'shopDatabaseId': shopId,
+            'shopName': shopName ?? '',
+            'baseWeight': baseWeight?.toString() ?? '',
+            'baseUnit': baseUnit,
+            'weightDisplay': weightDisplay,
+          };
+        }).toList();
+
+        // Build search indices (inverted index, transliteration, phonetic, etc.)
+        _searchEngine.indexProducts(_cachedProducts);
+        _cacheLoaded = true;
+        debugPrint('SmartOrder: Cached & indexed ${_cachedProducts.length} products');
+      }
+    } catch (e) {
+      debugPrint('SmartOrder: Cache load error: $e');
+    }
+  }
+
+  // ── PUBLIC SUGGESTION API ──
+
+  /// Get real-time suggestions — fully OFFLINE, no API calls
+  /// Uses ProductSearchEngine: inverted index, Tamil transliteration,
+  /// phonetic matching, fuzzy matching, synonyms, category search
+  /// + STT correction for misrecognized voice input
+  Future<List<Map<String, dynamic>>> getSuggestions(String query) async {
+    if (query.trim().length < 2) return [];
+    await _ensureCache();
+    if (!_searchEngine.isIndexed) return [];
+
+    // Normal search first
+    var results = _searchEngine.search(query.trim(), limit: 8);
+    if (results.isNotEmpty) return results;
+
+    // STT correction — handles voice misrecognition
+    // e.g., "only on" → "onlyon" → fuzzy → "onion"
+    results = _searchEngine.sttCorrectionSearch(query.trim(), limit: 8);
+    return results;
+  }
+
+  /// Gemini AI search via backend — understands intent despite wrong STT words
+  /// Call this when offline suggestions fail (e.g., after voice final result)
+  Future<List<Map<String, dynamic>>> aiSearchProducts(String query) async {
+    if (query.trim().length < 2 || shopId == null) return [];
+    try {
+      debugPrint('SmartOrder: AI search query="$query"');
+      final response = await ApiClient.get(
+        '/shops/$shopId/products/ai-search',
+        queryParameters: {'query': query},
+      );
+      final data = response.data;
+      if (data == null || data['statusCode'] != '0000') return [];
+
+      final List<dynamic> products = data['data']?['matchedProducts'] ?? [];
+      debugPrint('SmartOrder: AI found ${products.length} products');
+
+      return products.take(8).map<Map<String, dynamic>>((p) {
+        final baseWeight = p['baseWeight'];
+        final baseUnit = (p['baseUnit'] ?? '').toString();
+        String weightDisplay = '';
+        if (baseWeight != null && baseUnit.isNotEmpty) {
+          final w = double.tryParse(baseWeight.toString()) ?? 0;
+          if (w > 0) {
+            weightDisplay = w == w.roundToDouble()
+                ? '${w.toInt()}$baseUnit'
+                : '${w.toString()}$baseUnit';
+          }
+        }
+        return {
+          'id': p['id']?.toString() ?? '',
+          'name': p['displayName'] ?? p['name']?.toString() ?? '',
+          'nameTamil': p['nameTamil']?.toString() ?? '',
+          'price': p['price']?.toString() ?? '0',
+          'image': _extractImage(p),
+          'shopId': p['shopId']?.toString() ?? shopId.toString(),
+          'shopDatabaseId': shopId,
+          'shopName': shopName ?? '',
+          'baseWeight': baseWeight?.toString() ?? '',
+          'baseUnit': baseUnit,
+          'weightDisplay': weightDisplay,
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('SmartOrder: AI search error: $e');
+      return [];
+    }
+  }
 
   void dispose() {
     _ttsService.dispose();

@@ -13,6 +13,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../models/combo_model.dart';
@@ -855,7 +856,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
         SliverToBoxAdapter(child: _buildSearchBar()),
-        SliverToBoxAdapter(child: _buildAiOrderButton()),
         _buildProductGrid(),
       ],
     );
@@ -864,7 +864,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   Widget _buildAiOrderButton() {
     return GestureDetector(
       onTap: () {
-        context.push('/customer/smart-order', extra: {
+        context.push('/customer/voice-assistant', extra: {
           'shopId': widget.shopId,
           'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
         });
@@ -874,17 +874,17 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+            colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
           ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            const Icon(Icons.assistant, color: Colors.white, size: 20),
             const SizedBox(width: 10),
             const Expanded(
               child: Text(
-                'AI Order — Voice, Photo or Text',
+                'Talk & Order / பேசி ஆர்டர் செய்',
                 style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
@@ -1224,16 +1224,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 ),
               Container(
                 margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: VillageTheme.primaryGreen,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.mic, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.assistant, color: Colors.white, size: 20),
                   onPressed: () {
-                    _showVoiceSearchDialog();
+                    context.push('/customer/voice-assistant', extra: {
+                      'shopId': widget.shopId,
+                      'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
+                    });
                   },
-                  tooltip: 'AI Voice Search',
+                  tooltip: 'Talk & Order',
                 ),
               ),
             ],
@@ -1963,49 +1968,30 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(16)),
                     child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            ImageUrlHelper.getFullImageUrl(imageUrl),
+                        ? CachedNetworkImage(
+                            imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
                             width: double.infinity,
                             height: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              print(
-                                  'Error loading image: $imageUrl - Error: $error');
-                              return Container(
-                                color: Colors.grey[200],
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.image_not_supported,
-                                        size: 30, color: Colors.grey[400]),
-                                    const SizedBox(height: 4),
-                                    Text('Image not available',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey[600],
-                                        )),
-                                  ],
-                                ),
-                              );
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: Colors.grey[100],
-                                child: Center(
+                            placeholder: (_, __) => Container(
+                              color: Colors.grey[100],
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20, height: 20,
                                   child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                    color: VillageTheme.primaryGreen,
                                     strokeWidth: 2,
+                                    color: VillageTheme.primaryGreen,
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: Icon(Icons.inventory_2,
+                                    size: 30, color: Colors.grey),
+                              ),
+                            ),
                           )
                         : Container(
                             color: Colors.grey[200],
@@ -2334,11 +2320,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final availableStock = product.stockQuantity;
 
     if (currentCartQuantity >= availableStock) {
-      // Show error message - cannot add more than available stock
+      // Stock limit reached — refresh products to get real stock
+      _loadProducts();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Only $availableStock items available in stock'),
+            content: Text('Only $availableStock available. Refreshing stock...'),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
           ),

@@ -31,6 +31,7 @@ import '../features/customer/screens/my_posts_screen.dart';
 import '../features/customer/screens/womens_corner_screen.dart';
 import '../features/customer/screens/create_womens_corner_screen.dart';
 import '../features/customer/screens/smart_order_screen.dart';
+import '../features/customer/screens/voice_assistant_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 
 class AppRouter {
@@ -172,6 +173,16 @@ class AppRouter {
             builder: (context, state) {
               final extra = state.extra as Map<String, dynamic>?;
               return SmartOrderScreen(
+                shopId: extra?['shopId'] as int?,
+                shopName: extra?['shopName'] as String?,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/customer/voice-assistant',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return VoiceAssistantScreen(
                 shopId: extra?['shopId'] as int?,
                 shopName: extra?['shopName'] as String?,
               );

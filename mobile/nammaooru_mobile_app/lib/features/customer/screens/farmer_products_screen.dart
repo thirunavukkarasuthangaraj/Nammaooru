@@ -1457,7 +1457,45 @@ class _FeaturedFarmerCarouselState extends State<_FeaturedFarmerCarousel> {
                             ),
                           ),
                         ),
-                        // Content
+                        // Featured badge
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _farmerGreen,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star, color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text('Featured', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Price badge
+                        if (price != null)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4)],
+                              ),
+                              child: Text(
+                                '${widget.formatPrice(price)}${unit != null ? '/$unit' : ''}',
+                                style: const TextStyle(color: _farmerGreen, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        // Title + Location
                         Positioned(
                           bottom: 12,
                           left: 14,
@@ -1467,45 +1505,27 @@ class _FeaturedFarmerCarouselState extends State<_FeaturedFarmerCarousel> {
                             children: [
                               Text(
                                 post['title'] ?? '',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  if (price != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: _farmerGreen,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
+                              if (post['location'] != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on, color: Colors.white70, size: 14),
+                                    const SizedBox(width: 3),
+                                    Expanded(
                                       child: Text(
-                                        '${widget.formatPrice(price)}${unit != null ? '/$unit' : ''}',
-                                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  if (post['category'] != null) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        post['category'],
-                                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                                        post['location'] ?? '',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
-                                ],
-                              ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

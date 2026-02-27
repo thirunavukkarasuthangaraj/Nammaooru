@@ -44,8 +44,10 @@ class VoiceSearchService {
     return _speech.locales();
   }
 
-  /// Start listening for voice input with automatic language fallback
-  Future<String?> listen() async {
+  /// Start listening for voice input
+  /// Uses en-IN (English India) — handles both English and Tamil-accented speech well.
+  /// Tamil words get transliterated (e.g., "அரிசி" → "arisi") which works for search.
+  Future<String?> listen({String? localeId}) async {
     debugPrint('🎙️ listen() called');
     if (!await initialize()) {
       debugPrint('❌ initialize() failed, returning null');
@@ -58,25 +60,24 @@ class VoiceSearchService {
       _isListening = true;
       _lastError = null;
 
-      debugPrint('🎙️ Starting speech recognition with Tamil locale...');
+      final locale = localeId ?? 'en-IN'; // English India — best for mixed speech
+      debugPrint('🎙️ Starting speech recognition with $locale locale...');
 
-      // Use Tamil locale to get Tamil script (அரிசி) instead of transliteration (arasi)
-      // ta-IN forces Tamil script output
       await _speech.listen(
         onResult: (result) {
           _lastWords = result.recognizedWords;
           debugPrint('🎤 Recognized: $_lastWords (confidence: ${result.confidence})');
         },
-        localeId: 'ta-IN', // Force Tamil script for Tamil speech
+        localeId: locale,
         listenMode: stt.ListenMode.confirmation,
         cancelOnError: false,
         partialResults: true,
-        pauseFor: const Duration(seconds: 5), // Wait 5 seconds of silence before stopping (allows pauses between multiple products)
-        listenFor: const Duration(seconds: 45), // Allow up to 45 seconds of speaking (enough time for multiple products)
+        pauseFor: const Duration(seconds: 5),
+        listenFor: const Duration(seconds: 45),
       );
 
-      // Wait for speech to complete naturally (check every 500ms)
-      int maxWaitSeconds = 45; // Match listenFor duration
+      // Wait for speech to complete naturally
+      int maxWaitSeconds = 45;
       int waitedSeconds = 0;
       while (_speech.isListening && waitedSeconds < maxWaitSeconds) {
         await Future.delayed(const Duration(milliseconds: 500));
@@ -102,6 +103,11 @@ class VoiceSearchService {
       _isListening = false;
       return null;
     }
+  }
+
+  /// Listen with Tamil locale specifically
+  Future<String?> listenTamil() async {
+    return listen(localeId: 'ta-IN');
   }
 
   /// Stop listening

@@ -1,7 +1,7 @@
-import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/providers/cart_provider.dart';
@@ -21,35 +21,35 @@ class SmartOrderScreen extends StatefulWidget {
   State<SmartOrderScreen> createState() => _SmartOrderScreenState();
 }
 
-class _SmartOrderScreenState extends State<SmartOrderScreen>
-    with TickerProviderStateMixin {
+class _SmartOrderScreenState extends State<SmartOrderScreen> {
   final SmartOrderService _service = SmartOrderService();
   final TextEditingController _textController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
 
   SmartOrderResult? _result;
   bool _isProcessing = false;
-  bool _isListening = false;
   String _statusMessage = '';
-
   // Conversation history for display
   final List<_ChatMessage> _messages = [];
 
-  late AnimationController _pulseController;
+  // Real-time search suggestions
+  List<Map<String, dynamic>> _suggestions = [];
+  Timer? _debounceTimer;
+
+  // Live voice-to-text with real-time suggestions
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  String _currentLocale = 'en-IN'; // Toggle between en-IN and ta-IN
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
     // Set shop context if provided
     _service.shopId = widget.shopId;
     _service.shopName = widget.shopName;
     _service.ttsService.initialize();
     // Load Gemini AI keys from backend (for photo reading)
     _service.loadAiConfig();
+    // Voice assistant always enabled (admin can disable via backend later)
 
     final shopLabel = widget.shopName != null
         ? ' (${widget.shopName})'
@@ -57,12 +57,192 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     _addBotMessage('வணக்கம்! என்ன வேணும்?$shopLabel\nHello! What do you need?');
   }
 
+
   @override
   void dispose() {
-    _pulseController.dispose();
+    _debounceTimer?.cancel();
+    if (_speech.isListening) _speech.stop();
     _textController.dispose();
     _service.dispose();
     super.dispose();
+  }
+
+  /// Debounced search suggestions as user types or speaks
+  /// Uses offline ProductSearchEngine — no internet needed
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    if (query.trim().length < 2) {
+      setState(() => _suggestions = []);
+      return;
+    }
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      final results = await _service.getSuggestions(query.trim());
+      if (mounted) {
+        setState(() => _suggestions = results);
+      }
+    });
+  }
+
+  // ── Live Voice Input with real-time suggestions ──
+
+  /// Start listening — shows partial speech in text field, triggers suggestions live
+  Future<void> _startListening() async {
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          if (mounted) setState(() => _isListening = false);
+        }
+      },
+      onError: (error) {
+        debugPrint('Speech error: ${error.errorMsg}');
+        if (mounted) setState(() => _isListening = false);
+      },
+    );
+
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone not available'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isListening = true);
+    _lastFinalText = '';
+
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        final text = result.recognizedWords;
+        _textController.text = text;
+        _textController.selection = TextSelection.fromPosition(
+          TextPosition(offset: text.length),
+        );
+        // Trigger real-time suggestions as words come in
+        _onSearchChanged(text);
+
+        // When speech is final → check if we got good results
+        if (result.finalResult) {
+          _lastFinalText = text;
+          _handleFinalSpeech(text);
+        }
+      },
+      localeId: _currentLocale,
+      listenMode: stt.ListenMode.confirmation,
+      partialResults: true,
+      cancelOnError: false,
+      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 30),
+    );
+  }
+
+  String _lastFinalText = '';
+  bool _isRetrying = false;
+
+  /// After speech finishes → send directly to Gemini AI search.
+  /// Gemini understands intent even when STT gives wrong words.
+  Future<void> _handleFinalSpeech(String text) async {
+    setState(() => _isListening = false);
+    if (text.trim().isEmpty) return;
+
+    // ALWAYS use Gemini AI for voice — it understands intent
+    final results = await _service.aiSearchProducts(text.trim());
+    if (results.isNotEmpty && mounted) {
+      setState(() => _suggestions = results);
+      return;
+    }
+
+    // AI failed → retry with other language
+    if (!_isRetrying) {
+      _isRetrying = true;
+      final otherLocale = _currentLocale == 'en-IN' ? 'ta-IN' : 'en-IN';
+      final langName = otherLocale == 'ta-IN' ? 'Tamil' : 'English';
+
+      if (mounted) {
+        setState(() => _isListening = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Retrying in $langName...'),
+            duration: const Duration(seconds: 1),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      await _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+          final retryText = result.recognizedWords;
+          _textController.text = retryText;
+          _textController.selection = TextSelection.fromPosition(
+            TextPosition(offset: retryText.length),
+          );
+          _onSearchChanged(retryText);
+          if (result.finalResult) {
+            setState(() => _isListening = false);
+            _isRetrying = false;
+            // Also send retry to Gemini AI
+            _service.aiSearchProducts(retryText.trim()).then((aiResults) {
+              if (aiResults.isNotEmpty && mounted) {
+                setState(() => _suggestions = aiResults);
+              }
+            });
+          }
+        },
+        localeId: otherLocale,
+        listenMode: stt.ListenMode.confirmation,
+        partialResults: true,
+        cancelOnError: false,
+        pauseFor: const Duration(seconds: 3),
+        listenFor: const Duration(seconds: 15),
+      );
+    }
+  }
+
+  /// Stop listening
+  Future<void> _stopListening() async {
+    await _speech.stop();
+    _isRetrying = false;
+    setState(() => _isListening = false);
+  }
+
+  /// Switch language — EN or TA
+  void _setLocale(String locale) {
+    setState(() => _currentLocale = locale);
+    if (_isListening) {
+      _stopListening().then((_) => _startListening());
+    }
+  }
+
+  /// Toggle EN↔TA locale on long press
+  void _toggleLocale() {
+    _setLocale(_currentLocale == 'en-IN' ? 'ta-IN' : 'en-IN');
+  }
+
+  /// Add a suggested product directly to cart
+  Future<void> _addSuggestionToCart(Map<String, dynamic> product) async {
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    final productModel = _toProductModel(product);
+    final success = await cart.addToCart(productModel);
+
+    if (success && mounted) {
+      final name = product['name'] ?? '';
+      final weight = product['weightDisplay']?.toString() ?? '';
+      final weightLabel = weight.isNotEmpty ? ' $weight' : '';
+      setState(() => _suggestions = []);
+      _textController.clear();
+      _addBotMessage('$name$weightLabel கார்ட்டில் சேர்க்கப்பட்டது!\n$name$weightLabel added to cart!');
+      _service.speak('$name$weightLabel சேர்க்கப்பட்டது. வேற add பண்ணவா?');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$name$weightLabel added to cart'),
+          backgroundColor: VillageTheme.primaryGreen,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   void _addBotMessage(String text) {
@@ -75,71 +255,6 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     setState(() {
       _messages.add(_ChatMessage(text: text, isBot: false));
     });
-  }
-
-  // ── Voice Order ──
-  Future<void> _startVoiceOrder() async {
-    setState(() {
-      _isProcessing = true;
-      _isListening = true;
-
-      _statusMessage = 'Listening... speak in Tamil';
-    });
-    _pulseController.repeat();
-
-    _addBotMessage('கேட்கிறேன்... தமிழில் சொல்லுங்கள்\nListening... speak in Tamil');
-
-    final result = await _service.processVoiceOrder();
-    _pulseController.stop();
-
-    if (result == null) {
-      setState(() {
-        _isProcessing = false;
-        _isListening = false;
-        _statusMessage = '';
-      });
-      _addBotMessage('குரல் கிடைக்கவில்லை. மீண்டும் முயற்சிக்கவும்.\nCould not hear. Try again.');
-      return;
-    }
-
-    _addUserMessage(result.rawInput);
-    _handleResult(result);
-  }
-
-  // ── Photo Order ──
-  Future<void> _startPhotoOrder() async {
-    final source = await _showImageSourceDialog();
-    if (source == null) return;
-
-    final XFile? xFile = await _picker.pickImage(
-      source: source,
-      imageQuality: 80,
-      maxWidth: 1280,
-    );
-    if (xFile == null) return;
-
-    setState(() {
-      _isProcessing = true;
-
-      _statusMessage = 'Reading your list...';
-    });
-
-    _addUserMessage('[Photo of shopping list]');
-    _addBotMessage('படத்தை படிக்கிறேன்...\nReading your list...');
-
-    final result = await _service.processPhotoOrder(File(xFile.path));
-
-    if (result == null) {
-      setState(() {
-        _isProcessing = false;
-        _statusMessage = '';
-      });
-      final errorDetail = _service.lastError ?? 'Unknown error';
-      _addBotMessage('படத்தை படிக்க முடியவில்லை.\nCould not read image.\nError: $errorDetail');
-      return;
-    }
-
-    _handleResult(result);
   }
 
   // ── Text Order ──
@@ -176,7 +291,6 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     setState(() {
       _result = result;
       _isProcessing = false;
-      _isListening = false;
       _statusMessage = '';
     });
 
@@ -198,37 +312,6 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     }
   }
 
-  Future<ImageSource?> _showImageSourceDialog() async {
-    return showModalBottomSheet<ImageSource>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: VillageTheme.primaryGreen),
-                title: const Text('Camera / கேமரா'),
-                subtitle: const Text('Take photo of your list'),
-                onTap: () => Navigator.pop(ctx, ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: VillageTheme.skyBlue),
-                title: const Text('Gallery / கேலரி'),
-                subtitle: const Text('Pick from gallery'),
-                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   ProductModel _toProductModel(Map<String, dynamic> data) {
     return ProductModel(
       id: data['id']?.toString() ?? '',
@@ -238,6 +321,9 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
       price: double.tryParse(data['price']?.toString() ?? '0') ?? 0.0,
       category: '',
       shopId: data['shopId']?.toString() ?? '',
+      shopDatabaseId: data['shopDatabaseId'] is int
+          ? data['shopDatabaseId']
+          : int.tryParse(data['shopDatabaseId']?.toString() ?? ''),
       shopName: data['shopName']?.toString() ?? '',
       images: data['image'] != null && data['image'].toString().isNotEmpty
           ? [data['image'].toString()]
@@ -272,7 +358,12 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
       _addBotMessage(
           '$added பொருட்கள் கார்ட்டில் சேர்க்கப்பட்டன!\n'
           '$added items added to cart!');
-      _service.speak('$added பொருட்கள் கார்ட்டில் சேர்க்கப்பட்டன');
+      // Speak items added + cart total
+      final cartTotal = cart.total.toStringAsFixed(0);
+      final cartCount = cart.itemCount;
+      await _service.speak(
+          '$added பொருட்கள் கார்ட்டில் சேர்க்கப்பட்டன. '
+          'கார்ட்டில் $cartCount பொருட்கள், Total ₹$cartTotal');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -406,8 +497,8 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
                   const SizedBox(height: 8),
                   Center(
                     child: TextButton.icon(
-                      onPressed: _isProcessing ? null : _startVoiceOrder,
-                      icon: const Icon(Icons.mic, size: 18),
+                      onPressed: _clearResults,
+                      icon: const Icon(Icons.add, size: 18),
                       label: const Text('Add more items / மேலும் சேர்'),
                     ),
                   ),
@@ -416,9 +507,139 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
             ),
           ),
 
+          // Real-time suggestions
+          if (_suggestions.isNotEmpty) _buildSuggestionsList(),
+
           // Input area at bottom
           _buildInputArea(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionsList() {
+    final isTamil = Provider.of<LanguageProvider>(context, listen: false)
+            .currentLanguage ==
+        'ta';
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 220),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: _suggestions.length,
+        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100]),
+        itemBuilder: (_, i) {
+          final product = _suggestions[i];
+          final name = product['name'] ?? '';
+          final nameTamil = product['nameTamil'] ?? '';
+          final price = product['price']?.toString() ?? '0';
+          final imageUrl = product['image']?.toString() ?? '';
+          final weightDisplay = product['weightDisplay']?.toString() ?? '';
+          final primaryName = isTamil && nameTamil.isNotEmpty ? nameTamil : name;
+          final secondaryName = isTamil && nameTamil.isNotEmpty ? name : nameTamil;
+
+          return InkWell(
+            onTap: () => _addSuggestionToCart(product),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  // Small product image
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(
+                              width: 40, height: 40,
+                              color: Colors.grey[100],
+                              child: const Icon(Icons.shopping_bag, size: 18, color: Colors.grey),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              width: 40, height: 40,
+                              color: Colors.grey[100],
+                              child: const Icon(Icons.shopping_bag, size: 18, color: Colors.grey),
+                            ),
+                          )
+                        : Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.shopping_bag, size: 18, color: Colors.grey),
+                          ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Name + Tamil name
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(primaryName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        if (secondaryName.isNotEmpty)
+                          Text(secondaryName,
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  // Price + weight
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('₹$price',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                              fontSize: 14)),
+                      if (weightDisplay.isNotEmpty)
+                        Text(weightDisplay,
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.orange.shade700,
+                                fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  // Quick add button
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: VillageTheme.primaryGreen,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('+ ADD',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -484,29 +705,14 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (_isListening)
-            AnimatedBuilder(
-              animation: _pulseController,
-              builder: (_, __) => Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: VillageTheme.primaryGreen
-                      .withOpacity(0.2 + 0.3 * _pulseController.value),
-                ),
-                child: const Icon(Icons.mic, color: VillageTheme.primaryGreen, size: 30),
-              ),
-            )
-          else
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: VillageTheme.primaryGreen,
-              ),
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: VillageTheme.primaryGreen,
             ),
+          ),
           const SizedBox(width: 12),
           Text(
             _statusMessage,
@@ -636,6 +842,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     final nameTamil = product['nameTamil'] ?? '';
     final price = product['price']?.toString() ?? '0';
     final imageUrl = product['image']?.toString() ?? '';
+    final weightDisplay = product['weightDisplay']?.toString() ?? '';
 
     // Respect language toggle — show Tamil first when Tamil is selected
     final isTamil = Provider.of<LanguageProvider>(context, listen: false)
@@ -722,13 +929,33 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
                     ),
                   ],
                   const SizedBox(height: 6),
-                  Text(
-                    '₹$price',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: VillageTheme.primaryGreen,
-                      fontSize: 18,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '₹$price',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: VillageTheme.primaryGreen,
+                          fontSize: 18,
+                        ),
+                      ),
+                      if (weightDisplay.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.orange.shade200),
+                          ),
+                          child: Text(weightDisplay,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange.shade800)),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -805,61 +1032,157 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 3 mode buttons
+          // Listening indicator
+          if (_isListening)
+            Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mic, size: 16, color: Colors.red.shade400),
+                  const SizedBox(width: 6),
+                  Text(
+                    _currentLocale == 'ta-IN'
+                        ? 'Listening Tamil... / தமிழில் பேசுங்கள்...'
+                        : 'Listening English... / ஆங்கிலத்தில் பேசுங்கள்...',
+                    style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                  ),
+                ],
+              ),
+            ),
           Row(
             children: [
-              // Voice button
-              _buildModeButton(
-                icon: _isListening ? Icons.mic : Icons.mic_none,
-                label: 'Voice',
-                tamilLabel: 'குரல்',
-                color: VillageTheme.primaryGreen,
-                onTap: _isProcessing ? null : _startVoiceOrder,
-                isActive: _isListening,
+              // Mic button — tap to speak, long press to toggle EN/TA
+              GestureDetector(
+                onTap: _isProcessing ? null : () {
+                  if (_isListening) {
+                    _stopListening();
+                  } else {
+                    _startListening();
+                  }
+                },
+                onLongPress: _toggleLocale,
+                child: Container(
+                  height: 48,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _isListening
+                          ? [Colors.red, Colors.red.shade300]
+                          : [const Color(0xFF6C63FF), const Color(0xFF8B7FFF)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isListening ? Colors.red : const Color(0xFF6C63FF))
+                            .withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isListening ? Icons.stop : Icons.mic,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      Text(
+                        _currentLocale == 'ta-IN' ? 'TA' : 'EN',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
-              // Photo button
-              _buildModeButton(
-                icon: Icons.camera_alt,
-                label: 'Photo',
-                tamilLabel: 'படம்',
-                color: VillageTheme.skyBlue,
-                onTap: _isProcessing ? null : _startPhotoOrder,
-              ),
-              const SizedBox(width: 8),
-              // Text input
+              // Search text input
               Expanded(
                 child: Container(
                   height: 48,
                   decoration: BoxDecoration(
-                    color: VillageTheme.inputBackground,
+                    color: _isListening
+                        ? Colors.red.shade50
+                        : VillageTheme.inputBackground,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(
+                      color: _isListening ? Colors.red.shade300 : Colors.grey[300]!,
+                    ),
                   ),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _textController,
-                          decoration: const InputDecoration(
-                            hintText: 'Type here / இங்கே எழுதுங்கள்',
-                            hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
+                          decoration: InputDecoration(
+                            hintText: _isListening
+                                ? 'Speaking...'
+                                : 'Type or speak / தட்டச்சு அல்லது பேசு',
+                            hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
                             border: InputBorder.none,
                             contentPadding:
-                                EdgeInsets.symmetric(horizontal: 16),
+                                const EdgeInsets.symmetric(horizontal: 16),
                           ),
                           style: const TextStyle(fontSize: 14),
-                          onSubmitted: (_) => _submitTextOrder(),
+                          onChanged: _onSearchChanged,
+                          onSubmitted: (_) {
+                            if (_isListening) _stopListening();
+                            setState(() => _suggestions = []);
+                            _submitTextOrder();
+                          },
                         ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.send,
                             color: VillageTheme.primaryGreen),
-                        onPressed: _isProcessing ? null : _submitTextOrder,
+                        onPressed: _isProcessing ? null : () {
+                          if (_isListening) _stopListening();
+                          setState(() => _suggestions = []);
+                          _submitTextOrder();
+                        },
                         iconSize: 20,
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // AI Assistant button (compact)
+              GestureDetector(
+                onTap: _isProcessing ? null : () {
+                  if (_isListening) _stopListening();
+                  context.push('/customer/voice-assistant', extra: {
+                    'shopId': widget.shopId,
+                    'shopName': widget.shopName,
+                  });
+                },
+                child: Container(
+                  height: 48,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    color: VillageTheme.primaryGreen,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: VillageTheme.primaryGreen.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.assistant, size: 22, color: Colors.white),
                 ),
               ),
             ],
@@ -869,45 +1192,6 @@ class _SmartOrderScreenState extends State<SmartOrderScreen>
     );
   }
 
-  Widget _buildModeButton({
-    required IconData icon,
-    required String label,
-    required String tamilLabel,
-    required Color color,
-    VoidCallback? onTap,
-    bool isActive = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 56,
-        height: 48,
-        decoration: BoxDecoration(
-          color: isActive ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? color : color.withOpacity(0.3),
-            width: isActive ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20, color: isActive ? Colors.white : color),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: isActive ? Colors.white : color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _ChatMessage {

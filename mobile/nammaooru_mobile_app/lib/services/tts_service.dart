@@ -15,6 +15,8 @@ class TtsService {
       await _tts.setSpeechRate(0.45);
       await _tts.setVolume(1.0);
       await _tts.setPitch(1.0);
+      // Make speak() wait until speech is fully complete before returning
+      await _tts.awaitSpeakCompletion(true);
 
       _tts.setStartHandler(() => _isSpeaking = true);
       _tts.setCompletionHandler(() => _isSpeaking = false);
@@ -35,7 +37,9 @@ class TtsService {
     if (!_isInitialized) await initialize();
     if (text.isEmpty) return;
     await _tts.stop();
-    await _tts.speak(text);
+    _isSpeaking = true;
+    await _tts.speak(text); // Now waits for speech to complete
+    _isSpeaking = false;
   }
 
   Future<void> stop() async {
