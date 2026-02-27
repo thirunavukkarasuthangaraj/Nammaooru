@@ -230,6 +230,45 @@ public class ProductAISearchController {
     }
 
     /**
+     * Voice audio transcription — send audio clip to Gemini for transcription.
+     * Gemini understands Tamil, English, Tanglish — much better than device STT.
+     * Cost: ~$0.0001 per 5-sec clip (just transcription, no product catalog).
+     */
+    @PostMapping("/voice-audio")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> transcribeVoiceAudio(
+            @RequestParam("audio") MultipartFile audio
+    ) {
+        log.info("Voice audio transcription: size={}KB, type={}", audio.getSize() / 1024, audio.getContentType());
+
+        try {
+            byte[] audioBytes = audio.getBytes();
+            String mimeType = audio.getContentType() != null ? audio.getContentType() : "audio/wav";
+
+            String prompt = "Listen to this audio clip. The person is speaking in Tamil, English, or Tanglish (mixed). " +
+                    "They are ordering grocery/household products from a shop. " +
+                    "Transcribe ONLY the product names and quantities they mention. " +
+                    "Return a simple comma-separated list of product names in English. " +
+                    "Examples: \"onion, tomato, rice 5kg\" or \"garlic, coconut oil\". " +
+                    "If you hear Tamil words, translate to English product names. " +
+                    "If unclear, give your best guess. Return ONLY product names, nothing else.";
+
+            String aiResponse = geminiSearchService.callGeminiVisionAPI(prompt, audioBytes, mimeType);
+
+            String transcribed = aiResponse != null ? aiResponse.trim() : "";
+            log.info("Voice audio transcription result: '{}'", transcribed);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("transcription", transcribed),
+                    "Audio transcribed successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error transcribing voice audio: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Transcription failed: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Preprocess voice query to convert natural language to comma-separated format
      * Examples:
      *   "rice and dal" → "rice,dal"
