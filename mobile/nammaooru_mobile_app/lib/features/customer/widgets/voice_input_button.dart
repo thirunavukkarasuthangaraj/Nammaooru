@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:record/record.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/config/env_config.dart';
 
+/// Hold-to-record voice input button — records audio and sends to Gemini
+/// for transcription. Much better Tamil recognition than device STT.
 class VoiceInputButton extends StatefulWidget {
   final TextEditingController controller;
 
@@ -13,8 +19,9 @@ class VoiceInputButton extends StatefulWidget {
 
 class _VoiceInputButtonState extends State<VoiceInputButton>
     with TickerProviderStateMixin {
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _isListening = false;
+  final Record _recorder = Record();
+  bool _isRecording = false;
+  String? _audioPath;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -50,11 +57,11 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     _removeHint();
     _pulseController.dispose();
     _rippleController.dispose();
-    if (_speech.isListening) _speech.stop();
+    if (_isRecording) _recorder.stop();
+    _recorder.dispose();
     super.dispose();
   }
 
-  // ── Show "Hold to record" tooltip above the button ──────────────────────
   void _showHoldHint() {
     _removeHint();
     final overlay = Overlay.of(context);
@@ -93,28 +100,14 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     _hintOverlay = null;
   }
 
-  // ── Recording ────────────────────────────────────────────────────────────
-  Future<void> _startListening() async {
+  Future<void> _startRecording() async {
     try {
-      final available = await _speech.initialize(
-        onStatus: (status) {
-          if ((status == 'notListening' || status == 'done') &&
-              mounted &&
-              _isListening) {
-            _stopListening();
-          }
-        },
-        onError: (error) {
-          debugPrint('Voice input error: ${error.errorMsg}');
-          _stopListening();
-        },
-      );
-
-      if (!available) {
+      final hasPerms = await _recorder.hasPermission();
+      if (!hasPerms) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Speech recognition not available'),
+              content: Text('Microphone permission required'),
               backgroundColor: Colors.red,
             ),
           );
@@ -122,65 +115,105 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
         return;
       }
 
+      _audioPath = '${Directory.systemTemp.path}/voice_input_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      await _recorder.start(
+        path: _audioPath!,
+        encoder: AudioEncoder.aacLc,
+        bitRate: 128000,
+        samplingRate: 16000,
+      );
+
       if (!mounted) return;
-      setState(() => _isListening = true);
+      setState(() => _isRecording = true);
       _pulseController.repeat(reverse: true);
       _rippleController.repeat();
-
-      await _speech.listen(
-        onResult: (result) {
-          if (result.recognizedWords.isNotEmpty) {
-            final existing = widget.controller.text;
-            widget.controller.text = existing.isNotEmpty && !existing.endsWith(' ')
-                ? '$existing ${result.recognizedWords}'
-                : '$existing${result.recognizedWords}';
-            widget.controller.selection = TextSelection.fromPosition(
-              TextPosition(offset: widget.controller.text.length),
-            );
-          }
-        },
-        localeId: 'ta-IN',
-        listenOptions: stt.SpeechListenOptions(
-          listenMode: stt.ListenMode.confirmation,
-          cancelOnError: false,
-          partialResults: false,
-        ),
-        pauseFor: const Duration(seconds: 3),
-        listenFor: const Duration(seconds: 30),
-      );
     } catch (e) {
-      debugPrint('Voice input error: $e');
-      _stopListening();
+      debugPrint('VoiceInput: Failed to start recording: $e');
+      _stopRecording();
     }
   }
 
-  Future<void> _stopListening() async {
-    await _speech.stop();
-    if (!mounted) return;
-    setState(() => _isListening = false);
-    _pulseController.stop();
-    _pulseController.reset();
-    _rippleController.stop();
-    _rippleController.reset();
+  Future<void> _stopRecording() async {
+    try {
+      final path = await _recorder.stop();
+      if (!mounted) return;
+      setState(() => _isRecording = false);
+      _pulseController.stop();
+      _pulseController.reset();
+      _rippleController.stop();
+      _rippleController.reset();
+
+      final audioPath = path ?? _audioPath;
+      if (audioPath == null) return;
+
+      // Send to Gemini for transcription
+      final transcription = await _transcribeAudio(audioPath);
+      if (transcription != null && transcription.isNotEmpty && mounted) {
+        final existing = widget.controller.text;
+        widget.controller.text = existing.isNotEmpty && !existing.endsWith(' ')
+            ? '$existing $transcription'
+            : '$existing$transcription';
+        widget.controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: widget.controller.text.length),
+        );
+      }
+    } catch (e) {
+      debugPrint('VoiceInput: Error stopping recording: $e');
+      if (mounted) {
+        setState(() => _isRecording = false);
+        _pulseController.stop();
+        _pulseController.reset();
+        _rippleController.stop();
+        _rippleController.reset();
+      }
+    }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  Future<String?> _transcribeAudio(String audioPath) async {
+    try {
+      final file = File(audioPath);
+      if (!await file.exists()) return null;
+
+      final uri = Uri.parse('${EnvConfig.fullApiUrl}/v1/products/search/voice-audio');
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(await http.MultipartFile.fromPath(
+        'audio', audioPath, filename: 'voice.m4a',
+      ));
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 15),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['statusCode'] == '0000' && data['data'] != null) {
+          return data['data']['transcription']?.toString();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('VoiceInput: Transcription error: $e');
+      return null;
+    } finally {
+      try {
+        final f = File(audioPath);
+        if (f.existsSync()) f.deleteSync();
+      } catch (_) {}
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // Tap → show hint, don't start recording
       onTap: _showHoldHint,
-
-      // Hold → start recording
       onLongPressStart: (_) async {
         HapticFeedback.mediumImpact();
-        await _startListening();
+        await _startRecording();
       },
-
-      // Release → stop recording
-      onLongPressEnd: (_) => _stopListening(),
-      onLongPressCancel: () => _stopListening(),
-
+      onLongPressEnd: (_) => _stopRecording(),
+      onLongPressCancel: () => _stopRecording(),
       child: AnimatedBuilder(
         animation: Listenable.merge([_pulseAnimation, _rippleAnimation]),
         builder: (context, _) {
@@ -190,8 +223,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Expanding ripple ring while recording
-                if (_isListening)
+                if (_isRecording)
                   Transform.scale(
                     scale: 1.0 + _rippleAnimation.value * 1.8,
                     child: Opacity(
@@ -206,22 +238,18 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
                       ),
                     ),
                   ),
-
-                // Mic icon — scales up while recording
                 Transform.scale(
-                  scale: _isListening ? _pulseAnimation.value : 1.0,
+                  scale: _isRecording ? _pulseAnimation.value : 1.0,
                   child: Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _isListening
-                          ? Colors.red
-                          : Colors.transparent,
+                      color: _isRecording ? Colors.red : Colors.transparent,
                     ),
                     child: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening ? Colors.white : Colors.grey[600],
+                      _isRecording ? Icons.mic : Icons.mic_none,
+                      color: _isRecording ? Colors.white : Colors.grey[600],
                       size: 20,
                     ),
                   ),
