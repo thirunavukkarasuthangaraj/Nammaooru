@@ -269,6 +269,80 @@ public class ProductAISearchController {
     }
 
     /**
+     * Voice choice understanding — send audio + options context to Gemini.
+     * When user is shown 2-3 product options, they speak to pick one.
+     * Gemini hears raw audio + knows the options → returns structured choice.
+     * Cost: ~$0.0001-0.0002 per choice (same as transcription).
+     */
+    @PostMapping("/voice-choice")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> understandVoiceChoice(
+            @RequestParam("audio") MultipartFile audio,
+            @RequestParam("options") String optionsJson
+    ) {
+        log.info("Voice choice understanding: audioSize={}KB, options={}", audio.getSize() / 1024, optionsJson);
+
+        try {
+            byte[] audioBytes = audio.getBytes();
+            String mimeType = audio.getContentType() != null ? audio.getContentType() : "audio/wav";
+
+            // Parse options to build readable list for Gemini
+            List<Map<String, Object>> options = objectMapper.readValue(
+                    optionsJson, new TypeReference<List<Map<String, Object>>>() {});
+
+            StringBuilder optionsList = new StringBuilder();
+            for (Map<String, Object> opt : options) {
+                int idx = ((Number) opt.get("index")).intValue();
+                String name = opt.get("name").toString();
+                Object price = opt.get("price");
+                optionsList.append(idx).append(". ").append(name);
+                if (price != null) optionsList.append(" ₹").append(price);
+                optionsList.append("\n");
+            }
+
+            String prompt = "Listen to this audio. The person was shown these grocery options:\n" +
+                    optionsList +
+                    "They are either: picking one option (by number or name), asking for a different product, " +
+                    "saying 'done/enough/போதும்', or saying 'remove [product]'. " +
+                    "They speak Tamil, English, or Tanglish (mixed Tamil+English). " +
+                    "Common Tamil numbers: ஒன்று/ஒண்ணு=1, இரண்டு/ரெண்டு=2, மூன்று/மூணு=3. " +
+                    "Return ONLY valid JSON (no markdown, no explanation):\n" +
+                    "{\"action\":\"select\",\"index\":N} if they picked option N, or\n" +
+                    "{\"action\":\"search\",\"query\":\"product name\"} if they asked for a different product, or\n" +
+                    "{\"action\":\"done\"} if they said done/enough/stop, or\n" +
+                    "{\"action\":\"remove\",\"query\":\"product name\"} if they want to remove something.";
+
+            String aiResponse = geminiSearchService.callGeminiVisionAPI(prompt, audioBytes, mimeType);
+
+            // Parse Gemini's JSON response
+            String jsonStr = aiResponse != null ? aiResponse.trim() : "";
+            // Strip markdown code fences if present
+            if (jsonStr.startsWith("```")) {
+                jsonStr = jsonStr.replaceAll("```json", "").replaceAll("```", "").trim();
+            }
+            if (jsonStr.contains("{")) {
+                jsonStr = jsonStr.substring(jsonStr.indexOf("{"), jsonStr.lastIndexOf("}") + 1);
+            }
+
+            Map<String, Object> result;
+            try {
+                result = objectMapper.readValue(jsonStr, new TypeReference<Map<String, Object>>() {});
+            } catch (Exception e) {
+                log.warn("Failed to parse Gemini choice response as JSON: {}", aiResponse);
+                // Fallback: treat as new search query
+                result = Map.of("action", "search", "query", aiResponse != null ? aiResponse.trim() : "");
+            }
+
+            log.info("Voice choice result: {}", result);
+
+            return ResponseEntity.ok(ApiResponse.success(result, "Voice choice understood"));
+
+        } catch (Exception e) {
+            log.error("Error understanding voice choice: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Voice choice failed: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Preprocess voice query to convert natural language to comma-separated format
      * Examples:
      *   "rice and dal" → "rice,dal"
