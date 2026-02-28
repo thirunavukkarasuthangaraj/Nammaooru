@@ -150,9 +150,17 @@ class VoiceAssistantService {
     await Future.delayed(const Duration(milliseconds: 1000));
     if (_stopped) { _isAutoListening = false; return; }
 
+    // Make sure STT is initialized
+    if (!_voiceService.isAvailable) {
+      debugPrint('VoiceAssistant: STT not available, re-initializing...');
+      await _voiceService.initialize();
+    }
+
     // Use device speech-to-text (reliable mic activation)
     onStateChanged?.call(); // Show "Listening..." UI
+    debugPrint('VoiceAssistant: Calling _voiceService.listen()...');
     final text = await _voiceService.listen();
+    debugPrint('VoiceAssistant: STT result: "$text", error: ${_voiceService.lastError}');
 
     if (_stopped) { _isAutoListening = false; return; }
     _isAutoListening = false;
@@ -345,7 +353,8 @@ class VoiceAssistantService {
     _setState(AssistantState.greeting);
 
     // Initialize speech recognition early (request mic permission)
-    _voiceService.initialize();
+    final sttReady = await _voiceService.initialize();
+    debugPrint('VoiceAssistant: STT initialized: $sttReady');
 
     // Load products in background while greeting plays
     final productFuture = _loadProducts();
@@ -458,14 +467,7 @@ class VoiceAssistantService {
         return pa.compareTo(pb);
       });
 
-      // ── 1 result: auto-add ──
-      if (item.matches.length == 1) {
-        await _addProductToCart(item.matches.first, qty);
-        if (_stopped) return;
-        continue;
-      }
-
-      // ── 2+ results: present top 3 options ──
+      // ── 1+ results: always show as options, let user tap to add ──
       final topOptions = item.matches.toList();
       await _presentOptions(topOptions, item.name);
       return; // _presentOptions sets state to awaitingChoice
