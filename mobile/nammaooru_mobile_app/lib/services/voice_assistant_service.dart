@@ -113,7 +113,7 @@ class VoiceAssistantService {
   /// Auto-listen: automatically start recording after TTS finishes
   bool _isAutoListening = false;
   int _failedListenAttempts = 0;
-  static const _maxFailedAttempts = 2;
+  static const _maxFailedAttempts = 100; // effectively unlimited — keep listening
 
   /// Start manual recording (user tapped mic button)
   Future<bool> startManualRecording() async {
@@ -167,16 +167,13 @@ class VoiceAssistantService {
 
     if (text == null || text.trim().isEmpty) {
       _failedListenAttempts++;
-      debugPrint('VoiceAssistant: STT returned empty (attempt $_failedListenAttempts/$_maxFailedAttempts)');
-      if (_failedListenAttempts >= _maxFailedAttempts) {
+      debugPrint('VoiceAssistant: STT returned empty (attempt $_failedListenAttempts)');
+      // Silently retry — don't spam "couldn't hear" messages
+      // Only show message on first failure
+      if (_failedListenAttempts == 1) {
         _addBot(
-          'குரல் வரல. Type செய்யுங்க.',
-          sub: 'Couldn\'t hear you. Please type the product name below.',
-        );
-      } else {
-        _addBot(
-          'குரல் வரல. மீண்டும் சொல்லுங்க.',
-          sub: 'Couldn\'t hear. Please say again.',
+          'சொல்லுங்க, கேட்கிறேன்...',
+          sub: 'Listening... speak now.',
         );
       }
       _setState(AssistantState.listening);
