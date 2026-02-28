@@ -71,6 +71,44 @@ class VoiceAssistantService {
   String? shopName;
   int _itemsAddedThisSession = 0;
 
+  // Track last TTS text to filter echo (mic picking up speaker)
+  String _lastSpokenText = '';
+
+  /// Check if transcribed text is just echo of the TTS speaker output.
+  /// Compares word overlap — if >40% of transcribed words appear in last TTS text, it's echo.
+  bool _isEcho(String transcription) {
+    if (_lastSpokenText.isEmpty) return false;
+
+    final ttsWords = _lastSpokenText.toLowerCase()
+        .replaceAll(RegExp(r'[₹,.\?!।]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length > 1)
+        .toSet();
+
+    final spokenWords = transcription.toLowerCase()
+        .replaceAll(RegExp(r'[₹,.\?!।]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length > 1)
+        .toList();
+
+    if (spokenWords.isEmpty || ttsWords.isEmpty) return false;
+
+    int matchCount = 0;
+    for (final word in spokenWords) {
+      // Exact match or substring match (handles partial STT recognition)
+      if (ttsWords.contains(word) ||
+          ttsWords.any((tw) => tw.contains(word) || word.contains(tw))) {
+        matchCount++;
+      }
+    }
+
+    final overlapRatio = matchCount / spokenWords.length;
+    debugPrint('VoiceAssistant: Echo check — $matchCount/${spokenWords.length} words match TTS (${(overlapRatio * 100).toInt()}%)');
+
+    // If more than 40% overlap, treat as echo
+    return overlapRatio > 0.4;
+  }
+
   // Local product cache — loaded once, searched locally (₹0, no Gemini)
   List<Map<String, dynamic>> _cachedProducts = [];
   bool _productsLoaded = false;
@@ -127,65 +165,52 @@ class VoiceAssistantService {
     return false;
   }
 
-  /// Auto-listen using device STT (speech_to_text).
-  /// Device STT activates mic reliably. Even if Tamil text is poor,
-  /// the AI search pipeline corrects it.
+  /// Auto-listen: record audio via record package → send to Gemini/OpenAI.
+  /// Uses WAV format for max device compatibility.
   Future<void> autoListenAndProcess() async {
     if (_stopped || _isAutoListening) return;
     if (_state != AssistantState.listening && _state != AssistantState.awaitingChoice) return;
 
-    // Stop auto-listening after too many failed attempts
-    if (_failedListenAttempts >= _maxFailedAttempts) {
-      debugPrint('VoiceAssistant: Too many failed attempts ($_failedListenAttempts), waiting for text input');
-      return;
-    }
-
     _isAutoListening = true;
-    debugPrint('VoiceAssistant: Auto-listen via device STT (attempt ${_failedListenAttempts + 1})...');
+    debugPrint('VoiceAssistant: Auto-listen starting (attempt ${_failedListenAttempts + 1})...');
 
     // Explicitly stop TTS to release audio focus
     await _ttsService.stop();
+    debugPrint('VoiceAssistant: TTS stopped');
 
-    // Wait for TTS audio to fully stop
-    await Future.delayed(const Duration(milliseconds: 1000));
+    // Long delay — let Android fully release audio focus from TTS
+    // 5 seconds to ensure TTS speaker sound fully fades before mic opens
+    await Future.delayed(const Duration(seconds: 5));
     if (_stopped) { _isAutoListening = false; return; }
 
-    // Make sure STT is initialized
-    if (!_voiceService.isAvailable) {
-      debugPrint('VoiceAssistant: STT not available, re-initializing...');
-      await _voiceService.initialize();
-    }
+    // Start recording (WAV format)
+    debugPrint('VoiceAssistant: Starting recording...');
+    final started = await _geminiVoice.startRecording();
+    debugPrint('VoiceAssistant: Recording started: $started');
 
-    // Use device speech-to-text (reliable mic activation)
-    onStateChanged?.call(); // Show "Listening..." UI
-    debugPrint('VoiceAssistant: Calling _voiceService.listen()...');
-    final text = await _voiceService.listen();
-    debugPrint('VoiceAssistant: STT result: "$text", error: ${_voiceService.lastError}');
-
-    if (_stopped) { _isAutoListening = false; return; }
-    _isAutoListening = false;
-
-    if (text == null || text.trim().isEmpty) {
-      _failedListenAttempts++;
-      debugPrint('VoiceAssistant: STT returned empty (attempt $_failedListenAttempts)');
-      // Silently retry — don't spam "couldn't hear" messages
-      // Only show message on first failure
-      if (_failedListenAttempts == 1) {
-        _addBot(
-          'சொல்லுங்க, கேட்கிறேன்...',
-          sub: 'Listening... speak now.',
-        );
-      }
-      _setState(AssistantState.listening);
+    if (!started || _stopped) {
+      debugPrint('VoiceAssistant: Failed to start recording');
+      _isAutoListening = false;
+      // Retry after short delay
+      await Future.delayed(const Duration(seconds: 2));
+      if (!_stopped) _setState(AssistantState.listening);
       return;
     }
 
-    // Success — reset failed counter
-    _failedListenAttempts = 0;
-    debugPrint('VoiceAssistant: STT heard: "$text"');
+    onStateChanged?.call(); // Show "Listening..." UI
 
-    // Add user message and process
-    await processTextInput(text);
+    // Record for 8 seconds (enough for product name, avoids long echo tail)
+    await Future.delayed(const Duration(seconds: 8));
+    if (_stopped) {
+      if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
+      _isAutoListening = false;
+      return;
+    }
+
+    _isAutoListening = false;
+
+    // Process the recording
+    await stopAndProcess();
   }
 
   /// Stop recording and process result
@@ -219,21 +244,22 @@ class VoiceAssistantService {
 
       if (text == null || text.trim().isEmpty) {
         _failedListenAttempts++;
-        debugPrint('VoiceAssistant: Transcription empty (attempt $_failedListenAttempts/$_maxFailedAttempts)');
-        if (_failedListenAttempts >= _maxFailedAttempts) {
-          _addBot(
-            'குரல் வரல. Type செய்யுங்க.',
-            sub: 'Couldn\'t hear you. Please type the product name below.',
-          );
-        } else {
-          _addBot(
-            'குரல் வரல. மீண்டும் சொல்லுங்க.',
-            sub: 'Couldn\'t hear. Please say again.',
-          );
-        }
+        debugPrint('VoiceAssistant: Transcription empty (attempt $_failedListenAttempts)');
+        // Silently retry — just go back to listening, no spam messages
         _setState(AssistantState.listening);
         return;
       }
+
+      // ── Echo filter: skip if mic just picked up TTS speaker output ──
+      if (_isEcho(text)) {
+        debugPrint('VoiceAssistant: ECHO DETECTED — ignoring "$text" (matches TTS: "$_lastSpokenText")');
+        _lastSpokenText = ''; // Clear so next real speech isn't flagged
+        _setState(AssistantState.listening);
+        return;
+      }
+
+      // Clear TTS text now that we have real user speech
+      _lastSpokenText = '';
 
       // Success — reset failed counter
       _failedListenAttempts = 0;
@@ -597,13 +623,15 @@ class VoiceAssistantService {
   }
 
   /// Called when user TAPS a product card during awaitingChoice
-  void interruptWithChoice(int index) async {
+  Future<void> interruptWithChoice(int index) async {
     if (_pendingOptions == null) return;
     if (index < 0 || index >= _pendingOptions!.products.length) return;
 
-    // Stop any ongoing recording/TTS
+    // Cancel auto-listening and stop any ongoing recording/TTS
+    _isAutoListening = false;
     await _ttsService.stop();
     if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
+    await _voiceService.stopListening();
 
     final product = _pendingOptions!.products[index];
     _pendingOptions = null;
@@ -710,6 +738,7 @@ class VoiceAssistantService {
   }
 
   Future<void> _speak(String text) async {
+    _lastSpokenText = text;
     await _ttsService.speak(text);
     await _waitForTtsComplete();
   }
