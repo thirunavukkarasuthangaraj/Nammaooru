@@ -104,12 +104,12 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
           _recordingSeconds = 0;
         }
       }
-      // Update recording state from service
-      final nowRecording = _service.isRecordingManually;
-      if (nowRecording && !_isRecording) {
+      // Update recording state: show "listening" when STT or Gemini is recording
+      final nowListening = _service.isRecordingManually || _service.isAutoListening;
+      if (nowListening && !_isRecording) {
         _isRecording = true;
         _pulseController.repeat(reverse: true);
-      } else if (!nowRecording && _isRecording && _service.state != AssistantState.listening) {
+      } else if (!nowListening && _isRecording && _service.state != AssistantState.listening) {
         _isRecording = false;
         _pulseController.stop();
       }

@@ -107,6 +107,9 @@ class VoiceAssistantService {
   /// Whether auto-listen has exhausted its retry limit
   bool get isAutoListenExhausted => _failedListenAttempts >= _maxFailedAttempts;
 
+  /// Whether auto-listen is currently active (device STT listening)
+  bool get isAutoListening => _isAutoListening;
+
   /// Auto-listen: automatically start recording after TTS finishes
   bool _isAutoListening = false;
   int _failedListenAttempts = 0;
@@ -124,7 +127,9 @@ class VoiceAssistantService {
     return false;
   }
 
-  /// Auto-listen: start recording, wait for speech, then process
+  /// Auto-listen using device STT (speech_to_text).
+  /// Device STT activates mic reliably. Even if Tamil text is poor,
+  /// the AI search pipeline corrects it.
   Future<void> autoListenAndProcess() async {
     if (_stopped || _isAutoListening) return;
     if (_state != AssistantState.listening && _state != AssistantState.awaitingChoice) return;
@@ -136,37 +141,46 @@ class VoiceAssistantService {
     }
 
     _isAutoListening = true;
-    debugPrint('VoiceAssistant: Auto-listen starting (attempt ${_failedListenAttempts + 1})...');
+    debugPrint('VoiceAssistant: Auto-listen via device STT (attempt ${_failedListenAttempts + 1})...');
 
     // Explicitly stop TTS to release audio focus
     await _ttsService.stop();
 
-    // Wait for TTS audio to fully stop and audio focus to switch to mic
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Wait for TTS audio to fully stop
+    await Future.delayed(const Duration(milliseconds: 1000));
     if (_stopped) { _isAutoListening = false; return; }
 
-    // Start recording
-    final started = await _geminiVoice.startRecording();
-    if (!started || _stopped) {
-      debugPrint('VoiceAssistant: Auto-listen failed to start recording');
-      _isAutoListening = false;
-      return;
-    }
+    // Use device speech-to-text (reliable mic activation)
+    onStateChanged?.call(); // Show "Listening..." UI
+    final text = await _voiceService.listen();
 
-    onStateChanged?.call(); // Notify UI that recording started
-
-    // Record for up to 8 seconds (give user more time to speak)
-    await Future.delayed(const Duration(seconds: 8));
-    if (_stopped) {
-      if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
-      _isAutoListening = false;
-      return;
-    }
-
+    if (_stopped) { _isAutoListening = false; return; }
     _isAutoListening = false;
 
-    // Process the recording
-    await stopAndProcess();
+    if (text == null || text.trim().isEmpty) {
+      _failedListenAttempts++;
+      debugPrint('VoiceAssistant: STT returned empty (attempt $_failedListenAttempts/$_maxFailedAttempts)');
+      if (_failedListenAttempts >= _maxFailedAttempts) {
+        _addBot(
+          'குரல் வரல. Type செய்யுங்க.',
+          sub: 'Couldn\'t hear you. Please type the product name below.',
+        );
+      } else {
+        _addBot(
+          'குரல் வரல. மீண்டும் சொல்லுங்க.',
+          sub: 'Couldn\'t hear. Please say again.',
+        );
+      }
+      _setState(AssistantState.listening);
+      return;
+    }
+
+    // Success — reset failed counter
+    _failedListenAttempts = 0;
+    debugPrint('VoiceAssistant: STT heard: "$text"');
+
+    // Add user message and process
+    await processTextInput(text);
   }
 
   /// Stop recording and process result
