@@ -296,6 +296,18 @@ gemini:
     per-key-rpm: 15  # Requests per minute per key
     total-rpm: 60     # Total requests per minute (4 keys × 15)
 
+# OpenAI Configuration (Whisper for voice transcription)
+openai:
+  enabled: ${OPENAI_ENABLED:false}
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_WHISPER_MODEL:whisper-1}
+  api-url: ${OPENAI_API_URL:https://api.openai.com/v1/audio/transcriptions}
+
+# Voice transcription provider: "gemini" or "openai"
+voice:
+  transcription:
+    provider: ${VOICE_TRANSCRIPTION_PROVIDER:gemini}
+
 # Content Moderation (uses Gemini Vision API)
 content:
   moderation:

@@ -7,8 +7,10 @@ import com.shopmanagement.product.dto.MasterProductResponse;
 import com.shopmanagement.product.dto.VoiceSearchGroupedResponse;
 import com.shopmanagement.product.service.ProductAISearchService;
 import com.shopmanagement.service.GeminiSearchService;
+import com.shopmanagement.service.OpenAITranscriptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +31,11 @@ public class ProductAISearchController {
 
     private final ProductAISearchService productAISearchService;
     private final GeminiSearchService geminiSearchService;
+    private final OpenAITranscriptionService openAITranscriptionService;
     private final ObjectMapper objectMapper;
+
+    @Value("${voice.transcription.provider:gemini}")
+    private String transcriptionProvider;
 
     /**
      * Search products using AI (Gemini) based on natural language query
@@ -230,42 +237,70 @@ public class ProductAISearchController {
     }
 
     /**
-     * Voice audio transcription — send audio clip to Gemini for transcription.
-     * Gemini understands Tamil, English, Tanglish — much better than device STT.
-     * Cost: ~$0.0001 per 5-sec clip (just transcription, no product catalog).
+     * Voice audio transcription — send audio clip to AI for transcription.
+     * Supports both Gemini and OpenAI Whisper (configurable via VOICE_TRANSCRIPTION_PROVIDER).
+     * Gemini cost: ~$0.0001 per 5-sec clip. OpenAI Whisper cost: ~$0.006/minute.
      */
     @PostMapping("/voice-audio")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribeVoiceAudio(
             @RequestParam("audio") MultipartFile audio
     ) {
-        log.info("Voice audio transcription: size={}KB, type={}", audio.getSize() / 1024, audio.getContentType());
+        log.info("Voice audio transcription: size={}KB, type={}, provider={}",
+                audio.getSize() / 1024, audio.getContentType(), transcriptionProvider);
 
         try {
             byte[] audioBytes = audio.getBytes();
             String mimeType = audio.getContentType() != null ? audio.getContentType() : "audio/wav";
+            String transcribed;
+            String usedProvider;
 
-            String prompt = "Listen to this audio clip. The person is speaking in Tamil, English, or Tanglish (mixed). " +
-                    "They are ordering grocery/household products from a shop. " +
-                    "Transcribe ONLY the product names and quantities they mention. " +
-                    "Return a simple comma-separated list of product names in English. " +
-                    "Examples: \"onion, tomato, rice 5kg\" or \"garlic, coconut oil\". " +
-                    "If you hear Tamil words, translate to English product names. " +
-                    "If unclear, give your best guess. Return ONLY product names, nothing else.";
+            // Use OpenAI Whisper if configured and enabled
+            if ("openai".equalsIgnoreCase(transcriptionProvider) && openAITranscriptionService.isEnabled()) {
+                log.info("Using OpenAI Whisper for transcription");
+                transcribed = openAITranscriptionService.transcribeAudio(audioBytes, mimeType);
+                usedProvider = "openai";
 
-            String aiResponse = geminiSearchService.callGeminiVisionAPI(prompt, audioBytes, mimeType);
+                // Fallback to Gemini if OpenAI fails
+                if (transcribed == null || transcribed.isBlank()) {
+                    log.warn("OpenAI Whisper returned empty, falling back to Gemini");
+                    transcribed = transcribeWithGemini(audioBytes, mimeType);
+                    usedProvider = "gemini-fallback";
+                }
+            } else {
+                // Default: use Gemini
+                transcribed = transcribeWithGemini(audioBytes, mimeType);
+                usedProvider = "gemini";
+            }
 
-            String transcribed = aiResponse != null ? aiResponse.trim() : "";
-            log.info("Voice audio transcription result: '{}'", transcribed);
+            transcribed = transcribed != null ? transcribed.trim() : "";
+            log.info("Voice audio transcription result ({}): '{}'", usedProvider, transcribed);
 
-            return ResponseEntity.ok(ApiResponse.success(
-                    Map.of("transcription", transcribed),
-                    "Audio transcribed successfully"
-            ));
+            Map<String, Object> result = new HashMap<>();
+            result.put("transcription", transcribed);
+            result.put("provider", usedProvider);
+
+            return ResponseEntity.ok(ApiResponse.success(result, "Audio transcribed successfully"));
 
         } catch (Exception e) {
             log.error("Error transcribing voice audio: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error("Transcription failed: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Transcribe audio using Gemini Vision API
+     */
+    private String transcribeWithGemini(byte[] audioBytes, String mimeType) {
+        String prompt = "Listen to this audio clip. The person is speaking in Tamil, English, or Tanglish (mixed). " +
+                "They are ordering grocery/household products from a shop. " +
+                "Transcribe ONLY the product names and quantities they mention. " +
+                "Return a simple comma-separated list of product names in English. " +
+                "Examples: \"onion, tomato, rice 5kg\" or \"garlic, coconut oil\". " +
+                "If you hear Tamil words, translate to English product names. " +
+                "If unclear, give your best guess. Return ONLY product names, nothing else.";
+
+        String aiResponse = geminiSearchService.callGeminiVisionAPI(prompt, audioBytes, mimeType);
+        return aiResponse != null ? aiResponse.trim() : "";
     }
 
     /**
