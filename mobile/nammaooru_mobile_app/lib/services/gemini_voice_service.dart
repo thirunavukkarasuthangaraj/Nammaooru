@@ -78,6 +78,14 @@ class GeminiVoiceService {
       }
 
       final fileSize = await file.length();
+      debugPrint('GeminiVoice: Audio file size: ${fileSize} bytes (${fileSize ~/ 1024}KB)');
+
+      // Skip if file is too small (likely empty/no speech captured)
+      if (fileSize < 3000) {
+        debugPrint('GeminiVoice: Audio file too small (${fileSize}B), likely no speech captured');
+        return null;
+      }
+
       debugPrint('GeminiVoice: Sending audio (${fileSize ~/ 1024}KB) to backend...');
 
       final uri = Uri.parse('${EnvConfig.fullApiUrl}/v1/products/search/voice-audio');

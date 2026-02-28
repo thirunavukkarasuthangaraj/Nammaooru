@@ -116,7 +116,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
       // Auto-listen: when state becomes listening/awaitingChoice, auto-start recording
       if (_service.state == AssistantState.listening ||
           _service.state == AssistantState.awaitingChoice) {
-        if (!_service.isRecordingManually) {
+        if (!_service.isRecordingManually && !_service.isAutoListenExhausted) {
           Future.microtask(() => _service.autoListenAndProcess());
         }
       }
@@ -1123,7 +1123,34 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
     switch (state) {
       case AssistantState.listening:
-        // Auto-listening — preparing to record
+        // Show different indicator based on whether auto-listen is still active
+        if (_service.isAutoListenExhausted) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.withOpacity(0.15),
+                    ),
+                    child: Icon(Icons.keyboard, color: Colors.grey[600], size: 28),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Type product name below',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text('கீழே product பெயர் type செய்யுங்க',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                ],
+              ),
+            ),
+          );
+        }
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Center(
