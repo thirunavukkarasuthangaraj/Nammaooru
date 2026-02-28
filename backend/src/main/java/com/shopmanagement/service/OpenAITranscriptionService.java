@@ -109,15 +109,12 @@ public class OpenAITranscriptionService {
         baos.write("Content-Disposition: form-data; name=\"model\"\r\n\r\n".getBytes());
         baos.write((openAIConfig.getModel() + "\r\n").getBytes());
 
-        // Add language hint (optional — helps Whisper focus on Tamil)
-        baos.write(("--" + boundary + "\r\n").getBytes());
-        baos.write("Content-Disposition: form-data; name=\"language\"\r\n\r\n".getBytes());
-        baos.write("ta\r\n".getBytes());
+        // No language hint — let Whisper auto-detect (user speaks Tamil + English mix)
 
         // Add prompt hint to improve accuracy
         baos.write(("--" + boundary + "\r\n").getBytes());
         baos.write("Content-Disposition: form-data; name=\"prompt\"\r\n\r\n".getBytes());
-        baos.write("This is a grocery shopping order in Tamil or Tanglish. Common items: onion, tomato, rice, garlic, coconut oil, dal, sugar, salt, milk.\r\n".getBytes());
+        baos.write(("This is a grocery shopping order in Tamil or Tanglish. Common items: onion, tomato, rice, garlic, coconut oil, dal, sugar, salt, milk." + "\r\n").getBytes());
 
         // Add audio file
         baos.write(("--" + boundary + "\r\n").getBytes());

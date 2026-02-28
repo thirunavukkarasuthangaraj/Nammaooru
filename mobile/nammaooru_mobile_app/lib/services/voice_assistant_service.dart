@@ -71,44 +71,6 @@ class VoiceAssistantService {
   String? shopName;
   int _itemsAddedThisSession = 0;
 
-  // Track last TTS text to filter echo (mic picking up speaker)
-  String _lastSpokenText = '';
-
-  /// Check if transcribed text is just echo of the TTS speaker output.
-  /// Compares word overlap — if >40% of transcribed words appear in last TTS text, it's echo.
-  bool _isEcho(String transcription) {
-    if (_lastSpokenText.isEmpty) return false;
-
-    final ttsWords = _lastSpokenText.toLowerCase()
-        .replaceAll(RegExp(r'[₹,.\?!।]'), ' ')
-        .split(RegExp(r'\s+'))
-        .where((w) => w.length > 1)
-        .toSet();
-
-    final spokenWords = transcription.toLowerCase()
-        .replaceAll(RegExp(r'[₹,.\?!।]'), ' ')
-        .split(RegExp(r'\s+'))
-        .where((w) => w.length > 1)
-        .toList();
-
-    if (spokenWords.isEmpty || ttsWords.isEmpty) return false;
-
-    int matchCount = 0;
-    for (final word in spokenWords) {
-      // Exact match or substring match (handles partial STT recognition)
-      if (ttsWords.contains(word) ||
-          ttsWords.any((tw) => tw.contains(word) || word.contains(tw))) {
-        matchCount++;
-      }
-    }
-
-    final overlapRatio = matchCount / spokenWords.length;
-    debugPrint('VoiceAssistant: Echo check — $matchCount/${spokenWords.length} words match TTS (${(overlapRatio * 100).toInt()}%)');
-
-    // If more than 40% overlap, treat as echo
-    return overlapRatio > 0.4;
-  }
-
   // Local product cache — loaded once, searched locally (₹0, no Gemini)
   List<Map<String, dynamic>> _cachedProducts = [];
   bool _productsLoaded = false;
@@ -178,9 +140,8 @@ class VoiceAssistantService {
     await _ttsService.stop();
     debugPrint('VoiceAssistant: TTS stopped');
 
-    // Long delay — let Android fully release audio focus from TTS
-    // 5 seconds to ensure TTS speaker sound fully fades before mic opens
-    await Future.delayed(const Duration(seconds: 5));
+    // Delay — let Android release audio focus from TTS
+    await Future.delayed(const Duration(seconds: 3));
     if (_stopped) { _isAutoListening = false; return; }
 
     // Start recording (WAV format)
@@ -199,8 +160,8 @@ class VoiceAssistantService {
 
     onStateChanged?.call(); // Show "Listening..." UI
 
-    // Record for 8 seconds (enough for product name, avoids long echo tail)
-    await Future.delayed(const Duration(seconds: 8));
+    // Record for 10 seconds
+    await Future.delayed(const Duration(seconds: 10));
     if (_stopped) {
       if (_geminiVoice.isRecording) await _geminiVoice.stopRecording();
       _isAutoListening = false;
@@ -249,17 +210,6 @@ class VoiceAssistantService {
         _setState(AssistantState.listening);
         return;
       }
-
-      // ── Echo filter: skip if mic just picked up TTS speaker output ──
-      if (_isEcho(text)) {
-        debugPrint('VoiceAssistant: ECHO DETECTED — ignoring "$text" (matches TTS: "$_lastSpokenText")');
-        _lastSpokenText = ''; // Clear so next real speech isn't flagged
-        _setState(AssistantState.listening);
-        return;
-      }
-
-      // Clear TTS text now that we have real user speech
-      _lastSpokenText = '';
 
       // Success — reset failed counter
       _failedListenAttempts = 0;
@@ -738,7 +688,6 @@ class VoiceAssistantService {
   }
 
   Future<void> _speak(String text) async {
-    _lastSpokenText = text;
     await _ttsService.speak(text);
     await _waitForTtsComplete();
   }
