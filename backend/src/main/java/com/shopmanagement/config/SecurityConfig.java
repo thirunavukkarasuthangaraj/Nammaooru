@@ -1,7 +1,11 @@
 package com.shopmanagement.config;
 
+import com.shopmanagement.client.MicroserviceUserDetailsService;
+import com.shopmanagement.client.UserServiceClient;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +32,7 @@ import org.springframework.http.HttpMethod;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -35,9 +40,19 @@ import java.util.List;
 public class SecurityConfig {
 
     private final UserRepository userRepository;
+    private final MicroserviceProperties microserviceProperties;
+
+    @Autowired(required = false)
+    private UserServiceClient userServiceClient;
 
     @Bean
     public UserDetailsService userDetailsService() {
+        if (microserviceProperties.isEnabled() && userServiceClient != null) {
+            log.info(">>> Microservice mode ENABLED: loading users from user-service at {}",
+                    microserviceProperties.getUrl());
+            return new MicroserviceUserDetailsService(userServiceClient);
+        }
+        log.info(">>> Microservice mode DISABLED: loading users from local database");
         return username -> userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
