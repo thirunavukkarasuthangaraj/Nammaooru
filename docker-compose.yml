@@ -86,23 +86,9 @@ services:
     labels:
       - "com.shop.service=backend"
 
-  # Angular Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    # REMOVED container_name to allow multiple instances
-    expose:
-      - "80"
-    ports:
-      - "8080-8085:80"
-    networks:
-      - shop-network
-    depends_on:
-      - backend
-    restart: unless-stopped
-    labels:
-      - "com.shop.service=frontend"
+  # Angular Frontend is NOT in Docker
+  # CI/CD builds with npm and deploys static files to /var/www/html via symlinks
+  # Host Nginx serves them directly (faster, saves ~100MB RAM)
 
 networks:
   shop-network:
