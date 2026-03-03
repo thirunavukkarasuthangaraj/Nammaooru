@@ -1,5 +1,8 @@
 package com.shopmanagement.service;
 
+import com.shopmanagement.client.UserBasicDTO;
+import com.shopmanagement.client.UserServiceClient;
+import com.shopmanagement.config.MicroserviceProperties;
 import com.shopmanagement.dto.auth.AuthRequest;
 import com.shopmanagement.dto.auth.AuthResponse;
 import com.shopmanagement.dto.auth.RegisterRequest;
@@ -9,6 +12,7 @@ import com.shopmanagement.exception.AuthenticationFailedException;
 import com.shopmanagement.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -26,7 +31,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    
+    private final MicroserviceProperties microserviceProperties;
+
+    @Autowired(required = false)
+    private UserServiceClient userServiceClient;
+
     @Autowired
     private EmailService emailService;
 
@@ -168,7 +177,13 @@ public class AuthService {
         // Normalize identifier (trim and lowercase for email comparison)
         loginIdentifier = loginIdentifier.trim();
 
-        // Find user by email or mobile number
+        // Microservice mode: delegate login to user-service
+        if (microserviceProperties.isEnabled() && userServiceClient != null) {
+            log.info("Microservice login: looking up user by identifier '{}'", loginIdentifier);
+            return authenticateViaMicroservice(loginIdentifier, request.getPassword());
+        }
+
+        // Local mode: find user by email or mobile number from local DB
         User user;
 
         // Check if identifier is a mobile number (contains only digits and optional +)
@@ -209,6 +224,49 @@ public class AuthService {
                 .isTemporaryPassword(user.getIsTemporaryPassword())
                 .profileImageUrl(user.getProfileImageUrl())
                 .build();
+    }
+
+    /**
+     * Authenticate by calling the user-service's own login endpoint.
+     * The user-service handles password verification and returns a JWT token.
+     */
+    private AuthResponse authenticateViaMicroservice(String identifier, String password) {
+        try {
+            String url = microserviceProperties.getUrl() + "/api/auth/login";
+            log.info("Calling user-service login: POST {}", url);
+
+            Map<String, String> loginRequest = new HashMap<>();
+            loginRequest.put("email", identifier);
+            loginRequest.put("password", password);
+
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(url, loginRequest, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map body = response.getBody();
+                log.info("User-service login successful for '{}'", identifier);
+                return AuthResponse.builder()
+                        .accessToken((String) body.get("accessToken"))
+                        .tokenType("Bearer")
+                        .userId(body.get("userId") != null ? Long.valueOf(body.get("userId").toString()) : null)
+                        .username((String) body.get("username"))
+                        .email((String) body.get("email"))
+                        .role((String) body.get("role"))
+                        .passwordChangeRequired((Boolean) body.get("passwordChangeRequired"))
+                        .isTemporaryPassword((Boolean) body.get("isTemporaryPassword"))
+                        .profileImageUrl((String) body.get("profileImageUrl"))
+                        .build();
+            }
+            throw new AuthenticationFailedException("Invalid username or password");
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("User-service login failed: {}", e.getMessage());
+            throw new AuthenticationFailedException("Invalid username or password");
+        } catch (AuthenticationFailedException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error calling user-service login: {}", e.getMessage());
+            throw new AuthenticationFailedException("Authentication service unavailable");
+        }
     }
     
     public void changePassword(ChangePasswordRequest request, String username) {
