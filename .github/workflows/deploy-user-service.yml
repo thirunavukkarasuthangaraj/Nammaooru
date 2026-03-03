@@ -1,0 +1,83 @@
+name: Deploy User Service
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'user-service/**'
+      - '!user-service/**.md'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy User Service
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Copy user-service code to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.USER_SERVICE_HOST }}
+        username: ${{ secrets.USER_SERVICE_USER }}
+        password: ${{ secrets.USER_SERVICE_PASSWORD }}
+        source: "user-service/"
+        target: "/opt/"
+        strip_components: 0
+        overwrite: true
+
+    - name: Build and deploy on server
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.USER_SERVICE_HOST }}
+        username: ${{ secrets.USER_SERVICE_USER }}
+        password: ${{ secrets.USER_SERVICE_PASSWORD }}
+        command_timeout: 15m
+        script: |
+          echo "==============================="
+          echo "  Deploying User Service"
+          echo "==============================="
+
+          cd /opt/user-service
+
+          echo "Building Docker image..."
+          docker build --no-cache -t user-service .
+
+          echo "Stopping old container..."
+          docker rm -f user-service 2>/dev/null || true
+
+          echo "Starting new container..."
+          docker run -d \
+            --name user-service \
+            --network host \
+            --env-file /opt/user-service/.env \
+            -m 512m \
+            -e JAVA_OPTS="-Xms128m -Xmx384m" \
+            --restart unless-stopped \
+            user-service
+
+          echo "Waiting for startup..."
+          sleep 15
+
+          echo "Health check..."
+          RETRY=0
+          while [ $RETRY -lt 6 ]; do
+            if curl -f -s http://localhost:8081/api/version > /dev/null 2>&1; then
+              echo "User Service is healthy!"
+              curl -s http://localhost:8081/api/version
+              echo ""
+              echo "==============================="
+              echo "  Deployment Complete!"
+              echo "==============================="
+              exit 0
+            fi
+            echo "Not ready yet, waiting 10s..."
+            sleep 10
+            RETRY=$((RETRY+1))
+          done
+
+          echo "Health check failed!"
+          docker logs --tail 50 user-service
+          exit 1
