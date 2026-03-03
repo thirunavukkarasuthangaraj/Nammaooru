@@ -321,4 +321,4 @@ content:
 microservice:
   user-service:
     enabled: ${MICROSERVICE_USER_ENABLED:false}
-    url: ${MICROSERVICE_USER_URL:https://user-api.nammaoorudelivary.in}
+    url: ${MICROSERVICE_USER_URL:http://46.225.224.191:8081}

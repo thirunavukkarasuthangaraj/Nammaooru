@@ -244,17 +244,24 @@ public class AuthService {
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map body = response.getBody();
+
+                // User-service wraps response in "data" object
+                Map data = (Map) body.get("data");
+                if (data == null) {
+                    throw new AuthenticationFailedException("Invalid response from user-service");
+                }
+
                 log.info("User-service login successful for '{}'", identifier);
                 return AuthResponse.builder()
-                        .accessToken((String) body.get("accessToken"))
+                        .accessToken((String) data.get("accessToken"))
                         .tokenType("Bearer")
-                        .userId(body.get("userId") != null ? Long.valueOf(body.get("userId").toString()) : null)
-                        .username((String) body.get("username"))
-                        .email((String) body.get("email"))
-                        .role((String) body.get("role"))
-                        .passwordChangeRequired((Boolean) body.get("passwordChangeRequired"))
-                        .isTemporaryPassword((Boolean) body.get("isTemporaryPassword"))
-                        .profileImageUrl((String) body.get("profileImageUrl"))
+                        .userId(data.get("userId") != null ? Long.valueOf(data.get("userId").toString()) : null)
+                        .username((String) data.get("username"))
+                        .email((String) data.get("email"))
+                        .role((String) data.get("role"))
+                        .passwordChangeRequired((Boolean) data.get("passwordChangeRequired"))
+                        .isTemporaryPassword((Boolean) data.get("isTemporaryPassword"))
+                        .profileImageUrl((String) data.get("profileImageUrl"))
                         .build();
             }
             throw new AuthenticationFailedException("Invalid username or password");
