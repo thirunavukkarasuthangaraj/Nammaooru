@@ -1,0 +1,133 @@
+server:
+  port: ${PORT:8081}
+  address: 0.0.0.0
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+spring:
+  application:
+    name: user-service
+  jackson:
+    time-zone: Asia/Kolkata
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/user_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:5}
+      minimum-idle: ${HIKARI_MIN_IDLE:2}
+      connection-timeout: 30000
+      idle-timeout: 600000
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          time_zone: Asia/Kolkata
+    open-in-view: false
+
+  mail:
+    host: ${MAIL_HOST:smtp.hostinger.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreplay@nammaoorudelivary.in}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: "*"
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:ERROR}
+    com.shopmanagement.userservice: ${LOG_LEVEL_APP:INFO}
+    org.springframework.security: ERROR
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{callingService}] %-5level %logger{36} - %msg%n"
+
+# Internal API Key for service-to-service authentication
+internal:
+  api:
+    key: ${INTERNAL_API_KEY:}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 31536000000
+
+# SMS Configuration
+sms:
+  enabled: ${SMS_ENABLED:true}
+  gateway:
+    url: https://control.msg91.com/api/v5/otp
+    api-key: ${MSG91_AUTH_KEY:}
+    sender-id: ${MSG91_SENDER_ID:NAMMAO}
+    provider: MSG91
+
+msg91:
+  auth:
+    key: ${MSG91_AUTH_KEY:}
+  sender:
+    id: ${MSG91_SENDER_ID:NAMMAO}
+  template:
+    otp: ${MSG91_OTP_TEMPLATE_ID:}
+    forgot-password: ${MSG91_FORGOT_PASSWORD_TEMPLATE_ID:}
+
+mobile:
+  otp:
+    expiry-minutes: 10
+    length: 6
+    max-attempts: 3
+    rate-limit-minutes: 2
+    max-requests-per-hour: 5
+
+email:
+  from: ${EMAIL_FROM_ADDRESS:noreplay@nammaoorudelivary.in}
+  from-name: ${EMAIL_FROM_NAME:NammaOoru Delivery}
+
+app:
+  frontend:
+    base-url: ${FRONTEND_BASE_URL:https://nammaoorudelivary.in}
+    auth:
+      login-url: ${FRONTEND_LOGIN_URL:https://nammaoorudelivary.in/auth/login}
+      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:https://nammaoorudelivary.in/auth/reset-password}
+    shop-owner:
+      dashboard-url: ${SHOP_OWNER_DASHBOARD_URL:https://nammaoorudelivary.in/shop-owner}
+    urls:
+      shops: ${SHOPS_URL:https://nammaoorudelivary.in/shops}
+      contact: ${CONTACT_URL:https://nammaoorudelivary.in/contact}
+      unsubscribe: ${UNSUBSCRIBE_URL:https://nammaoorudelivary.in/unsubscribe}

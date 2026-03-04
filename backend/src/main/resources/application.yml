@@ -83,7 +83,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents
+        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents,bulkheads,ratelimiters
       base-path: /actuator
   endpoint:
     health:
@@ -104,7 +104,7 @@ logging:
     org.springframework: ${LOG_LEVEL_SPRING:ERROR}
     org.springframework.boot: ${LOG_LEVEL_SPRING_BOOT:WARN}
   pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
   file:
     name: ${LOG_FILE_PATH:/var/log/shop-management/app.log}
     max-size: ${LOG_FILE_MAX_SIZE:10MB}
@@ -322,6 +322,7 @@ microservice:
   user-service:
     enabled: ${MICROSERVICE_USER_ENABLED:false}
     url: ${MICROSERVICE_USER_URL:http://46.225.224.191:8081}
+    api-key: ${MICROSERVICE_API_KEY:}
 
 # Resilience4j Configuration for Microservice Calls
 resilience4j:
@@ -357,3 +358,18 @@ resilience4j:
       userServiceLogin:
         timeout-duration: 5s              # Max 5 seconds per call
         cancel-running-future: true
+
+  # Bulkhead: limit concurrent calls to user-service (prevents overwhelming)
+  bulkhead:
+    instances:
+      userServiceLogin:
+        max-concurrent-calls: 10          # Max 10 parallel login calls
+        max-wait-duration: 500ms          # Wait 500ms if bulkhead full, then reject
+
+  # Rate Limiter: limit login requests per second (prevents brute force)
+  ratelimiter:
+    instances:
+      userServiceLogin:
+        limit-for-period: 50              # Max 50 calls per period
+        limit-refresh-period: 1s          # Period = 1 second
+        timeout-duration: 0s              # Don't wait, reject immediately if limit exceeded

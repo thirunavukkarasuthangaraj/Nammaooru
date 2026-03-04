@@ -1,9 +1,11 @@
 package com.shopmanagement.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -14,7 +16,10 @@ import java.io.File;
 import java.util.List;
 
 @Configuration
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
+
+    private final MicroserviceRequestInterceptor microserviceRequestInterceptor;
 
     /**
      * Increase max page size to support loading all products at once
@@ -32,7 +37,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(5000);
+        RestTemplate restTemplate = new RestTemplate(factory);
+        restTemplate.getInterceptors().add(microserviceRequestInterceptor);
+        return restTemplate;
     }
 
 // CORS is now handled by SecurityConfig.corsConfigurationSource()

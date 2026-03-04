@@ -11,4 +11,5 @@ public class MicroserviceProperties {
 
     private boolean enabled = false;
     private String url = "https://user-api.nammaoorudelivary.in";
+    private String apiKey = "";
 }

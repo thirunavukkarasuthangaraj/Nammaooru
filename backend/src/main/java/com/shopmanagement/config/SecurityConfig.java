@@ -1,7 +1,6 @@
 package com.shopmanagement.config;
 
 import com.shopmanagement.client.MicroserviceUserDetailsService;
-import com.shopmanagement.client.UserServiceClient;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,14 +42,14 @@ public class SecurityConfig {
     private final MicroserviceProperties microserviceProperties;
 
     @Autowired(required = false)
-    private UserServiceClient userServiceClient;
+    private MicroserviceUserDetailsService microserviceUserDetailsService;
 
     @Bean
     public UserDetailsService userDetailsService() {
-        if (microserviceProperties.isEnabled() && userServiceClient != null) {
-            log.info(">>> Microservice mode ENABLED: loading users from user-service at {}",
+        if (microserviceProperties.isEnabled() && microserviceUserDetailsService != null) {
+            log.info(">>> Microservice mode ENABLED: loading users from user-service at {} (with caching)",
                     microserviceProperties.getUrl());
-            return new MicroserviceUserDetailsService(userServiceClient);
+            return microserviceUserDetailsService;
         }
         log.info(">>> Microservice mode DISABLED: loading users from local database");
         return username -> userRepository.findByUsername(username)

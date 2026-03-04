@@ -11,7 +11,7 @@
     
     <groupId>com.shopmanagement</groupId>
     <artifactId>shop-management-backend</artifactId>
-    <version>1.0.264</version>
+    <version>1.0.265</version>
     <name>shop-management-backend</name>
     <description>Thiru Software System Backend</description>
     
@@ -132,7 +132,13 @@
             <version>3.0.0</version>
         </dependency>
 
-        <!-- Resilience4j for Circuit Breaker, Retry, Timeout -->
+        <!-- Caffeine Cache (high-performance in-memory cache with TTL support) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!-- Resilience4j for Circuit Breaker, Retry, Timeout, Bulkhead, Rate Limiter -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot3</artifactId>

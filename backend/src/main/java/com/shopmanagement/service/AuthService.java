@@ -8,17 +8,22 @@ import com.shopmanagement.dto.auth.AuthResponse;
 import com.shopmanagement.dto.auth.RegisterRequest;
 import com.shopmanagement.dto.auth.ChangePasswordRequest;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.event.LoginEvent;
 import com.shopmanagement.exception.AuthenticationFailedException;
 import com.shopmanagement.repository.UserRepository;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -34,6 +39,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final MicroserviceProperties microserviceProperties;
+    private final RestTemplate restTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired(required = false)
     private UserServiceClient userServiceClient;
@@ -231,12 +238,15 @@ public class AuthService {
     /**
      * Authenticate by calling the user-service's own login endpoint.
      * Protected by Resilience4j:
+     *   - Bulkhead: max 10 concurrent calls (prevents overwhelming user-service)
+     *   - RateLimiter: max 50 calls per second (prevents brute force)
      *   - CircuitBreaker: stops calling user-service if it's down (50% failure rate → OPEN)
      *   - Retry: retries up to 3 times on connection errors (not on wrong password)
      *
-     * Order of execution: Retry → CircuitBreaker → actual call
-     * (Retry wraps CircuitBreaker, so retries happen around the circuit breaker)
+     * Order of execution: Retry → CircuitBreaker → RateLimiter → Bulkhead → actual call
      */
+    @Bulkhead(name = "userServiceLogin")
+    @RateLimiter(name = "userServiceLogin")
     @CircuitBreaker(name = "userServiceLogin", fallbackMethod = "loginFallback")
     @Retry(name = "userServiceLogin")
     public AuthResponse authenticateViaMicroservice(String identifier, String password) {
@@ -246,13 +256,6 @@ public class AuthService {
         Map<String, String> loginRequest = new HashMap<>();
         loginRequest.put("email", identifier);
         loginRequest.put("password", password);
-
-        // Set timeout on RestTemplate (5s connect, 5s read)
-        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
-                new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(5000);
-        org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate(factory);
 
         try {
             org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(url, loginRequest, Map.class);
@@ -265,6 +268,10 @@ public class AuthService {
                 }
 
                 log.info("[Resilience4j] User-service login SUCCESS for '{}'", identifier);
+
+                // Publish login success event
+                eventPublisher.publishEvent(new LoginEvent(this, identifier, LoginEvent.Result.SUCCESS, "microservice", null));
+
                 return AuthResponse.builder()
                         .accessToken((String) data.get("accessToken"))
                         .tokenType("Bearer")
@@ -277,10 +284,13 @@ public class AuthService {
                         .profileImageUrl((String) data.get("profileImageUrl"))
                         .build();
             }
+            // Publish login failure event
+            eventPublisher.publishEvent(new LoginEvent(this, identifier, LoginEvent.Result.FAILURE, "microservice", "Invalid response from user-service"));
             throw new AuthenticationFailedException("Invalid username or password");
         } catch (org.springframework.web.client.HttpClientErrorException e) {
             // 401/403 = wrong password, don't retry this
             log.warn("[Resilience4j] User-service returned client error: {}", e.getStatusCode());
+            eventPublisher.publishEvent(new LoginEvent(this, identifier, LoginEvent.Result.FAILURE, "microservice", "Client error: " + e.getStatusCode()));
             throw new AuthenticationFailedException("Invalid username or password");
         }
         // Other exceptions (ConnectException, SocketTimeout, etc.) bubble up for Retry to catch
@@ -315,6 +325,9 @@ public class AuthService {
                 var jwtToken = jwtService.generateToken(user);
                 log.info("[Resilience4j] LOCAL DB FALLBACK SUCCESS for '{}'", identifier);
 
+                // Publish fallback login event
+                eventPublisher.publishEvent(new LoginEvent(this, identifier, LoginEvent.Result.FALLBACK, "local-db", null));
+
                 return AuthResponse.builder()
                         .accessToken(jwtToken)
                         .tokenType("Bearer")
@@ -331,6 +344,7 @@ public class AuthService {
             log.error("[Resilience4j] Local DB fallback also failed: {}", e.getMessage());
         }
 
+        eventPublisher.publishEvent(new LoginEvent(this, identifier, LoginEvent.Result.FAILURE, "fallback", throwable.getMessage()));
         throw new AuthenticationFailedException(
                 "Authentication service unavailable. Circuit breaker is OPEN. Please try again later.");
     }
