@@ -11,7 +11,7 @@
     
     <groupId>com.shopmanagement</groupId>
     <artifactId>shop-management-backend</artifactId>
-    <version>1.0.263</version>
+    <version>1.0.264</version>
     <name>shop-management-backend</name>
     <description>Thiru Software System Backend</description>
     
@@ -130,6 +130,17 @@
             <groupId>io.github.cdimascio</groupId>
             <artifactId>dotenv-java</artifactId>
             <version>3.0.0</version>
+        </dependency>
+
+        <!-- Resilience4j for Circuit Breaker, Retry, Timeout -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
         <!-- Google Generative AI (Gemini) -->

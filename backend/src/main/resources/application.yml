@@ -83,7 +83,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents
       base-path: /actuator
   endpoint:
     health:
@@ -322,3 +322,38 @@ microservice:
   user-service:
     enabled: ${MICROSERVICE_USER_ENABLED:false}
     url: ${MICROSERVICE_USER_URL:http://46.225.224.191:8081}
+
+# Resilience4j Configuration for Microservice Calls
+resilience4j:
+  # Circuit Breaker: stops calling user-service when it's down
+  circuitbreaker:
+    instances:
+      userServiceLogin:
+        register-health-indicator: true
+        sliding-window-size: 10           # Track last 10 calls
+        minimum-number-of-calls: 5        # Need at least 5 calls before opening circuit
+        failure-rate-threshold: 50        # Open circuit if 50% calls fail
+        wait-duration-in-open-state: 30s  # Wait 30s before trying again (HALF_OPEN)
+        permitted-number-of-calls-in-half-open-state: 3  # Try 3 calls in half-open
+        sliding-window-type: COUNT_BASED
+        automatic-transition-from-open-to-half-open-enabled: true
+
+  # Retry: retry failed calls before giving up
+  retry:
+    instances:
+      userServiceLogin:
+        max-attempts: 3                   # Try 3 times total
+        wait-duration: 500ms              # Wait 500ms between retries
+        retry-exceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.ResourceAccessException
+        ignore-exceptions:
+          - com.shopmanagement.exception.AuthenticationFailedException
+
+  # Timeout: don't wait forever for user-service response
+  timelimiter:
+    instances:
+      userServiceLogin:
+        timeout-duration: 5s              # Max 5 seconds per call
+        cancel-running-future: true

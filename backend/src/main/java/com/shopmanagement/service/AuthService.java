@@ -10,6 +10,8 @@ import com.shopmanagement.dto.auth.ChangePasswordRequest;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.exception.AuthenticationFailedException;
 import com.shopmanagement.repository.UserRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -228,30 +230,41 @@ public class AuthService {
 
     /**
      * Authenticate by calling the user-service's own login endpoint.
-     * The user-service handles password verification and returns a JWT token.
+     * Protected by Resilience4j:
+     *   - CircuitBreaker: stops calling user-service if it's down (50% failure rate → OPEN)
+     *   - Retry: retries up to 3 times on connection errors (not on wrong password)
+     *
+     * Order of execution: Retry → CircuitBreaker → actual call
+     * (Retry wraps CircuitBreaker, so retries happen around the circuit breaker)
      */
-    private AuthResponse authenticateViaMicroservice(String identifier, String password) {
+    @CircuitBreaker(name = "userServiceLogin", fallbackMethod = "loginFallback")
+    @Retry(name = "userServiceLogin")
+    public AuthResponse authenticateViaMicroservice(String identifier, String password) {
+        String url = microserviceProperties.getUrl() + "/api/auth/login";
+        log.info("[Resilience4j] Calling user-service login: POST {}", url);
+
+        Map<String, String> loginRequest = new HashMap<>();
+        loginRequest.put("email", identifier);
+        loginRequest.put("password", password);
+
+        // Set timeout on RestTemplate (5s connect, 5s read)
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(5000);
+        org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate(factory);
+
         try {
-            String url = microserviceProperties.getUrl() + "/api/auth/login";
-            log.info("Calling user-service login: POST {}", url);
-
-            Map<String, String> loginRequest = new HashMap<>();
-            loginRequest.put("email", identifier);
-            loginRequest.put("password", password);
-
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
             org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(url, loginRequest, Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map body = response.getBody();
-
-                // User-service wraps response in "data" object
                 Map data = (Map) body.get("data");
                 if (data == null) {
                     throw new AuthenticationFailedException("Invalid response from user-service");
                 }
 
-                log.info("User-service login successful for '{}'", identifier);
+                log.info("[Resilience4j] User-service login SUCCESS for '{}'", identifier);
                 return AuthResponse.builder()
                         .accessToken((String) data.get("accessToken"))
                         .tokenType("Bearer")
@@ -266,14 +279,60 @@ public class AuthService {
             }
             throw new AuthenticationFailedException("Invalid username or password");
         } catch (org.springframework.web.client.HttpClientErrorException e) {
-            log.error("User-service login failed: {}", e.getMessage());
+            // 401/403 = wrong password, don't retry this
+            log.warn("[Resilience4j] User-service returned client error: {}", e.getStatusCode());
             throw new AuthenticationFailedException("Invalid username or password");
-        } catch (AuthenticationFailedException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Error calling user-service login: {}", e.getMessage());
-            throw new AuthenticationFailedException("Authentication service unavailable");
         }
+        // Other exceptions (ConnectException, SocketTimeout, etc.) bubble up for Retry to catch
+    }
+
+    /**
+     * Fallback when Circuit Breaker is OPEN (user-service is down).
+     * Tries to authenticate against local database as backup.
+     */
+    private AuthResponse loginFallback(String identifier, String password, Throwable throwable) {
+        log.error("[Resilience4j] CIRCUIT BREAKER OPEN - user-service is down! Error: {}. Trying local DB fallback...",
+                throwable.getMessage());
+
+        // If the original error was wrong password, don't fallback - just throw
+        if (throwable instanceof AuthenticationFailedException) {
+            throw (AuthenticationFailedException) throwable;
+        }
+
+        // Try local database as fallback
+        try {
+            User user;
+            if (identifier.matches("^[+]?[0-9]+$")) {
+                user = userRepository.findByMobileNumber(identifier).orElse(null);
+            } else {
+                user = userRepository.findByEmail(identifier.toLowerCase()).orElse(null);
+            }
+
+            if (user != null) {
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(user.getUsername(), password));
+
+                var jwtToken = jwtService.generateToken(user);
+                log.info("[Resilience4j] LOCAL DB FALLBACK SUCCESS for '{}'", identifier);
+
+                return AuthResponse.builder()
+                        .accessToken(jwtToken)
+                        .tokenType("Bearer")
+                        .userId(user.getId())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .role(user.getRole().name())
+                        .passwordChangeRequired(user.getPasswordChangeRequired())
+                        .isTemporaryPassword(user.getIsTemporaryPassword())
+                        .profileImageUrl(user.getProfileImageUrl())
+                        .build();
+            }
+        } catch (Exception e) {
+            log.error("[Resilience4j] Local DB fallback also failed: {}", e.getMessage());
+        }
+
+        throw new AuthenticationFailedException(
+                "Authentication service unavailable. Circuit breaker is OPEN. Please try again later.");
     }
     
     public void changePassword(ChangePasswordRequest request, String username) {
