@@ -63,5 +63,3 @@ documentation/*.md
 uploads/
 fix_all_product_images.sql
 
-# Learning files (contains server-specific details)
-learning/
