@@ -1,0 +1,89 @@
+name: Deploy User Service to Azure (POC)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'user-service/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Azure VM
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Copy user-service code to Azure VM
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.AZURE_HOST }}
+        username: ${{ secrets.AZURE_USER }}
+        password: ${{ secrets.AZURE_PASSWORD }}
+        source: "user-service/"
+        target: "/opt/"
+        strip_components: 0
+        overwrite: true
+
+    - name: Build and deploy on Azure VM
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.AZURE_HOST }}
+        username: ${{ secrets.AZURE_USER }}
+        password: ${{ secrets.AZURE_PASSWORD }}
+        command_timeout: 15m
+        script: |
+          echo "════════════════════════════════════════════════════════════"
+          echo "   🚀 DEPLOYING USER SERVICE TO AZURE"
+          echo "════════════════════════════════════════════════════════════"
+
+          cd /opt/user-service
+
+          # Build Docker image
+          echo "Building Docker image..."
+          sudo docker build --no-cache -t user-service .
+
+          # Stop old container
+          echo "Stopping old container..."
+          sudo docker rm -f user-service || true
+
+          # Run new container
+          echo "Starting new container..."
+          sudo docker run -d \
+            --name user-service \
+            --network host \
+            --env-file /opt/user-service/.env \
+            -m 512m \
+            -e JAVA_OPTS="-Xms128m -Xmx384m" \
+            user-service
+
+          echo "Waiting for app to start..."
+          sleep 20
+
+          # Health check
+          RETRY_COUNT=0
+          MAX_RETRIES=6
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Health check attempt $((RETRY_COUNT+1))/$MAX_RETRIES..."
+
+            if curl -f -s http://localhost:8081/actuator/health > /dev/null 2>&1; then
+              echo ""
+              echo "════════════════════════════════════════════════════════════"
+              echo "   ✅ DEPLOYMENT SUCCESSFUL!"
+              echo "════════════════════════════════════════════════════════════"
+              curl -s http://localhost:8081/actuator/health
+              echo ""
+              echo "🕐 Deployed at: $(date)"
+              exit 0
+            fi
+
+            sleep 10
+            RETRY_COUNT=$((RETRY_COUNT+1))
+          done
+
+          echo "❌ Health check failed!"
+          sudo docker logs user-service --tail 50
+          exit 1
