@@ -3,6 +3,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/localization/language_provider.dart';
+import '../../../core/services/storage_service.dart';
 import '../services/post_subscription_service.dart';
 
 /// Handles monthly subscription flow using Razorpay.
@@ -76,6 +77,10 @@ class PostSubscriptionHandler {
       return;
     }
 
+    // Get user phone number from local storage
+    final user = await StorageService.getUserData();
+    final userPhone = user?.phoneNumber ?? '';
+
     // Open Razorpay subscription checkout
     _razorpay = Razorpay();
     _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -90,6 +95,9 @@ class PostSubscriptionHandler {
         'Monthly subscription for your post',
         'உங்கள் விளம்பரத்திற்கான மாதாந்திர சந்தா',
       ),
+      'prefill': {
+        'contact': userPhone,
+      },
       'theme': {'color': '#2E7D32'},
     };
 

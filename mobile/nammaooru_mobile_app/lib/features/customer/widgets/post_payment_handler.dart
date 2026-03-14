@@ -3,6 +3,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/localization/language_provider.dart';
+import '../../../core/services/storage_service.dart';
 import '../services/post_payment_service.dart';
 
 class PostPaymentHandler {
@@ -333,6 +334,10 @@ class PostPaymentHandler {
     _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
 
+    // Get user phone number from local storage
+    final user = await StorageService.getUserData();
+    final userPhone = user?.phoneNumber ?? '';
+
     var options = {
       'key': keyId,
       'amount': amount,
@@ -340,6 +345,9 @@ class PostPaymentHandler {
       'name': 'NammaOoru',
       'description': includeBanner ? 'Banner Post Payment' : 'Post Payment',
       'order_id': orderId,
+      'prefill': {
+        'contact': userPhone,
+      },
       'theme': {'color': '#1565C0'},
     };
 
