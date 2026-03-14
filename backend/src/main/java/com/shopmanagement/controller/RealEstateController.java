@@ -74,7 +74,10 @@ public class RealEstateController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String propertyType,
             @RequestParam(required = false) String listingType,
-            @RequestParam(required = false) String location) {
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double radius) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<RealEstatePost> posts;
@@ -97,7 +100,7 @@ public class RealEstateController {
                     } catch (IllegalArgumentException ignored) {}
                 }
 
-                posts = realEstateService.getApprovedPostsFiltered(propType, listType, pageable);
+                posts = realEstateService.getApprovedPostsFiltered(propType, listType, pageable, lat, lng, radius);
             }
 
             return ResponseUtil.paginated(posts);

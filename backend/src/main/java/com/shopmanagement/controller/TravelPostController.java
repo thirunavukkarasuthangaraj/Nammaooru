@@ -68,7 +68,7 @@ public class TravelPostController {
             @RequestParam(required = false) String vehicleType,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "50") double radius,
+            @RequestParam(required = false) Double radius,
             @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);

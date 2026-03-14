@@ -39,15 +39,15 @@ public interface RentalPostRepository extends JpaRepository<RentalPost, Long> {
 
     Page<RentalPost> findByStatusAndIsPaidTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
-    // Haversine nearby queries - posts with NULL lat/lng are always included
-    @Query(value = "SELECT * FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND (" +
-           "rp.latitude IS NULL OR rp.longitude IS NULL OR (" +
+    // Haversine nearby queries - only posts with valid coordinates within radius
+    @Query(value = "SELECT * FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
            "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
            "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ") ORDER BY rp.created_at DESC LIMIT :limit OFFSET :offset",
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
+           "ORDER BY rp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<RentalPost> findNearbyPosts(@Param("statuses") String[] statuses,
                                      @Param("lat") double lat,
@@ -56,14 +56,13 @@ public interface RentalPostRepository extends JpaRepository<RentalPost, Long> {
                                      @Param("limit") int limit,
                                      @Param("offset") int offset);
 
-    @Query(value = "SELECT COUNT(*) FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND (" +
-           "rp.latitude IS NULL OR rp.longitude IS NULL OR (" +
+    @Query(value = "SELECT COUNT(*) FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
            "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
            "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ")",
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)",
            nativeQuery = true)
     long countNearbyPosts(@Param("statuses") String[] statuses,
                           @Param("lat") double lat,
@@ -71,14 +70,14 @@ public interface RentalPostRepository extends JpaRepository<RentalPost, Long> {
                           @Param("radiusKm") double radiusKm);
 
     @Query(value = "SELECT * FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND " +
-           "rp.category = CAST(:category AS text) AND (" +
-           "rp.latitude IS NULL OR rp.longitude IS NULL OR (" +
+           "rp.category = CAST(:category AS text) AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
            "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
            "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ") ORDER BY rp.created_at DESC LIMIT :limit OFFSET :offset",
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
+           "ORDER BY rp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<RentalPost> findNearbyPostsByCategory(@Param("statuses") String[] statuses,
                                                @Param("category") String category,
@@ -89,14 +88,13 @@ public interface RentalPostRepository extends JpaRepository<RentalPost, Long> {
                                                @Param("offset") int offset);
 
     @Query(value = "SELECT COUNT(*) FROM rental_posts rp WHERE rp.status = ANY(CAST(:statuses AS text[])) AND " +
-           "rp.category = CAST(:category AS text) AND (" +
-           "rp.latitude IS NULL OR rp.longitude IS NULL OR (" +
+           "rp.category = CAST(:category AS text) AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
            "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
            "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ")",
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)",
            nativeQuery = true)
     long countNearbyPostsByCategory(@Param("statuses") String[] statuses,
                                     @Param("category") String category,

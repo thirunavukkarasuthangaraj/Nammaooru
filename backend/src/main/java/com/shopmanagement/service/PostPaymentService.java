@@ -4,6 +4,7 @@ import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
+import org.springframework.context.annotation.Lazy;
 import com.shopmanagement.entity.PostPayment;
 import com.shopmanagement.config.RazorpayConfig;
 import com.shopmanagement.repository.PostPaymentRepository;
@@ -32,6 +33,7 @@ public class PostPaymentService {
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
     private final EntityManager entityManager;
+    private final PostSubscriptionService subscriptionService;
 
     private static final String GLOBAL_COUNT_QUERY =
         "SELECT " +
@@ -49,12 +51,14 @@ public class PostPaymentService {
                               @Autowired(required = false) RazorpayClient razorpayClient,
                               RazorpayConfig razorpayConfig,
                               SettingService settingService,
-                              EntityManager entityManager) {
+                              EntityManager entityManager,
+                              @Lazy PostSubscriptionService subscriptionService) {
         this.postPaymentRepository = postPaymentRepository;
         this.razorpayClient = razorpayClient;
         this.razorpayConfig = razorpayConfig;
         this.settingService = settingService;
         this.entityManager = entityManager;
+        this.subscriptionService = subscriptionService;
     }
 
     private boolean isTestMode() {
@@ -375,6 +379,10 @@ public class PostPaymentService {
     }
 
     public boolean isLimitReached(Long userId) {
+        // Active subscribers have unlimited posts — no per-post payment needed
+        if (subscriptionService.hasActiveSubscription(userId)) {
+            return false;
+        }
         int freePostLimit = Integer.parseInt(
                 settingService.getSettingValue("global.free_post_limit", "1"));
         if (freePostLimit < 0) return false; // unlimited

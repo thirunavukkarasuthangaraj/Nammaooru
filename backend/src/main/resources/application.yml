@@ -218,6 +218,7 @@ razorpay:
   live:
     key-id: ${RAZORPAY_LIVE_KEY_ID:}
     key-secret: ${RAZORPAY_LIVE_KEY_SECRET:}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}  # Set in .env for webhook signature verification
 
 msg91:
   auth:

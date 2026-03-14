@@ -120,6 +120,8 @@ public class SecurityConfig {
                                 "/api/customer/shops/**",
                                 "/api/featured-posts",  // Public: Get featured posts for mobile banner
                                 "/api/post-payments/config",  // Public: Get payment config for mobile
+                                "/api/subscriptions/webhook",  // Public: Razorpay subscription webhooks
+                                "/api/subscriptions/config",  // Public: Get subscription config for mobile
                                 "/api/villages",  // Public: View active villages for mobile
                                 "/api/feature-config/visible",  // Public: Get visible features for mobile
                                 "/api/settings/public/**",  // Public: Get public settings (privacy policy, etc.)

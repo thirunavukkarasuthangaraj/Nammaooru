@@ -43,6 +43,7 @@ public class FarmerProductService {
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
     private final ObjectMapper objectMapper;
+    private final PostSubscriptionService postSubscriptionService;
 
     @Transactional
     public FarmerProduct createPost(String title, String description, BigDecimal price,
@@ -164,7 +165,7 @@ public class FarmerProductService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -185,7 +186,7 @@ public class FarmerProductService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -339,6 +340,7 @@ public class FarmerProductService {
         }
 
         post.setStatus(PostStatus.DELETED);
+        postSubscriptionService.cancelSubscriptionForPost(id);
         farmerProductRepository.save(post);
         log.info("Farmer product soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }

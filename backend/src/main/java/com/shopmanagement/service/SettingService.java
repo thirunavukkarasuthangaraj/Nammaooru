@@ -595,4 +595,26 @@ public class SettingService {
                 .displayValue(displayValue)
                 .build();
     }
+
+    @Transactional
+    public void saveSetting(String key, String value, String description) {
+        Setting setting = settingRepository.findBySettingKey(key).orElse(null);
+        if (setting == null) {
+            setting = new Setting();
+            setting.setSettingKey(key);
+            setting.setDescription(description);
+            setting.setCategory("PAYMENT");
+            setting.setSettingType(Setting.SettingType.STRING);
+            setting.setScope(Setting.SettingScope.GLOBAL);
+            setting.setIsActive(true);
+            setting.setIsRequired(false);
+            setting.setIsReadOnly(false);
+            setting.setDefaultValue(value);
+            setting.setDisplayOrder(0);
+            setting.setCreatedBy("system");
+            setting.setUpdatedBy("system");
+        }
+        setting.setSettingValue(value);
+        settingRepository.save(setting);
+    }
 }

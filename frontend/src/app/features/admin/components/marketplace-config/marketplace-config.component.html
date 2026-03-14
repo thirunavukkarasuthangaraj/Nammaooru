@@ -92,5 +92,51 @@
       </ng-container>
     </div>
 
+    <!-- Location Radius Settings -->
+    <div class="section-header" style="margin-top: 32px;">
+      <mat-icon style="color: #1565C0;">location_on</mat-icon>
+      <h3>Location Radius Settings</h3>
+    </div>
+    <div class="post-type-card" style="border-left: 4px solid #1565C0;">
+      <div class="card-header">
+        <mat-icon style="color: #1565C0;">my_location</mat-icon>
+        <div>
+          <h3>Post Search Radius</h3>
+          <p class="subtitle">Control how far users see posts from their location</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Default Radius (km)</mat-label>
+          <mat-select [(ngModel)]="defaultRadiusKm">
+            <mat-option *ngFor="let r of radiusOptions" [value]="r">{{ r }} km</mat-option>
+          </mat-select>
+          <mat-hint>When user opens any post list — this radius is used automatically</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Maximum Radius (km)</mat-label>
+          <mat-select [(ngModel)]="maxRadiusKm">
+            <mat-option *ngFor="let r of radiusOptions" [value]="r">{{ r }} km</mat-option>
+          </mat-select>
+          <mat-hint>Users cannot search beyond this radius</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div style="background: #E3F2FD; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 13px;">
+        <strong>📍 How it works:</strong><br>
+        When mobile app sends GPS location → backend filters posts within <strong>{{ defaultRadiusKm }} km</strong> radius.<br>
+        If user selects 5 km → only posts within 5 km are shown. If no location sent → all posts shown.
+      </div>
+
+      <div class="card-actions">
+        <button mat-raised-button color="primary" (click)="saveRadiusSettings()" [disabled]="savingRadius">
+          <mat-icon>save</mat-icon>
+          {{ savingRadius ? 'Saving...' : 'Save Radius Settings' }}
+        </button>
+      </div>
+    </div>
+
   </div>
 </div>

@@ -45,6 +45,7 @@ public class ParcelServicePostService {
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
     private final ObjectMapper objectMapper;
+    private final PostSubscriptionService postSubscriptionService;
 
     @Transactional
     public ParcelServicePost createPost(String serviceName, String phone, String serviceTypeStr,
@@ -175,7 +176,7 @@ public class ParcelServicePostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -203,7 +204,7 @@ public class ParcelServicePostService {
         }
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -373,6 +374,7 @@ public class ParcelServicePostService {
         }
 
         post.setStatus(PostStatus.DELETED);
+        postSubscriptionService.cancelSubscriptionForPost(id);
         parcelServicePostRepository.save(post);
         log.info("Parcel service post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }

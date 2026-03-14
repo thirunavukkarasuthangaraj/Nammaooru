@@ -39,6 +39,7 @@ public class RealEstateService {
     private final UserPostLimitService userPostLimitService;
     private final GlobalPostLimitService globalPostLimitService;
     private final PostPaymentService postPaymentService;
+    private final PostSubscriptionService postSubscriptionService;
 
     @Transactional
     public RealEstatePost createPost(String title, String description, PropertyType propertyType,
@@ -154,13 +155,44 @@ public class RealEstateService {
 
     @Transactional(readOnly = true)
     public Page<RealEstatePost> getApprovedPosts(Pageable pageable) {
-        return realEstatePostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.APPROVED, pageable);
+        return getApprovedPosts(pageable, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RealEstatePost> getApprovedPosts(Pageable pageable, Double lat, Double lng, Double radiusKm) {
+        if (lat == null || lng == null) {
+            return realEstatePostRepository.findByStatusOrderByCreatedAtDesc(PostStatus.APPROVED, pageable);
+        }
+        double radius = radiusKm != null ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
+        List<String> statuses = List.of("APPROVED");
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        List<RealEstatePost> posts = realEstatePostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
+        long total = realEstatePostRepository.countNearbyPosts(statuses, lat, lng, radius);
+        return new org.springframework.data.domain.PageImpl<>(posts, pageable, total);
     }
 
     @Transactional(readOnly = true)
     public Page<RealEstatePost> getApprovedPostsByPropertyType(PropertyType propertyType, Pageable pageable) {
-        return realEstatePostRepository.findByStatusAndPropertyTypeOrderByCreatedAtDesc(
-                PostStatus.APPROVED, propertyType, pageable);
+        return getApprovedPostsByPropertyType(propertyType, pageable, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RealEstatePost> getApprovedPostsByPropertyType(PropertyType propertyType, Pageable pageable,
+                                                                Double lat, Double lng, Double radiusKm) {
+        if (lat == null || lng == null) {
+            return realEstatePostRepository.findByStatusAndPropertyTypeOrderByCreatedAtDesc(
+                    PostStatus.APPROVED, propertyType, pageable);
+        }
+        double radius = radiusKm != null ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
+        List<String> statuses = List.of("APPROVED");
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        List<RealEstatePost> posts = realEstatePostRepository.findNearbyPostsByPropertyType(
+                statuses, propertyType.name(), lat, lng, radius, limit, offset);
+        long total = realEstatePostRepository.countNearbyPostsByPropertyType(
+                statuses, propertyType.name(), lat, lng, radius);
+        return new org.springframework.data.domain.PageImpl<>(posts, pageable, total);
     }
 
     @Transactional(readOnly = true)
@@ -173,15 +205,20 @@ public class RealEstateService {
     public Page<RealEstatePost> getApprovedPostsFiltered(PropertyType propertyType,
                                                           ListingType listingType,
                                                           Pageable pageable) {
-        if (propertyType != null && listingType != null) {
-            return realEstatePostRepository.findByStatusAndPropertyTypeAndListingTypeOrderByCreatedAtDesc(
-                    PostStatus.APPROVED, propertyType, listingType, pageable);
-        } else if (propertyType != null) {
-            return getApprovedPostsByPropertyType(propertyType, pageable);
+        return getApprovedPostsFiltered(propertyType, listingType, pageable, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RealEstatePost> getApprovedPostsFiltered(PropertyType propertyType,
+                                                          ListingType listingType,
+                                                          Pageable pageable,
+                                                          Double lat, Double lng, Double radiusKm) {
+        if (propertyType != null) {
+            return getApprovedPostsByPropertyType(propertyType, pageable, lat, lng, radiusKm);
         } else if (listingType != null) {
             return getApprovedPostsByListingType(listingType, pageable);
         }
-        return getApprovedPosts(pageable);
+        return getApprovedPosts(pageable, lat, lng, radiusKm);
     }
 
     @Transactional(readOnly = true)
@@ -304,6 +341,7 @@ public class RealEstateService {
         }
 
         post.setStatus(PostStatus.DELETED);
+        postSubscriptionService.cancelSubscriptionForPost(id);
         realEstatePostRepository.save(post);
         log.info("Real estate post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }

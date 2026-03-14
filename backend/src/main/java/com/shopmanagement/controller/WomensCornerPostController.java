@@ -64,7 +64,7 @@ public class WomensCornerPostController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "50") double radius,
+            @RequestParam(required = false) Double radius,
             @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);

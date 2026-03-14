@@ -41,15 +41,15 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 
-    // Haversine nearby queries - posts with NULL lat/lng are always included
-    @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND (" +
-           "pp.latitude IS NULL OR pp.longitude IS NULL OR (" +
+    // Haversine nearby queries - only posts with valid coordinates within radius
+    @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL AND " +
            "pp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "pp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
            "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ") ORDER BY pp.created_at DESC LIMIT :limit OFFSET :offset",
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
+           "ORDER BY pp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<ParcelServicePost> findNearbyPosts(@Param("statuses") String[] statuses,
                                             @Param("lat") double lat,
@@ -58,14 +58,13 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
                                             @Param("limit") int limit,
                                             @Param("offset") int offset);
 
-    @Query(value = "SELECT COUNT(*) FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND (" +
-           "pp.latitude IS NULL OR pp.longitude IS NULL OR (" +
+    @Query(value = "SELECT COUNT(*) FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL AND " +
            "pp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "pp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
            "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ")",
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)",
            nativeQuery = true)
     long countNearbyPosts(@Param("statuses") String[] statuses,
                           @Param("lat") double lat,
@@ -73,14 +72,14 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
                           @Param("radiusKm") double radiusKm);
 
     @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
-           "pp.service_type = CAST(:serviceType AS text) AND (" +
-           "pp.latitude IS NULL OR pp.longitude IS NULL OR (" +
+           "pp.service_type = CAST(:serviceType AS text) AND " +
+           "pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL AND " +
            "pp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "pp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
            "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ") ORDER BY pp.created_at DESC LIMIT :limit OFFSET :offset",
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
+           "ORDER BY pp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<ParcelServicePost> findNearbyPostsByServiceType(@Param("statuses") String[] statuses,
                                                          @Param("serviceType") String serviceType,
@@ -91,14 +90,13 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
                                                          @Param("offset") int offset);
 
     @Query(value = "SELECT COUNT(*) FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
-           "pp.service_type = CAST(:serviceType AS text) AND (" +
-           "pp.latitude IS NULL OR pp.longitude IS NULL OR (" +
+           "pp.service_type = CAST(:serviceType AS text) AND " +
+           "pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL AND " +
            "pp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
            "pp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
            "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
-           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision))" +
-           ")",
+           "sin(radians(CAST(pp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)",
            nativeQuery = true)
     long countNearbyPostsByServiceType(@Param("statuses") String[] statuses,
                                        @Param("serviceType") String serviceType,

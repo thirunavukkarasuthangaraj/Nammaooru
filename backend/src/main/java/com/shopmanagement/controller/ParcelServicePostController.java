@@ -69,7 +69,7 @@ public class ParcelServicePostController {
             @RequestParam(required = false) String serviceType,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "50") double radius,
+            @RequestParam(required = false) Double radius,
             @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);

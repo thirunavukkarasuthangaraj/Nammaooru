@@ -29,12 +29,13 @@ public class FeaturedPostsService {
     private final ProductComboRepository productComboRepository;
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
+    private final SettingService settingService;
 
     public Map<String, Object> getFeaturedPosts(Double lat, Double lng, Double radiusKm) {
         Map<String, Object> result = new LinkedHashMap<>();
         Pageable top10 = PageRequest.of(0, 10);
         boolean hasLocation = lat != null && lng != null;
-        double radius = radiusKm != null ? radiusKm : 50.0;
+        double radius = radiusKm != null ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
 
         // Combos - active combos from all shops
         try {

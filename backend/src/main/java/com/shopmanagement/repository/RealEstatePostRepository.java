@@ -48,6 +48,66 @@ public interface RealEstatePostRepository extends JpaRepository<RealEstatePost, 
     Page<RealEstatePost> findByStatusAndLocationContaining(
             @Param("status") PostStatus status, @Param("location") String location, Pageable pageable);
 
+    // Haversine nearby queries - posts within radius of user location
+    @Query(value =
+           "SELECT * FROM real_estate_posts rp WHERE rp.status IN :statuses AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
+           "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
+           "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
+           "ORDER BY rp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<RealEstatePost> findNearbyPosts(@Param("statuses") List<String> statuses,
+                                         @Param("lat") double lat, @Param("lng") double lng,
+                                         @Param("radiusKm") double radiusKm,
+                                         @Param("limit") int limit, @Param("offset") int offset);
+
+    @Query(value =
+           "SELECT COUNT(*) FROM real_estate_posts rp WHERE rp.status IN :statuses AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
+           "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
+           "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)",
+           nativeQuery = true)
+    long countNearbyPosts(@Param("statuses") List<String> statuses,
+                          @Param("lat") double lat, @Param("lng") double lng,
+                          @Param("radiusKm") double radiusKm);
+
+    // Haversine nearby with property type filter
+    @Query(value =
+           "SELECT * FROM real_estate_posts rp WHERE rp.status IN :statuses AND rp.property_type = :propertyType AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
+           "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
+           "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
+           "ORDER BY rp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<RealEstatePost> findNearbyPostsByPropertyType(@Param("statuses") List<String> statuses,
+                                                       @Param("propertyType") String propertyType,
+                                                       @Param("lat") double lat, @Param("lng") double lng,
+                                                       @Param("radiusKm") double radiusKm,
+                                                       @Param("limit") int limit, @Param("offset") int offset);
+
+    @Query(value =
+           "SELECT COUNT(*) FROM real_estate_posts rp WHERE rp.status IN :statuses AND rp.property_type = :propertyType AND " +
+           "rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL AND " +
+           "rp.latitude BETWEEN CAST(:lat AS double precision) - (CAST(:radiusKm AS double precision) / 111.0) AND CAST(:lat AS double precision) + (CAST(:radiusKm AS double precision) / 111.0) AND " +
+           "rp.longitude BETWEEN CAST(:lng AS double precision) - (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND CAST(:lng AS double precision) + (CAST(:radiusKm AS double precision) / (111.0 * cos(radians(CAST(:lat AS double precision))))) AND " +
+           "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(rp.latitude AS double precision))) * " +
+           "cos(radians(CAST(rp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(rp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision)",
+           nativeQuery = true)
+    long countNearbyPostsByPropertyType(@Param("statuses") List<String> statuses,
+                                        @Param("propertyType") String propertyType,
+                                        @Param("lat") double lat, @Param("lng") double lng,
+                                        @Param("radiusKm") double radiusKm);
+
     // Find featured posts
     Page<RealEstatePost> findByStatusAndIsFeaturedTrueOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 

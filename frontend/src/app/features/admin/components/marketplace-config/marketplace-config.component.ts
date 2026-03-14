@@ -24,6 +24,13 @@ export class MarketplaceConfigComponent implements OnInit {
   savingType: string | null = null;
   selectedTabIndex = 0;
 
+  // Location radius settings
+  defaultRadiusKm = 10;
+  maxRadiusKm = 50;
+  savingRadius = false;
+
+  radiusOptions = [5, 10, 15, 20, 25, 30, 50, 100];
+
   postTypes: PostTypeConfig[] = [
     { key: 'MARKETPLACE', prefix: 'marketplace', label: 'Marketplace', icon: 'storefront', color: '#4527A0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'FARM_PRODUCTS', prefix: 'farmer', label: 'Farmer Products', icon: 'agriculture', color: '#33691E', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
@@ -79,6 +86,8 @@ export class MarketplaceConfigComponent implements OnInit {
             }
             if (s.key === `${pt.prefix}.post.report_threshold`) pt.reportThreshold = parseInt(s.value, 10) || 3;
           }
+          if (s.key === 'post.default_radius_km') this.defaultRadiusKm = parseInt(s.value, 10) || 10;
+          if (s.key === 'post.max_radius_km') this.maxRadiusKm = parseInt(s.value, 10) || 50;
         }
 
         this.loading = false;
@@ -124,6 +133,24 @@ export class MarketplaceConfigComponent implements OnInit {
       error: () => {
         this.savingType = null;
         this.snackBar.open(`Failed to save ${pt.label} settings`, 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  saveRadiusSettings(): void {
+    this.savingRadius = true;
+    const settings: { [key: string]: string } = {
+      'post.default_radius_km': String(this.defaultRadiusKm),
+      'post.max_radius_km': String(this.maxRadiusKm)
+    };
+    this.settingsService.updateMultipleSettings(settings).subscribe({
+      next: () => {
+        this.savingRadius = false;
+        this.snackBar.open('Location radius settings saved', 'OK', { duration: 3000 });
+      },
+      error: () => {
+        this.savingRadius = false;
+        this.snackBar.open('Failed to save radius settings', 'OK', { duration: 3000 });
       }
     });
   }

@@ -45,6 +45,7 @@ public class LabourPostService {
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
     private final ObjectMapper objectMapper;
+    private final PostSubscriptionService postSubscriptionService;
 
     @Transactional
     public LabourPost createPost(String name, String phone, String categoryStr,
@@ -171,7 +172,7 @@ public class LabourPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -199,7 +200,7 @@ public class LabourPostService {
         }
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -369,6 +370,7 @@ public class LabourPostService {
         }
 
         post.setStatus(PostStatus.DELETED);
+        postSubscriptionService.cancelSubscriptionForPost(id);
         labourPostRepository.save(post);
         log.info("Labour post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }

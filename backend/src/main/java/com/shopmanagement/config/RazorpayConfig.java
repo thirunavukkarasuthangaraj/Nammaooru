@@ -28,6 +28,9 @@ public class RazorpayConfig {
     @Value("${razorpay.live.key-secret:}")
     private String liveKeySecret;
 
+    @Value("${razorpay.webhook-secret:}")
+    private String webhookSecret;
+
     public String getActiveKeyId() {
         return "live".equalsIgnoreCase(mode) ? liveKeyId : testKeyId;
     }

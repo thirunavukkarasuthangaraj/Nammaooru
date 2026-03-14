@@ -2,6 +2,7 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.dto.notification.NotificationRequest;
 import com.shopmanagement.entity.MarketplacePost;
+import com.shopmanagement.service.PostSubscriptionService;
 import com.shopmanagement.entity.MarketplacePost.PostStatus;
 import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.User;
@@ -41,6 +42,7 @@ public class MarketplaceService {
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
+    private final PostSubscriptionService postSubscriptionService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -160,7 +162,7 @@ public class MarketplaceService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -181,7 +183,7 @@ public class MarketplaceService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : 50.0;
+            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
@@ -335,6 +337,8 @@ public class MarketplaceService {
 
         post.setStatus(PostStatus.DELETED);
         marketplacePostRepository.save(post);
+        // Cancel subscription if post has one
+        postSubscriptionService.cancelSubscriptionForPost(id);
         log.info("Marketplace post soft-deleted: id={}, validTo={}", id, post.getValidTo());
     }
 
