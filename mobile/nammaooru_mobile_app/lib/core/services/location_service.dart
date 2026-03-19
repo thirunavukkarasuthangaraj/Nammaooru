@@ -160,7 +160,7 @@ class LocationService {
             'street': streetName, // Keep for backward compatibility
             'subLocality': subLocality,
             'neighborhood': neighborhood,
-            'locality': locality.isNotEmpty ? locality : 'Tirupattur',
+            'locality': locality.isNotEmpty ? locality : (subLocality.isNotEmpty ? subLocality : 'Unknown'),
             'administrativeArea': administrativeArea.isNotEmpty ? administrativeArea : 'Tamil Nadu',
             'postalCode': postalCode,
             'country': country.isNotEmpty ? country : 'India',
@@ -285,24 +285,14 @@ class LocationService {
           streetName = place.name!;
         }
 
-        // Use subAdministrativeArea (district/city) if available, otherwise locality (area/village)
-        String cityName = place.subAdministrativeArea?.isNotEmpty == true
-            ? place.subAdministrativeArea!
-            : (place.locality?.isNotEmpty == true ? place.locality! : 'Tirupattur');
-
-        // Manual mapping for known localities to their proper cities
-        Map<String, String> localityToCityMap = {
-          'Marimanikuppam': 'Tirupattur',
-          'Mittur': 'Tirupattur',
-          'Natrampalli': 'Tirupattur',
-          'Vaniyambadi': 'Tirupattur',
-        };
-
-        // Check if we need to map locality to proper city
-        if (localityToCityMap.containsKey(cityName)) {
-          cityName = localityToCityMap[cityName]!;
-          print('🔄 MAPPED LOCALITY TO CITY: ${place.locality} → $cityName');
-        }
+        // Use subLocality (actual town/village) if available, else locality, else subAdministrativeArea
+        String cityName = place.subLocality?.isNotEmpty == true
+            ? place.subLocality!
+            : (place.locality?.isNotEmpty == true
+                ? place.locality!
+                : (place.subAdministrativeArea?.isNotEmpty == true
+                    ? place.subAdministrativeArea!
+                    : 'Unknown'));
 
         final result = {
           'streetName': streetName,

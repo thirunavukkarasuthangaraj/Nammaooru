@@ -99,7 +99,18 @@ public class RentalPost {
     private LocalDateTime updatedAt;
 
     public enum RentalCategory {
-        SHOP, AUTO, BIKE, HOUSE, LAND, EQUIPMENT, FURNITURE
+        // Vehicles
+        BIKE, AUTO, CAR, SCOOTER, TRACTOR, LORRY, VAN, CYCLE,
+        // Property
+        HOUSE, SHOP, LAND, OFFICE, WAREHOUSE, FARM_LAND,
+        // Equipment
+        EQUIPMENT, FARM_EQUIPMENT, GENERATOR, PUMP, CRANE, COMPRESSOR,
+        // Events
+        TENT, CHAIRS, SOUND_SYSTEM, LIGHTS,
+        // Electronics
+        CAMERA, PROJECTOR,
+        // Others
+        FURNITURE
     }
 
     public enum PostStatus {

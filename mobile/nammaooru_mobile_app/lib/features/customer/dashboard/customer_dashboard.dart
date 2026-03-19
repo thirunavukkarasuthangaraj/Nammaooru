@@ -1709,7 +1709,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Spacer to position content below header top area
-                  const SizedBox(height: 120),
+                  SizedBox(height: MediaQuery.of(context).padding.top + 80),
                   Consumer<FeatureConfigProvider>(
                     builder: (context, featureConfig, _) {
                       return Column(
@@ -1822,12 +1822,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Widget _buildCurvedHeader() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final headerHeight = statusBarHeight + 160;
 
     return Stack(
       children: [
         // Green background with curve using Container
         Container(
-          height: 200,
+          height: headerHeight,
           width: double.infinity,
           decoration: BoxDecoration(
             color: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,

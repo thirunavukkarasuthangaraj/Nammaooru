@@ -43,23 +43,39 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
 
   static const Map<String, String> _categoryLabels = {
     'All': 'All',
-    'SHOP': 'Shop',
-    'AUTO': 'Auto',
-    'BIKE': 'Bike',
-    'HOUSE': 'House',
-    'LAND': 'Land',
-    'EQUIPMENT': 'Equipment',
+    // Vehicles
+    'BIKE': 'Bike', 'AUTO': 'Auto', 'CAR': 'Car', 'SCOOTER': 'Scooter',
+    'TRACTOR': 'Tractor', 'LORRY': 'Lorry', 'VAN': 'Van', 'CYCLE': 'Cycle',
+    // Property
+    'HOUSE': 'House', 'SHOP': 'Shop', 'LAND': 'Land', 'OFFICE': 'Office',
+    'WAREHOUSE': 'Warehouse', 'FARM_LAND': 'Farm Land',
+    // Equipment
+    'EQUIPMENT': 'Equipment', 'FARM_EQUIPMENT': 'Farm Equipment',
+    'GENERATOR': 'Generator', 'PUMP': 'Pump', 'CRANE': 'Crane', 'COMPRESSOR': 'Compressor',
+    // Events
+    'TENT': 'Tent', 'CHAIRS': 'Chairs', 'SOUND_SYSTEM': 'Sound System', 'LIGHTS': 'Lights',
+    // Electronics
+    'CAMERA': 'Camera', 'PROJECTOR': 'Projector',
+    // Others
     'FURNITURE': 'Furniture',
   };
 
   static const Map<String, String> _categoryTamilMap = {
     'All': 'அனைத்தும்',
-    'SHOP': 'கடை',
-    'AUTO': 'ஆட்டோ',
-    'BIKE': 'பைக்',
-    'HOUSE': 'வீடு',
-    'LAND': 'நிலம்',
-    'EQUIPMENT': 'உபகரணம்',
+    // Vehicles
+    'BIKE': 'பைக்', 'AUTO': 'ஆட்டோ', 'CAR': 'கார்', 'SCOOTER': 'ஸ்கூட்டர்',
+    'TRACTOR': 'டிராக்டர்', 'LORRY': 'லாரி', 'VAN': 'வேன்', 'CYCLE': 'சைக்கிள்',
+    // Property
+    'HOUSE': 'வீடு', 'SHOP': 'கடை', 'LAND': 'நிலம்', 'OFFICE': 'அலுவலகம்',
+    'WAREHOUSE': 'கிடங்கு', 'FARM_LAND': 'விவசாய நிலம்',
+    // Equipment
+    'EQUIPMENT': 'உபகரணம்', 'FARM_EQUIPMENT': 'விவசாய உபகரணம்',
+    'GENERATOR': 'ஜெனரேட்டர்', 'PUMP': 'பம்ப்', 'CRANE': 'கிரேன்', 'COMPRESSOR': 'கம்பரஷர்',
+    // Events
+    'TENT': 'கூடாரம்', 'CHAIRS': 'நாற்காலிகள்', 'SOUND_SYSTEM': 'சவுண்ட் சிஸ்டம்', 'LIGHTS': 'விளக்குகள்',
+    // Electronics
+    'CAMERA': 'கேமரா', 'PROJECTOR': 'ப்ரொஜெக்டர்',
+    // Others
     'FURNITURE': 'மரச்சாமான்',
   };
 
@@ -70,13 +86,24 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
   };
 
   static const Map<String, IconData> _categoryIcons = {
-    'SHOP': Icons.storefront,
-    'AUTO': Icons.electric_rickshaw,
-    'BIKE': Icons.two_wheeler,
-    'HOUSE': Icons.home,
-    'LAND': Icons.landscape,
-    'EQUIPMENT': Icons.construction,
-    'FURNITURE': Icons.chair,
+    // Vehicles
+    'BIKE': Icons.two_wheeler, 'AUTO': Icons.electric_rickshaw, 'CAR': Icons.directions_car,
+    'SCOOTER': Icons.electric_scooter, 'TRACTOR': Icons.agriculture, 'LORRY': Icons.local_shipping,
+    'VAN': Icons.airport_shuttle, 'CYCLE': Icons.pedal_bike,
+    // Property
+    'HOUSE': Icons.home, 'SHOP': Icons.storefront, 'LAND': Icons.landscape,
+    'OFFICE': Icons.business, 'WAREHOUSE': Icons.warehouse, 'FARM_LAND': Icons.grass,
+    // Equipment
+    'EQUIPMENT': Icons.construction, 'FARM_EQUIPMENT': Icons.agriculture,
+    'GENERATOR': Icons.electrical_services, 'PUMP': Icons.water_drop,
+    'CRANE': Icons.precision_manufacturing, 'COMPRESSOR': Icons.compress,
+    // Events
+    'TENT': Icons.festival, 'CHAIRS': Icons.chair, 'SOUND_SYSTEM': Icons.speaker,
+    'LIGHTS': Icons.lightbulb,
+    // Electronics
+    'CAMERA': Icons.camera_alt, 'PROJECTOR': Icons.videocam,
+    // Others
+    'FURNITURE': Icons.chair_alt,
   };
 
   @override
@@ -116,6 +143,8 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
       if (position != null && position.latitude != null && position.longitude != null) {
         _userLatitude = position.latitude;
         _userLongitude = position.longitude;
+        // Reload posts with actual GPS so radius filter applies correctly
+        if (mounted) _loadPosts(refresh: true);
       }
     } catch (e) {
       // Location is optional

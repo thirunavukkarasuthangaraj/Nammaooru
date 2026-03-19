@@ -44,26 +44,53 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
   static const Color _rentalOrange = Color(0xFFFF6F00);
 
   static const List<String> _categories = [
-    'SHOP', 'AUTO', 'BIKE', 'HOUSE', 'LAND', 'EQUIPMENT', 'FURNITURE',
+    // Vehicles
+    'BIKE', 'AUTO', 'CAR', 'SCOOTER', 'TRACTOR', 'LORRY', 'VAN', 'CYCLE',
+    // Property
+    'HOUSE', 'SHOP', 'LAND', 'OFFICE', 'WAREHOUSE', 'FARM_LAND',
+    // Equipment
+    'EQUIPMENT', 'FARM_EQUIPMENT', 'GENERATOR', 'PUMP', 'CRANE', 'COMPRESSOR',
+    // Events
+    'TENT', 'CHAIRS', 'SOUND_SYSTEM', 'LIGHTS',
+    // Electronics
+    'CAMERA', 'PROJECTOR',
+    // Others
+    'FURNITURE',
   ];
 
   static const Map<String, String> _categoryLabels = {
-    'SHOP': 'Shop',
-    'AUTO': 'Auto',
-    'BIKE': 'Bike',
-    'HOUSE': 'House',
-    'LAND': 'Land',
-    'EQUIPMENT': 'Equipment',
+    // Vehicles
+    'BIKE': 'Bike', 'AUTO': 'Auto', 'CAR': 'Car', 'SCOOTER': 'Scooter',
+    'TRACTOR': 'Tractor', 'LORRY': 'Lorry', 'VAN': 'Van', 'CYCLE': 'Cycle',
+    // Property
+    'HOUSE': 'House', 'SHOP': 'Shop', 'LAND': 'Land', 'OFFICE': 'Office',
+    'WAREHOUSE': 'Warehouse', 'FARM_LAND': 'Farm Land',
+    // Equipment
+    'EQUIPMENT': 'Equipment', 'FARM_EQUIPMENT': 'Farm Equipment',
+    'GENERATOR': 'Generator', 'PUMP': 'Pump', 'CRANE': 'Crane', 'COMPRESSOR': 'Compressor',
+    // Events
+    'TENT': 'Tent', 'CHAIRS': 'Chairs', 'SOUND_SYSTEM': 'Sound System', 'LIGHTS': 'Lights',
+    // Electronics
+    'CAMERA': 'Camera', 'PROJECTOR': 'Projector',
+    // Others
     'FURNITURE': 'Furniture',
   };
 
   static const Map<String, String> _categoryTamil = {
-    'SHOP': 'கடை',
-    'AUTO': 'ஆட்டோ',
-    'BIKE': 'பைக்',
-    'HOUSE': 'வீடு',
-    'LAND': 'நிலம்',
-    'EQUIPMENT': 'உபகரணம்',
+    // Vehicles
+    'BIKE': 'பைக்', 'AUTO': 'ஆட்டோ', 'CAR': 'கார்', 'SCOOTER': 'ஸ்கூட்டர்',
+    'TRACTOR': 'டிராக்டர்', 'LORRY': 'லாரி', 'VAN': 'வேன்', 'CYCLE': 'சைக்கிள்',
+    // Property
+    'HOUSE': 'வீடு', 'SHOP': 'கடை', 'LAND': 'நிலம்', 'OFFICE': 'அலுவலகம்',
+    'WAREHOUSE': 'கிடங்கு', 'FARM_LAND': 'விவசாய நிலம்',
+    // Equipment
+    'EQUIPMENT': 'உபகரணம்', 'FARM_EQUIPMENT': 'விவசாய உபகரணம்',
+    'GENERATOR': 'ஜெனரேட்டர்', 'PUMP': 'பம்ப்', 'CRANE': 'கிரேன்', 'COMPRESSOR': 'கம்பரஷர்',
+    // Events
+    'TENT': 'கூடாரம்', 'CHAIRS': 'நாற்காலிகள்', 'SOUND_SYSTEM': 'சவுண்ட் சிஸ்டம்', 'LIGHTS': 'விளக்குகள்',
+    // Electronics
+    'CAMERA': 'கேமரா', 'PROJECTOR': 'ப்ரொஜெக்டர்',
+    // Others
     'FURNITURE': 'மரச்சாமான்',
   };
 

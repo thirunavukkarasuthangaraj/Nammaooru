@@ -52,7 +52,7 @@ class PostFilterBar extends StatelessWidget {
                     TextPosition(offset: searchText.length),
                   ),
                 decoration: InputDecoration(
-                  hintText: 'Search by location...',
+                  hintText: 'Search...',
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                   prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
                   suffixIcon: searchText.isNotEmpty
