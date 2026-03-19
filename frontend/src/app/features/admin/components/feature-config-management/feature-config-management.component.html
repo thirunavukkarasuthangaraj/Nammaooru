@@ -1,6 +1,9 @@
 <div class="feature-config-management">
   <div class="page-header">
-    <h2>Feature Configuration</h2>
+    <div class="header-left">
+      <h2>App Visibility Control</h2>
+      <p class="header-subtitle">Enable or disable any section of the customer app from here.</p>
+    </div>
     <div class="header-actions">
       <button mat-raised-button color="primary" (click)="openAddForm()" *ngIf="!showForm">
         <mat-icon>add</mat-icon> Add Feature
@@ -11,15 +14,17 @@
     </div>
   </div>
 
-  <!-- Add/Edit Form -->
+  <!-- ── Add / Edit Form ──────────────────────────────────────── -->
   <mat-card *ngIf="showForm" class="form-card">
     <mat-card-content>
       <h3>{{ editingId ? 'Edit Feature' : 'Add New Feature' }}</h3>
       <form [formGroup]="featureForm" (ngSubmit)="saveFeature()" class="feature-form">
         <div class="form-row">
           <mat-form-field>
-            <mat-label>Feature Name (key)</mat-label>
-            <input matInput formControlName="featureName" placeholder="e.g. GROCERY">
+            <mat-label>Feature Key</mat-label>
+            <input matInput formControlName="featureName"
+                   placeholder="e.g. grocery, nav_cart, section_deliver_to">
+            <mat-hint>Prefix: nav_ = bottom nav tab &nbsp;|&nbsp; section_ = dashboard section</mat-hint>
           </mat-form-field>
           <mat-form-field>
             <mat-label>Display Name</mat-label>
@@ -45,24 +50,19 @@
           </mat-form-field>
         </div>
 
-        <!-- Image Upload -->
         <div class="form-row image-upload-row">
           <div class="image-upload-section">
             <label class="upload-label">Feature Image</label>
             <div class="image-upload-area">
-              <!-- Existing image (when editing) -->
               <div *ngIf="editingImageUrl && !imagePreview" class="image-preview">
                 <img [src]="getImageUrl(editingImageUrl)" alt="Current image">
-                <span class="image-label">Current image</span>
               </div>
-              <!-- New image preview -->
               <div *ngIf="imagePreview" class="image-preview">
-                <img [src]="imagePreview" alt="New image preview">
+                <img [src]="imagePreview" alt="Preview">
                 <button mat-icon-button class="remove-image-btn" (click)="removeImage()" type="button">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>
-              <!-- Upload button -->
               <div class="upload-btn-wrapper">
                 <button mat-stroked-button type="button" (click)="fileInput.click()">
                   <mat-icon>cloud_upload</mat-icon>
@@ -92,14 +92,12 @@
             <input matInput type="number" formControlName="displayOrder">
           </mat-form-field>
           <mat-form-field>
-            <mat-label>Max Posts Per User</mat-label>
+            <mat-label>Max Posts / User</mat-label>
             <input matInput type="number" formControlName="maxPostsPerUser" placeholder="0 = unlimited">
-            <mat-hint>0 = unlimited</mat-hint>
           </mat-form-field>
           <mat-form-field>
-            <mat-label>Max Images Per Post</mat-label>
+            <mat-label>Max Images / Post</mat-label>
             <input matInput type="number" formControlName="maxImagesPerPost" placeholder="3">
-            <mat-hint>Image count allowed per post</mat-hint>
           </mat-form-field>
         </div>
         <div class="form-actions">
@@ -112,112 +110,196 @@
     </mat-card-content>
   </mat-card>
 
-  <!-- Loading -->
+  <!-- ── Loading ─────────────────────────────────────────────── -->
   <div *ngIf="isLoading" class="loading-container">
     <mat-spinner diameter="40"></mat-spinner>
-    <p>Loading features...</p>
+    <p>Loading...</p>
   </div>
 
-  <!-- Table -->
-  <div *ngIf="!isLoading" class="table-container">
-    <table mat-table [dataSource]="features" class="features-table">
-      <ng-container matColumnDef="displayOrder">
-        <th mat-header-cell *matHeaderCellDef>Order</th>
-        <td mat-cell *matCellDef="let f">{{ f.displayOrder }}</td>
-      </ng-container>
+  <ng-container *ngIf="!isLoading">
 
-      <ng-container matColumnDef="image">
-        <th mat-header-cell *matHeaderCellDef>Image</th>
-        <td mat-cell *matCellDef="let f">
-          <img *ngIf="f.imageUrl" [src]="getImageUrl(f.imageUrl)" class="feature-thumb" alt="Feature image">
-          <span *ngIf="!f.imageUrl" class="text-muted">-</span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="featureName">
-        <th mat-header-cell *matHeaderCellDef>Feature Key</th>
-        <td mat-cell *matCellDef="let f">
-          <code>{{ f.featureName }}</code>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="displayName">
-        <th mat-header-cell *matHeaderCellDef>Display Name</th>
-        <td mat-cell *matCellDef="let f">{{ f.displayName }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="displayNameTamil">
-        <th mat-header-cell *matHeaderCellDef>Tamil</th>
-        <td mat-cell *matCellDef="let f">{{ f.displayNameTamil }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="icon">
-        <th mat-header-cell *matHeaderCellDef>Icon</th>
-        <td mat-cell *matCellDef="let f">
-          <mat-icon *ngIf="f.icon">{{ f.icon }}</mat-icon>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="color">
-        <th mat-header-cell *matHeaderCellDef>Color</th>
-        <td mat-cell *matCellDef="let f">
-          <span class="color-chip" [style.background]="f.color"></span>
-          <span class="color-text">{{ f.color }}</span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="radiusKm">
-        <th mat-header-cell *matHeaderCellDef>Radius (km)</th>
-        <td mat-cell *matCellDef="let f">
-          <span class="radius-badge">{{ f.radiusKm || 50 }} km</span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="maxPostsPerUser">
-        <th mat-header-cell *matHeaderCellDef>Post Limit</th>
-        <td mat-cell *matCellDef="let f">
-          <span *ngIf="f.maxPostsPerUser === 0 || !f.maxPostsPerUser" class="text-muted">Unlimited</span>
-          <span *ngIf="f.maxPostsPerUser > 0">{{ f.maxPostsPerUser }}</span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="maxImagesPerPost">
-        <th mat-header-cell *matHeaderCellDef>Image Count</th>
-        <td mat-cell *matCellDef="let f">
-          <span>{{ f.maxImagesPerPost || 3 }}</span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="active">
-        <th mat-header-cell *matHeaderCellDef>Active</th>
-        <td mat-cell *matCellDef="let f">
-          <mat-slide-toggle
-            [checked]="f.isActive"
-            (change)="toggleActive(f)"
-            color="primary">
-          </mat-slide-toggle>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let f">
-          <button mat-icon-button matTooltip="Edit" (click)="openEditForm(f)">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteFeature(f)">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-
-    <div *ngIf="features.length === 0" class="empty-state">
-      <mat-icon>settings_suggest</mat-icon>
-      <p>No feature configurations found.</p>
+    <!-- ═══════════════════════════════════════════════════════
+         GROUP 1 — Bottom Navigation Bar
+    ════════════════════════════════════════════════════════════ -->
+    <div class="section-group">
+      <div class="group-header">
+        <mat-icon class="group-icon nav-icon">bottom_navigation</mat-icon>
+        <div>
+          <h3>Bottom Navigation Bar</h3>
+          <span class="group-desc">
+            Control which tabs appear at the bottom of the app.
+            <strong>Home tab is always shown</strong> and cannot be hidden.
+          </span>
+        </div>
+      </div>
+      <div class="toggle-cards">
+        <mat-card *ngFor="let f of navFeatures" class="toggle-card" [class.disabled]="!f.isActive">
+          <mat-card-content class="toggle-card-content">
+            <div class="toggle-icon-wrap" [style.background]="f.isActive ? '#E3F2FD' : '#F5F5F5'">
+              <mat-icon [style.color]="f.isActive ? '#1976D2' : '#9E9E9E'">
+                {{ getNavMeta(f).icon }}
+              </mat-icon>
+            </div>
+            <div class="toggle-info">
+              <div class="toggle-label">{{ getNavMeta(f).label }}</div>
+              <div class="toggle-desc">{{ getNavMeta(f).desc }}</div>
+              <code class="feature-key">{{ f.featureName }}</code>
+            </div>
+            <div class="toggle-right">
+              <mat-slide-toggle
+                [checked]="f.isActive"
+                (change)="toggleActive(f)"
+                color="primary">
+              </mat-slide-toggle>
+              <span class="status-label" [class.active]="f.isActive">
+                {{ f.isActive ? 'Visible' : 'Hidden' }}
+              </span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <div *ngIf="navFeatures.length === 0" class="empty-group">
+          No nav items configured. Run DB migration V72 first.
+        </div>
+      </div>
     </div>
-  </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         GROUP 2 — Dashboard Sections
+    ════════════════════════════════════════════════════════════ -->
+    <div class="section-group">
+      <div class="group-header">
+        <mat-icon class="group-icon section-icon">dashboard</mat-icon>
+        <div>
+          <h3>Home Screen Sections</h3>
+          <span class="group-desc">
+            Show or hide individual sections on the customer home screen.
+          </span>
+        </div>
+      </div>
+      <div class="toggle-cards">
+        <mat-card *ngFor="let f of sectionFeatures" class="toggle-card" [class.disabled]="!f.isActive">
+          <mat-card-content class="toggle-card-content">
+            <div class="toggle-icon-wrap" [style.background]="f.isActive ? '#E8F5E9' : '#F5F5F5'">
+              <mat-icon [style.color]="f.isActive ? '#388E3C' : '#9E9E9E'">
+                {{ getSectionMeta(f).icon }}
+              </mat-icon>
+            </div>
+            <div class="toggle-info">
+              <div class="toggle-label">{{ getSectionMeta(f).label }}</div>
+              <div class="toggle-desc">{{ getSectionMeta(f).desc }}</div>
+              <code class="feature-key">{{ f.featureName }}</code>
+            </div>
+            <div class="toggle-right">
+              <mat-slide-toggle
+                [checked]="f.isActive"
+                (change)="toggleActive(f)"
+                color="primary">
+              </mat-slide-toggle>
+              <span class="status-label" [class.active]="f.isActive">
+                {{ f.isActive ? 'Visible' : 'Hidden' }}
+              </span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <div *ngIf="sectionFeatures.length === 0" class="empty-group">
+          No section items configured. Run DB migration V72 first.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         GROUP 3 — Service Grid (Grocery, Food, Labours, etc.)
+    ════════════════════════════════════════════════════════════ -->
+    <div class="section-group">
+      <div class="group-header">
+        <mat-icon class="group-icon service-icon">apps</mat-icon>
+        <div>
+          <h3>Service Menu (Home Screen Grid)</h3>
+          <span class="group-desc">
+            Each tile shown on the home screen grid. Location-aware — set radius to restrict by area.
+          </span>
+        </div>
+      </div>
+
+      <div class="table-container" *ngIf="serviceFeatures.length > 0">
+        <table mat-table [dataSource]="serviceFeatures" class="features-table">
+          <ng-container matColumnDef="displayOrder">
+            <th mat-header-cell *matHeaderCellDef>Order</th>
+            <td mat-cell *matCellDef="let f">{{ f.displayOrder }}</td>
+          </ng-container>
+          <ng-container matColumnDef="image">
+            <th mat-header-cell *matHeaderCellDef>Image</th>
+            <td mat-cell *matCellDef="let f">
+              <img *ngIf="f.imageUrl" [src]="getImageUrl(f.imageUrl)" class="feature-thumb" alt="">
+              <span *ngIf="!f.imageUrl" class="text-muted">—</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="featureName">
+            <th mat-header-cell *matHeaderCellDef>Key</th>
+            <td mat-cell *matCellDef="let f"><code>{{ f.featureName }}</code></td>
+          </ng-container>
+          <ng-container matColumnDef="displayName">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let f">{{ f.displayName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="displayNameTamil">
+            <th mat-header-cell *matHeaderCellDef>Tamil</th>
+            <td mat-cell *matCellDef="let f">{{ f.displayNameTamil }}</td>
+          </ng-container>
+          <ng-container matColumnDef="icon">
+            <th mat-header-cell *matHeaderCellDef>Icon</th>
+            <td mat-cell *matCellDef="let f"><mat-icon *ngIf="f.icon">{{ f.icon }}</mat-icon></td>
+          </ng-container>
+          <ng-container matColumnDef="color">
+            <th mat-header-cell *matHeaderCellDef>Color</th>
+            <td mat-cell *matCellDef="let f">
+              <span class="color-chip" [style.background]="f.color"></span>
+              <span class="color-text">{{ f.color }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="radiusKm">
+            <th mat-header-cell *matHeaderCellDef>Radius</th>
+            <td mat-cell *matCellDef="let f">
+              <span class="radius-badge">{{ f.radiusKm || 50 }} km</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="maxPostsPerUser">
+            <th mat-header-cell *matHeaderCellDef>Post Limit</th>
+            <td mat-cell *matCellDef="let f">
+              <span *ngIf="!f.maxPostsPerUser" class="text-muted">Unlimited</span>
+              <span *ngIf="f.maxPostsPerUser">{{ f.maxPostsPerUser }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="maxImagesPerPost">
+            <th mat-header-cell *matHeaderCellDef>Images</th>
+            <td mat-cell *matCellDef="let f">{{ f.maxImagesPerPost || 3 }}</td>
+          </ng-container>
+          <ng-container matColumnDef="active">
+            <th mat-header-cell *matHeaderCellDef>Show in App</th>
+            <td mat-cell *matCellDef="let f">
+              <mat-slide-toggle [checked]="f.isActive" (change)="toggleActive(f)" color="primary">
+              </mat-slide-toggle>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let f">
+              <button mat-icon-button matTooltip="Edit" (click)="openEditForm(f)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteFeature(f)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      </div>
+      <div *ngIf="serviceFeatures.length === 0" class="empty-group">
+        No service features configured yet. Click "Add Feature" to add one.
+      </div>
+    </div>
+
+  </ng-container>
 </div>

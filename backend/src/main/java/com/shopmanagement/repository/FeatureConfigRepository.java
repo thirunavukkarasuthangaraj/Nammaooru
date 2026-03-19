@@ -18,6 +18,10 @@ public interface FeatureConfigRepository extends JpaRepository<FeatureConfig, Lo
 
     List<FeatureConfig> findByIsActiveTrueOrderByDisplayOrderAsc();
 
+    // Returns ALL nav_ and section_ configs (active + inactive) for app-level visibility control
+    @Query(value = "SELECT * FROM feature_configs WHERE feature_name LIKE 'nav\\_%' OR feature_name LIKE 'section\\_%' ORDER BY display_order ASC", nativeQuery = true)
+    List<FeatureConfig> findNavAndSectionConfigs();
+
     @Query(value = "SELECT * FROM feature_configs f WHERE f.is_active = true AND (" +
            "f.latitude IS NULL OR f.longitude IS NULL OR " +
            "(6371 * acos(cos(radians(:lat)) * cos(radians(f.latitude)) * " +

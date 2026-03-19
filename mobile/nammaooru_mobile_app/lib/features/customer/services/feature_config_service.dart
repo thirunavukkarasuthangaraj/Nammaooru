@@ -38,6 +38,27 @@ class FeatureConfigService {
     }
   }
 
+  /// Get ALL nav_ and section_ configs (active + inactive) for app-level visibility control.
+  /// Unlike getVisibleFeatures(), this returns inactive items too so the mobile app
+  /// knows which sections the admin has explicitly disabled.
+  Future<List<Map<String, dynamic>>> getAppConfig() async {
+    try {
+      final response = await _apiService.get(
+        '/feature-config/app-config',
+        includeAuth: false,
+      );
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> data = response['data'];
+        Logger.api('App config: got ${data.length} nav/section configs');
+        return data.map((item) => Map<String, dynamic>.from(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      Logger.e('Failed to fetch app config', 'FEATURE_CONFIG', e);
+      return [];
+    }
+  }
+
   /// Get effective post limits for the current user (cached for 5 minutes)
   Future<Map<String, int>> getMyPostLimits() async {
     // Return cache if fresh (within 5 minutes)

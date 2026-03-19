@@ -24,6 +24,42 @@ export class FeatureConfigManagementComponent implements OnInit {
     'icon', 'color', 'radiusKm', 'maxPostsPerUser', 'maxImagesPerPost', 'active', 'actions'
   ];
 
+  // ── Grouped getters ──────────────────────────────────────────────────────────
+  /** Bottom nav items (nav_cart, nav_orders, nav_profile) */
+  get navFeatures(): FeatureConfig[] {
+    return this.features.filter(f => f.featureName.startsWith('nav_'));
+  }
+  /** Dashboard section items (section_deliver_to, section_featured_shops, etc.) */
+  get sectionFeatures(): FeatureConfig[] {
+    return this.features.filter(f => f.featureName.startsWith('section_'));
+  }
+  /** Service grid tiles (grocery, food, labours, etc.) */
+  get serviceFeatures(): FeatureConfig[] {
+    return this.features.filter(
+      f => !f.featureName.startsWith('nav_') && !f.featureName.startsWith('section_')
+    );
+  }
+
+  // Human-friendly metadata for nav items
+  navMeta: Record<string, { label: string; icon: string; desc: string }> = {
+    nav_cart:    { label: 'Cart Tab',    icon: 'shopping_cart', desc: 'Show Cart icon in bottom navigation' },
+    nav_orders:  { label: 'Orders Tab',  icon: 'list_alt',      desc: 'Show Orders icon in bottom navigation' },
+    nav_profile: { label: 'Profile Tab', icon: 'person',        desc: 'Show Profile icon in bottom navigation' },
+  };
+  // Human-friendly metadata for section items
+  sectionMeta: Record<string, { label: string; icon: string; desc: string }> = {
+    section_deliver_to:     { label: 'Deliver To Bar',  icon: 'location_on',  desc: 'Address selector at top of home screen' },
+    section_featured_shops: { label: 'Featured Shops',  icon: 'store',        desc: 'Featured shops section on home screen' },
+    section_recent_orders:  { label: 'Recent Orders',   icon: 'receipt_long', desc: 'Recent orders section on home screen' },
+  };
+
+  getNavMeta(f: FeatureConfig) {
+    return this.navMeta[f.featureName] ?? { label: f.displayName, icon: 'settings', desc: '' };
+  }
+  getSectionMeta(f: FeatureConfig) {
+    return this.sectionMeta[f.featureName] ?? { label: f.displayName, icon: 'dashboard', desc: '' };
+  }
+
   constructor(
     private featureConfigService: FeatureConfigService,
     private fb: FormBuilder,
@@ -60,7 +96,7 @@ export class FeatureConfigManagementComponent implements OnInit {
         this.features = response.data || [];
         this.isLoading = false;
       },
-      error: (err) => {
+      error: () => {
         this.snackBar.open('Failed to load feature configs', 'Close', { duration: 3000 });
         this.isLoading = false;
       }
@@ -79,9 +115,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     if (input.files && input.files.length > 0) {
       this.selectedImage = input.files[0];
       const reader = new FileReader();
-      reader.onload = () => {
-        this.imagePreview = reader.result as string;
-      };
+      reader.onload = () => { this.imagePreview = reader.result as string; };
       reader.readAsDataURL(this.selectedImage);
     }
   }
@@ -133,16 +167,12 @@ export class FeatureConfigManagementComponent implements OnInit {
 
   saveFeature(): void {
     if (this.featureForm.invalid) return;
-
     const config: FeatureConfig = this.featureForm.value;
-
     if (this.editingId) {
       this.featureConfigService.updateFeature(this.editingId, config, this.selectedImage || undefined).subscribe({
         next: () => {
-          this.snackBar.open('Feature updated successfully', 'Close', { duration: 3000 });
+          this.snackBar.open('Feature updated', 'Close', { duration: 3000 });
           this.showForm = false;
-          this.selectedImage = null;
-          this.imagePreview = null;
           this.loadFeatures();
         },
         error: () => this.snackBar.open('Failed to update feature', 'Close', { duration: 3000 })
@@ -150,10 +180,8 @@ export class FeatureConfigManagementComponent implements OnInit {
     } else {
       this.featureConfigService.createFeature(config, this.selectedImage || undefined).subscribe({
         next: () => {
-          this.snackBar.open('Feature created successfully', 'Close', { duration: 3000 });
+          this.snackBar.open('Feature created', 'Close', { duration: 3000 });
           this.showForm = false;
-          this.selectedImage = null;
-          this.imagePreview = null;
           this.loadFeatures();
         },
         error: () => this.snackBar.open('Failed to create feature', 'Close', { duration: 3000 })
@@ -166,24 +194,21 @@ export class FeatureConfigManagementComponent implements OnInit {
       next: (response: any) => {
         const updated = response.data;
         const idx = this.features.findIndex(f => f.id === feature.id);
-        if (idx >= 0 && updated) {
-          this.features[idx] = updated;
-        }
-        this.snackBar.open('Feature toggled', 'Close', { duration: 2000 });
+        if (idx >= 0 && updated) this.features[idx] = { ...updated };
+        this.snackBar.open(
+          `${feature.displayName} ${updated?.isActive ? 'enabled' : 'disabled'} in app`,
+          'Close', { duration: 2000 }
+        );
       },
-      error: () => this.snackBar.open('Failed to toggle feature', 'Close', { duration: 3000 })
+      error: () => this.snackBar.open('Failed to toggle', 'Close', { duration: 3000 })
     });
   }
 
   deleteFeature(feature: FeatureConfig): void {
-    if (!confirm(`Delete feature "${feature.displayName}"?`)) return;
-
+    if (!confirm(`Delete "${feature.displayName}"?`)) return;
     this.featureConfigService.deleteFeature(feature.id!).subscribe({
-      next: () => {
-        this.snackBar.open('Feature deleted', 'Close', { duration: 3000 });
-        this.loadFeatures();
-      },
-      error: () => this.snackBar.open('Failed to delete feature', 'Close', { duration: 3000 })
+      next: () => { this.snackBar.open('Deleted', 'Close', { duration: 3000 }); this.loadFeatures(); },
+      error: () => this.snackBar.open('Failed to delete', 'Close', { duration: 3000 })
     });
   }
 }

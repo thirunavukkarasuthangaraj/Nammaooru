@@ -24,6 +24,22 @@ public class FeatureConfigController {
     private final FeatureConfigService featureConfigService;
     private final FileUploadService fileUploadService;
 
+    /**
+     * Returns ALL nav_ and section_ configs (active + inactive).
+     * Mobile uses this to know which sections/nav items to show or hide.
+     * No auth required — public endpoint.
+     */
+    @GetMapping("/app-config")
+    public ResponseEntity<ApiResponse<List<FeatureConfig>>> getAppConfig() {
+        try {
+            List<FeatureConfig> configs = featureConfigService.getNavAndSectionConfigs();
+            return ResponseUtil.success(configs, "App config retrieved successfully");
+        } catch (Exception e) {
+            log.error("Error fetching app config", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/visible")
     public ResponseEntity<ApiResponse<List<FeatureConfig>>> getVisibleFeatures(
             @RequestParam double lat,

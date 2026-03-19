@@ -24,6 +24,11 @@ public class FeatureConfigService {
         return featureConfigRepository.findAllByOrderByDisplayOrderAsc();
     }
 
+    /** Returns ALL nav_ and section_ configs (active + inactive) — used by mobile for app-level visibility control */
+    public List<FeatureConfig> getNavAndSectionConfigs() {
+        return featureConfigRepository.findNavAndSectionConfigs();
+    }
+
     @Transactional
     public FeatureConfig create(FeatureConfig config) {
         return featureConfigRepository.save(config);

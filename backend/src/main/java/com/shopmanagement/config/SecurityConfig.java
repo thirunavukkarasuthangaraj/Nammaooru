@@ -124,6 +124,7 @@ public class SecurityConfig {
                                 "/api/subscriptions/config",  // Public: Get subscription config for mobile
                                 "/api/villages",  // Public: View active villages for mobile
                                 "/api/feature-config/visible",  // Public: Get visible features for mobile
+                                "/api/feature-config/app-config",  // Public: Get nav+section visibility for mobile
                                 "/api/settings/public/**",  // Public: Get public settings (privacy policy, etc.)
                                 "/api/service-area/**",  // Public: Service area check (no auth needed)
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers

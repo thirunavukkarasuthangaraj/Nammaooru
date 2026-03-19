@@ -16,6 +16,7 @@ import 'core/storage/local_storage.dart';
 import 'services/firebase_notification_service.dart';
 import 'services/local_notification_service.dart';
 import 'firebase_options.dart';
+import 'shared/providers/feature_config_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => ForgotPasswordProvider(services.ApiService())),
+        ChangeNotifierProvider(create: (_) => FeatureConfigProvider()),
       ],
       child: const NammaOoruApp(),
     ),

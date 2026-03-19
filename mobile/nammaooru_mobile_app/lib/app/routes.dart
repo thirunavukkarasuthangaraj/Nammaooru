@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/role_guard.dart';
-import '../core/auth/auth_service.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
@@ -33,6 +32,8 @@ import '../features/customer/screens/create_womens_corner_screen.dart';
 import '../features/customer/screens/smart_order_screen.dart';
 import '../features/customer/screens/voice_assistant_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
+import 'package:provider/provider.dart';
+import '../shared/providers/feature_config_provider.dart';
 
 class AppRouter {
   // Global navigator key for navigation from services
@@ -216,57 +217,60 @@ class CustomerShell extends StatefulWidget {
 
 class _CustomerShellState extends State<CustomerShell> {
   int _currentIndex = 0;
-  String? _userRole;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserRole();
-  }
-
-  Future<void> _loadUserRole() async {
-    final userRole = await AuthService.getCurrentUserRole();
-    setState(() {
-      _userRole = userRole;
-    });
-  }
+  // All possible nav items in order: Home is always shown
+  static const List<_NavItem> _allNavItems = [
+    _NavItem(key: 'nav_home', label: 'Home', icon: Icons.home, route: '/customer/dashboard', alwaysShow: true),
+    _NavItem(key: 'nav_cart', label: 'Cart', icon: Icons.shopping_cart, route: '/customer/cart'),
+    _NavItem(key: 'nav_orders', label: 'Orders', icon: Icons.list_alt, route: '/customer/orders'),
+    _NavItem(key: 'nav_profile', label: 'Profile', icon: Icons.person, route: '/customer/profile'),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    // Show content immediately, use 'CUSTOMER' as default role for guests
-    final role = _userRole ?? 'CUSTOMER';
-    print('🔵 CustomerShell build - role: $role, child: ${widget.child.runtimeType}');
+    return Consumer<FeatureConfigProvider>(
+      builder: (context, featureConfig, _) {
+        final visibleItems = _allNavItems
+            .where((item) => item.alwaysShow || featureConfig.isVisible(item.key))
+            .toList();
 
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _navigateToCustomerRoute(index, context);
-        },
-        items: RoleGuard.getRoleBasedNavItems(role),
-        type: BottomNavigationBarType.fixed,
-      ),
+        // Clamp _currentIndex so it never exceeds the visible list
+        final safeIndex = _currentIndex.clamp(0, visibleItems.length - 1);
+
+        return Scaffold(
+          body: widget.child,
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: safeIndex,
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+              context.go(visibleItems[index].route);
+            },
+            items: visibleItems
+                .map((item) => BottomNavigationBarItem(
+                      icon: Icon(item.icon),
+                      label: item.label,
+                    ))
+                .toList(),
+            type: BottomNavigationBarType.fixed,
+          ),
+        );
+      },
     );
   }
+}
 
-  void _navigateToCustomerRoute(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go('/customer/dashboard');
-        break;
-      case 1:
-        context.go('/customer/cart');
-        break;
-      case 2:
-        context.go('/customer/orders');
-        break;
-      case 3:
-        context.go('/customer/profile');
-        break;
-    }
-  }
+class _NavItem {
+  final String key;
+  final String label;
+  final IconData icon;
+  final String route;
+  final bool alwaysShow;
+
+  const _NavItem({
+    required this.key,
+    required this.label,
+    required this.icon,
+    required this.route,
+    this.alwaysShow = false,
+  });
 }

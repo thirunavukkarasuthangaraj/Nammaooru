@@ -37,6 +37,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../services/marketplace_service.dart';
 import '../services/feature_config_service.dart';
+import '../../../shared/providers/feature_config_provider.dart';
 import '../../../core/services/api_service.dart';
 import '../screens/marketplace_screen.dart';
 import '../screens/bus_timing_screen.dart';
@@ -108,17 +109,23 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Future<void> _initLocationThenLoadData() async {
-    // Load feature config immediately with default coordinates (don't wait for GPS)
+    final featureProvider = Provider.of<FeatureConfigProvider>(context, listen: false);
+
+    // Load nav/section visibility immediately (no GPS needed)
+    featureProvider.loadAppConfig();
+
+    // Load feature config with defaults first, then refresh after GPS
     _loadFeatureConfig();
+
     // Get location, then load dashboard data (shops need location)
     await _getCurrentLocationOnStartup();
 
     // Check service area restriction after getting location
     await _checkServiceArea();
-    if (_serviceAreaBlocked) return; // Don't load dashboard data if blocked
+    if (_serviceAreaBlocked) return;
 
     _loadDashboardData();
-    // Refresh feature config with actual GPS coordinates if available
+    // Refresh service grid with actual GPS coordinates
     if (_userLatitude != null && _userLongitude != null) {
       _loadFeatureConfig();
     }
@@ -843,7 +850,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildUnifiedOffersCarousel() {
-    final totalItems = _promos.length + _combos.length + _featuredPosts.length;
+    final totalItems = _promos.length + _combos.length;
 
     if (totalItems == 0) {
       return const SizedBox.shrink();
@@ -858,7 +865,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           child: Row(
             children: [
               Text(
-                _featuredPosts.isNotEmpty ? 'FEATURED & OFFERS' : 'SPECIAL OFFERS',
+                'SPECIAL OFFERS',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -895,13 +902,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               setState(() => _currentOfferPage = index);
             },
             itemBuilder: (context, index) {
-              // Order: featured posts first, then combos, then promos
-              if (index < _featuredPosts.length) {
-                return _buildFeaturedPostCard(_featuredPosts[index]);
-              } else if (index < _featuredPosts.length + _combos.length) {
-                return _buildComboCard(_combos[index - _featuredPosts.length]);
+              // Order: combos first, then promos (shop-based only)
+              if (index < _combos.length) {
+                return _buildComboCard(_combos[index]);
               } else {
-                return _buildPromoCard(_promos[index - _featuredPosts.length - _combos.length]);
+                return _buildPromoCard(_promos[index - _combos.length]);
               }
             },
           ),
@@ -912,13 +917,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(totalItems > 10 ? 10 : totalItems, (index) {
+              children: List.generate(totalItems > 10 ? 10 : totalItems, (dotIndex) {
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _currentOfferPage == index ? 16 : 8,
+                  width: _currentOfferPage == dotIndex ? 16 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _currentOfferPage == index
+                    color: _currentOfferPage == dotIndex
                         ? VillageTheme.primaryGreen
                         : Colors.grey[300],
                     borderRadius: BorderRadius.circular(4),
@@ -1705,40 +1710,55 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 children: [
                   // Spacer to position content below header top area
                   const SizedBox(height: 120),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Location selector overlaps the curved header
-                        _buildLocationSelector(),
-                      ],
-                    ),
-                  ),
-                  // White background to cover the green curve
-                  Container(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[900]
-                        : Colors.grey[50],
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Column(
+                  Consumer<FeatureConfigProvider>(
+                    builder: (context, featureConfig, _) {
+                      return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 8),
-                          // Special Offers Carousel (top)
-                          _buildUnifiedOffersCarousel(),
-                          const SizedBox(height: 12),
-                        _buildServiceCategories(),
-                        const SizedBox(height: 24),
-                        _buildFeaturedShops(),
-                        const SizedBox(height: 24),
-                        _buildRecentOrders(),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                          // "Deliver To" location bar — controlled by section_deliver_to
+                          if (featureConfig.isVisible('section_deliver_to'))
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [_buildLocationSelector()],
+                              ),
+                            ),
+
+                          // Main content area
+                          Container(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[900]
+                                : Colors.grey[50],
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  _buildUnifiedOffersCarousel(),
+                                  const SizedBox(height: 12),
+                                  // Service categories (Grocery, Food, etc.) — each tile API-driven
+                                  _buildServiceCategories(),
+                                  // Featured Shops — controlled by section_featured_shops
+                                  if (featureConfig.isVisible('section_featured_shops')) ...[
+                                    const SizedBox(height: 24),
+                                    _buildFeaturedShops(),
+                                  ],
+                                  // Recent Orders — controlled by section_recent_orders
+                                  if (featureConfig.isVisible('section_recent_orders')) ...[
+                                    const SizedBox(height: 24),
+                                    _buildRecentOrders(),
+                                  ],
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                ),
               ],
             ),
             ],
@@ -2042,8 +2062,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     print('🟢 _loadFeatureConfig called with lat=$lat, lng=$lng');
     setState(() => _isLoadingFeatures = true);
     try {
-      final features = await _featureConfigService.getVisibleFeatures(lat, lng);
-      print('🟢 Feature config API returned ${features.length} features');
+      // Load into the shared provider (drives both service grid and bottom nav)
+      final provider = Provider.of<FeatureConfigProvider>(context, listen: false);
+      await provider.load(lat, lng);
+
+      final features = provider.serviceFeatures;
+      print('🟢 Feature config API returned ${features.length} service features');
       for (var f in features) {
         print('🟢 Feature: ${f['featureName']} - ${f['displayName']} - active: ${f['isActive']}');
       }
