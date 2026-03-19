@@ -99,6 +99,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
         if (position != null && position.latitude != null && position.longitude != null) {
           _userLatitude = position.latitude;
           _userLongitude = position.longitude;
+          if (mounted) _loadPosts();
         }
       }).catchError((_) {});
     }

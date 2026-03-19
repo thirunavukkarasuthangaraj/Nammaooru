@@ -105,6 +105,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         if (position != null && position.latitude != null && position.longitude != null) {
           _userLatitude = position.latitude;
           _userLongitude = position.longitude;
+          if (mounted) _loadPosts();
         }
       }).catchError((_) {});
     }

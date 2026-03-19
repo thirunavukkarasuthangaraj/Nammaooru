@@ -169,6 +169,8 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         if (position != null && position.latitude != null && position.longitude != null) {
           _userLatitude = position.latitude;
           _userLongitude = position.longitude;
+          // Reload with actual GPS so radius filter applies correctly
+          if (mounted) _loadPosts();
         }
       }).catchError((_) {});
     }
