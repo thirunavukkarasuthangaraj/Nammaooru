@@ -237,22 +237,27 @@ class _CustomerShellState extends State<CustomerShell> {
         // Clamp _currentIndex so it never exceeds the visible list
         final safeIndex = _currentIndex.clamp(0, visibleItems.length - 1);
 
+        // Hide bottom nav entirely if only Home is left (< 2 items)
+        final showBottomNav = visibleItems.length >= 2;
+
         return Scaffold(
           body: widget.child,
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: safeIndex,
-            onTap: (index) {
-              setState(() => _currentIndex = index);
-              context.go(visibleItems[index].route);
-            },
-            items: visibleItems
-                .map((item) => BottomNavigationBarItem(
-                      icon: Icon(item.icon),
-                      label: item.label,
-                    ))
-                .toList(),
-            type: BottomNavigationBarType.fixed,
-          ),
+          bottomNavigationBar: showBottomNav
+              ? BottomNavigationBar(
+                  currentIndex: safeIndex,
+                  onTap: (index) {
+                    setState(() => _currentIndex = index);
+                    context.go(visibleItems[index].route);
+                  },
+                  items: visibleItems
+                      .map((item) => BottomNavigationBarItem(
+                            icon: Icon(item.icon),
+                            label: item.label,
+                          ))
+                      .toList(),
+                  type: BottomNavigationBarType.fixed,
+                )
+              : null,
         );
       },
     );
