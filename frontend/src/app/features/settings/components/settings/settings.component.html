@@ -60,7 +60,7 @@
                 </p>
 
                 <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
-                  <mat-slide-toggle [(ngModel)]="serviceAreaEnabled" [ngModelOptions]="{standalone:true}" color="primary" (change)="onSaToggle()">
+                  <mat-slide-toggle [ngModel]="serviceAreaEnabled" [ngModelOptions]="{standalone:true}" color="primary" (ngModelChange)="serviceAreaEnabled = !!$event; onSaToggle()">
                     Enable Service Area Restriction
                   </mat-slide-toggle>
                   <span style="font-size:13px;color:#888;" *ngIf="serviceAreaEnabled">Users outside radius are blocked</span>
@@ -71,17 +71,17 @@
                   <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
                     <mat-form-field appearance="outline" style="flex:1;min-width:160px;">
                       <mat-label>Center Latitude</mat-label>
-                      <input matInput type="number" [(ngModel)]="serviceAreaLat" [ngModelOptions]="{standalone:true}" step="0.0001" (change)="updateSaMap()">
+                      <input matInput type="number" [ngModel]="serviceAreaLat" [ngModelOptions]="{standalone:true}" step="0.0001" (ngModelChange)="serviceAreaLat = +$event; updateSaMap()">
                       <mat-hint>Click map to auto-fill</mat-hint>
                     </mat-form-field>
                     <mat-form-field appearance="outline" style="flex:1;min-width:160px;">
                       <mat-label>Center Longitude</mat-label>
-                      <input matInput type="number" [(ngModel)]="serviceAreaLng" [ngModelOptions]="{standalone:true}" step="0.0001" (change)="updateSaMap()">
+                      <input matInput type="number" [ngModel]="serviceAreaLng" [ngModelOptions]="{standalone:true}" step="0.0001" (ngModelChange)="serviceAreaLng = +$event; updateSaMap()">
                       <mat-hint>Click map to auto-fill</mat-hint>
                     </mat-form-field>
                     <mat-form-field appearance="outline" style="flex:1;min-width:160px;">
                       <mat-label>Radius (km)</mat-label>
-                      <input matInput type="number" [(ngModel)]="serviceAreaRadius" [ngModelOptions]="{standalone:true}" min="1" max="500" (input)="updateSaMap()">
+                      <input matInput type="number" [ngModel]="serviceAreaRadius" [ngModelOptions]="{standalone:true}" min="1" max="500" (ngModelChange)="serviceAreaRadius = +$event; updateSaMap()">
                       <mat-hint>1 – 500 km</mat-hint>
                     </mat-form-field>
                   </div>
