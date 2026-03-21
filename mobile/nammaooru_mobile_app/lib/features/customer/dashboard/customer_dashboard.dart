@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:showcaseview/showcaseview.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -29,6 +30,7 @@ import '../../../shared/widgets/platform_promos_carousel.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../../../services/version_service.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/widgets/update_dialog.dart';
 import '../services/combo_service.dart';
 import '../models/combo_model.dart';
@@ -65,6 +67,11 @@ class CustomerDashboard extends StatefulWidget {
 }
 
 class _CustomerDashboardState extends State<CustomerDashboard> {
+  // App tour — one key per visible menu tile
+  final Map<String, GlobalKey> _featureTourKeys = {};
+  bool _tourChecked = false;
+  BuildContext? _showcaseCtx;
+
   String _selectedLocation = 'Getting your location...';
   double? _userLatitude;
   double? _userLongitude;
@@ -106,6 +113,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     _checkVersionOnStartup();
     _initLocationThenLoadData();
     // App version checking is handled globally in app.dart, no need for duplicate check here
+  }
+
+  Future<void> _startTourIfNeeded(BuildContext showcaseCtx) async {
+    _showcaseCtx = showcaseCtx;
+    if (_tourChecked) return;
+    _tourChecked = true;
+    final prefs = await SharedPreferences.getInstance();
+    final tourShown = prefs.getBool('app_tour_shown') ?? false;
+    if (!tourShown && mounted) {
+      await prefs.setBool('app_tour_shown', true);
+      // Wait for dynamic features to load, then start tour on each tile
+      Future.delayed(const Duration(milliseconds: 3000), () {
+        _triggerTour();
+      });
+    }
+  }
+
+  void _triggerTour() {
+    if (!mounted || _showcaseCtx == null) return;
+    final keys = _featureTourKeys.values.toList();
+    if (keys.isEmpty) return;
+    ShowCaseWidget.of(_showcaseCtx!).startShowCase(keys);
   }
 
   Future<void> _initLocationThenLoadData() async {
@@ -153,6 +182,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           builder: (_) => ServiceAreaDialog(
             message: result['message'] ?? 'Service is not available in your area.',
             radiusKm: (result['radiusKm'] as num?)?.toDouble(),
+            centerLat: (result['centerLat'] as num?)?.toDouble(),
+            centerLng: (result['centerLng'] as num?)?.toDouble(),
+            userLat: _userLatitude,
+            userLng: _userLongitude,
           ),
         );
       }
@@ -1684,7 +1717,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget build(BuildContext context) {
     print('🔵 CustomerDashboard build called');
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return ShowCaseWidget(
+      builder: (showcaseCtx) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _startTourIfNeeded(showcaseCtx));
+        return _buildDashboardContent(context, showcaseCtx, isDarkMode);
+      },
+    );
+  }
 
+  Widget _buildDashboardContent(BuildContext context, BuildContext showcaseCtx, bool isDarkMode) {
     return PopScope(
       canPop: false,
       onPopInvoked: (bool didPop) async {
@@ -1738,7 +1779,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                                   const SizedBox(height: 8),
                                   _buildUnifiedOffersCarousel(),
                                   const SizedBox(height: 12),
-                                  // Service categories (Grocery, Food, etc.) — each tile API-driven
                                   _buildServiceCategories(),
                                   // Featured Shops — controlled by section_featured_shops
                                   if (featureConfig.isVisible('section_featured_shops')) ...[
@@ -1870,10 +1910,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                               languageProvider.appName,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 28,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         );
@@ -2074,6 +2115,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         print('🟢 Feature: ${f['featureName']} - ${f['displayName']} - active: ${f['isActive']}');
       }
       if (mounted && features.isNotEmpty) {
+        // Create one GlobalKey per tile (stable: only add missing keys)
+        for (final f in features) {
+          final name = f['featureName']?.toString() ?? '';
+          _featureTourKeys.putIfAbsent(name, () => GlobalKey());
+        }
         setState(() {
           _dynamicFeatures = features;
           _isLoadingFeatures = false;
@@ -2284,7 +2330,33 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  // Short tour description per feature route (en, ta)
+  static const Map<String, List<String>> _tourDescriptions = {
+    'grocery':        ['Order grocery & daily essentials from nearby shops.',        'அருகிலுள்ள கடைகளில் மளிகை & தினசரி பொருட்கள் ஆர்டர் செய்யுங்கள்.'],
+    'food':           ['Order hot food from restaurants & home kitchens.',            'உணவகங்கள் & வீட்டு சமையல்காரர்களிடம் சாப்பாடு ஆர்டர் செய்யுங்கள்.'],
+    'marketplace':    ['Buy, sell or rent second-hand items locally.',                'உள்ளூரில் பழைய பொருட்களை வாங்கவும் / விற்கவும்.'],
+    'farmer':         ['Buy fresh farm produce directly from local farmers.',         'விவசாயிகளிடம் நேரடியாக கொள்முதல் செய்யுங்கள்.'],
+    'labours':        ['Find skilled workers for any job in your village.',           'உங்கள் கிராமத்தில் திறமையான தொழிலாளர்களை கண்டறியுங்கள்.'],
+    'travels':        ['Book cars & buses for local or outstation trips.',            'உள்ளூர் / வெளியூர் பயணங்களுக்கு வாகனம் பதிவு செய்யுங்கள்.'],
+    'parcels':        ['Send parcels & find packers and movers near you.',            'பொருட்கள் அனுப்புங்கள் & பேக்கர்ஸ் மூவர்ஸ் கண்டறியுங்கள்.'],
+    'real-estate':    ['Buy, sell or rent land, houses & properties.',                'நிலம், வீடு & சொத்துக்களை வாங்கவும் / விற்கவும் / வாடகை விடவும்.'],
+    'rentals':        ['Rent shops, houses, vehicles & equipment.',                   'கடை, வீடு, வாகனம் & உபகரணங்களை வாடகைக்கு எடுங்கள்.'],
+    'womens-corner':  ['Beauty, fashion & products from women entrepreneurs.',        'பெண் தொழில்முனைவோரிடம் அழகு & ஆடை பொருட்கள்.'],
+    'village':        ['Panchayat details & local government information.',           'பஞ்சாயத்து விவரங்கள் & உள்ளாட்சி தகவல்கள்.'],
+  };
+
+  String _getTourDesc(String? route, bool isTamil) {
+    if (route == null) return '';
+    final key = _tourDescriptions.keys.firstWhere(
+      (k) => route.contains(k),
+      orElse: () => '',
+    );
+    if (key.isEmpty) return '';
+    return isTamil ? _tourDescriptions[key]![1] : _tourDescriptions[key]![0];
+  }
+
   Widget _buildDynamicCategories(LanguageProvider languageProvider) {
+    final isTamil = languageProvider.currentLanguage == 'ta';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2296,17 +2368,34 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           children: _dynamicFeatures.map((feature) {
-            final isTamil = Provider.of<LanguageProvider>(context, listen: false).currentLanguage == 'ta';
+            final featureName = feature['featureName']?.toString() ?? '';
             final title = isTamil && feature['displayNameTamil'] != null && feature['displayNameTamil'].toString().isNotEmpty
                 ? feature['displayNameTamil']
                 : feature['displayName'] ?? '';
-            return _buildModernCategoryTile(
+            final tourKey = _featureTourKeys[featureName];
+            final desc = _getTourDesc(feature['route']?.toString(), isTamil);
+            final tile = _buildModernCategoryTile(
               icon: _mapIcon(feature['icon']),
               title: title,
               subtitle: '',
               color: _parseColor(feature['color']),
               imageUrl: feature['imageUrl']?.toString(),
               onTap: () => _navigateToFeature(feature['route']),
+            );
+            if (tourKey == null || desc.isEmpty) return tile;
+            return Showcase(
+              key: tourKey,
+              title: title,
+              description: desc,
+              tooltipBackgroundColor: Colors.white,
+              textColor: Colors.grey.shade800,
+              titleTextStyle: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: _parseColor(feature['color']),
+              ),
+              descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+              child: tile,
             );
           }).toList(),
         ),
@@ -2463,8 +2552,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 children: [
                   // Icon circle with image or icon
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
                       gradient: hasImage ? null : LinearGradient(
                         begin: Alignment.topLeft,
@@ -2477,7 +2566,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         ],
                       ),
                       color: hasImage ? Colors.white : null,
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: color.withValues(alpha: 0.3),
@@ -2488,18 +2577,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     ),
                     child: hasImage
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(16),
                             child: Image.network(
                               ImageUrlHelper.getFullImageUrl(imageUrl),
-                              width: 50,
-                              height: 50,
+                              width: 56,
+                              height: 56,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 26),
+                              errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 28),
                             ),
                           )
-                        : Icon(icon, color: Colors.white, size: 26),
+                        : Icon(icon, color: Colors.white, size: 28),
                   ),
-                  // Title and Subtitle
+                  // Title
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -2516,18 +2605,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (subtitle.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: color.withValues(alpha: 0.8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: color.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w500,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                     ],
                   ),
