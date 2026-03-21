@@ -149,11 +149,13 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
           position.longitude!,
         );
         if (address != null && mounted) {
-          final village = address['subLocality'] ?? '';
+          final name = address['name'] ?? address['subLocality'] ?? '';
           final city = address['locality'] ?? '';
           setState(() {
-            if (village.isNotEmpty && city.isNotEmpty) {
-              _locationController.text = '$village, $city';
+            if (name.isNotEmpty && city.isNotEmpty && name != city) {
+              _locationController.text = '$name, $city';
+            } else if (name.isNotEmpty) {
+              _locationController.text = name;
             } else if (city.isNotEmpty) {
               _locationController.text = city;
             }
@@ -597,7 +599,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               const SizedBox(height: 6),
               TextFormField(
                 controller: _locationController,
-                decoration: _inputDecoration('e.g., Mittur, Tirupattur').copyWith(
+                decoration: _inputDecoration('e.g., Your Village, District').copyWith(
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.my_location, color: Color(0xFF2E7D32)),
                     onPressed: _getLocation,

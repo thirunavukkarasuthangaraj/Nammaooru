@@ -208,7 +208,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
           _selectedStreet = streetName?.isNotEmpty == true
               ? streetName!
               : (streetNumber ?? '');
-          _selectedCity = address['locality'] ?? 'Tirupattur';
+          _selectedCity = address['locality'] ?? '';
           // Use 'name' field for village if it's readable, otherwise use subLocality
           _selectedVillage = (name?.isNotEmpty == true && !name!.contains('+'))
               ? name!
@@ -224,7 +224,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       if (mounted) {
         setState(() {
           _selectedAddress = 'Selected Location';
-          _selectedCity = 'Tirupattur';
+          _selectedCity = '';
           _selectedVillage = '';
           _selectedState = 'Tamil Nadu';
           _selectedPincode = '635601';
