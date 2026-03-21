@@ -125,6 +125,17 @@ export class FeatureConfigManagementComponent implements OnInit {
     this.imagePreview = null;
   }
 
+  removeExistingImage(): void {
+    this.editingImageUrl = null;
+    this.selectedImage = null;
+    this.imagePreview = null;
+  }
+
+  onImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+  }
+
   openAddForm(): void {
     this.editingId = null;
     this.selectedImage = null;

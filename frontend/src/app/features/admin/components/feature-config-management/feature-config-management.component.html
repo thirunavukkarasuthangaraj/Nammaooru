@@ -55,11 +55,15 @@
             <label class="upload-label">Feature Image</label>
             <div class="image-upload-area">
               <div *ngIf="editingImageUrl && !imagePreview" class="image-preview">
-                <img [src]="getImageUrl(editingImageUrl)" alt="Current image">
+                <img [src]="getImageUrl(editingImageUrl)" alt="Current image"
+                  (error)="onImageError($event)">
+                <button mat-icon-button class="remove-image-btn" (click)="removeExistingImage()" type="button" matTooltip="Delete image">
+                  <mat-icon>delete</mat-icon>
+                </button>
               </div>
               <div *ngIf="imagePreview" class="image-preview">
                 <img [src]="imagePreview" alt="Preview">
-                <button mat-icon-button class="remove-image-btn" (click)="removeImage()" type="button">
+                <button mat-icon-button class="remove-image-btn" (click)="removeImage()" type="button" matTooltip="Cancel">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>

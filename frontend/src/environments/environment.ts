@@ -2,11 +2,15 @@ import packageInfo from '../../package.json';
 
 export const environment = {
   production: true,
-  apiUrl: 'https://api.nammaoorudelivary.in/api',
+  // apiUrl: 'https://api.nammaoorudelivary.in/api',
+  apiUrl: 'http://localhost:8080/api',
+
   imageBaseUrl: '', // Images served from same origin via nginx proxy (enables service worker caching)
-  appUrl: 'https://nammaoorudelivary.in',
+  // appUrl: 'https://nammaoorudelivary.in',
+  appUrl: 'http://localhost:4200',
+
   googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
-  websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
+  websocketUrl: 'ws://localhost:8080/ws',
   version: packageInfo.version,
   buildDate: new Date().toISOString(), // Dynamic build date
   timezone: 'Asia/Kolkata', // Indian Standard Time
