@@ -4,6 +4,20 @@
   margin: 0 auto;
 }
 
+.map-section {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.map-hint {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .page-header {
   display: flex;
   align-items: center;

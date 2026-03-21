@@ -1,16 +1,17 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PostLimitsService, UserPostLimit } from '../../services/post-limits.service';
 import { FeatureConfigService, FeatureConfig } from '../../services/feature-config.service';
 import { SettingsService } from '../../../../core/services/settings.service';
+import * as L from 'leaflet';
 
 @Component({
   selector: 'app-post-limits',
   templateUrl: './post-limits.component.html',
   styleUrls: ['./post-limits.component.scss']
 })
-export class PostLimitsComponent implements OnInit {
+export class PostLimitsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Service area restriction
   serviceAreaEnabled = false;
   serviceAreaLat = 12.4955;
@@ -18,6 +19,12 @@ export class PostLimitsComponent implements OnInit {
   serviceAreaRadius = 50;
   serviceAreaLoading = true;
   serviceAreaSaving = false;
+
+  // Leaflet map
+  private serviceAreaMap: L.Map | null = null;
+  private serviceAreaMarker: L.Marker | null = null;
+  private serviceAreaCircle: L.Circle | null = null;
+  private mapInitialized = false;
 
   // Global free post limit
   globalFreePostLimit: number = 1;
@@ -126,6 +133,87 @@ export class PostLimitsComponent implements OnInit {
     this.loadPostTypeSettings();
   }
 
+  ngAfterViewInit(): void {
+    // Map will be initialized after service area config loads
+  }
+
+  ngOnDestroy(): void {
+    if (this.serviceAreaMap) {
+      this.serviceAreaMap.remove();
+      this.serviceAreaMap = null;
+      this.mapInitialized = false;
+    }
+  }
+
+  initServiceAreaMap(): void {
+    if (this.mapInitialized) {
+      this.updateServiceAreaMapView();
+      return;
+    }
+    setTimeout(() => {
+      const mapEl = document.getElementById('serviceAreaMap');
+      if (!mapEl) return;
+      this.mapInitialized = true;
+
+      const icon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+      });
+
+      this.serviceAreaMap = L.map('serviceAreaMap').setView([this.serviceAreaLat, this.serviceAreaLng], 9);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(this.serviceAreaMap);
+
+      this.serviceAreaMarker = L.marker([this.serviceAreaLat, this.serviceAreaLng], { icon })
+        .addTo(this.serviceAreaMap)
+        .bindPopup('Service Area Center')
+        .openPopup();
+
+      this.serviceAreaCircle = L.circle([this.serviceAreaLat, this.serviceAreaLng], {
+        radius: this.serviceAreaRadius * 1000,
+        color: '#1976D2', fillColor: '#1976D2', fillOpacity: 0.1, weight: 2, dashArray: '5,10'
+      }).addTo(this.serviceAreaMap);
+
+      this.serviceAreaMap.fitBounds(this.serviceAreaCircle.getBounds(), { padding: [20, 20] });
+
+      this.serviceAreaMap.on('click', (e: L.LeafletMouseEvent) => {
+        const { lat, lng } = e.latlng;
+        this.serviceAreaLat = parseFloat(lat.toFixed(6));
+        this.serviceAreaLng = parseFloat(lng.toFixed(6));
+        this.updateServiceAreaMapView();
+      });
+    }, 300);
+  }
+
+  updateServiceAreaMapView(): void {
+    if (!this.serviceAreaMap) return;
+    const latlng: L.LatLngExpression = [this.serviceAreaLat, this.serviceAreaLng];
+
+    if (this.serviceAreaMarker) {
+      this.serviceAreaMarker.setLatLng(latlng);
+    }
+    if (this.serviceAreaCircle) {
+      this.serviceAreaCircle.setLatLng(latlng as unknown as L.LatLng);
+      this.serviceAreaCircle.setRadius(this.serviceAreaRadius * 1000);
+    }
+    if (this.serviceAreaCircle) {
+      this.serviceAreaMap.fitBounds(this.serviceAreaCircle.getBounds(), { padding: [20, 20] });
+    }
+  }
+
+  onServiceAreaEnabledChange(): void {
+    if (this.serviceAreaEnabled) {
+      this.initServiceAreaMap();
+    }
+  }
+
+  onServiceAreaRadiusChange(): void {
+    this.updateServiceAreaMapView();
+  }
+
   initForm(): void {
     this.limitForm = this.fb.group({
       userIdentifier: ['', [Validators.required]],
@@ -147,6 +235,9 @@ export class PostLimitsComponent implements OnInit {
           if (s.key === 'service.area.radius.km') this.serviceAreaRadius = parseInt(s.value, 10) || 50;
         }
         this.serviceAreaLoading = false;
+        if (this.serviceAreaEnabled) {
+          this.initServiceAreaMap();
+        }
       },
       error: () => {
         this.snackBar.open('Failed to load service area config', 'Close', { duration: 3000 });

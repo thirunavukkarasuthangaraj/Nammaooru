@@ -24,29 +24,36 @@
     <mat-card-content>
       <div class="paid-post-form">
         <div class="paid-post-toggle">
-          <mat-slide-toggle [(ngModel)]="serviceAreaEnabled" color="primary">
+          <mat-slide-toggle [(ngModel)]="serviceAreaEnabled" color="primary" (change)="onServiceAreaEnabledChange()">
             Enable Service Area Restriction
           </mat-slide-toggle>
           <span class="toggle-hint" *ngIf="serviceAreaEnabled">Users outside the radius will be blocked</span>
           <span class="toggle-hint" *ngIf="!serviceAreaEnabled">App is available everywhere (no geo restriction)</span>
         </div>
 
-        <div class="paid-post-fields" *ngIf="serviceAreaEnabled">
-          <mat-form-field>
-            <mat-label>Center Latitude</mat-label>
-            <input matInput type="number" [(ngModel)]="serviceAreaLat" step="0.0001" placeholder="12.4955">
-            <mat-hint>Latitude of service area center</mat-hint>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Center Longitude</mat-label>
-            <input matInput type="number" [(ngModel)]="serviceAreaLng" step="0.0001" placeholder="78.5514">
-            <mat-hint>Longitude of service area center</mat-hint>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Radius (km)</mat-label>
-            <input matInput type="number" [(ngModel)]="serviceAreaRadius" min="1" max="500" placeholder="50">
-            <mat-hint>Service area radius in kilometers</mat-hint>
-          </mat-form-field>
+        <div *ngIf="serviceAreaEnabled">
+          <div class="paid-post-fields">
+            <mat-form-field>
+              <mat-label>Center Latitude</mat-label>
+              <input matInput type="number" [(ngModel)]="serviceAreaLat" step="0.0001" placeholder="12.4955" (change)="updateServiceAreaMapView()">
+              <mat-hint>Latitude of service area center</mat-hint>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Center Longitude</mat-label>
+              <input matInput type="number" [(ngModel)]="serviceAreaLng" step="0.0001" placeholder="78.5514" (change)="updateServiceAreaMapView()">
+              <mat-hint>Longitude of service area center</mat-hint>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Radius (km)</mat-label>
+              <input matInput type="number" [(ngModel)]="serviceAreaRadius" min="1" max="500" placeholder="50" (input)="onServiceAreaRadiusChange()">
+              <mat-hint>Service area radius in kilometers</mat-hint>
+            </mat-form-field>
+          </div>
+
+          <div class="map-section">
+            <p class="map-hint"><mat-icon style="font-size:16px;vertical-align:middle">touch_app</mat-icon> Click on the map to set the center point. The blue circle shows your service area.</p>
+            <div id="serviceAreaMap" style="height: 350px; border-radius: 8px; border: 1px solid #ddd;"></div>
+          </div>
         </div>
 
         <div class="paid-post-actions">
