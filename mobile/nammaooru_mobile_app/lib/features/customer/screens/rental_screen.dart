@@ -908,7 +908,7 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
   void _showEditDialog(Map<String, dynamic> post, LanguageProvider langProvider) {
     final titleController = TextEditingController(text: post['title'] ?? '');
     final descController = TextEditingController(text: post['description'] ?? '');
-    final priceController = TextEditingController(text: post['price']?.toString() ?? '');
+    final priceController = TextEditingController(text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
     final phoneController = TextEditingController(text: post['sellerPhone'] ?? '');
     final locationController = TextEditingController(text: post['location'] ?? '');
 

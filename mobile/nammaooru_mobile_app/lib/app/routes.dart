@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/role_guard.dart';
 import '../features/auth/screens/splash_screen.dart';
+import '../features/auth/screens/language_select_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/auth/screens/otp_verification_screen.dart';
@@ -47,6 +48,10 @@ class AppRouter {
       GoRoute(
         path: '/',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/language-select',
+        builder: (context, state) => const LanguageSelectScreen(),
       ),
       GoRoute(
         path: '/login',

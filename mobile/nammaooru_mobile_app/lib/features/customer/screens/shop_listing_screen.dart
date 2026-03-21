@@ -96,6 +96,10 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         final cat = widget.category!.toLowerCase();
         shops = shops.where((shop) {
           final shopType = (shop['businessType'] ?? '').toString().toLowerCase();
+          // 'food' category matches both 'food' and 'restaurant' business types
+          if (cat == 'food') {
+            return shopType == 'food' || shopType == 'restaurant';
+          }
           return shopType == cat || shopType.contains(cat);
         }).toList();
       }

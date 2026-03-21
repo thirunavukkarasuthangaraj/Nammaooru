@@ -1,0 +1,7 @@
+# Android signing key configuration
+# Copy this file to key.properties and fill in your values
+
+storePassword=<your keystore password>
+keyPassword=<your key password>
+keyAlias=nammaooru-customer
+storeFile=nammaooru-customer-release-key.jks

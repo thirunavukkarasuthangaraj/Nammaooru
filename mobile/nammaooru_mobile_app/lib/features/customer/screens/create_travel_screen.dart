@@ -407,11 +407,13 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image picker
@@ -598,7 +600,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
               TextFormField(
                 controller: _descriptionController,
                 maxLength: 1000,
-                maxLines: 3,
+                minLines: 3,
+                maxLines: null,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the travel...', '\u0BAA\u0BAF\u0BA3\u0BA4\u0BCD\u0BA4\u0BC8\u0BAA\u0BCD \u0BAA\u0BB1\u0BCD\u0BB1\u0BBF\u0BAF \u0B95\u0BC2\u0B9F\u0BC1\u0BA4\u0BB2\u0BCD \u0BB5\u0BBF\u0BB5\u0BB0\u0B99\u0BCD\u0B95\u0BB3\u0BCD...'),
@@ -700,6 +703,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

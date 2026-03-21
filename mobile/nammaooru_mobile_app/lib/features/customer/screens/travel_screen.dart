@@ -1217,7 +1217,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     final phoneController = TextEditingController(text: post['phone'] ?? '');
     final fromController = TextEditingController(text: post['fromLocation'] ?? '');
     final toController = TextEditingController(text: post['toLocation'] ?? '');
-    final priceController = TextEditingController(text: post['price'] ?? '');
+    final priceController = TextEditingController(text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
     final seatsController = TextEditingController(text: post['seatsAvailable']?.toString() ?? '');
     final descController = TextEditingController(text: post['description'] ?? '');
     bool isSaving = false;

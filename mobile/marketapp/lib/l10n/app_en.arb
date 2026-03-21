@@ -1,0 +1,239 @@
+{
+  "@@locale": "en",
+  "appTitle": "NammaOoru",
+  "@appTitle": {
+    "description": "The application title"
+  },
+  "welcomeMessage": "Welcome to NammaOoru",
+  "@welcomeMessage": {
+    "description": "Welcome message displayed on splash and login"
+  },
+  "loginPrompt": "Please login to continue",
+  "@loginPrompt": {
+    "description": "Prompt shown on login screen"
+  },
+  "registerPrompt": "Create new account",
+  "@registerPrompt": {
+    "description": "Prompt shown on register screen"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Email field label"
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Password field label"
+  },
+  "confirmPassword": "Confirm Password",
+  "@confirmPassword": {
+    "description": "Confirm password field label"
+  },
+  "phoneNumber": "Phone Number",
+  "@phoneNumber": {
+    "description": "Phone number field label"
+  },
+  "fullName": "Full Name",
+  "@fullName": {
+    "description": "Full name field label"
+  },
+  "login": "Login",
+  "@login": {
+    "description": "Login button text"
+  },
+  "register": "Register",
+  "@register": {
+    "description": "Register button text"
+  },
+  "logout": "Logout",
+  "@logout": {
+    "description": "Logout button text"
+  },
+  "forgotPassword": "Forgot Password?",
+  "@forgotPassword": {
+    "description": "Forgot password link text"
+  },
+  "dashboard": "Dashboard",
+  "@dashboard": {
+    "description": "Dashboard menu item"
+  },
+  "products": "Products",
+  "@products": {
+    "description": "Products menu item"
+  },
+  "orders": "Orders",
+  "@orders": {
+    "description": "Orders menu item"
+  },
+  "profile": "Profile",
+  "@profile": {
+    "description": "Profile menu item"
+  },
+  "cart": "Cart",
+  "@cart": {
+    "description": "Cart menu item"
+  },
+  "tracking": "Tracking",
+  "@tracking": {
+    "description": "Tracking menu item"
+  },
+  "inventory": "Inventory",
+  "@inventory": {
+    "description": "Inventory menu item"
+  },
+  "analytics": "Analytics",
+  "@analytics": {
+    "description": "Analytics menu item"
+  },
+  "earnings": "Earnings",
+  "@earnings": {
+    "description": "Earnings menu item"
+  },
+  "addToCart": "Add to Cart",
+  "@addToCart": {
+    "description": "Add to cart button text"
+  },
+  "checkout": "Checkout",
+  "@checkout": {
+    "description": "Checkout button text"
+  },
+  "placeOrder": "Place Order",
+  "@placeOrder": {
+    "description": "Place order button text"
+  },
+  "acceptOrder": "Accept Order",
+  "@acceptOrder": {
+    "description": "Accept order button text"
+  },
+  "rejectOrder": "Reject Order",
+  "@rejectOrder": {
+    "description": "Reject order button text"
+  },
+  "markAsReady": "Mark as Ready",
+  "@markAsReady": {
+    "description": "Mark as ready button text"
+  },
+  "startDelivery": "Start Delivery",
+  "@startDelivery": {
+    "description": "Start delivery button text"
+  },
+  "completeDelivery": "Complete Delivery",
+  "@completeDelivery": {
+    "description": "Complete delivery button text"
+  },
+  "errorGeneric": "Something went wrong. Please try again.",
+  "@errorGeneric": {
+    "description": "Generic error message"
+  },
+  "errorNetwork": "Network error. Please check your connection.",
+  "@errorNetwork": {
+    "description": "Network error message"
+  },
+  "errorAuth": "Authentication failed. Please login again.",
+  "@errorAuth": {
+    "description": "Authentication error message"
+  },
+  "errorLocation": "Unable to get location. Please enable location services.",
+  "@errorLocation": {
+    "description": "Location error message"
+  },
+  "loadingGeneric": "Loading...",
+  "@loadingGeneric": {
+    "description": "Generic loading message"
+  },
+  "loadingProducts": "Loading products...",
+  "@loadingProducts": {
+    "description": "Loading products message"
+  },
+  "loadingOrders": "Loading orders...",
+  "@loadingOrders": {
+    "description": "Loading orders message"
+  },
+  "loadingLocation": "Getting location...",
+  "@loadingLocation": {
+    "description": "Getting location message"
+  },
+  "customer": "Customer",
+  "@customer": {
+    "description": "Customer role label"
+  },
+  "shopOwner": "Shop Owner",
+  "@shopOwner": {
+    "description": "Shop owner role label"
+  },
+  "deliveryPartner": "Delivery Partner",
+  "@deliveryPartner": {
+    "description": "Delivery partner role label"
+  },
+  "orderPending": "Pending",
+  "@orderPending": {
+    "description": "Order status: pending"
+  },
+  "orderConfirmed": "Confirmed",
+  "@orderConfirmed": {
+    "description": "Order status: confirmed"
+  },
+  "orderPreparing": "Preparing",
+  "@orderPreparing": {
+    "description": "Order status: preparing"
+  },
+  "orderReadyForPickup": "Ready for Pickup",
+  "@orderReadyForPickup": {
+    "description": "Order status: ready for pickup"
+  },
+  "orderOutForDelivery": "Out for Delivery",
+  "@orderOutForDelivery": {
+    "description": "Order status: out for delivery"
+  },
+  "orderDelivered": "Delivered",
+  "@orderDelivered": {
+    "description": "Order status: delivered"
+  },
+  "orderCancelled": "Cancelled",
+  "@orderCancelled": {
+    "description": "Order status: cancelled"
+  },
+  "categoryGrocery": "Grocery",
+  "@categoryGrocery": {
+    "description": "Service category: grocery"
+  },
+  "categoryFood": "Food",
+  "@categoryFood": {
+    "description": "Service category: food"
+  },
+  "categoryParcel": "Parcel",
+  "@categoryParcel": {
+    "description": "Service category: parcel"
+  },
+  "searchHint": "Search for products, shops...",
+  "@searchHint": {
+    "description": "Search field hint text"
+  },
+  "deliverTo": "Deliver to",
+  "@deliverTo": {
+    "description": "Delivery address label"
+  },
+  "todaysSales": "Today's Sales",
+  "@todaysSales": {
+    "description": "Today's sales label"
+  },
+  "pendingOrders": "Pending Orders",
+  "@pendingOrders": {
+    "description": "Pending orders label"
+  },
+  "totalProducts": "Total Products",
+  "@totalProducts": {
+    "description": "Total products label"
+  },
+  "activeOrders": "Active Orders",
+  "@activeOrders": {
+    "description": "Active orders label"
+  },
+  "onlineStatus": "Online",
+  "@onlineStatus": {
+    "description": "Online status label"
+  },
+  "offlineStatus": "Offline",
+  "@offlineStatus": {
+    "description": "Offline status label"
+  }
+}

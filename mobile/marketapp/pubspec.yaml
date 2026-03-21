@@ -1,0 +1,105 @@
+name: nammaooru_mobile_app
+description: NammaOoru Multi-Service Delivery Platform - Flutter Mobile App
+publish_to: 'none'
+version: 1.2.35+68
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI Components
+  cupertino_icons: ^1.0.6
+  
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^17.0.0
+
+  # HTTP & API
+  http: ^1.1.0
+  dio: ^5.4.0
+
+  # State Management
+  provider: ^6.1.1
+
+  # Local Storage
+  shared_preferences: ^2.2.2
+  # flutter_secure_storage removed - causes package_info_plus transitive dependency with QUERY_ALL_PACKAGES
+  # Using encrypted SharedPreferences instead
+  
+  # Utils
+  connectivity_plus: ^7.0.0
+  url_launcher: ^6.2.1
+
+  # Geolocation & Maps
+  geocoding: ^4.0.0
+  geolocator: ^14.0.2
+  permission_handler: ^12.0.1
+  google_maps_flutter: ^2.13.1
+  location: ^8.0.1
+
+  # Voice Search & TTS
+  speech_to_text: ^7.3.0
+  flutter_tts: ^4.2.0
+  record: ^4.4.4
+
+  # Promo Codes - Using simple UUID without device info to avoid permissions
+  uuid: ^4.2.1
+  
+  # WebView
+  webview_flutter: ^4.10.0
+
+  # Navigation
+  go_router: ^12.1.3
+  
+  # Localization
+  flutter_localizations:
+    sdk: flutter
+  intl: 0.20.2
+  
+  # SMS Auto-fill (OTP auto-read from SMS)
+  sms_autofill: ^2.4.0
+
+  # JWT
+  jwt_decode: ^0.3.1
+  cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+  image_cropper: ^9.1.0
+  flutter_image_compress: ^2.1.0
+  email_validator: ^2.1.17
+  razorpay_flutter: ^1.3.7
+  flutter_plugin_android_lifecycle: 2.0.32
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_native_splash: ^2.3.5
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/logo-new.jpeg"
+  adaptive_icon_background: "#4CAF50"
+  adaptive_icon_foreground: "assets/icons/logo-new.jpeg"
+
+# Disabled native splash - using custom splash screen only
+# flutter_native_splash:
+#   color: "#4CAF50"
+#   fullscreen: true
+#   android_12:
+#     color: "#4CAF50"
+#     fullscreen: true
+
+# dependency_overrides:

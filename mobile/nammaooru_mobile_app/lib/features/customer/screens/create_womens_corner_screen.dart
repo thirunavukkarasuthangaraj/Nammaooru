@@ -277,7 +277,9 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: Form(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Form(
         key: _formKey,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -324,7 +326,8 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descriptionController,
-                maxLines: 3,
+                minLines: 3,
+                maxLines: null,
                 decoration: _inputDecoration(langProvider.getText('Describe your service...', '\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B9A\u0BC7\u0BB5\u0BC8\u0BAF\u0BC8 \u0BB5\u0BBF\u0BB5\u0BB0\u0BBF\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD...')).copyWith(
                   suffixIcon: VoiceInputButton(controller: _descriptionController),
                 ),
@@ -558,6 +561,7 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -405,10 +405,12 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -524,7 +526,8 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
               TextFormField(
                 controller: _descriptionController,
                 maxLength: 1000,
-                maxLines: 3,
+                minLines: 3,
+                maxLines: null,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Describe the rental...', 'வாடகை பற்றி விவரிக்கவும்...'),
@@ -670,6 +673,7 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

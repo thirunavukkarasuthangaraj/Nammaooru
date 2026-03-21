@@ -431,10 +431,12 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -562,7 +564,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
               TextFormField(
                 controller: _descriptionController,
                 maxLength: 1000,
-                maxLines: 3,
+                minLines: 3,
+                maxLines: null,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the worker...', 'தொழிலாளரைப் பற்றிய கூடுதல் விவரங்கள்...'),
@@ -664,6 +667,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

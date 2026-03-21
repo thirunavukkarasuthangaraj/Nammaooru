@@ -678,11 +678,6 @@ class _InventoryScreenState extends State<InventoryScreen>
                         hintText: languageProvider.searchProducts,
                         prefixIcon:
                             Icon(Icons.search, color: Colors.green.shade700),
-                        suffixIcon: IconButton(
-                          icon: Icon(Icons.mic, color: Colors.green.shade700),
-                          onPressed: _showVoiceSearchDialog,
-                          tooltip: languageProvider.getText('Voice Search', 'குரல் தேடல்'),
-                        ),
                         filled: true,
                         fillColor: AppTheme.background,
                         border: OutlineInputBorder(

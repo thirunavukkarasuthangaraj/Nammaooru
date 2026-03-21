@@ -421,10 +421,12 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -464,7 +466,8 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
               TextFormField(
                 controller: _descriptionController,
                 maxLength: 1000,
-                maxLines: 3,
+                minLines: 3,
+                maxLines: null,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Describe your product...', 'உங்கள் பொருளை விவரிக்கவும்...'),
@@ -695,6 +698,7 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

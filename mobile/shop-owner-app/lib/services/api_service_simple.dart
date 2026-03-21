@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_config.dart';
 
@@ -686,10 +687,13 @@ class ApiService {
       // Add images to request
       for (var image in images) {
         final bytes = await image.readAsBytes();
+        final ext = image.name.split('.').last.toLowerCase();
+        final mimeType = ext == 'png' ? 'png' : ext == 'webp' ? 'webp' : 'jpeg';
         final multipartFile = http.MultipartFile.fromBytes(
           'images',
           bytes,
           filename: image.name,
+          contentType: MediaType('image', mimeType),
         );
         request.files.add(multipartFile);
       }

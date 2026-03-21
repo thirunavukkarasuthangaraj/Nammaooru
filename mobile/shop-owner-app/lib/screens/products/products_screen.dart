@@ -347,11 +347,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               setState(() => _searchQuery = '');
                             },
                           ),
-                        IconButton(
-                          icon: Icon(Icons.mic, color: Colors.green.shade700),
-                          onPressed: _showVoiceSearchDialog,
-                          tooltip: languageProvider.getText('Voice Search', 'குரல் தேடல்'),
-                        ),
                       ],
                     ),
                   ),

@@ -405,11 +405,13 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image picker
@@ -615,7 +617,8 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
               TextFormField(
                 controller: _descriptionController,
                 maxLength: 1000,
-                maxLines: 3,
+                minLines: 3,
+                maxLines: null,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
                   langProvider.getText('Additional details about the service...', '\u0b9a\u0bc7\u0bb5\u0bc8 \u0baa\u0bb1\u0bcd\u0bb1\u0bbf\u0baf \u0b95\u0bc2\u0b9f\u0bc1\u0ba4\u0bb2\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd...'),
@@ -717,6 +720,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

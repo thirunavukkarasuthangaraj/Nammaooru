@@ -1113,7 +1113,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   void _showEditMarketplaceSheet(Map<String, dynamic> post) {
     final titleController = TextEditingController(text: post['title'] ?? '');
     final descController = TextEditingController(text: post['description'] ?? '');
-    final priceController = TextEditingController(text: post['price']?.toString() ?? '');
+    final priceController = TextEditingController(text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
     final phoneController = TextEditingController(text: post['sellerPhone'] ?? '');
     final categoryController = TextEditingController(text: post['category'] ?? '');
     final locationController = TextEditingController(text: post['location'] ?? '');

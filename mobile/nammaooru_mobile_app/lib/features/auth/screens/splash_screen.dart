@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
@@ -52,23 +53,29 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _checkAuthStatus() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (!mounted) return;
 
-        switch (authProvider.authState) {
-          case AuthState.authenticated:
-            context.go(authProvider.getHomeRoute());
-            break;
-          case AuthState.unauthenticated:
-            // Guests go directly to customer dashboard for browsing
-            context.go('/customer/dashboard');
-            break;
-          case AuthState.loading:
-            // If still loading after 3 seconds, navigate to dashboard as fallback
-            context.go('/customer/dashboard');
-            break;
-        }
+      // First launch: show language selection
+      final prefs = await SharedPreferences.getInstance();
+      final languageSelected = prefs.getBool('language_selected') ?? false;
+      if (!mounted) return;
+      if (!languageSelected) {
+        context.go('/language-select');
+        return;
+      }
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      switch (authProvider.authState) {
+        case AuthState.authenticated:
+          context.go(authProvider.getHomeRoute());
+          break;
+        case AuthState.unauthenticated:
+          context.go('/customer/dashboard');
+          break;
+        case AuthState.loading:
+          context.go('/customer/dashboard');
+          break;
       }
     });
   }

@@ -1206,7 +1206,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   void _showEditFarmerProductSheet(Map<String, dynamic> post) {
     final titleController = TextEditingController(text: post['title'] ?? '');
     final descController = TextEditingController(text: post['description'] ?? '');
-    final priceController = TextEditingController(text: post['price']?.toString() ?? '');
+    final priceController = TextEditingController(text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
     final phoneController = TextEditingController(text: post['sellerPhone'] ?? '');
     final unitController = TextEditingController(text: post['unit'] ?? '');
     final categoryController = TextEditingController(text: post['category'] ?? '');

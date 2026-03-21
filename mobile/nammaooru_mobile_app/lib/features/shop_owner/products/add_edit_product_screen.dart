@@ -73,8 +73,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final product = widget.product!;
     _nameController.text = product.name;
     _descriptionController.text = product.description;
-    _priceController.text = product.price.toString();
-    _discountPriceController.text = product.discountPrice?.toString() ?? '';
+    _priceController.text = product.price.toString().replaceAll(RegExp(r'\.0$'), '');
+    _discountPriceController.text = (product.discountPrice?.toString() ?? '').replaceAll(RegExp(r'\.0$'), '');
     _stockController.text = product.stockQuantity.toString();
     _selectedCategory = product.category;
     _selectedUnit = product.unit;

@@ -1,0 +1,694 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import '../../../core/theme/village_theme.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/storage/local_storage.dart';
+import '../../../core/localization/language_provider.dart';
+import '../services/marketplace_service.dart';
+import '../widgets/post_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
+import '../../../core/utils/image_compressor.dart';
+
+class CreatePostScreen extends StatefulWidget {
+  const CreatePostScreen({super.key});
+
+  @override
+  State<CreatePostScreen> createState() => _CreatePostScreenState();
+}
+
+class _CreatePostScreenState extends State<CreatePostScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _locationController = TextEditingController();
+  final MarketplaceService _marketplaceService = MarketplaceService();
+
+  String _selectedCategory = 'Other';
+  File? _selectedImage;
+  bool _isSubmitting = false;
+  bool _wantsBanner = false;
+  int? _paidTokenId;
+  double? _latitude;
+  double? _longitude;
+
+  final List<String> _categories = [
+    'Electronics',
+    'Furniture',
+    'Vehicles',
+    'Agriculture',
+    'Clothing',
+    'Food',
+    'Finance',
+    'Other',
+  ];
+
+  static const Map<String, String> _categoryTamil = {
+    'Electronics': 'எலக்ட்ரானிக்ஸ்',
+    'Furniture': 'மரச்சாமான்',
+    'Vehicles': 'வாகனங்கள்',
+    'Agriculture': 'விவசாயம்',
+    'Clothing': 'ஆடைகள்',
+    'Food': 'உணவு',
+    'Finance': 'நிதி',
+    'Other': 'மற்றவை',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillData();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _priceController.dispose();
+    _phoneController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  void _prefillData() {
+    // Pre-fill phone from locally stored user data
+    final phone = LocalStorage.getString('phoneNumber');
+    if (phone != null && phone.isNotEmpty) {
+      _phoneController.text = phone;
+    } else {
+      _fetchPhoneFromProfile();
+    }
+
+    // Pre-fill location
+    _getLocation();
+  }
+
+  Future<void> _fetchPhoneFromProfile() async {
+    try {
+      final response = await ApiClient.get('/users/me');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
+          final userData = data['data'];
+          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          if (phone.toString().isNotEmpty && mounted) {
+            setState(() {
+              _phoneController.text = phone.toString();
+            });
+            await LocalStorage.setString('phoneNumber', phone.toString());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching phone from profile: $e');
+    }
+  }
+
+  Future<void> _getLocation() async {
+    try {
+      final position = await LocationService.instance.getCurrentPosition();
+      if (position != null && position.latitude != null && position.longitude != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        final address = await LocationService.instance.getAddressFromCoordinates(
+          position.latitude!,
+          position.longitude!,
+        );
+        if (address != null && mounted) {
+          final village = address['subLocality'] ?? '';
+          final city = address['locality'] ?? '';
+          setState(() {
+            if (village.isNotEmpty && city.isNotEmpty) {
+              _locationController.text = '$village, $city';
+            } else if (city.isNotEmpty) {
+              _locationController.text = city;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      // Location is optional, silently fail
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        final compressed = await ImageCompressor.compressXFile(pickedFile);
+        setState(() {
+          _selectedImage = File(compressed.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceDialog() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: Text(langProvider.getText('Take Photo', 'புகைப்படம் எடுக்க')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: Text(langProvider.getText('Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitPost({int? paidTokenId, bool isBanner = false}) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // If user wants banner and no token yet, start payment flow first
+    if (_wantsBanner && paidTokenId == null && _paidTokenId == null) {
+      _handleBannerPayment();
+      return;
+    }
+
+    // Use stored token if available (retry after failed post creation)
+    final tokenToUse = paidTokenId ?? _paidTokenId;
+    final bannerFlag = isBanner || _wantsBanner;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final result = await _marketplaceService.createPost(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: _priceController.text.isNotEmpty
+            ? double.tryParse(_priceController.text)
+            : null,
+        phone: _phoneController.text.trim(),
+        category: _selectedCategory,
+        location: _locationController.text.trim(),
+        imagePath: _selectedImage?.path,
+        paidTokenId: tokenToUse,
+        latitude: _latitude,
+        longitude: _longitude,
+        isBanner: bannerFlag,
+      );
+
+      if (mounted) {
+        if (result['success'] == true) {
+          _paidTokenId = null; // Clear token after successful post
+          _showSuccessDialog();
+        } else if (PostPaymentHandler.isLimitReached(result)) {
+          setState(() { _isSubmitting = false; });
+          _handleLimitReached();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to submit post'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  void _handleBannerPayment() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'MARKETPLACE',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId;
+        _submitPost(paidTokenId: tokenId, isBanner: true);
+      },
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+    );
+    handler.startPayment(includeBanner: true);
+  }
+
+  void _handleLimitReached() {
+    final handler = PostPaymentHandler(
+      context: context,
+      postType: 'MARKETPLACE',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _paidTokenId = tokenId; // Store token for retry if post creation fails
+        _submitPost(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+    );
+    handler.startPayment();
+  }
+
+  void _showSuccessDialog() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: VillageTheme.primaryGreen, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              langProvider.getText('Post Submitted!', 'பதிவு சமர்ப்பிக்கப்பட்டது!'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              langProvider.getText(
+                'Your post is submitted for approval. It will be visible to others once admin approves it.',
+                'உங்கள் பதிவு ஒப்புதலுக்கு சமர்ப்பிக்கப்பட்டது. நிர்வாகி ஒப்புதல் அளித்தவுடன் மற்றவர்களுக்கு தெரியும்.',
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Auto-close after 3 seconds and go back
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        Navigator.pop(context); // Go back to marketplace (triggers refresh)
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final langProvider = Provider.of<LanguageProvider>(context);
+
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: Text(
+          langProvider.getText('Sell Something', 'பொருள் விற்க'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: VillageTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image picker
+              _buildImagePicker(langProvider),
+              const SizedBox(height: 20),
+
+              // Title
+              _buildLabel(langProvider.getText('Title *', 'தலைப்பு *')),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _titleController,
+                maxLength: 200,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.next,
+                decoration: _inputDecoration(
+                  langProvider.getText('e.g., Tractor for Sale', 'எ.கா., டிராக்டர் விற்பனைக்கு'),
+                ).copyWith(suffixIcon: VoiceInputButton(controller: _titleController)),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Title is required', 'தலைப்பு தேவை');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Must be at least 3 characters', 'குறைந்தது 3 எழுத்துகள் தேவை');
+                  }
+                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                    return langProvider.getText('Title max 3 words', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Description
+              _buildLabel(langProvider.getText('Description *', 'விவரம் *')),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _descriptionController,
+                maxLength: 1000,
+                maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                decoration: _inputDecoration(
+                  langProvider.getText('Describe your item...', 'உங்கள் பொருளை விவரிக்கவும்...'),
+                ).copyWith(
+                  suffixIcon: VoiceInputButton(controller: _descriptionController),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Description is required', 'விவரம் தேவை');
+                  }
+                  if (value.trim().length < 10) {
+                    return langProvider.getText('Description must be at least 10 characters', 'விவரம் குறைந்தது 10 எழுத்துகள் இருக்க வேண்டும்');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Price
+              _buildLabel(langProvider.getText('Price *', 'விலை *')),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: _inputDecoration('e.g., 50000').copyWith(
+                  prefixText: '\u20B9 ',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Price is required', 'விலை தேவை');
+                  }
+                  final price = double.tryParse(value.trim());
+                  if (price == null) {
+                    return langProvider.getText('Enter a valid price', 'சரியான விலையை உள்ளிடவும்');
+                  }
+                  if (price <= 0) {
+                    return langProvider.getText('Price must be greater than 0', 'விலை 0-ஐ விட அதிகமாக இருக்க வேண்டும்');
+                  }
+                  if (price > 10000000) {
+                    return langProvider.getText('Price cannot exceed \u20B91,00,00,000', 'விலை \u20B91,00,00,000 மிகாமல் இருக்க வேண்டும்');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Category
+              _buildLabel(langProvider.getText('Category *', 'வகை *')),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: _inputDecoration(
+                  langProvider.getText('Select category', 'வகையைத் தேர்ந்தெடுக்கவும்'),
+                ),
+                items: _categories.map((cat) {
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Text(langProvider.getText(cat, _categoryTamil[cat] ?? cat)),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategory = value ?? 'Other';
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Phone
+              _buildLabel(langProvider.getText('Phone Number *', 'தொலைபேசி எண் *')),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                decoration: _inputDecoration(
+                  langProvider.getText('Your phone number', 'உங்கள் தொலைபேசி எண்'),
+                ).copyWith(
+                  prefixIcon: const Icon(Icons.phone, size: 20, color: VillageTheme.primaryGreen),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Phone number is required', 'தொலைபேசி எண் தேவை');
+                  }
+                  if (value.trim().length != 10) {
+                    return langProvider.getText('Enter valid 10-digit mobile number', 'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்');
+                  }
+                  if (!RegExp(r'^[6-9]').hasMatch(value.trim())) {
+                    return langProvider.getText('Must start with 6, 7, 8 or 9', '6, 7, 8 அல்லது 9 இல் தொடங்க வேண்டும்');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Location (English only)
+              _buildLabel('Location *'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _locationController,
+                decoration: _inputDecoration('e.g., Mittur, Tirupattur').copyWith(
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.my_location, color: VillageTheme.primaryGreen),
+                    onPressed: _getLocation,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return langProvider.getText('Location is required', 'இடம் தேவை');
+                  }
+                  if (value.trim().length < 3) {
+                    return langProvider.getText('Enter a valid location', 'சரியான இடத்தை உள்ளிடவும்');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Banner toggle
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _wantsBanner ? Colors.amber.shade400 : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: _wantsBanner ? Colors.amber.shade700 : Colors.grey.shade400,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            langProvider.getText('Feature as Banner', 'பேனராக காட்டு'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: _wantsBanner ? Colors.amber.shade900 : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            langProvider.getText(
+                              'Show at top of listings (paid)',
+                              'பட்டியல்களின் மேலே காட்டு (கட்டணம்)',
+                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _wantsBanner,
+                      activeColor: Colors.amber.shade700,
+                      onChanged: (val) => setState(() => _wantsBanner = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Submit button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitPost,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: VillageTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    disabledBackgroundColor: Colors.grey[400],
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          langProvider.getText('Submit for Approval', 'ஒப்புதலுக்கு சமர்ப்பிக்கவும்'),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: VillageTheme.primaryText,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: VillageTheme.primaryGreen, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    );
+  }
+
+  Widget _buildImagePicker(LanguageProvider langProvider) {
+    return GestureDetector(
+      onTap: _showImageSourceDialog,
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey[300]!,
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: _selectedImage != null
+            ? Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      _selectedImage!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 200,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImage = null;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.camera_alt_outlined, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  Text(
+                    langProvider.getText('Tap to add product photo', 'பொருள் புகைப்படம் சேர்க்க தட்டவும்'),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    langProvider.getText('Camera or Gallery', 'கேமரா அல்லது கேலரி'),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}

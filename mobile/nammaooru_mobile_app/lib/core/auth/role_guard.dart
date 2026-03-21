@@ -73,7 +73,7 @@ class RoleGuard {
   }
   
   static bool _isAuthRoute(String path) {
-    final authRoutes = ['/login', '/register', '/otp-verification', '/forgot-password'];
+    final authRoutes = ['/login', '/register', '/otp-verification', '/forgot-password', '/language-select'];
     return authRoutes.contains(path) || path == '/';
   }
   
