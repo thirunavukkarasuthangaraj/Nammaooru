@@ -10,6 +10,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/rental_service.dart';
+import '../widgets/voice_input_button.dart';
 import 'create_rental_screen.dart';
 import 'rental_post_detail_screen.dart';
 
@@ -911,78 +912,124 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
     final priceController = TextEditingController(text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
     final phoneController = TextEditingController(text: post['sellerPhone'] ?? '');
     final locationController = TextEditingController(text: post['location'] ?? '');
+    bool imageDeleted = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(langProvider.getText('Edit Post', 'பதிவைத் திருத்து')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(labelText: langProvider.getText('Title', 'தலைப்பு')),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: descController,
-                maxLines: 3,
-                decoration: InputDecoration(labelText: langProvider.getText('Description', 'விவரம்')),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: priceController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: langProvider.getText('Price', 'விலை')),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(labelText: langProvider.getText('Phone', 'தொலைபேசி')),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: locationController,
-                decoration: InputDecoration(labelText: langProvider.getText('Location', 'இடம்')),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(langProvider.getText('Cancel', 'ரத்து')),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final updates = <String, dynamic>{};
-              if (titleController.text.isNotEmpty) updates['title'] = titleController.text;
-              if (descController.text.isNotEmpty) updates['description'] = descController.text;
-              if (priceController.text.isNotEmpty) updates['price'] = double.tryParse(priceController.text);
-              if (phoneController.text.isNotEmpty) updates['phone'] = phoneController.text;
-              if (locationController.text.isNotEmpty) updates['location'] = locationController.text;
-
-              final result = await _rentalService.editPost(
-                post['id'] is int ? post['id'] : int.parse(post['id'].toString()),
-                updates,
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(result['message'] ?? 'Done'),
-                    backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(langProvider.getText('Edit Post', 'பதிவைத் திருத்து')),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(labelText: langProvider.getText('Title', 'தலைப்பு'), suffixIcon: VoiceInputButton(controller: titleController)),
+                ),
+                const SizedBox(height: 8),
+                if (post['imageUrl'] != null && post['imageUrl'].toString().isNotEmpty) ...[
+                  const Text('Current Image', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          post['imageUrl'].toString(),
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 80,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => setDialogState(() => imageDeleted = true),
+                          child: Container(
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                      if (imageDeleted)
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                          child: const Center(child: Text('Image will be removed', style: TextStyle(color: Colors.white))),
+                        ),
+                    ],
                   ),
-                );
-                if (result['success'] == true) _loadMyPosts();
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: _rentalOrange, foregroundColor: Colors.white),
-            child: Text(langProvider.getText('Save', 'சேமி')),
+                  const SizedBox(height: 8),
+                ],
+                TextField(
+                  controller: descController,
+                  maxLines: null,
+                  minLines: 3,
+                  decoration: InputDecoration(labelText: langProvider.getText('Description', 'விவரம்'), suffixIcon: VoiceInputButton(controller: descController)),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: langProvider.getText('Price', 'விலை')),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(labelText: langProvider.getText('Phone', 'தொலைபேசி')),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: locationController,
+                  decoration: InputDecoration(labelText: langProvider.getText('Location', 'இடம்')),
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(langProvider.getText('Cancel', 'ரத்து')),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final updates = <String, dynamic>{};
+                if (titleController.text.isNotEmpty) updates['title'] = titleController.text;
+                if (descController.text.isNotEmpty) updates['description'] = descController.text;
+                if (priceController.text.isNotEmpty) updates['price'] = double.tryParse(priceController.text);
+                if (phoneController.text.isNotEmpty) updates['phone'] = phoneController.text;
+                if (locationController.text.isNotEmpty) updates['location'] = locationController.text;
+                if (imageDeleted) updates['imageUrl'] = '';
+
+                final result = await _rentalService.editPost(
+                  post['id'] is int ? post['id'] : int.parse(post['id'].toString()),
+                  updates,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Done'),
+                      backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+                    ),
+                  );
+                  if (result['success'] == true) _loadMyPosts();
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: _rentalOrange, foregroundColor: Colors.white),
+              child: Text(langProvider.getText('Save', 'சேமி')),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/travel_service.dart';
 import '../services/bus_timing_service.dart';
 import '../widgets/renewal_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 import 'create_travel_screen.dart';
 import 'travel_post_detail_screen.dart';
 
@@ -1221,6 +1222,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     final seatsController = TextEditingController(text: post['seatsAvailable']?.toString() ?? '');
     final descController = TextEditingController(text: post['description'] ?? '');
     bool isSaving = false;
+    bool imageDeleted = false;
 
     showModalBottomSheet(
       context: context,
@@ -1242,8 +1244,49 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                TextField(controller: titleController, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: titleController))),
                 const SizedBox(height: 12),
+                if (post['imageUrl'] != null && post['imageUrl'].toString().isNotEmpty) ...[
+                  const Text('Current Image', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          post['imageUrl'].toString(),
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 80,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => setSheetState(() => imageDeleted = true),
+                          child: Container(
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                      if (imageDeleted)
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                          child: const Center(child: Text('Image will be removed', style: TextStyle(color: Colors.white))),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
                 const SizedBox(height: 12),
                 TextField(controller: fromController, decoration: const InputDecoration(labelText: 'From Location', border: OutlineInputBorder())),
@@ -1254,7 +1297,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                 const SizedBox(height: 12),
                 TextField(controller: seatsController, decoration: const InputDecoration(labelText: 'Seats Available', border: OutlineInputBorder()), keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                TextField(controller: descController, decoration: InputDecoration(labelText: 'Description', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: descController)), maxLines: null, minLines: 3),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -1271,6 +1314,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                         updates['seatsAvailable'] = int.tryParse(seatsController.text);
                       }
                       if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (imageDeleted) updates['imageUrl'] = '';
                       if (updates.isEmpty) { Navigator.pop(ctx); return; }
                       final result = await _travelService.editPost(post['id'], updates);
                       if (mounted) {

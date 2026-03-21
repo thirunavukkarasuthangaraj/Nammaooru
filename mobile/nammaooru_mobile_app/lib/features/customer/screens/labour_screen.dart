@@ -14,6 +14,7 @@ import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/labour_service.dart';
 import '../widgets/renewal_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 import 'create_labour_screen.dart';
 import 'labour_post_detail_screen.dart';
 
@@ -1257,6 +1258,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     final locationController = TextEditingController(text: post['location'] ?? '');
     final descController = TextEditingController(text: post['description'] ?? '');
     bool isSaving = false;
+    bool imageDeleted = false;
 
     showModalBottomSheet(
       context: context,
@@ -1278,15 +1280,56 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
+                TextField(controller: nameController, decoration: InputDecoration(labelText: 'Name', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: nameController))),
                 const SizedBox(height: 12),
+                if (post['imageUrl'] != null && post['imageUrl'].toString().isNotEmpty) ...[
+                  const Text('Current Image', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          post['imageUrl'].toString(),
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 80,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => setSheetState(() => imageDeleted = true),
+                          child: Container(
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                      if (imageDeleted)
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                          child: const Center(child: Text('Image will be removed', style: TextStyle(color: Colors.white))),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
                 const SizedBox(height: 12),
                 TextField(controller: experienceController, decoration: const InputDecoration(labelText: 'Experience', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                TextField(controller: descController, decoration: InputDecoration(labelText: 'Description', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: descController)), maxLines: null, minLines: 3),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -1299,6 +1342,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                       if (experienceController.text != (post['experience'] ?? '')) updates['experience'] = experienceController.text;
                       if (locationController.text != (post['location'] ?? '')) updates['location'] = locationController.text;
                       if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
+                      if (imageDeleted) updates['imageUrl'] = '';
                       if (updates.isEmpty) { Navigator.pop(ctx); return; }
                       final result = await _labourService.editPost(post['id'], updates);
                       if (mounted) {

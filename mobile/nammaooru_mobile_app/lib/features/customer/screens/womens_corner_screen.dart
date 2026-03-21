@@ -10,6 +10,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import '../services/womens_corner_service.dart';
 import '../widgets/renewal_payment_handler.dart';
+import '../widgets/voice_input_button.dart';
 import 'womens_corner_detail_screen.dart';
 import 'create_womens_corner_screen.dart';
 
@@ -743,6 +744,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
     final phoneController = TextEditingController(text: post['phone'] ?? post['sellerPhone'] ?? '');
     final locationController = TextEditingController(text: post['location'] ?? '');
     bool isSaving = false;
+    bool imageDeleted = false;
 
     showModalBottomSheet(
       context: context,
@@ -764,9 +766,50 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
+                TextField(controller: titleController, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: titleController))),
                 const SizedBox(height: 12),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                if (post['imageUrl'] != null && post['imageUrl'].toString().isNotEmpty) ...[
+                  const Text('Current Image', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          post['imageUrl'].toString(),
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 80,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => setSheetState(() => imageDeleted = true),
+                          child: Container(
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                      if (imageDeleted)
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                          child: const Center(child: Text('Image will be removed', style: TextStyle(color: Colors.white))),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(controller: descController, decoration: InputDecoration(labelText: 'Description', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: descController)), maxLines: null, minLines: 3),
                 const SizedBox(height: 12),
                 TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder()), keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
@@ -785,6 +828,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
                       if (priceController.text != (post['price']?.toString() ?? '')) updates['price'] = priceController.text;
                       if (phoneController.text != (post['phone'] ?? post['sellerPhone'] ?? '')) updates['phone'] = phoneController.text;
                       if (locationController.text != (post['location'] ?? '')) updates['location'] = locationController.text;
+                      if (imageDeleted) updates['imageUrl'] = '';
                       if (updates.isEmpty) { Navigator.pop(ctx); return; }
                       final result = await _service.editPost(post['id'], updates);
                       if (mounted) {
