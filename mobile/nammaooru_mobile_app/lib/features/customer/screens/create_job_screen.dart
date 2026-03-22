@@ -39,27 +39,30 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   static const Color _jobGreen = Color(0xFF2E7D32);
 
+  // Jobs = employment/salary positions (Shop, Office, Service sector)
+  // Skilled trades (Electrician, Plumber, Carpenter etc.) → use Labour module
   static const Map<String, String> _categories = {
     'SHOP_WORKER': '🏪 Shop Worker / கடை ஊழியர்',
+    'WOMEN_SHOP_WORKER': '👩 Women for Shop / பெண் கடை ஊழியர்',
     'SALES_PERSON': '💼 Sales Person / விற்பனையாளர்',
     'DELIVERY_BOY': '🚴 Delivery / டெலிவரி',
-    'SECURITY': '🛡️ Security Guard / பாதுகாவலர்',
     'CASHIER': '💰 Cashier / கேஷியர்',
     'RECEPTIONIST': '📋 Receptionist / ரிசெப்ஷனிஸ்ட்',
     'ACCOUNTANT': '📊 Accountant / கணக்காளர்',
     'DRIVER': '🚗 Driver / டிரைவர்',
+    'AUTO_DRIVER': '🛺 Auto Driver / ஆட்டோ டிரைவர்',
     'COOK': '👨‍🍳 Cook / சமையல்காரர்',
     'HELPER': '🤝 Helper / உதவியாளர்',
     'TEACHER': '📚 Teacher / ஆசிரியர்',
+    'TUTOR': '📖 Tutor / டியூட்டர்',
     'NURSE': '🏥 Nurse / செவிலியர்',
+    'BEAUTICIAN': '💄 Beautician / அழகுக்கலை',
     'TAILOR': '✂️ Tailor / தையல்காரர்',
-    'CLEANER': '🧹 Cleaner / சுத்தம்',
     'WATCHMAN': '👁️ Watchman / காவலன்',
-    'FARM_WORKER': '🌾 Farm Worker / விவசாயி',
     'COMPUTER_OPERATOR': '💻 Computer Operator / கம்ப்யூட்டர்',
     'PEON': '📦 Peon / சாய்பல்',
     'MANAGER': '👔 Manager / மேலாளர்',
-    'OTHER': '🔧 Other / பிற',
+    'OTHER': '🔩 Other / பிற',
   };
 
   static const Map<String, String> _jobTypes = {

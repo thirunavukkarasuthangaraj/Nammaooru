@@ -109,10 +109,12 @@ public class JobPost {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // Jobs = employment/salary positions only
+    // Trade skills (Electrician, Plumber, Carpenter etc.) belong in Labour module
     public enum JobCategory {
-        SHOP_WORKER, SALES_PERSON, DELIVERY_BOY, SECURITY, CASHIER,
-        RECEPTIONIST, ACCOUNTANT, DRIVER, COOK, HELPER, TEACHER,
-        NURSE, TAILOR, CLEANER, WATCHMAN, FARM_WORKER, COMPUTER_OPERATOR,
+        SHOP_WORKER, WOMEN_SHOP_WORKER, SALES_PERSON, DELIVERY_BOY, CASHIER,
+        RECEPTIONIST, ACCOUNTANT, DRIVER, AUTO_DRIVER, COOK, HELPER, TEACHER, TUTOR,
+        NURSE, BEAUTICIAN, TAILOR, WATCHMAN, COMPUTER_OPERATOR,
         PEON, MANAGER, OTHER
     }
 

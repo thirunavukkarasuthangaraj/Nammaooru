@@ -572,8 +572,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         'marketplace': {
           'icon': Icons.storefront_rounded,
           'color': const Color(0xFF4527A0),
-          'label': 'Marketplace',
-          'labelTamil': 'சந்தை',
+          'label': 'Second Hand',
+          'labelTamil': 'பழைய பொருட்கள்',
           'screen': const MarketplaceScreen(),
           'titleKey': 'title',
           'subtitleKey': 'description',
@@ -2347,7 +2347,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   static const Map<String, List<String>> _tourDescriptions = {
     'grocery':        ['Order grocery & daily essentials from nearby shops.',        'அருகிலுள்ள கடைகளில் மளிகை & தினசரி பொருட்கள் ஆர்டர் செய்யுங்கள்.'],
     'food':           ['Order hot food from restaurants & home kitchens.',            'உணவகங்கள் & வீட்டு சமையல்காரர்களிடம் சாப்பாடு ஆர்டர் செய்யுங்கள்.'],
-    'marketplace':    ['Browse local shops & get contact numbers to connect.',        'உள்ளூர் கடைகளை தேடி தொடர்பு கொள்ளுங்கள்.'],
+    'marketplace':    ['Buy & sell used / second-hand items in your local area.',       'உங்கள் பகுதியில் பழைய பொருட்களை வாங்கவும் விற்கவும்.'],
     'farmer':         ['Buy fresh farm produce directly from local farmers.',         'விவசாயிகளிடம் நேரடியாக கொள்முதல் செய்யுங்கள்.'],
     'labours':        ['Find skilled workers for any job in your village.',           'உங்கள் கிராமத்தில் திறமையான தொழிலாளர்களை கண்டறியுங்கள்.'],
     'travels':        ['Book cars & buses for local or outstation trips.',            'உள்ளூர் / வெளியூர் பயணங்களுக்கு வாகனம் பதிவு செய்யுங்கள்.'],

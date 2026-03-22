@@ -14,9 +14,13 @@
 <!-- Camera permission -->
 <uses-permission android:name="android.permission.CAMERA" />
 
-<!-- Storage permissions -->
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<!-- Storage permissions (Android 12 and below) -->
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+
+<!-- Media permissions (Android 13+ / API 33+) — required for Vivo, Samsung, etc. -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
 <!-- Phone permission -->
 <uses-permission android:name="android.permission.CALL_PHONE" />
@@ -138,6 +142,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- FileProvider — required for camera capture on Android 7+ (Vivo, Samsung, etc.) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
     
 </manifest>

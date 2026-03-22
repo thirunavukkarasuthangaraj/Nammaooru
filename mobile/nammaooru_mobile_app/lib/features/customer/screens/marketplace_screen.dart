@@ -347,7 +347,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Ooru Market', 'ஊரு மார்க்கெட்'),
+          langProvider.getText('Second Hand', 'பழைய பொருட்கள்'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: VillageTheme.primaryGreen,

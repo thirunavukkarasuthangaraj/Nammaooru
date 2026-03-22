@@ -336,7 +336,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Sell Something', 'பொருள் விற்க'),
+          langProvider.getText('Sell Second Hand', 'பழைய பொருள் விற்க'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: VillageTheme.primaryGreen,

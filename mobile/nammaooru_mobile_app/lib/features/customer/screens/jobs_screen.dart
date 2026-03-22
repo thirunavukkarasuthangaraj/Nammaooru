@@ -36,24 +36,27 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   static const Color _jobGreen = Color(0xFF2E7D32);
 
+  // Jobs = employment/salary positions only
+  // Skilled trades (Electrician, Plumber, Carpenter etc.) belong in Labour module
   static const Map<String, String> _categories = {
     'All': 'All',
     'SHOP_WORKER': 'Shop Worker',
+    'WOMEN_SHOP_WORKER': 'Women for Shop',
     'SALES_PERSON': 'Sales',
     'DELIVERY_BOY': 'Delivery',
-    'SECURITY': 'Security',
     'CASHIER': 'Cashier',
     'RECEPTIONIST': 'Receptionist',
     'ACCOUNTANT': 'Accountant',
     'DRIVER': 'Driver',
+    'AUTO_DRIVER': 'Auto Driver',
     'COOK': 'Cook',
     'HELPER': 'Helper',
     'TEACHER': 'Teacher',
+    'TUTOR': 'Tutor',
     'NURSE': 'Nurse',
+    'BEAUTICIAN': 'Beautician',
     'TAILOR': 'Tailor',
-    'CLEANER': 'Cleaner',
     'WATCHMAN': 'Watchman',
-    'FARM_WORKER': 'Farm Worker',
     'COMPUTER_OPERATOR': 'Computer',
     'MANAGER': 'Manager',
     'OTHER': 'Other',
@@ -62,21 +65,22 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
   static const Map<String, String> _categoryTamil = {
     'All': 'அனைத்தும்',
     'SHOP_WORKER': 'கடை ஊழியர்',
+    'WOMEN_SHOP_WORKER': 'பெண் கடை ஊழியர்',
     'SALES_PERSON': 'விற்பனையாளர்',
     'DELIVERY_BOY': 'டெலிவரி',
-    'SECURITY': 'பாதுகாவலர்',
     'CASHIER': 'கேஷியர்',
     'RECEPTIONIST': 'ரிசெப்ஷனிஸ்ட்',
     'ACCOUNTANT': 'கணக்காளர்',
     'DRIVER': 'டிரைவர்',
+    'AUTO_DRIVER': 'ஆட்டோ டிரைவர்',
     'COOK': 'சமையல்காரர்',
     'HELPER': 'உதவியாளர்',
     'TEACHER': 'ஆசிரியர்',
+    'TUTOR': 'டியூட்டர்',
     'NURSE': 'செவிலியர்',
+    'BEAUTICIAN': 'அழகுக்கலை',
     'TAILOR': 'தையல்காரர்',
-    'CLEANER': 'சுத்தம்',
     'WATCHMAN': 'காவலன்',
-    'FARM_WORKER': 'விவசாயி',
     'COMPUTER_OPERATOR': 'கம்ப்யூட்டர்',
     'MANAGER': 'மேலாளர்',
     'OTHER': 'பிற',
@@ -84,21 +88,22 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   static const Map<String, IconData> _categoryIcons = {
     'SHOP_WORKER': Icons.storefront,
+    'WOMEN_SHOP_WORKER': Icons.store,
     'SALES_PERSON': Icons.trending_up,
     'DELIVERY_BOY': Icons.delivery_dining,
-    'SECURITY': Icons.security,
     'CASHIER': Icons.point_of_sale,
     'RECEPTIONIST': Icons.assignment_ind,
     'ACCOUNTANT': Icons.account_balance,
     'DRIVER': Icons.drive_eta,
+    'AUTO_DRIVER': Icons.electric_rickshaw,
     'COOK': Icons.restaurant,
     'HELPER': Icons.handyman,
     'TEACHER': Icons.school,
+    'TUTOR': Icons.menu_book,
     'NURSE': Icons.medical_services,
+    'BEAUTICIAN': Icons.face_retouching_natural,
     'TAILOR': Icons.content_cut,
-    'CLEANER': Icons.cleaning_services,
     'WATCHMAN': Icons.visibility,
-    'FARM_WORKER': Icons.agriculture,
     'COMPUTER_OPERATOR': Icons.computer,
     'MANAGER': Icons.manage_accounts,
     'OTHER': Icons.work,
@@ -106,21 +111,22 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   static const Map<String, Color> _categoryColors = {
     'SHOP_WORKER': Color(0xFF1565C0),
+    'WOMEN_SHOP_WORKER': Color(0xFFE91E63),
     'SALES_PERSON': Color(0xFFE65100),
     'DELIVERY_BOY': Color(0xFF00897B),
-    'SECURITY': Color(0xFF4A148C),
     'CASHIER': Color(0xFF2E7D32),
     'RECEPTIONIST': Color(0xFFAD1457),
     'ACCOUNTANT': Color(0xFF0277BD),
     'DRIVER': Color(0xFF4E342E),
+    'AUTO_DRIVER': Color(0xFF6D4C41),
     'COOK': Color(0xFFBF360C),
     'HELPER': Color(0xFF37474F),
     'TEACHER': Color(0xFF1B5E20),
+    'TUTOR': Color(0xFF2E7D32),
     'NURSE': Color(0xFFC62828),
+    'BEAUTICIAN': Color(0xFFAD1457),
     'TAILOR': Color(0xFF6A1B9A),
-    'CLEANER': Color(0xFF00838F),
     'WATCHMAN': Color(0xFF4527A0),
-    'FARM_WORKER': Color(0xFF558B2F),
     'COMPUTER_OPERATOR': Color(0xFF1565C0),
     'MANAGER': Color(0xFF37474F),
     'OTHER': Color(0xFF455A64),
@@ -361,24 +367,34 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSearchBar() {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     return Container(
-      margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 8, offset: const Offset(0, 2))],
+        gradient: LinearGradient(
+          colors: [_jobGreen, const Color(0xFF43A047)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
       ),
-      child: TextField(
-        onChanged: (v) {
-          setState(() => _searchText = v);
-          if (v.isEmpty || v.length > 2) _loadPosts();
-        },
-        decoration: InputDecoration(
-          hintText: '🔍 Search jobs, company...',
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-          prefixIcon: Icon(Icons.search, color: _jobGreen),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: TextField(
+          onChanged: (v) {
+            setState(() => _searchText = v);
+            if (v.isEmpty || v.length > 2) _loadPosts();
+          },
+          decoration: InputDecoration(
+            hintText: lang.getText('Search jobs, company...', 'வேலை, நிறுவனம் தேடுங்கள்...'),
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+            prefixIcon: Icon(Icons.search, color: _jobGreen),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
         ),
       ),
     );
@@ -386,7 +402,9 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   Widget _buildCategoryChips() {
     final lang = Provider.of<LanguageProvider>(context, listen: false);
-    return SizedBox(
+    return Container(
+      color: _jobGreen.withOpacity(0.06),
+      child: SizedBox(
       height: 46,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -434,7 +452,7 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
           );
         },
       ),
-    );
+    ));
   }
 
   Widget _buildJobCard(Map<String, dynamic> post) {
@@ -839,30 +857,76 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildEmptyState() {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.work_outline, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            'No job postings yet',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-          Text('Be the first to post a job!', style: TextStyle(color: Colors.grey[500])),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _navigateToCreate,
-            icon: const Icon(Icons.add),
-            label: const Text('Post a Job'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _jobGreen,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Illustration circle
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [_jobGreen.withOpacity(0.15), _jobGreen.withOpacity(0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Icon(Icons.work_rounded, size: 60, color: _jobGreen.withOpacity(0.6)),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              lang.getText('No Jobs Found', 'வேலை வாய்ப்பு இல்லை'),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              lang.getText(
+                _selectedCategory != null
+                    ? 'No jobs in this category yet.\nTry a different category or search.'
+                    : 'No job postings in your area yet.\nBe the first to post a job!',
+                _selectedCategory != null
+                    ? 'இந்த பகுதியில் வேலை இல்லை.\nவேறு பகுதி தேர்வு செய்யுங்கள்.'
+                    : 'உங்கள் பகுதியில் வேலை இல்லை.\nமுதலில் வேலை பதிவிடுங்கள்!',
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[500], height: 1.5),
+            ),
+            const SizedBox(height: 28),
+            if (_selectedCategory != null)
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() => _selectedCategory = null);
+                  _loadPosts();
+                },
+                icon: const Icon(Icons.clear),
+                label: Text(lang.getText('Clear Filter', 'வடிகட்டி நீக்கு')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _jobGreen,
+                  side: BorderSide(color: _jobGreen),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                ),
+              )
+            else
+              ElevatedButton.icon(
+                onPressed: _navigateToCreate,
+                icon: const Icon(Icons.add_circle_outline),
+                label: Text(lang.getText('Post a Job', 'வேலை பதிவிடு')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _jobGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  elevation: 2,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
