@@ -55,11 +55,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   final List<String> _categories = [
     'All',
     'Electronics',
+    'Mobile & Tablets',
     'Furniture',
     'Vehicles',
+    'Two Wheelers',
     'Clothing',
-    'Food',
-    'Finance',
+    'Books',
+    'Home Appliances',
+    'Tools & Equipment',
+    'Sports & Hobbies',
+    'Kids & Baby',
+    'Agriculture',
     'Other',
   ];
 
@@ -187,11 +193,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     const tamilMap = {
       'All': 'அனைத்தும்',
       'Electronics': 'எலக்ட்ரானிக்ஸ்',
+      'Mobile & Tablets': 'மொபைல் & டேப்லெட்',
       'Furniture': 'மரச்சாமான்',
       'Vehicles': 'வாகனங்கள்',
+      'Two Wheelers': 'இருசக்கர வாகனம்',
       'Clothing': 'ஆடைகள்',
-      'Food': 'உணவு',
-      'Finance': 'நிதி',
+      'Books': 'புத்தகங்கள்',
+      'Home Appliances': 'வீட்டு உபகரணங்கள்',
+      'Tools & Equipment': 'கருவிகள் & உபகரணங்கள்',
+      'Sports & Hobbies': 'விளையாட்டு & பொழுதுபோக்கு',
+      'Kids & Baby': 'குழந்தை பொருட்கள்',
+      'Agriculture': 'விவசாயம்',
       'Other': 'பிற',
     };
     return lang.getText(cat, tamilMap[cat] ?? cat);

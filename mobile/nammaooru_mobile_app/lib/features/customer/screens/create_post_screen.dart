@@ -41,23 +41,33 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   final List<String> _categories = [
     'Electronics',
+    'Mobile & Tablets',
     'Furniture',
     'Vehicles',
-    'Agriculture',
+    'Two Wheelers',
     'Clothing',
-    'Food',
-    'Finance',
+    'Books',
+    'Home Appliances',
+    'Tools & Equipment',
+    'Sports & Hobbies',
+    'Kids & Baby',
+    'Agriculture',
     'Other',
   ];
 
   static const Map<String, String> _categoryTamil = {
     'Electronics': 'எலக்ட்ரானிக்ஸ்',
+    'Mobile & Tablets': 'மொபைல் & டேப்லெட்',
     'Furniture': 'மரச்சாமான்',
     'Vehicles': 'வாகனங்கள்',
-    'Agriculture': 'விவசாயம்',
+    'Two Wheelers': 'இருசக்கர வாகனம்',
     'Clothing': 'ஆடைகள்',
-    'Food': 'உணவு',
-    'Finance': 'நிதி',
+    'Books': 'புத்தகங்கள்',
+    'Home Appliances': 'வீட்டு உபகரணங்கள்',
+    'Tools & Equipment': 'கருவிகள் & உபகரணங்கள்',
+    'Sports & Hobbies': 'விளையாட்டு & பொழுதுபோக்கு',
+    'Kids & Baby': 'குழந்தை பொருட்கள்',
+    'Agriculture': 'விவசாயம்',
     'Other': 'மற்றவை',
   };
 
