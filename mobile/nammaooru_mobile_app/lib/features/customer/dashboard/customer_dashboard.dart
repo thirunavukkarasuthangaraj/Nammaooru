@@ -144,12 +144,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     // Load nav/section visibility immediately (no GPS needed)
     featureProvider.loadAppConfig();
 
-    // Get location, then load dashboard data (shops need location)
+    // Load feature config immediately — doesn't need GPS
+    _loadFeatureConfig();
+
+    // Get location for shops and service area (runs in background)
     await _getCurrentLocationOnStartup();
 
-    // Load dashboard data and feature config once after GPS
+    // Load dashboard data after GPS
     _loadDashboardData();
-    _loadFeatureConfig();
 
     // Check service area in background — shows dialog if blocked
     _checkServiceArea();
