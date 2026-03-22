@@ -70,6 +70,9 @@
 .marketplace-section h3 { color: #4527A0; }
 .farmer-section h3 { color: #33691E; }
 .realestate-section h3 { color: #AD1457; }
+.rental-section h3 { color: #795548; }
+.womens-corner-section h3 { color: #E91E63; }
+.jobs-section h3 { color: #2E7D32; }
 
 .cards-row {
   display: grid;
@@ -163,6 +166,33 @@
 // Real Estate cards - pink gradient
 .realestate-section {
   .total { background: linear-gradient(135deg, #AD1457, #C2185B); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Rental cards - brown gradient
+.rental-section {
+  .total { background: linear-gradient(135deg, #795548, #8D6E63); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Women's Corner cards - rose gradient
+.womens-corner-section {
+  .total { background: linear-gradient(135deg, #E91E63, #F06292); }
+  .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
+  .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
+  .rejected { background: linear-gradient(135deg, #C62828, #E53935); }
+  .reported { background: linear-gradient(135deg, #6A1B9A, #8E24AA); }
+}
+
+// Jobs cards - dark green gradient
+.jobs-section {
+  .total { background: linear-gradient(135deg, #1B5E20, #2E7D32); }
   .pending { background: linear-gradient(135deg, #F57C00, #FF9800); }
   .approved { background: linear-gradient(135deg, #2E7D32, #43A047); }
   .rejected { background: linear-gradient(135deg, #C62828, #E53935); }

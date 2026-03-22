@@ -24,6 +24,7 @@ export class PostDashboardComponent implements OnInit {
   realEstateStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   rentalStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   womensCornerStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
+  jobStats: PostStats = { total: 0, pending: 0, approved: 0, rejected: 0, reported: 0 };
   isLoading = true;
   errorMessage = '';
 
@@ -56,6 +57,7 @@ export class PostDashboardComponent implements OnInit {
         this.realEstateStats = data.realEstate || this.realEstateStats;
         this.rentalStats = data.rental || this.rentalStats;
         this.womensCornerStats = data.womensCorner || this.womensCornerStats;
+        this.jobStats = data.jobs || this.jobStats;
         this.isLoading = false;
       },
       error: (err) => {
