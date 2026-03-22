@@ -50,6 +50,7 @@ export class PostLimitsComponent implements OnInit, AfterViewInit, OnDestroy {
     { value: 'PARCEL_SERVICE', label: 'Packers & Movers' },
     { value: 'MARKETPLACE', label: 'Marketplace' },
     { value: 'LABOURS', label: 'Labours' },
+    { value: 'JOBS', label: 'Jobs' },
     { value: 'FARM_PRODUCTS', label: 'Farm Products' },
     { value: 'TRAVELS', label: 'Travels' },
     { value: 'RENTAL', label: 'Rentals' },
@@ -71,6 +72,7 @@ export class PostLimitsComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'MARKETPLACE', prefix: 'marketplace', label: 'Marketplace', icon: 'storefront', color: '#4527A0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'FARM_PRODUCTS', prefix: 'farmer', label: 'Farmer Products', icon: 'agriculture', color: '#33691E', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'LABOURS', prefix: 'labour', label: 'Labours', icon: 'engineering', color: '#1565C0', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
+    { key: 'JOBS', prefix: 'jobs', label: 'Jobs', icon: 'work', color: '#2E7D32', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'TRAVELS', prefix: 'travel', label: 'Travels', icon: 'directions_car', color: '#00897B', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'PARCEL_SERVICE', prefix: 'parcel', label: 'Packers & Movers', icon: 'local_shipping', color: '#E65100', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
     { key: 'REAL_ESTATE', prefix: 'realestate', label: 'Real Estate', icon: 'apartment', color: '#AD1457', durationDays: 30, autoApprove: false, visibleStatuses: ['APPROVED'], reportThreshold: 3 },
@@ -105,6 +107,7 @@ export class PostLimitsComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'MARKETPLACE', label: 'Marketplace (Buy & Sell)' },
     { key: 'FARM_PRODUCTS', label: 'Farmer Products' },
     { key: 'LABOURS', label: 'Labours' },
+    { key: 'JOBS', label: 'Jobs' },
     { key: 'TRAVELS', label: 'Travels' },
     { key: 'PARCEL_SERVICE', label: 'Packers & Movers' },
     { key: 'REAL_ESTATE', label: 'Real Estate' },
@@ -312,7 +315,7 @@ export class PostLimitsComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (response: any) => {
         const features = response.data || response || [];
         // Filter to only post-related features
-        const postFeatures = ['PARCEL_SERVICE', 'MARKETPLACE', 'LABOURS', 'FARM_PRODUCTS', 'TRAVELS', 'RENTAL', 'REAL_ESTATE', 'WOMENS_CORNER'];
+        const postFeatures = ['PARCEL_SERVICE', 'MARKETPLACE', 'LABOURS', 'JOBS', 'FARM_PRODUCTS', 'TRAVELS', 'RENTAL', 'REAL_ESTATE', 'WOMENS_CORNER'];
         this.globalLimits = features.filter((f: FeatureConfig) => postFeatures.includes(f.featureName));
         this.globalLoading = false;
       },

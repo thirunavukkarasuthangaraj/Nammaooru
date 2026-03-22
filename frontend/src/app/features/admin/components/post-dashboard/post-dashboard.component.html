@@ -23,7 +23,7 @@
     </div>
 
     <div *ngIf="!featuredLoading && !featuredError" class="featured-grid">
-      <ng-container *ngFor="let category of ['combos', 'marketplace', 'farmer', 'labour', 'travel', 'parcel', 'realEstate', 'rental', 'womensCorner']">
+      <ng-container *ngFor="let category of ['combos', 'marketplace', 'farmer', 'labour', 'jobs', 'travel', 'parcel', 'realEstate', 'rental', 'womensCorner']">
         <div class="featured-category" *ngIf="featuredPosts[category]?.length > 0">
           <div class="category-header" (click)="navigateTo(getCategoryRoute(category))">
             <mat-icon>{{ getCategoryIcon(category) }}</mat-icon>
@@ -90,6 +90,38 @@
         </div>
         <div class="stat-card reported" (click)="navigateTo('/admin/labours/reported')">
           <div class="stat-value">{{ labourStats.reported }}</div>
+          <div class="stat-label">Reported</div>
+          <mat-icon class="card-icon">report</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs Section -->
+    <div class="section jobs-section">
+      <h3><mat-icon>work</mat-icon> Job Posts</h3>
+      <div class="cards-row">
+        <div class="stat-card total" (click)="navigateTo('/admin/jobs')">
+          <div class="stat-value">{{ jobStats.total }}</div>
+          <div class="stat-label">Total</div>
+          <mat-icon class="card-icon">assessment</mat-icon>
+        </div>
+        <div class="stat-card pending" (click)="navigateTo('/admin/jobs')">
+          <div class="stat-value">{{ jobStats.pending }}</div>
+          <div class="stat-label">Pending</div>
+          <mat-icon class="card-icon">hourglass_empty</mat-icon>
+        </div>
+        <div class="stat-card approved" (click)="navigateTo('/admin/jobs')">
+          <div class="stat-value">{{ jobStats.approved }}</div>
+          <div class="stat-label">Approved</div>
+          <mat-icon class="card-icon">check_circle</mat-icon>
+        </div>
+        <div class="stat-card rejected" (click)="navigateTo('/admin/jobs')">
+          <div class="stat-value">{{ jobStats.rejected }}</div>
+          <div class="stat-label">Rejected</div>
+          <mat-icon class="card-icon">cancel</mat-icon>
+        </div>
+        <div class="stat-card reported" (click)="navigateTo('/admin/jobs/reported')">
+          <div class="stat-value">{{ jobStats.reported }}</div>
           <div class="stat-label">Reported</div>
           <mat-icon class="card-icon">report</mat-icon>
         </div>
