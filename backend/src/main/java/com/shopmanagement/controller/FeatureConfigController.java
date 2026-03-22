@@ -127,7 +127,8 @@ public class FeatureConfigController {
             @RequestParam(value = "displayOrder", required = false) Integer displayOrder,
             @RequestParam(value = "maxPostsPerUser", required = false) Integer maxPostsPerUser,
             @RequestParam(value = "maxImagesPerPost", required = false) Integer maxImagesPerPost,
-            @RequestParam(value = "image", required = false) MultipartFile image) {
+            @RequestParam(value = "image", required = false) MultipartFile image,
+            @RequestParam(value = "deleteImage", required = false, defaultValue = "false") boolean deleteImage) {
         try {
             String imageUrl = null;
             if (image != null && !image.isEmpty()) {
@@ -150,7 +151,7 @@ public class FeatureConfigController {
                     .maxImagesPerPost(maxImagesPerPost != null ? maxImagesPerPost : 3)
                     .build();
 
-            FeatureConfig updated = featureConfigService.update(id, config, imageUrl);
+            FeatureConfig updated = featureConfigService.update(id, config, imageUrl, deleteImage);
             return ResponseUtil.success(updated, "Feature config updated successfully");
         } catch (Exception e) {
             log.error("Error updating feature config", e);

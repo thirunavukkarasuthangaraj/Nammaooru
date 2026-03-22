@@ -18,6 +18,7 @@ export class FeatureConfigManagementComponent implements OnInit {
   selectedImage: File | null = null;
   imagePreview: string | null = null;
   editingImageUrl: string | null = null;
+  imageDeleted = false;
 
   displayedColumns: string[] = [
     'displayOrder', 'image', 'featureName', 'displayName', 'displayNameTamil',
@@ -129,6 +130,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     this.editingImageUrl = null;
     this.selectedImage = null;
     this.imagePreview = null;
+    this.imageDeleted = true;
   }
 
   onImageError(event: Event): void {
@@ -141,6 +143,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     this.selectedImage = null;
     this.imagePreview = null;
     this.editingImageUrl = null;
+    this.imageDeleted = false;
     this.featureForm.reset({ radiusKm: 50, displayOrder: 0, isActive: true, maxPostsPerUser: 0, maxImagesPerPost: 3 });
     this.showForm = true;
   }
@@ -150,6 +153,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     this.selectedImage = null;
     this.imagePreview = null;
     this.editingImageUrl = feature.imageUrl || null;
+    this.imageDeleted = false;
     this.featureForm.patchValue({
       featureName: feature.featureName,
       displayName: feature.displayName,
@@ -174,13 +178,14 @@ export class FeatureConfigManagementComponent implements OnInit {
     this.selectedImage = null;
     this.imagePreview = null;
     this.editingImageUrl = null;
+    this.imageDeleted = false;
   }
 
   saveFeature(): void {
     if (this.featureForm.invalid) return;
     const config: FeatureConfig = this.featureForm.value;
     if (this.editingId) {
-      this.featureConfigService.updateFeature(this.editingId, config, this.selectedImage || undefined).subscribe({
+      this.featureConfigService.updateFeature(this.editingId, config, this.selectedImage || undefined, this.imageDeleted).subscribe({
         next: () => {
           this.snackBar.open('Feature updated', 'Close', { duration: 3000 });
           this.showForm = false;

@@ -46,8 +46,8 @@ export class FeatureConfigService {
     return this.http.post(`${this.apiUrl}/admin`, formData);
   }
 
-  updateFeature(id: number, config: FeatureConfig, image?: File): Observable<any> {
-    const formData = this._buildFormData(config, image);
+  updateFeature(id: number, config: FeatureConfig, image?: File, deleteImage = false): Observable<any> {
+    const formData = this._buildFormData(config, image, deleteImage);
     return this.http.put(`${this.apiUrl}/admin/${id}`, formData);
   }
 
@@ -59,7 +59,7 @@ export class FeatureConfigService {
     return this.http.put(`${this.apiUrl}/admin/${id}/toggle`, {});
   }
 
-  private _buildFormData(config: FeatureConfig, image?: File): FormData {
+  private _buildFormData(config: FeatureConfig, image?: File, deleteImage = false): FormData {
     const fd = new FormData();
     fd.append('featureName', config.featureName || '');
     fd.append('displayName', config.displayName || '');
@@ -74,6 +74,7 @@ export class FeatureConfigService {
     if (config.maxPostsPerUser != null) fd.append('maxPostsPerUser', config.maxPostsPerUser.toString());
     if (config.maxImagesPerPost != null) fd.append('maxImagesPerPost', config.maxImagesPerPost.toString());
     if (image) fd.append('image', image);
+    if (deleteImage) fd.append('deleteImage', 'true');
     return fd;
   }
 }

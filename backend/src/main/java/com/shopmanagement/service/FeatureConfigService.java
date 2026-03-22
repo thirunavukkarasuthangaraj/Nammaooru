@@ -41,6 +41,11 @@ public class FeatureConfigService {
 
     @Transactional
     public FeatureConfig update(Long id, FeatureConfig updated, String newImageUrl) {
+        return update(id, updated, newImageUrl, false);
+    }
+
+    @Transactional
+    public FeatureConfig update(Long id, FeatureConfig updated, String newImageUrl, boolean deleteImage) {
         FeatureConfig existing = featureConfigRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Feature config not found: " + id));
         existing.setFeatureName(updated.getFeatureName());
@@ -49,8 +54,9 @@ public class FeatureConfigService {
         existing.setIcon(updated.getIcon());
         existing.setColor(updated.getColor());
         existing.setRoute(updated.getRoute());
-        // Only update imageUrl if a new image was uploaded
-        if (newImageUrl != null) {
+        if (deleteImage) {
+            existing.setImageUrl(null);
+        } else if (newImageUrl != null) {
             existing.setImageUrl(newImageUrl);
         }
         existing.setLatitude(updated.getLatitude());
