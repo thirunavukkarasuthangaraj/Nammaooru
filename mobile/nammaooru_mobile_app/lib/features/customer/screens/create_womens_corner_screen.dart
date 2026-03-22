@@ -13,6 +13,7 @@ import '../services/womens_corner_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../services/post_config_service.dart';
 
 class CreateWomensCornerScreen extends StatefulWidget {
@@ -360,14 +361,13 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
               const SizedBox(height: 16),
 
               // Location
-              Text(langProvider.getText('Location', '\u0B87\u0B9F\u0BAE\u0BCD'),
+              Text(langProvider.getText('Location', 'இடம்'),
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               const SizedBox(height: 8),
-              TextFormField(
+              LocationAutocompleteField(
                 controller: _locationController,
-                decoration: _inputDecoration(langProvider.getText('Enter your location', '\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B87\u0B9F\u0BAE\u0BCD')).copyWith(
-                  suffixIcon: VoiceInputButton(controller: _locationController),
-                ),
+                hintText: langProvider.getText('Enter your location', 'உங்கள் இடம்'),
+                accentColor: const Color(0xFFE91E63),
               ),
               const SizedBox(height: 20),
 

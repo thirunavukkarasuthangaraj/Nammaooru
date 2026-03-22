@@ -9,6 +9,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../services/job_service.dart';
 import '../widgets/voice_input_button.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 
 class CreateJobScreen extends StatefulWidget {
   const CreateJobScreen({super.key});
@@ -348,24 +349,14 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             // Location & Description
             _sectionHeader('📍 ${lang.getText("Location & Details", "இடம் & விவரங்கள்")}'),
             const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildField(
-                    controller: _locationController,
-                    label: lang.getText('Work Location *', 'பணி இடம் *'),
-                    hint: lang.getText('e.g. Anna Nagar, Chennai', 'எ.கா. அண்ணா நகர், சென்னை'),
-                    icon: Icons.location_on,
-                    validator: (v) => v == null || v.trim().isEmpty ? lang.getText('Location required', 'இடம் தேவை') : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: VoiceInputButton(controller: _locationController),
-                ),
-              ],
+            Text(lang.getText('Work Location *', 'பணி இடம் *'),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
+            const SizedBox(height: 6),
+            LocationAutocompleteField(
+              controller: _locationController,
+              hintText: lang.getText('e.g. Anna Nagar, Chennai', 'எ.கா. அண்ணா நகர், சென்னை'),
+              accentColor: const Color(0xFF2E7D32),
+              validator: (v) => v == null || v.trim().isEmpty ? lang.getText('Location required', 'இடம் தேவை') : null,
             ),
             const SizedBox(height: 12),
             Row(

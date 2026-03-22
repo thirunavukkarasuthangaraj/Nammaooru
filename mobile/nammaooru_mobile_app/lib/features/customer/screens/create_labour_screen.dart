@@ -13,6 +13,7 @@ import '../services/labour_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../services/post_config_service.dart';
 
 class CreateLabourScreen extends StatefulWidget {
@@ -540,23 +541,31 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
               // Location
               _buildLabel(langProvider.getText('Location *', 'இடம் *')),
               const SizedBox(height: 6),
-              TextFormField(
-                controller: _locationController,
-                decoration: _inputDecoration('e.g., Your Village, District').copyWith(
-                  suffixIcon: IconButton(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: LocationAutocompleteField(
+                      controller: _locationController,
+                      hintText: 'e.g., Your Village, District',
+                      accentColor: _labourBlue,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return langProvider.getText('Location is required', 'இடம் தேவை');
+                        }
+                        if (value.trim().length < 3) {
+                          return langProvider.getText('Enter a valid location', 'சரியான இடத்தை உள்ளிடவும்');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.my_location, color: _labourBlue),
                     onPressed: _getLocation,
+                    tooltip: 'Use current location',
                   ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Location is required', 'இடம் தேவை');
-                  }
-                  if (value.trim().length < 3) {
-                    return langProvider.getText('Enter a valid location', 'சரியான இடத்தை உள்ளிடவும்');
-                  }
-                  return null;
-                },
+                ],
               ),
               const SizedBox(height: 12),
 
