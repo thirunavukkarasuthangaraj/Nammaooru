@@ -123,27 +123,42 @@
 
       <!-- Actions Column -->
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <th mat-header-cell *matHeaderCellDef>Action</th>
         <td mat-cell *matCellDef="let post">
-          <div class="action-buttons">
-            <button mat-icon-button color="primary"
+          <button mat-stroked-button [matMenuTriggerFor]="actionMenu" class="action-dropdown">
+            Change Status
+            <mat-icon>arrow_drop_down</mat-icon>
+          </button>
+          <mat-menu #actionMenu="matMenu">
+            <button mat-menu-item
                     *ngIf="post.status === 'PENDING_APPROVAL'"
-                    (click)="approvePost(post)"
-                    matTooltip="Approve">
-              <mat-icon>check_circle</mat-icon>
+                    (click)="approvePost(post)">
+              <mat-icon style="color: #4caf50">check_circle</mat-icon>
+              <span>Approve</span>
             </button>
-            <button mat-icon-button color="warn"
+            <button mat-menu-item
                     *ngIf="post.status === 'PENDING_APPROVAL'"
-                    (click)="rejectPost(post)"
-                    matTooltip="Reject">
-              <mat-icon>cancel</mat-icon>
+                    (click)="rejectPost(post)">
+              <mat-icon style="color: #f44336">cancel</mat-icon>
+              <span>Reject</span>
             </button>
-            <button mat-icon-button color="warn"
-                    (click)="deletePost(post)"
-                    matTooltip="Delete">
-              <mat-icon>delete</mat-icon>
+            <button mat-menu-item
+                    *ngIf="post.status === 'REJECTED' || post.status === 'APPROVED'"
+                    (click)="approvePost(post)">
+              <mat-icon style="color: #4caf50">check_circle</mat-icon>
+              <span>Approve</span>
             </button>
-          </div>
+            <button mat-menu-item
+                    *ngIf="post.status === 'APPROVED'"
+                    (click)="rejectPost(post)">
+              <mat-icon style="color: #f44336">cancel</mat-icon>
+              <span>Reject</span>
+            </button>
+            <button mat-menu-item (click)="deletePost(post)">
+              <mat-icon style="color: #b71c1c">delete_forever</mat-icon>
+              <span>Delete</span>
+            </button>
+          </mat-menu>
         </td>
       </ng-container>
 
