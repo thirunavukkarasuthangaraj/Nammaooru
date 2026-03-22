@@ -239,7 +239,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             _buildField(
               controller: _companyController,
               label: lang.getText('Company / Shop Name *', 'நிறுவன / கடை பெயர் *'),
-              hint: lang.getText('e.g. Murugan Supermarket', 'எ.கா. முருகன் சூப்பர்மார்க்கெட்'),
+              hint: lang.getText('e.g. Sri Supermarket', 'எ.கா. ஸ்ரீ சூப்பர்மார்க்கெட்'),
               icon: Icons.business,
               validator: (v) => v == null || v.trim().isEmpty ? lang.getText('Company name required', 'நிறுவன பெயர் தேவை') : null,
             ),
