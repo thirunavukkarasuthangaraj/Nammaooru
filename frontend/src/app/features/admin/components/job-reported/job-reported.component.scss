@@ -1,0 +1,237 @@
+.job-reported {
+  padding: 24px;
+
+  .header {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .header-icon {
+        color: #f44336;
+      }
+    }
+
+    .subtitle {
+      margin: 0;
+      color: #666;
+      font-size: 14px;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px;
+
+    p {
+      margin-top: 16px;
+      color: #666;
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 64px 24px;
+
+    .empty-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: #4caf50;
+    }
+
+    h3 {
+      margin: 16px 0 8px;
+      color: #333;
+    }
+
+    p {
+      color: #666;
+    }
+  }
+
+  .posts-container {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+    .total-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      background: #fff3e0;
+      color: #e65100;
+      font-weight: 500;
+      font-size: 14px;
+      border-bottom: 1px solid #ffe0b2;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  .posts-table {
+    width: 100%;
+
+    .post-image {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .no-image {
+        color: #ccc;
+        font-size: 24px;
+      }
+    }
+
+    .post-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .company-name {
+      font-size: 12px;
+      color: #1976d2;
+      margin-top: 2px;
+    }
+
+    .post-description {
+      font-size: 12px;
+      color: #888;
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .report-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #fff3e0;
+      color: #e65100;
+
+      &.high {
+        background: #ffebee;
+        color: #b71c1c;
+      }
+
+      .report-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    .category-chip {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .seller-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .seller-name {
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      .seller-phone {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+
+    .status-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+
+      &.status-pending_approval {
+        background: #fff3e0;
+        color: #e65100;
+      }
+
+      &.status-approved {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      &.status-rejected {
+        background: #ffebee;
+        color: #c62828;
+      }
+
+      &.status-expired {
+        background: #f5f5f5;
+        color: #9e9e9e;
+      }
+    }
+
+    .date {
+      font-size: 12px;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    .action-dropdown {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px;
+    border-top: 1px solid #eee;
+
+    .page-info {
+      font-size: 13px;
+      color: #666;
+    }
+  }
+}

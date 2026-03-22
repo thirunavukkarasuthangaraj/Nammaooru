@@ -60,6 +60,8 @@ import { AllReportsComponent } from './components/all-reports/all-reports.compon
 import { VillageManagementComponent } from './components/village-management/village-management.component';
 import { WomensCornerManagementComponent } from './components/womens-corner-management/womens-corner-management.component';
 import { WomensCornerReportedComponent } from './components/womens-corner-reported/womens-corner-reported.component';
+import { JobManagementComponent } from './components/job-management/job-management.component';
+import { JobReportedComponent } from './components/job-reported/job-reported.component';
 import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
@@ -97,7 +99,9 @@ import { MatTabsModule } from '@angular/material/tabs';
     AllReportsComponent,
     VillageManagementComponent,
     WomensCornerManagementComponent,
-    WomensCornerReportedComponent
+    WomensCornerReportedComponent,
+    JobManagementComponent,
+    JobReportedComponent
   ],
   imports: [
     CommonModule,
@@ -260,6 +264,14 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'womens-corner/reported',
         component: WomensCornerReportedComponent
+      },
+      {
+        path: 'jobs',
+        component: JobManagementComponent
+      },
+      {
+        path: 'jobs/reported',
+        component: JobReportedComponent
       },
       {
         path: 'shops',
