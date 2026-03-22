@@ -55,7 +55,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     'COOK': '👨‍🍳 Cook / சமையல்காரர்',
     'HELPER': '🤝 Helper / உதவியாளர்',
     'TEACHER': '📚 Teacher / ஆசிரியர்',
-    'TUTOR': '📖 Tutor / டியூட்டர்',
     'NURSE': '🏥 Nurse / செவிலியர்',
     'BEAUTICIAN': '💄 Beautician / அழகுக்கலை',
     'TAILOR': '✂️ Tailor / தையல்காரர்',
