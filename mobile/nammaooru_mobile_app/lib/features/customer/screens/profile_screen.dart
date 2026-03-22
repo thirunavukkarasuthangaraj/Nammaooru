@@ -15,6 +15,8 @@ import '../../../shared/widgets/language_selector.dart';
 import '../../../core/api/api_client.dart';
 import '../../../shared/services/location_service.dart';
 import 'payment_history_screen.dart';
+import 'contact_requests_screen.dart';
+import '../../../core/services/contact_request_service.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 import '../../../services/contact_config_service.dart';
 
@@ -39,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, IconData> _moduleIcons = {};
   bool _isLoadingPosts = true;
   bool _postsExpanded = false;
+  int _pendingContactCount = 0;
 
   // Icon string -> IconData mapping (same as dashboard)
   static const _iconMap = <String, IconData>{
@@ -81,6 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUserProfile();
     _loadPostCounts();
+    ContactRequestService.getPendingCount().then((count) {
+      if (mounted) setState(() => _pendingContactCount = count);
+    });
     _contact.fetch().then((_) {
       if (mounted) setState(() {});
     });
@@ -695,6 +701,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildActionRow(_t('Manage Addresses', 'முகவரிகள் நிர்வகி'), Icons.location_on_outlined, () {
           context.push('/customer/addresses');
         }),
+        _buildActionRowWithBadge(
+          _t('Contact Requests', 'தொடர்பு கோரிக்கைகள்'),
+          Icons.contact_phone_outlined,
+          () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) => const ContactRequestsScreen(),
+            ));
+          },
+        ),
         _buildActionRow(_t('Payment History', 'பணம் செலுத்திய வரலாறு'), Icons.payment_outlined, () {
           Navigator.push(context, MaterialPageRoute(
             builder: (context) => const PaymentHistoryScreen(),
@@ -1095,6 +1110,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 16,
                 color: AppColors.primary.withOpacity(0.6),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionRowWithBadge(String label, IconData icon, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withOpacity(0.08), width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(label, style: const TextStyle(
+                  fontSize: 15, color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600, letterSpacing: -0.2,
+                )),
+              ),
+              if (_pendingContactCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('$_pendingContactCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary.withOpacity(0.6)),
             ],
           ),
         ),

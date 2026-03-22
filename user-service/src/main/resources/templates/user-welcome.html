@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to NammaOoru - Your Account is Ready!</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header .subtitle {
+            margin: 8px 0 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .welcome-message h2 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .welcome-message p {
+            color: #666;
+            font-size: 16px;
+            margin: 0;
+        }
+        .credentials-box {
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .credentials-box h3 {
+            color: #495057;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+        }
+        .credential-item {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .credential-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .credential-value {
+            color: #2196F3;
+            font-weight: 500;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background-color: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .login-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .login-button:hover {
+            background: linear-gradient(135deg, #1976D2, #1565C0);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+        .instructions {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .instructions h4 {
+            color: #856404;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .instructions ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #856404;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        .footer p {
+            margin: 8px 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .security-note {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .security-note p {
+            margin: 0;
+            color: #0c5460;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Welcome to NammaOoru!</h1>
+            <p class="subtitle">Your delivery partner account is ready</p>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-message">
+                <h2 th:text="${fullName != null ? 'Hello, ' + fullName + '!' : 'Hello!'}">Hello!</h2>
+                <p>Your delivery partner account has been successfully created. You can now start delivering orders in your area!</p>
+            </div>
+            
+            <div class="credentials-box">
+                <h3>Your Login Credentials</h3>
+                <div class="credential-item">
+                    <span class="credential-label">Email:</span>
+                    <span class="credential-value" th:text="${email}">email@example.com</span>
+                </div>
+                <div class="credential-item">
+                    <span class="credential-label">Password:</span>
+                    <span class="credential-value" th:text="${password}">password123</span>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h4>⚠️ Important - First Time Login</h4>
+                <ul>
+                    <li><strong>You will be required to change your password</strong> on first login for security</li>
+                    <li>Use the same username with your new password for future logins</li>
+                    <li>Keep your login credentials secure and don't share them</li>
+                    <li>Contact support if you face any issues</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="#" th:href="${loginUrl}" class="login-button">
+                    Login to Delivery Partner App
+                </a>
+            </div>
+            
+            <div class="security-note">
+                <p>🔐 For your security, you'll need to create a new password when you first login.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong th:text="${companyName}">NammaOoru</strong> Delivery Platform</p>
+            <p>Need help? Contact us at <a href="#" th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}">support@nammaooru.com</a></p>
+            <p style="font-size: 12px; margin-top: 20px; color: #adb5bd;">
+                This email was sent because a delivery partner account was created for this email address.
+                If you didn't request this, please contact our support team immediately.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

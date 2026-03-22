@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/services/contact_request_service.dart';
 import '../../../core/services/contact_view_service.dart';
 import '../services/womens_corner_service.dart';
 
@@ -22,6 +23,11 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
   static const Color _themeColor = Color(0xFFE91E63);
   late PageController _pageController;
   int _currentImageIndex = 0;
+
+  // Contact request state
+  bool _contactRequestLoading = false;
+  Map<String, dynamic>? _contactRequestStatus; // null = not yet checked
+  AuthProvider? _authProviderRef;
 
   Map<String, dynamic> get post => widget.post;
 
@@ -44,6 +50,58 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    // Defer contact status check until after first build (so auth context is available)
+    if (post['phoneLocked'] == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeLoadContactStatus());
+    }
+  }
+
+  void _maybeLoadContactStatus() {
+    if (!mounted) return;
+    final isPhoneLocked = post['phoneLocked'] == true;
+    if (!isPhoneLocked) return;
+    final authProvider = _authProviderRef;
+    if (authProvider == null) return;
+    final currentUserId = authProvider.userId?.toString() ?? '';
+    final postOwnerId = post['userId']?.toString() ?? '';
+    if (currentUserId.isEmpty || currentUserId == postOwnerId) return;
+    _checkContactRequestStatus();
+  }
+
+  Future<void> _checkContactRequestStatus() async {
+    final status = await ContactRequestService.checkStatus(
+      postType: 'WOMENS_CORNER',
+      postId: post['id'] ?? 0,
+    );
+    if (mounted) {
+      setState(() => _contactRequestStatus = status);
+    }
+  }
+
+  Future<void> _sendContactRequest() async {
+    setState(() => _contactRequestLoading = true);
+    final result = await ContactRequestService.sendRequest(
+      postType: 'WOMENS_CORNER',
+      postId: post['id'] ?? 0,
+      postTitle: post['title'] ?? '',
+      postOwnerUserId: post['userId'] ?? 0,
+    );
+    if (mounted) {
+      setState(() {
+        _contactRequestLoading = false;
+        if (result != null) {
+          _contactRequestStatus = result;
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result != null
+              ? 'Request sent! Waiting for approval.'
+              : 'Failed to send request. Please try again.'),
+          backgroundColor: result != null ? _themeColor : Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -188,6 +246,12 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _authProviderRef = authProvider;
+    final currentUserId = authProvider.userId?.toString() ?? '';
+    final postOwnerId = post['userId']?.toString() ?? '';
+    final isOwner = currentUserId.isNotEmpty && currentUserId == postOwnerId;
+    final isPhoneLocked = post['phoneLocked'] == true;
     final isSold = post['status'] == 'SOLD';
     final price = post['price'];
     final imageUrls = _imageUrls;
@@ -403,82 +467,165 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
                   const SizedBox(height: 30),
 
                   if (!isSold)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final phone = post['sellerPhone']?.toString() ?? '';
-                              if (phone.isNotEmpty) {
-                                final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-                                final uri = Uri.parse('tel:$cleanPhone');
-                                ContactViewService.log(
-                                  postType: 'WOMENS_CORNER',
-                                  postId: post['id'] ?? 0,
-                                  postTitle: post['title'] ?? '',
-                                  sellerPhone: phone,
-                                  ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
-                                );
-                                try {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                } catch (_) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Could not open phone dialer')),
-                                    );
-                                  }
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.call),
-                            label: const Text('Call'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _themeColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final phone = post['sellerPhone']?.toString() ?? '';
-                              if (phone.isNotEmpty) {
-                                final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                                final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
-                                final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');
-                                final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                                try {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                } catch (_) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Could not open WhatsApp')),
-                                    );
-                                  }
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.chat),
-                            label: const Text('WhatsApp'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _themeColor,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              side: const BorderSide(color: _themeColor),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildContactSection(isPhoneLocked, isOwner, langProvider),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildContactSection(bool isPhoneLocked, bool isOwner, LanguageProvider langProvider) {
+    final phone = post['sellerPhone']?.toString() ?? '';
+
+    // Locked phone, non-owner viewer: show request/status UI
+    if (isPhoneLocked && !isOwner) {
+      final requestStatus = _contactRequestStatus?['status']?.toString();
+      final isApproved = requestStatus == 'APPROVED';
+
+      if (_contactRequestLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (requestStatus == null) {
+        // Not yet requested
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _sendContactRequest,
+            icon: const Icon(Icons.lock_open_outlined),
+            label: Text(langProvider.getText('Request Contact', 'தொடர்பு கோரவும்')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _themeColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        );
+      }
+
+      if (isApproved && phone.isNotEmpty) {
+        // Approved — show call + whatsapp buttons
+        return _buildCallButtons(phone);
+      }
+
+      // Pending or Denied
+      final statusColor = requestStatus == 'DENIED' ? Colors.red : Colors.orange;
+      final statusIcon = requestStatus == 'DENIED' ? Icons.cancel_outlined : Icons.hourglass_top;
+      final statusLabel = requestStatus == 'DENIED'
+          ? langProvider.getText('Request Denied', 'கோரிக்கை மறுக்கப்பட்டது')
+          : langProvider.getText('Request Pending', 'கோரிக்கை நிலுவையில் உள்ளது');
+
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: statusColor.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                Icon(statusIcon, color: statusColor, size: 20),
+                const SizedBox(width: 10),
+                Text(statusLabel, style: TextStyle(fontWeight: FontWeight.w600, color: statusColor)),
+              ],
+            ),
+          ),
+          if (requestStatus == 'DENIED') ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _sendContactRequest,
+                icon: const Icon(Icons.refresh),
+                label: Text(langProvider.getText('Send Again', 'மீண்டும் கோரவும்')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _themeColor,
+                  side: const BorderSide(color: _themeColor),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    // Not locked (or owner viewing own post): show normal call + whatsapp
+    return _buildCallButtons(phone);
+  }
+
+  Widget _buildCallButtons(String phone) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: phone.isEmpty ? null : () async {
+              final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+              final uri = Uri.parse('tel:$cleanPhone');
+              ContactViewService.log(
+                postType: 'WOMENS_CORNER',
+                postId: post['id'] ?? 0,
+                postTitle: post['title'] ?? '',
+                sellerPhone: phone,
+                ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+              );
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not open phone dialer')),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.call),
+            label: const Text('Call'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _themeColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: phone.isEmpty ? null : () async {
+              final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+              final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
+              final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');
+              final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not open WhatsApp')),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.chat),
+            label: const Text('WhatsApp'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _themeColor,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: const BorderSide(color: _themeColor),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

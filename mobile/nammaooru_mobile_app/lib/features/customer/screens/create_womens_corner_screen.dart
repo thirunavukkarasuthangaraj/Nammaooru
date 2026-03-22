@@ -9,6 +9,7 @@ import '../../../core/services/location_service.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
+import '../../../core/services/contact_request_service.dart';
 import '../services/womens_corner_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
@@ -38,6 +39,7 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
   int _maxImages = 3;
   bool _isSubmitting = false;
   bool _wantsBanner = false;
+  bool _phoneLocked = false;
   bool _isLoadingCategories = true;
   int? _paidTokenId;
   double? _latitude;
@@ -189,6 +191,7 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
         isBanner: bannerFlag,
         latitude: _latitude,
         longitude: _longitude,
+        phoneLocked: _phoneLocked,
       );
 
       if (!mounted) return;
@@ -357,6 +360,37 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
                 decoration: _inputDecoration('9876543210'),
                 validator: (val) => val == null || val.trim().length < 10 ? 'Enter valid phone number' : null,
+              ),
+              const SizedBox(height: 12),
+
+              // Phone Lock toggle
+              Row(
+                children: [
+                  Switch(
+                    value: _phoneLocked,
+                    onChanged: (val) => setState(() => _phoneLocked = val),
+                    activeColor: const Color(0xFFE91E63),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          langProvider.getText('Lock Phone Number', 'தொலைபேசி எண் பூட்டு'),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          langProvider.getText(
+                            'Buyers must request permission before seeing your number',
+                            'வாங்குபவர்கள் உங்கள் எண்ணை பார்க்க அனுமதி கோரவேண்டும்',
+                          ),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 

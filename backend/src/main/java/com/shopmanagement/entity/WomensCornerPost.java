@@ -86,6 +86,11 @@ public class WomensCornerPost {
     @Builder.Default
     private Boolean expiryReminderSent = false;
 
+    // Phone lock — if true, buyer must send a contact request; owner approves before number is revealed
+    @Column(name = "phone_locked")
+    @Builder.Default
+    private Boolean phoneLocked = false;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

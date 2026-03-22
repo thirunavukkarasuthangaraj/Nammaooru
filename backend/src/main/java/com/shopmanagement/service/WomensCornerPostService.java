@@ -58,6 +58,14 @@ public class WomensCornerPostService {
                                      String phone, String category, String location,
                                      List<MultipartFile> images,
                                      String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner) throws IOException {
+        return createPost(title, description, price, phone, category, location, images, username, latitude, longitude, paidTokenId, isBanner, false);
+    }
+
+    @Transactional
+    public WomensCornerPost createPost(String title, String description, BigDecimal price,
+                                     String phone, String category, String location,
+                                     List<MultipartFile> images,
+                                     String username, BigDecimal latitude, BigDecimal longitude, Long paidTokenId, boolean isBanner, boolean phoneLocked) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -111,6 +119,7 @@ public class WomensCornerPostService {
                 .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .isPaid(paidTokenId != null)
                 .featured(isBanner)
+                .phoneLocked(phoneLocked)
                 .build();
 
         // Set validity dates

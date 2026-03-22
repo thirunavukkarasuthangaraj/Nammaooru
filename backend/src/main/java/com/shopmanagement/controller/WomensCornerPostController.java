@@ -42,11 +42,12 @@ public class WomensCornerPostController {
             @RequestParam(value = "latitude", required = false) BigDecimal latitude,
             @RequestParam(value = "longitude", required = false) BigDecimal longitude,
             @RequestParam(value = "paidTokenId", required = false) Long paidTokenId,
-            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner) {
+            @RequestParam(value = "isBanner", defaultValue = "false") boolean isBanner,
+            @RequestParam(value = "phoneLocked", defaultValue = "false") boolean phoneLocked) {
         try {
             String username = getCurrentUsername();
             WomensCornerPost post = womensCornerPostService.createPost(
-                    title, description, price, phone, category, location, images, username, latitude, longitude, paidTokenId, isBanner);
+                    title, description, price, phone, category, location, images, username, latitude, longitude, paidTokenId, isBanner, phoneLocked);
             return ResponseUtil.created(post, "Women's corner post submitted successfully");
         } catch (Exception e) {
             log.error("Error creating women's corner post", e);

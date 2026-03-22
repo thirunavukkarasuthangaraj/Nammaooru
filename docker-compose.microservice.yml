@@ -1,0 +1,120 @@
+version: '3.8'
+
+# Microservice mode: user-service (port 8081) + monolith (port 8080)
+# Usage: docker compose -f docker-compose.microservice.yml up -d
+# To switch back to monolith-only: docker compose up -d (uses docker-compose.yml)
+
+services:
+  # User Service - handles auth, users, OTP, permissions
+  user-service:
+    build:
+      context: ./user-service
+      args:
+        - MAVEN_OPTS=-Xmx512m
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    environment:
+      - JAVA_OPTS=-Xms128m -Xmx192m -XX:+UseG1GC -XX:MaxMetaspaceSize=96m
+      # User service connects to user_db
+      - DB_URL=${USER_DB_URL:-jdbc:postgresql://host.docker.internal:5432/user_db}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      # JWT secret (MUST match monolith for shared token validation)
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key-here}
+      # SMTP / Email
+      - MAIL_HOST=${MAIL_HOST:-smtp.hostinger.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-noreplay@nammaoorudelivary.in}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      # MSG91 SMS
+      - MSG91_AUTH_KEY=${MSG91_AUTH_KEY}
+      - MSG91_SENDER_ID=${MSG91_SENDER_ID:-NAMMAO}
+      - MSG91_OTP_TEMPLATE_ID=${MSG91_OTP_TEMPLATE_ID}
+      - MSG91_FORGOT_PASSWORD_TEMPLATE_ID=${MSG91_FORGOT_PASSWORD_TEMPLATE_ID}
+    ports:
+      - "8081:8081"
+    networks:
+      - shop-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    labels:
+      - "com.shop.service=user-service"
+
+  # Monolith Backend (same as original docker-compose.yml)
+  backend:
+    build:
+      context: ./backend
+      args:
+        - MAVEN_OPTS=-Xmx512m
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseG1GC -XX:MaxMetaspaceSize=128m
+      - DB_URL=${DB_URL:-jdbc:postgresql://host.docker.internal:5432/shop_management_db}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key-here}
+      - FILE_UPLOAD_PATH=${FILE_UPLOAD_PATH:-/app/uploads}
+      - APP_UPLOAD_DIR=${APP_UPLOAD_DIR:-/app/uploads}
+      - DOCUMENT_UPLOAD_PATH=${DOCUMENT_UPLOAD_PATH:-/app/uploads/documents/shops}
+      - DELIVERY_PARTNER_DOCUMENT_PATH=${DELIVERY_PARTNER_DOCUMENT_PATH:-/app/uploads/documents/delivery-partners}
+      - PRODUCT_IMAGES_PATH=${PRODUCT_IMAGES_PATH:-/app/uploads/products}
+      - JPA_DDL_AUTO=${JPA_DDL_AUTO:-update}
+      - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}
+      - APP_SCHEDULING_ENABLED=${APP_SCHEDULING_ENABLED:-true}
+      - FIREBASE_SERVICE_ACCOUNT_PATH=/app/firebase-config/firebase-service-account.json
+      - MAIL_HOST=${MAIL_HOST:-smtp.hostinger.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-noreplay@nammaoorudelivary.in}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - RAZORPAY_MODE=${RAZORPAY_MODE:-test}
+      - RAZORPAY_TEST_KEY_ID=${RAZORPAY_TEST_KEY_ID}
+      - RAZORPAY_TEST_KEY_SECRET=${RAZORPAY_TEST_KEY_SECRET}
+      - RAZORPAY_LIVE_KEY_ID=${RAZORPAY_LIVE_KEY_ID}
+      - RAZORPAY_LIVE_KEY_SECRET=${RAZORPAY_LIVE_KEY_SECRET}
+      - MSG91_AUTH_KEY=${MSG91_AUTH_KEY}
+      - MSG91_SENDER_ID=${MSG91_SENDER_ID:-NAMMAO}
+      - MSG91_OTP_TEMPLATE_ID=${MSG91_OTP_TEMPLATE_ID}
+      - MSG91_NAMESPACE=${MSG91_NAMESPACE}
+      - MSG91_INTEGRATED_NUMBER=${MSG91_INTEGRATED_NUMBER}
+      - MSG91_FORGOT_PASSWORD_TEMPLATE_ID=${MSG91_FORGOT_PASSWORD_TEMPLATE_ID}
+      - GEMINI_ENABLED=${GEMINI_ENABLED:-true}
+      - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
+      - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
+      - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
+      - GEMINI_API_KEY_4=${GEMINI_API_KEY_4}
+    ports:
+      - "8080"
+    volumes:
+      - /mnt/HC_Volume_104749884:/app/uploads
+      - ./firebase-config:/app/firebase-config:ro
+    networks:
+      - shop-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "com.shop.service=backend"
+
+networks:
+  shop-network:
+    driver: bridge
