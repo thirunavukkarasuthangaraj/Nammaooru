@@ -99,6 +99,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   List<Map<String, dynamic>> _featuredPosts = [];
 
   bool _serviceAreaBlocked = false;
+  Future<void>? _serviceAreaCheckFuture;
 
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
@@ -154,8 +155,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     // Load dashboard data after GPS
     _loadDashboardData();
 
-    // Check service area in background — shows dialog if blocked
-    _checkServiceArea();
+    // Check service area in background — stores future so _guardedNavigate can await it
+    _serviceAreaCheckFuture = _checkServiceArea();
   }
 
   Future<void> _checkServiceArea() async {
@@ -2193,8 +2194,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
 
-  /// Checks service area before any navigation — call this for all module tiles
-  void _guardedNavigate(VoidCallback navigate) {
+  /// Checks service area before any navigation — awaits pending check if not done yet
+  Future<void> _guardedNavigate(VoidCallback navigate) async {
+    // If check is still running, wait for it (max 5s)
+    if (_serviceAreaCheckFuture != null) {
+      await _serviceAreaCheckFuture!.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {},
+      );
+    }
+
+    if (!mounted) return;
+
     if (ServiceAreaService.isCurrentlyBlocked) {
       final result = ServiceAreaService.lastResult;
       showDialog(
