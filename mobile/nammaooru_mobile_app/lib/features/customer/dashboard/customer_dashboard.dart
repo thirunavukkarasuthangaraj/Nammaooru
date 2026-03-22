@@ -2116,20 +2116,21 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     // Use user location if available, otherwise default to Tirupattur
     final lat = _userLatitude ?? 12.4966;
     final lng = _userLongitude ?? 78.5729;
-    print('🟢 _loadFeatureConfig called with lat=$lat, lng=$lng');
     setState(() => _isLoadingFeatures = true);
+
+    // Fallback after 4 seconds — never leave user stuck on shimmer
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted && _isLoadingFeatures) {
+        setState(() => _isLoadingFeatures = false);
+      }
+    });
+
     try {
-      // Load into the shared provider (drives both service grid and bottom nav)
       final provider = Provider.of<FeatureConfigProvider>(context, listen: false);
-      await provider.load(lat, lng);
+      await provider.load(lat, lng).timeout(const Duration(seconds: 6));
 
       final features = provider.serviceFeatures;
-      print('🟢 Feature config API returned ${features.length} service features');
-      for (var f in features) {
-        print('🟢 Feature: ${f['featureName']} - ${f['displayName']} - active: ${f['isActive']}');
-      }
       if (mounted && features.isNotEmpty) {
-        // Create one GlobalKey per tile (stable: only add missing keys)
         for (final f in features) {
           final name = f['featureName']?.toString() ?? '';
           _featureTourKeys.putIfAbsent(name, () => GlobalKey());
@@ -2138,10 +2139,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           _dynamicFeatures = features;
           _isLoadingFeatures = false;
         });
-        print('🟢 Using DYNAMIC categories from API (${features.length} items)');
       } else {
-        setState(() => _isLoadingFeatures = false);
-        print('🔴 Features empty or not mounted, using DEFAULT hardcoded categories');
+        if (mounted) setState(() => _isLoadingFeatures = false);
       }
     } catch (e) {
       print('🔴 Feature config API FAILED: $e');
