@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:showcaseview/showcaseview.dart';
@@ -2109,33 +2110,51 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  static const _featureCacheKey = 'cached_feature_config';
+
   Future<void> _loadFeatureConfig() async {
-    // Use user location if available, otherwise default to Tirupattur
     final lat = _userLatitude ?? 12.4966;
     final lng = _userLongitude ?? 78.5729;
-    setState(() => _isLoadingFeatures = true);
 
-    // Fallback after 4 seconds — never leave user stuck on shimmer
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted && _isLoadingFeatures) {
-        setState(() => _isLoadingFeatures = false);
-      }
-    });
+    // Show cached features instantly if available — no shimmer needed
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString(_featureCacheKey);
+    if (cached != null) {
+      try {
+        final List<dynamic> raw = json.decode(cached);
+        final cachedFeatures = raw.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (cachedFeatures.isNotEmpty && mounted) {
+          for (final f in cachedFeatures) {
+            _featureTourKeys.putIfAbsent(f['featureName']?.toString() ?? '', () => GlobalKey());
+          }
+          setState(() {
+            _dynamicFeatures = cachedFeatures;
+            _isLoadingFeatures = false;
+          });
+        }
+      } catch (_) {}
+    } else {
+      setState(() => _isLoadingFeatures = true);
+    }
 
+    // Fetch fresh from API in background — update if response arrives
     try {
       final provider = Provider.of<FeatureConfigProvider>(context, listen: false);
-      await provider.load(lat, lng).timeout(const Duration(seconds: 6));
+      await provider.load(lat, lng).timeout(const Duration(seconds: 8));
 
       final features = provider.serviceFeatures;
-      if (mounted && features.isNotEmpty) {
-        for (final f in features) {
-          final name = f['featureName']?.toString() ?? '';
-          _featureTourKeys.putIfAbsent(name, () => GlobalKey());
+      if (features.isNotEmpty) {
+        // Save to cache for next app open
+        await prefs.setString(_featureCacheKey, json.encode(features));
+        if (mounted) {
+          for (final f in features) {
+            _featureTourKeys.putIfAbsent(f['featureName']?.toString() ?? '', () => GlobalKey());
+          }
+          setState(() {
+            _dynamicFeatures = features;
+            _isLoadingFeatures = false;
+          });
         }
-        setState(() {
-          _dynamicFeatures = features;
-          _isLoadingFeatures = false;
-        });
       } else {
         if (mounted) setState(() => _isLoadingFeatures = false);
       }
