@@ -457,6 +457,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
   Widget _buildProductCard(Map<String, dynamic> product, int index) {
     final name = product['name']?.toString() ?? '';
+    final nameTamil = product['nameTamil']?.toString() ?? '';
     final price = product['price']?.toString() ?? '0';
     final weight = product['weightDisplay']?.toString() ?? '';
     final image = product['image']?.toString() ?? '';
@@ -537,6 +538,13 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
+                if (nameTamil.isNotEmpty)
+                  Text(
+                    nameTamil,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
                 if (weight.isNotEmpty)
                   Text(weight,
                     style: TextStyle(fontSize: 11, color: Colors.orange[700], fontWeight: FontWeight.w500)),
