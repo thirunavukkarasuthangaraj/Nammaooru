@@ -46,6 +46,7 @@ import '../screens/bus_timing_screen.dart';
 import '../screens/create_post_screen.dart';
 import '../screens/farmer_products_screen.dart';
 import '../screens/labour_screen.dart';
+import '../screens/jobs_screen.dart';
 import '../screens/travel_screen.dart';
 import '../screens/parcel_screen.dart';
 import '../screens/real_estate_screen.dart';
@@ -596,6 +597,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           'screen': const LabourScreen(),
           'titleKey': 'name',
           'subtitleKey': 'category',
+          'imageKey': 'imageUrls',
+        },
+        'jobs': {
+          'icon': Icons.work_rounded,
+          'color': const Color(0xFF2E7D32),
+          'label': 'Jobs',
+          'labelTamil': 'வேலை வாய்ப்பு',
+          'screen': const JobsScreen(),
+          'titleKey': 'jobTitle',
+          'subtitleKey': 'companyName',
           'imageKey': 'imageUrls',
         },
         'travel': {

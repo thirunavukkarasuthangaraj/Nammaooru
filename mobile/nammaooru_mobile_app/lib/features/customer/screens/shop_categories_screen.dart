@@ -352,45 +352,44 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
               ),
             ),
 
-          // FORCE SHOW 2 TEST CATEGORIES
+          // Categories Grid
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.0,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final testCategories = [
-                    {
-                      'id': '1',
-                      'name': 'Grocery',
-                      'displayName': 'Grocery',
-                      'searchName': 'Grocery',
-                      'description': 'Grocery items',
-                      'productCount': 3,
-                      'icon': Icons.shopping_bag,
-                      'color': const Color(0xFF4CAF50),
-                    },
-                    {
-                      'id': '2',
-                      'name': 'Medicine',
-                      'displayName': 'Medicine',
-                      'searchName': 'Medicine',
-                      'description': 'Medicine items',
-                      'productCount': 1,
-                      'icon': Icons.medical_services,
-                      'color': const Color(0xFFF44336),
-                    },
-                  ];
-                  return _buildCategoryCard(testCategories[index]);
-                },
-                childCount: 2,
-              ),
-            ),
+            sliver: _isLoading
+                ? const SliverToBoxAdapter(child: SizedBox.shrink())
+                : _categories.isEmpty
+                    ? SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              children: [
+                                const Text('🏪', style: TextStyle(fontSize: 48)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No categories found',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 1.1,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildCategoryCard(_categories[index]),
+                          childCount: _categories.length,
+                        ),
+                      ),
           ),
 
           const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
@@ -433,18 +432,18 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
   }
 
   Widget _buildCategoryCard(Map<String, dynamic> category) {
-    return ElevatedButton(
-      onPressed: () {
-        print('🖱️ CATEGORY TAPPED: ${category['name']}');
+    final Color cardColor = category['color'] is Color
+        ? category['color'] as Color
+        : _parseColor(category['color']?.toString());
+    final IconData cardIcon = category['icon'] is IconData
+        ? category['icon'] as IconData
+        : _getIconFromString(category['icon']?.toString());
+    final int productCount = category['productCount'] as int? ?? 0;
+    final String displayName = category['displayName']?.toString() ?? category['name']?.toString() ?? 'Category';
+    final String description = category['description']?.toString() ?? '';
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('BUTTON TAPPED: ${category['name']}'),
-            duration: Duration(seconds: 2),
-            backgroundColor: Colors.green,
-          ),
-        );
-
+    return GestureDetector(
+      onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -454,43 +453,105 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
           ),
         );
       },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.red, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: cardColor.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        padding: EdgeInsets.all(16),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            category['icon'] is IconData
-                ? category['icon']
-                : _getIconFromString(category['icon']),
-            size: 40,
-            color: Colors.green,
-          ),
-          SizedBox(height: 8),
-          Text(
-            category['displayName'] ?? category['name'],
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Colored header with icon
+            Container(
+              height: 90,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cardColor, cardColor.withOpacity(0.7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Stack(
+                children: [
+                  // Background pattern circle
+                  Positioned(
+                    right: -10,
+                    top: -10,
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Icon(cardIcon, size: 44, color: Colors.white),
+                  ),
+                ],
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            '${category['productCount']} Items',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            // Bottom info section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (description.isNotEmpty)
+                      Text(
+                        description,
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: cardColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '$productCount Items',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: cardColor,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey[400]),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -71,15 +71,33 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     'SMALL_BUS': 'Mini Bus',
     'RENT': 'Rent',
     'CAR': 'Car',
+    'AUTO': 'Auto',
+    'BIKE': 'Bike',
+    'VAN': 'Van',
+    'TRUCK': 'Truck',
+    'TAXI': 'Taxi',
+    'TRACTOR': 'Tractor',
+    'AMBULANCE': 'Ambulance',
+    'SCHOOL_VAN': 'School Van',
+    'TEMPO': 'Tempo',
   };
 
   static const Map<String, String> _vehicleTypeTamilMap = {
-    'All': '\u0B85\u0BA9\u0BC8\u0BA4\u0BCD\u0BA4\u0BC1\u0BAE\u0BCD',
-    'BUS': '\u0BAA\u0BC7\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1',
-    'LORRY': '\u0BB2\u0BBE\u0BB0\u0BBF',
-    'SMALL_BUS': '\u0BAE\u0BBF\u0BA9\u0BBF \u0BAA\u0BB8\u0BCD',
-    'RENT': '\u0BB5\u0BBE\u0B9F\u0B95\u0BC8',
-    'CAR': '\u0B95\u0BBE\u0BB0\u0BCD',
+    'All': 'அனைத்தும்',
+    'BUS': 'பேருந்து',
+    'LORRY': 'லாரி',
+    'SMALL_BUS': 'மினி பஸ்',
+    'RENT': 'வாடகை',
+    'CAR': 'கார்',
+    'AUTO': 'ஆட்டோ',
+    'BIKE': 'பைக்',
+    'VAN': 'வேன்',
+    'TRUCK': 'டிரக்',
+    'TAXI': 'டாக்சி',
+    'TRACTOR': 'டிராக்டர்',
+    'AMBULANCE': 'அம்புலன்ஸ்',
+    'SCHOOL_VAN': 'ஸ்கூல் வேன்',
+    'TEMPO': 'டெம்போ',
   };
 
   static const Map<String, IconData> _vehicleTypeIcons = {
@@ -88,6 +106,15 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     'SMALL_BUS': Icons.airport_shuttle,
     'RENT': Icons.car_rental,
     'CAR': Icons.directions_car,
+    'AUTO': Icons.electric_rickshaw,
+    'BIKE': Icons.two_wheeler,
+    'VAN': Icons.airport_shuttle,
+    'TRUCK': Icons.fire_truck,
+    'TAXI': Icons.local_taxi,
+    'TRACTOR': Icons.agriculture,
+    'AMBULANCE': Icons.emergency,
+    'SCHOOL_VAN': Icons.directions_bus_filled,
+    'TEMPO': Icons.local_shipping,
   };
 
   @override
@@ -581,18 +608,18 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                   ),
                   child: CachedNetworkImage(
                     imageUrl: fullImageUrl,
-                    width: 100,
-                    height: 130,
+                    width: 110,
+                    height: 160,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
-                      width: 100,
-                      height: 130,
+                      width: 110,
+                      height: 160,
                       color: Colors.grey[200],
                       child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      width: 100,
-                      height: 130,
+                      width: 110,
+                      height: 160,
                       color: _travelTeal.withOpacity(0.1),
                       child: Icon(vehicleIcon, size: 40, color: _travelTeal),
                     ),
@@ -600,8 +627,8 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                 )
               else
                 Container(
-                  width: 100,
-                  height: 130,
+                  width: 110,
+                  height: 160,
                   decoration: BoxDecoration(
                     color: _travelTeal.withOpacity(0.1),
                     borderRadius: const BorderRadius.only(
@@ -667,29 +694,61 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                           (post['toLocation'] != null && post['toLocation'].toString().isNotEmpty))
                         Row(
                           children: [
-                            Icon(Icons.route, size: 14, color: Colors.grey[500]),
+                            Icon(Icons.route, size: 14, color: _travelTeal),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                '${post['fromLocation'] ?? ''} \u2192 ${post['toLocation'] ?? ''}',
-                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                '${post['fromLocation'] ?? ''} → ${post['toLocation'] ?? ''}',
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF333333), fontWeight: FontWeight.w500),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                      // Price
-                      if (post['price'] != null && post['price'].toString().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.currency_rupee, size: 14, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
+                      const SizedBox(height: 4),
+                      // Price + seats row
+                      Row(
+                        children: [
+                          if (post['price'] != null && post['price'].toString().isNotEmpty) ...[
+                            Icon(Icons.currency_rupee, size: 13, color: Colors.green[700]),
                             Text(
                               post['price'].toString(),
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                              style: TextStyle(fontSize: 13, color: Colors.green[700], fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          if (post['seatsAvailable'] != null || post['capacity'] != null) ...[
+                            Icon(Icons.event_seat, size: 13, color: Colors.grey[500]),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${post['seatsAvailable'] ?? post['capacity']} seats',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                             ),
                           ],
+                        ],
+                      ),
+                      // Travel date/schedule
+                      if (post['travelDate'] != null && post['travelDate'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 12, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Text(
+                              post['travelDate'].toString(),
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ],
+                      // Description snippet
+                      if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          post['description'].toString(),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.3),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                       const SizedBox(height: 8),
@@ -716,6 +775,24 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                               ),
                             ),
                             const SizedBox(width: 4),
+                            // WhatsApp button
+                            if (post['phone'] != null && post['phone'].toString().isNotEmpty)
+                              SizedBox(
+                                height: 32,
+                                width: 32,
+                                child: IconButton(
+                                  onPressed: () async {
+                                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                    if (!authProvider.isAuthenticated) { context.go('/login'); return; }
+                                    final phone = post['phone'].toString().replaceAll(RegExp(r'[^0-9]'), '');
+                                    final uri = Uri.parse('https://wa.me/91$phone');
+                                    try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}
+                                  },
+                                  icon: const Icon(Icons.chat, size: 17, color: Color(0xFF25D366)),
+                                  padding: EdgeInsets.zero,
+                                  tooltip: 'WhatsApp',
+                                ),
+                              ),
                             SizedBox(
                               height: 32,
                               width: 32,

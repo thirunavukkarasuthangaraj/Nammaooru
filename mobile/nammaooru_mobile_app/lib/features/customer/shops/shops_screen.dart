@@ -36,11 +36,31 @@ class _ShopsScreenState extends State<ShopsScreen> {
   List<dynamic> _filteredShops = [];
   bool _isLoading = true;
   String _sortBy = 'name';
+  String? _selectedSubCategory;
   bool _openNowOnly = false;
   double _maxDistance = 10.0;
   double _minRating = 0.0;
   int _currentPage = 0;
   bool _hasMoreData = true;
+
+  static const List<Map<String, String>> _subCategories = [
+    {'key': '', 'label': '🏪 அனைத்தும்', 'value': 'All'},
+    {'key': 'grocery', 'label': '🥬 மளிகை', 'value': 'Grocery'},
+    {'key': 'medical', 'label': '💊 மருந்து', 'value': 'Medical'},
+    {'key': 'electronics', 'label': '📱 இலத்திரனியல்', 'value': 'Electronics'},
+    {'key': 'clothing', 'label': '👕 ஆடை', 'value': 'Clothing'},
+    {'key': 'food', 'label': '🍴 உணவு', 'value': 'Food'},
+    {'key': 'bakery', 'label': '🍞 பேக்கரி', 'value': 'Bakery'},
+    {'key': 'dairy', 'label': '🥛 பால்', 'value': 'Dairy'},
+    {'key': 'hardware', 'label': '🔧 ஹார்ட்வேர்', 'value': 'Hardware'},
+    {'key': 'beauty', 'label': '💄 அழகு', 'value': 'Beauty'},
+    {'key': 'furniture', 'label': '🛋️ தளவாடம்', 'value': 'Furniture'},
+    {'key': 'stationary', 'label': '📚 பேனா/புத்தகம்', 'value': 'Stationery'},
+    {'key': 'jewellery', 'label': '💍 நகை', 'value': 'Jewellery'},
+    {'key': 'vehicle', 'label': '🏍️ வாகனம்', 'value': 'Vehicle'},
+    {'key': 'agriculture', 'label': '🌾 விவசாயம்', 'value': 'Agriculture'},
+    {'key': 'services', 'label': '🔨 சேவை', 'value': 'Services'},
+  ];
 
   @override
   void initState() {
@@ -97,17 +117,20 @@ class _ShopsScreenState extends State<ShopsScreen> {
         final shopCategory = shop['businessType']?.toString().toLowerCase() ?? '';
         final shopRating = double.tryParse(shop['averageRating']?.toString() ?? '0') ?? 0.0;
         final shopIsActive = shop['isActive'] ?? true;
-        
+
         final matchesSearch = shopName.contains(query) ||
             shopDescription.contains(query) ||
             shopCategory.contains(query);
-            
+
         final matchesRating = shopRating >= _minRating;
         final matchesOpenNow = !_openNowOnly || shopIsActive;
-        
-        return matchesSearch && matchesRating && matchesOpenNow;
+        final matchesSubCategory = _selectedSubCategory == null ||
+            _selectedSubCategory!.isEmpty ||
+            shopCategory.contains(_selectedSubCategory!.toLowerCase());
+
+        return matchesSearch && matchesRating && matchesOpenNow && matchesSubCategory;
       }).toList();
-      
+
       _applySortAndFilter();
     });
   }
@@ -172,6 +195,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
       body: Column(
         children: [
           _buildSearchBar(),
+          _buildSubCategoryChips(),
           _buildSortingChips(),
           Expanded(
             child: _isLoading ? const LoadingWidget() : _buildShopsList(),
@@ -235,6 +259,65 @@ class _ShopsScreenState extends State<ShopsScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSubCategoryChips() {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: VillageTheme.spacingM),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _subCategories.length,
+        itemBuilder: (context, index) {
+          final cat = _subCategories[index];
+          final key = cat['key']!;
+          final isSelected = (_selectedSubCategory ?? '') == key;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedSubCategory = key;
+                });
+                _filterShops();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? VillageTheme.accentOrange : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? VillageTheme.accentOrange
+                        : Colors.grey.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: VillageTheme.accentOrange.withOpacity(0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          )
+                        ]
+                      : [],
+                ),
+                child: Text(
+                  cat['label']!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Colors.white : VillageTheme.primaryText,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -343,17 +426,17 @@ class _ShopsScreenState extends State<ShopsScreen> {
       builder: (context, constraints) {
         // Responsive column count based on screen width
         int crossAxisCount = 2; // Default for mobile
-        double childAspectRatio = 0.75; // Taller cards
+        double childAspectRatio = 0.65; // Taller cards to fit more info
 
         if (constraints.maxWidth > 1200) {
           crossAxisCount = 4; // Desktop
-          childAspectRatio = 0.8;
+          childAspectRatio = 0.7;
         } else if (constraints.maxWidth > 800) {
           crossAxisCount = 3; // Tablet
-          childAspectRatio = 0.78;
+          childAspectRatio = 0.68;
         } else if (constraints.maxWidth > 600) {
           crossAxisCount = 2; // Large phone
-          childAspectRatio = 0.75;
+          childAspectRatio = 0.65;
         }
 
         return RefreshIndicator(
@@ -581,6 +664,50 @@ class _ShopsScreenState extends State<ShopsScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    ],
+                  ),
+                  SizedBox(height: 6),
+
+                  // Divider
+                  Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                  SizedBox(height: 6),
+
+                  // Reviews + Delivery row
+                  Row(
+                    children: [
+                      // Reviews count
+                      if (shop['reviewCount'] != null || shop['totalReviews'] != null) ...[
+                        Icon(Icons.reviews_outlined, size: 11, color: VillageTheme.secondaryText),
+                        SizedBox(width: 3),
+                        Text(
+                          '${shop['reviewCount'] ?? shop['totalReviews'] ?? 0} reviews',
+                          style: TextStyle(fontSize: 10, color: VillageTheme.secondaryText),
+                        ),
+                        SizedBox(width: 8),
+                      ],
+                      // Delivery badge
+                      if (shop['deliveryAvailable'] == true || shop['hasDelivery'] == true)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.delivery_dining, size: 10, color: Colors.blue),
+                              SizedBox(width: 3),
+                              Text(
+                                'Delivery',
+                                style: TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Spacer(),
+                      // View arrow
+                      Icon(Icons.arrow_forward_ios, size: 10, color: VillageTheme.accentOrange),
                     ],
                   ),
                 ],
