@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/error_widget.dart';
 import '../../../shared/models/shop_model.dart';
@@ -675,7 +676,6 @@ class _ShopsScreenState extends State<ShopsScreen> {
                   // Reviews + Delivery row
                   Row(
                     children: [
-                      // Reviews count
                       if (shop['reviewCount'] != null || shop['totalReviews'] != null) ...[
                         Icon(Icons.reviews_outlined, size: 11, color: VillageTheme.secondaryText),
                         SizedBox(width: 3),
@@ -685,7 +685,6 @@ class _ShopsScreenState extends State<ShopsScreen> {
                         ),
                         SizedBox(width: 8),
                       ],
-                      // Delivery badge
                       if (shop['deliveryAvailable'] == true || shop['hasDelivery'] == true)
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -698,18 +697,50 @@ class _ShopsScreenState extends State<ShopsScreen> {
                             children: [
                               Icon(Icons.delivery_dining, size: 10, color: Colors.blue),
                               SizedBox(width: 3),
-                              Text(
-                                'Delivery',
-                                style: TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.w600),
-                              ),
+                              Text('Delivery', style: TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
                       Spacer(),
-                      // View arrow
                       Icon(Icons.arrow_forward_ios, size: 10, color: VillageTheme.accentOrange),
                     ],
                   ),
+                  SizedBox(height: 8),
+
+                  // Call + WhatsApp buttons
+                  Builder(builder: (context) {
+                    final phone = (shop['phoneNumber'] ?? shop['phone'] ?? '').toString();
+                    if (phone.isEmpty) return SizedBox.shrink();
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _callShop(phone),
+                            icon: Icon(Icons.call, size: 14, color: VillageTheme.primaryGreen),
+                            label: Text('Call', style: TextStyle(fontSize: 12, color: VillageTheme.primaryGreen, fontWeight: FontWeight.w600)),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 6),
+                              side: BorderSide(color: VillageTheme.primaryGreen.withOpacity(0.5)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _whatsappShop(shop, phone),
+                            icon: Icon(Icons.chat, size: 14, color: Color(0xFF25D366)),
+                            label: Text('WhatsApp', style: TextStyle(fontSize: 12, color: Color(0xFF25D366), fontWeight: FontWeight.w600)),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 6),
+                              side: BorderSide(color: Color(0xFF25D366).withOpacity(0.5)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),
@@ -717,6 +748,20 @@ class _ShopsScreenState extends State<ShopsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _callShop(String phone) async {
+    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (clean.isEmpty) return;
+    await launchUrl(Uri.parse('tel:$clean'), mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _whatsappShop(Map<String, dynamic> shop, String phone) async {
+    final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.isEmpty) return;
+    final name = shop['name'] ?? 'Shop';
+    final msg = Uri.encodeComponent('Hi, I found your shop "$name" on NammaOoru app. I would like to know more.');
+    await launchUrl(Uri.parse('https://wa.me/91$clean?text=$msg'), mode: LaunchMode.externalApplication);
   }
 
   void _navigateToShop(Map<String, dynamic> shop) {
