@@ -46,7 +46,7 @@ public class JobPostService {
 
         globalPostLimitService.checkGlobalPostLimit(user.getId(), null);
 
-        int postLimit = settingService.getIntSetting("jobs.free_post_limit", 3);
+        int postLimit = Integer.parseInt(settingService.getSettingValue("jobs.free_post_limit", "3"));
         if (postLimit > 0) {
             List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
             long activeCount = jobPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
@@ -74,13 +74,13 @@ public class JobPostService {
         if (images != null) {
             for (MultipartFile image : images) {
                 if (image != null && !image.isEmpty()) {
-                    String url = fileUploadService.uploadFile(image);
+                    String url = fileUploadService.uploadFile(image, "jobs");
                     imageUrls.add(url);
                 }
             }
         }
 
-        int expiryDays = settingService.getIntSetting("jobs.expiry_days", 30);
+        int expiryDays = Integer.parseInt(settingService.getSettingValue("jobs.expiry_days", "30"));
 
         JobPost post = JobPost.builder()
                 .jobTitle(jobTitle)
@@ -168,7 +168,7 @@ public class JobPostService {
                 .orElseThrow(() -> new RuntimeException("Job post not found"));
         post.setStatus(PostStatus.APPROVED);
         post.setValidFrom(LocalDateTime.now());
-        int expiryDays = settingService.getIntSetting("jobs.expiry_days", 30);
+        int expiryDays = Integer.parseInt(settingService.getSettingValue("jobs.expiry_days", "30"));
         post.setValidTo(LocalDateTime.now().plusDays(expiryDays));
         return jobPostRepository.save(post);
     }

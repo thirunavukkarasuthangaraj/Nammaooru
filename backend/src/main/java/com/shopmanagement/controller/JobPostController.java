@@ -79,7 +79,7 @@ public class JobPostController {
             result.put("hasNext", !posts.isLast());
             result.put("totalElements", posts.getTotalElements());
             result.put("totalPages", posts.getTotalPages());
-            return ResponseUtil.ok(result, "Job posts fetched");
+            return ResponseUtil.success(result, "Job posts fetched");
         } catch (Exception e) {
             log.error("Error fetching job posts", e);
             return ResponseUtil.error(e.getMessage());
@@ -92,7 +92,7 @@ public class JobPostController {
         try {
             String username = getCurrentUsername();
             List<JobPost> posts = jobPostService.getMyPosts(username);
-            return ResponseUtil.ok(posts, "My job posts fetched");
+            return ResponseUtil.success(posts, "My job posts fetched");
         } catch (Exception e) {
             log.error("Error fetching my job posts", e);
             return ResponseUtil.error(e.getMessage());
@@ -105,7 +105,7 @@ public class JobPostController {
         try {
             String username = getCurrentUsername();
             jobPostService.delete(id, username);
-            return ResponseUtil.ok(null, "Job post deleted");
+            return ResponseUtil.deleted();
         } catch (Exception e) {
             log.error("Error deleting job post", e);
             return ResponseUtil.error(e.getMessage());
@@ -120,7 +120,7 @@ public class JobPostController {
             String reason = body != null ? body.getOrDefault("reason", "Inappropriate") : "Inappropriate";
             String details = body != null ? body.get("details") : null;
             jobPostService.report(id, reason, details);
-            return ResponseUtil.ok(null, "Job post reported");
+            return ResponseUtil.deleted();
         } catch (Exception e) {
             log.error("Error reporting job post", e);
             return ResponseUtil.error(e.getMessage());
