@@ -107,6 +107,8 @@ public class SecurityConfig {
                                 "/api/real-estate/*",  // Public: View single property by ID
                                 "/api/labours",  // Public: View approved labour posts
                                 "/api/labours/*",  // Public: View single labour post by ID
+                                "/api/jobs",  // Public: View approved job posts
+                                "/api/jobs/*",  // Public: View single job post by ID
                                 "/api/travels",  // Public: View approved travel posts
                                 "/api/travels/*",  // Public: View single travel post by ID
                                 "/api/parcels",  // Public: View approved parcel posts

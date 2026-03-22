@@ -69,7 +69,21 @@ public class ShopService {
     @Transactional
     public ShopResponse createShop(ShopCreateRequest request) {
         log.info("Creating new shop: {}", request.getName());
-        
+
+        // Check for duplicate phone number
+        if (request.getOwnerPhone() != null && !request.getOwnerPhone().isEmpty()) {
+            if (shopRepository.existsByOwnerPhone(request.getOwnerPhone())) {
+                throw new IllegalArgumentException("A shop is already registered with this mobile number: " + request.getOwnerPhone());
+            }
+        }
+
+        // Check for duplicate email
+        if (request.getOwnerEmail() != null && !request.getOwnerEmail().isEmpty()) {
+            if (shopRepository.findByOwnerEmail(request.getOwnerEmail()).isPresent()) {
+                throw new IllegalArgumentException("A shop is already registered with this email: " + request.getOwnerEmail());
+            }
+        }
+
         String shopId = generateShopId();
         String slug = generateUniqueSlug(request.getName(), request.getCity());
         
@@ -335,9 +349,21 @@ public class ShopService {
         }
 
         if (category != null && !category.isEmpty()) {
-            spec = spec.and((root, query, cb) ->
-                cb.equal(root.get("businessType"), Shop.BusinessType.valueOf(category.toUpperCase()))
-            );
+            final String upperCategory = category.toUpperCase();
+            // "food" category should match both FOOD and RESTAURANT business types
+            if ("FOOD".equals(upperCategory)) {
+                spec = spec.and((root, query, cb) -> cb.or(
+                    cb.equal(root.get("businessType"), Shop.BusinessType.FOOD),
+                    cb.equal(root.get("businessType"), Shop.BusinessType.RESTAURANT)
+                ));
+            } else {
+                try {
+                    Shop.BusinessType bt = Shop.BusinessType.valueOf(upperCategory);
+                    spec = spec.and((root, query, cb) -> cb.equal(root.get("businessType"), bt));
+                } catch (IllegalArgumentException e) {
+                    log.warn("Unknown category filter: {}", category);
+                }
+            }
         }
 
         Page<Shop> shops = shopRepository.findAll(spec, pageable);

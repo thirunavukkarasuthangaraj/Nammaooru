@@ -6,6 +6,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/post_filter_bar.dart';
 import '../../../core/services/location_service.dart';
 import '../services/job_service.dart';
 import 'create_job_screen.dart';
@@ -320,12 +321,11 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
           _buildMyPostsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreate,
         backgroundColor: _jobGreen,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text(lang.getText('Post Job', 'வேலை பதிவு')),
+        child: const Icon(Icons.add, size: 28),
       ),
     );
   }
@@ -333,11 +333,26 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
   Widget _buildBrowseTab() {
     return Column(
       children: [
-        // Search bar
-        _buildSearchBar(),
-        // Category filter chips
-        _buildCategoryChips(),
-        // Posts
+        PostFilterBar(
+          categories: _categories.keys.toList(),
+          selectedCategory: _selectedCategory,
+          onCategoryChanged: (cat) {
+            setState(() => _selectedCategory = (cat == null || cat == 'All') ? null : cat);
+            _loadPosts();
+          },
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _loadPosts();
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _loadPosts();
+          },
+          accentColor: _jobGreen,
+          categoryLabelBuilder: (cat) => _getCategoryLabel(cat),
+        ),
         Expanded(
           child: _isLoading
               ? const Center(child: LoadingWidget())
@@ -366,94 +381,6 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSearchBar() {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_jobGreen, const Color(0xFF43A047)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
-        child: TextField(
-          onChanged: (v) {
-            setState(() => _searchText = v);
-            if (v.isEmpty || v.length > 2) _loadPosts();
-          },
-          decoration: InputDecoration(
-            hintText: lang.getText('Search jobs, company...', 'வேலை, நிறுவனம் தேடுங்கள்...'),
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-            prefixIcon: Icon(Icons.search, color: _jobGreen),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryChips() {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    return Container(
-      color: _jobGreen.withOpacity(0.06),
-      child: SizedBox(
-      height: 46,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          final entry = _categories.entries.elementAt(index);
-          final isAll = entry.key == 'All';
-          final isSelected = isAll
-              ? _selectedCategory == null
-              : _selectedCategory == entry.key;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () {
-                setState(() => _selectedCategory = isAll ? null : entry.key);
-                _loadPosts();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? _jobGreen : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected ? _jobGreen : Colors.grey.withOpacity(0.3),
-                    width: 1.5,
-                  ),
-                ),
-                child: Text(
-                  isAll
-                      ? (lang.currentLanguage == 'en' ? 'All' : 'அனைத்தும்')
-                      : (lang.currentLanguage == 'en'
-                          ? entry.value
-                          : (_categoryTamil[entry.key] ?? entry.value)),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Colors.white : VillageTheme.primaryText,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    ));
-  }
 
   Widget _buildJobCard(Map<String, dynamic> post) {
     final category = post['category']?.toString() ?? 'OTHER';
@@ -859,74 +786,32 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
   Widget _buildEmptyState() {
     final lang = Provider.of<LanguageProvider>(context, listen: false);
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Illustration circle
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [_jobGreen.withOpacity(0.15), _jobGreen.withOpacity(0.05)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Icon(Icons.work_rounded, size: 60, color: _jobGreen.withOpacity(0.6)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.work_outline, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            lang.getText('No job postings yet', 'வேலை வாய்ப்பு இல்லை'),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            lang.getText('Be the first to post a job!', 'முதலில் வேலை பதிவிடுங்கள்!'),
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _navigateToCreate,
+            icon: const Icon(Icons.add),
+            label: Text(lang.getText('Post a Job', 'வேலை பதிவிடு')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _jobGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            const SizedBox(height: 24),
-            Text(
-              lang.getText('No Jobs Found', 'வேலை வாய்ப்பு இல்லை'),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              lang.getText(
-                _selectedCategory != null
-                    ? 'No jobs in this category yet.\nTry a different category or search.'
-                    : 'No job postings in your area yet.\nBe the first to post a job!',
-                _selectedCategory != null
-                    ? 'இந்த பகுதியில் வேலை இல்லை.\nவேறு பகுதி தேர்வு செய்யுங்கள்.'
-                    : 'உங்கள் பகுதியில் வேலை இல்லை.\nமுதலில் வேலை பதிவிடுங்கள்!',
-              ),
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500], height: 1.5),
-            ),
-            const SizedBox(height: 28),
-            if (_selectedCategory != null)
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() => _selectedCategory = null);
-                  _loadPosts();
-                },
-                icon: const Icon(Icons.clear),
-                label: Text(lang.getText('Clear Filter', 'வடிகட்டி நீக்கு')),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _jobGreen,
-                  side: BorderSide(color: _jobGreen),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                ),
-              )
-            else
-              ElevatedButton.icon(
-                onPressed: _navigateToCreate,
-                icon: const Icon(Icons.add_circle_outline),
-                label: Text(lang.getText('Post a Job', 'வேலை பதிவிடு')),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _jobGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  elevation: 2,
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

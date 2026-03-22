@@ -101,8 +101,8 @@ public class CustomerShopController {
                 .map(categoryName -> createCategoryResponse(categoryName, shopId))
                 .sorted((c1, c2) -> {
                     // Sort by database sortOrder, then by name
-                    Optional<ProductCategory> cat1 = categoryRepository.findByName(c1.getName());
-                    Optional<ProductCategory> cat2 = categoryRepository.findByName(c2.getName());
+                    Optional<ProductCategory> cat1 = categoryRepository.findByNameIgnoreCase(c1.getName());
+                    Optional<ProductCategory> cat2 = categoryRepository.findByNameIgnoreCase(c2.getName());
 
                     int sort1 = cat1.map(ProductCategory::getSortOrder).orElse(999);
                     int sort2 = cat2.map(ProductCategory::getSortOrder).orElse(999);
@@ -120,8 +120,8 @@ public class CustomerShopController {
         category.setId(String.valueOf(categoryName.hashCode())); // Simple ID generation
         category.setName(categoryName);
 
-        // Fetch actual category from database to get iconUrl
-        Optional<ProductCategory> categoryEntity = categoryRepository.findByName(categoryName);
+        // Fetch actual category from database to get iconUrl (case-insensitive match)
+        Optional<ProductCategory> categoryEntity = categoryRepository.findByNameIgnoreCase(categoryName);
 
         // Add Tamil translations for common categories
         String displayName = getCategoryDisplayName(categoryName);

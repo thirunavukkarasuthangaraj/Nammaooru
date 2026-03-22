@@ -53,12 +53,24 @@ public class ProductImageService {
 
     public List<ProductImageResponse> uploadMasterProductImages(Long productId, MultipartFile[] files, String[] altTexts) {
         log.info("Uploading {} images for master product: {}", files.length, productId);
-        
+
         MasterProduct product = masterProductRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Master product not found with id: " + productId));
 
+        // Delete existing images from disk and DB before uploading new ones
+        List<MasterProductImage> existingImages = new ArrayList<>(product.getImages());
+        if (!existingImages.isEmpty()) {
+            log.info("Deleting {} existing images for master product: {}", existingImages.size(), productId);
+            for (MasterProductImage existing : existingImages) {
+                deleteImageFile(existing.getImageUrl());
+                masterProductImageRepository.delete(existing);
+            }
+            product.getImages().clear();
+            log.info("Deleted existing images for master product: {}", productId);
+        }
+
         List<MasterProductImage> images = new ArrayList<>();
-        
+
         for (int i = 0; i < files.length; i++) {
             MultipartFile file = files[i];
             String altText = (altTexts != null && i < altTexts.length) ? altTexts[i] : "";

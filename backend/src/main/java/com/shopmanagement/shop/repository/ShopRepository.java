@@ -73,4 +73,6 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
     Optional<Shop> findByCreatedBy(String createdBy);
     
     Optional<Shop> findByOwnerEmail(String ownerEmail);
+
+    boolean existsByOwnerPhone(String ownerPhone);
 }

@@ -2449,8 +2449,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             _buildModernCategoryTile(
               icon: Icons.storefront_rounded,
-              title: languageProvider.getText('Marketplace', 'சந்தை'),
-              subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு & விற்கு'),
+              title: languageProvider.getText('Second Hand', 'பழைய பொருட்கள்'),
+              subtitle: languageProvider.getText('Buy & Sell Used Items', 'பழைய பொருட்களை வாங்கவும் விற்கவும்'),
               color: const Color(0xFF2196F3),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen())),
             ),

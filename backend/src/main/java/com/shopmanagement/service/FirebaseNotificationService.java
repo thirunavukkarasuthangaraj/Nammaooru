@@ -211,14 +211,13 @@ public class FirebaseNotificationService {
             log.info("📱 Notification should now appear on the device");
 
         } catch (Exception e) {
-            log.error("❌ Error sending push notification via Firebase Admin SDK", e);
-
             // Check if it's an UNREGISTERED token error
             if (e.getMessage() != null && (e.getMessage().contains("UNREGISTERED") || e.getMessage().contains("Requested entity was not found"))) {
                 log.warn("🔄 FCM token is invalid/expired. Deactivating token: {}...", token.substring(0, Math.min(30, token.length())));
                 // Deactivate the invalid token so it won't be used again
                 deactivateInvalidToken(token);
             } else {
+                log.error("❌ Error sending push notification via Firebase Admin SDK", e);
                 log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
             }
 

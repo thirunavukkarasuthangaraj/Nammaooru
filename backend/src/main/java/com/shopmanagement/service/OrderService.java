@@ -1132,6 +1132,36 @@ public class OrderService {
             log.error("Failed to send order rejection email to customer", e);
         }
 
+        // Send push notification to customer for rejection
+        try {
+            if (rejectedOrder.getCustomer() != null && rejectedOrder.getCustomer().getEmail() != null) {
+                User customerUser = userRepository.findByEmail(rejectedOrder.getCustomer().getEmail()).orElse(null);
+                if (customerUser != null) {
+                    List<String> fcmTokens = getFcmTokensForUser(customerUser.getId());
+                    if (!fcmTokens.isEmpty()) {
+                        for (String fcmToken : fcmTokens) {
+                            try {
+                                firebaseNotificationService.sendOrderNotification(
+                                    rejectedOrder.getOrderNumber(),
+                                    "CANCELLED",
+                                    fcmToken,
+                                    rejectedOrder.getCustomer().getId()
+                                );
+                                log.info("✅ Rejection push notification sent to customer for order: {}", rejectedOrder.getOrderNumber());
+                                break;
+                            } catch (Exception e) {
+                                log.warn("⚠️ Failed to send rejection FCM: {}", e.getMessage());
+                            }
+                        }
+                    } else {
+                        log.warn("No FCM token found for customer user ID: {}", customerUser.getId());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to send rejection push notification to customer", e);
+        }
+
         log.info("Order rejected successfully: {}", rejectedOrder.getOrderNumber());
         return mapToResponse(rejectedOrder);
     }
