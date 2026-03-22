@@ -12,6 +12,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/farmer_products_service.dart';
 import 'create_farmer_post_screen.dart';
 import 'farmer_post_detail_screen.dart';
@@ -226,7 +227,15 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
       context.go('/login');
       return;
     }
-    _callSeller(post['sellerPhone'] ?? '');
+    final phone = post['sellerPhone'] ?? '';
+    ContactViewService.log(
+      postType: 'FARMER',
+      postId: post['id'] ?? 0,
+      postTitle: post['title'] ?? post['name'] ?? '',
+      sellerPhone: phone,
+      ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+    );
+    _callSeller(phone);
   }
 
   Future<void> _callSeller(String phone) async {

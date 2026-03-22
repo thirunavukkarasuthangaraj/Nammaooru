@@ -12,6 +12,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/labour_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
@@ -272,7 +273,15 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
       context.go('/login');
       return;
     }
-    _callWorker(post['phone'] ?? '');
+    final phone = post['phone'] ?? '';
+    ContactViewService.log(
+      postType: 'LABOUR',
+      postId: post['id'] ?? 0,
+      postTitle: post['title'] ?? post['name'] ?? '',
+      sellerPhone: phone,
+      ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+    );
+    _callWorker(phone);
   }
 
   Future<void> _callWorker(String phone) async {

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/rental_service.dart';
 
 class RentalPostDetailScreen extends StatefulWidget {
@@ -466,6 +467,13 @@ class _RentalPostDetailScreenState extends State<RentalPostDetailScreen> {
                               if (phone.isNotEmpty) {
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
                                 final uri = Uri.parse('tel:$cleanPhone');
+                                ContactViewService.log(
+                                  postType: 'RENTAL',
+                                  postId: post['id'] ?? 0,
+                                  postTitle: post['title'] ?? '',
+                                  sellerPhone: phone,
+                                  ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+                                );
                                 try {
                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                                 } catch (_) {

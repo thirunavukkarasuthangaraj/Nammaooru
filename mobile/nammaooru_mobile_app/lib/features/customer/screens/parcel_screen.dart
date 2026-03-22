@@ -12,6 +12,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/parcel_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
@@ -210,7 +211,15 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
       context.go('/login');
       return;
     }
-    _callService(post['phone'] ?? '');
+    final phone = post['phone'] ?? '';
+    ContactViewService.log(
+      postType: 'PARCEL',
+      postId: post['id'] ?? 0,
+      postTitle: post['title'] ?? post['name'] ?? '',
+      sellerPhone: phone,
+      ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+    );
+    _callService(phone);
   }
 
   Future<void> _callService(String phone) async {

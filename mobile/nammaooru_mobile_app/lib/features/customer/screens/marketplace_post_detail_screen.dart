@@ -8,6 +8,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/marketplace_service.dart';
 
 class MarketplacePostDetailScreen extends StatefulWidget {
@@ -392,6 +393,13 @@ class _MarketplacePostDetailScreenState extends State<MarketplacePostDetailScree
                                 }
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
                                 final uri = Uri.parse('tel:$cleanPhone');
+                                ContactViewService.log(
+                                  postType: 'MARKETPLACE',
+                                  postId: post['id'] ?? 0,
+                                  postTitle: post['title'] ?? '',
+                                  sellerPhone: phone,
+                                  ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+                                );
                                 launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(

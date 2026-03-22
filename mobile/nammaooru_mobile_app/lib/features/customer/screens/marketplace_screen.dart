@@ -13,6 +13,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/marketplace_service.dart';
 import '../widgets/renewal_payment_handler.dart';
 import '../../../core/utils/image_compressor.dart';
@@ -220,6 +221,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       context.go('/login');
       return;
     }
+    // Log contact view
+    ContactViewService.log(
+      postType: 'MARKETPLACE',
+      postId: post['id'] ?? 0,
+      postTitle: post['title'] ?? '',
+      sellerPhone: post['sellerPhone'] ?? '',
+      ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+    );
     _callSeller(post['sellerPhone'] ?? '');
   }
 

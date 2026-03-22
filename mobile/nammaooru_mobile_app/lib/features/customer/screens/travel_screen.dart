@@ -13,6 +13,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/services/location_service.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/travel_service.dart';
 import '../services/bus_timing_service.dart';
 import '../widgets/renewal_payment_handler.dart';
@@ -262,7 +263,15 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
       context.go('/login');
       return;
     }
-    _callDriver(post['phone'] ?? '');
+    final phone = post['phone'] ?? '';
+    ContactViewService.log(
+      postType: 'TRAVEL',
+      postId: post['id'] ?? 0,
+      postTitle: post['title'] ?? post['name'] ?? '',
+      sellerPhone: phone,
+      ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+    );
+    _callDriver(phone);
   }
 
   Future<void> _callDriver(String phone) async {

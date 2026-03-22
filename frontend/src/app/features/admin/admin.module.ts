@@ -62,6 +62,7 @@ import { WomensCornerManagementComponent } from './components/womens-corner-mana
 import { WomensCornerReportedComponent } from './components/womens-corner-reported/womens-corner-reported.component';
 import { JobManagementComponent } from './components/job-management/job-management.component';
 import { JobReportedComponent } from './components/job-reported/job-reported.component';
+import { ContactViewsComponent } from './components/contact-views/contact-views.component';
 import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
@@ -101,7 +102,8 @@ import { MatTabsModule } from '@angular/material/tabs';
     WomensCornerManagementComponent,
     WomensCornerReportedComponent,
     JobManagementComponent,
-    JobReportedComponent
+    JobReportedComponent,
+    ContactViewsComponent
   ],
   imports: [
     CommonModule,
@@ -272,6 +274,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'jobs/reported',
         component: JobReportedComponent
+      },
+      {
+        path: 'contact-views',
+        component: ContactViewsComponent
       },
       {
         path: 'shops',

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/womens_corner_service.dart';
 
 class WomensCornerDetailScreen extends StatefulWidget {
@@ -411,6 +412,13 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
                               if (phone.isNotEmpty) {
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
                                 final uri = Uri.parse('tel:$cleanPhone');
+                                ContactViewService.log(
+                                  postType: 'WOMENS_CORNER',
+                                  postId: post['id'] ?? 0,
+                                  postTitle: post['title'] ?? '',
+                                  sellerPhone: phone,
+                                  ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+                                );
                                 try {
                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                                 } catch (_) {

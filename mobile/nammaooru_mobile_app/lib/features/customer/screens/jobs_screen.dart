@@ -8,6 +8,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/post_filter_bar.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/contact_view_service.dart';
 import '../services/job_service.dart';
 import 'create_job_screen.dart';
 
@@ -246,7 +247,15 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
   void _callOrLogin(Map<String, dynamic> post) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) { context.go('/login'); return; }
-    _call(post['phone'] ?? '');
+    final phone = post['phone'] ?? '';
+    ContactViewService.log(
+      postType: 'JOBS',
+      postId: post['id'] ?? 0,
+      postTitle: post['jobTitle'] ?? post['title'] ?? '',
+      sellerPhone: phone,
+      ownerUserId: post['userId'] != null ? int.tryParse(post['userId'].toString()) : null,
+    );
+    _call(phone);
   }
 
   Future<void> _call(String phone) async {

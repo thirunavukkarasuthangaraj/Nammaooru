@@ -1,0 +1,126 @@
+<div class="contact-views">
+  <div class="header">
+    <h2>
+      <mat-icon class="header-icon">visibility</mat-icon>
+      Contact View History
+    </h2>
+    <p class="subtitle">Track who has viewed seller contact details across all post types</p>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filter by Post Type</mat-label>
+      <mat-select [(ngModel)]="filterPostType" (selectionChange)="onFilterChange()">
+        <mat-option *ngFor="let opt of postTypeOptions" [value]="opt.value">
+          {{ opt.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-stroked-button (click)="loadViews()" class="refresh-btn">
+      <mat-icon>refresh</mat-icon> Refresh
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading contact views...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && views.length === 0" class="empty-state">
+    <mat-icon class="empty-icon">visibility_off</mat-icon>
+    <h3>No contact views found</h3>
+    <p>No one has viewed any seller contact details yet.</p>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!loading && views.length > 0" class="table-container">
+    <div class="total-info">
+      <mat-icon>visibility</mat-icon>
+      <span>{{ totalItems }} contact view{{ totalItems !== 1 ? 's' : '' }} total</span>
+    </div>
+
+    <table mat-table [dataSource]="views" class="views-table">
+
+      <!-- Viewer Name -->
+      <ng-container matColumnDef="viewerName">
+        <th mat-header-cell *matHeaderCellDef>Viewer Name</th>
+        <td mat-cell *matCellDef="let view">
+          <div class="viewer-info">
+            <span class="viewer-name">{{ view.viewerName || '—' }}</span>
+            <span class="viewer-id">#{{ view.viewerUserId }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Viewer Phone -->
+      <ng-container matColumnDef="viewerPhone">
+        <th mat-header-cell *matHeaderCellDef>Viewer Phone</th>
+        <td mat-cell *matCellDef="let view">{{ view.viewerPhone || '—' }}</td>
+      </ng-container>
+
+      <!-- Post Type -->
+      <ng-container matColumnDef="postType">
+        <th mat-header-cell *matHeaderCellDef>Post Type</th>
+        <td mat-cell *matCellDef="let view">
+          <span class="post-type-badge">{{ getPostTypeLabel(view.postType) }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Post Title -->
+      <ng-container matColumnDef="postTitle">
+        <th mat-header-cell *matHeaderCellDef>Post Title</th>
+        <td mat-cell *matCellDef="let view">
+          <span class="post-title" [matTooltip]="view.postTitle">
+            {{ view.postTitle | slice:0:50 }}{{ (view.postTitle?.length > 50) ? '...' : '' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Seller Phone -->
+      <ng-container matColumnDef="sellerPhone">
+        <th mat-header-cell *matHeaderCellDef>Seller Phone</th>
+        <td mat-cell *matCellDef="let view">{{ view.sellerPhone || '—' }}</td>
+      </ng-container>
+
+      <!-- Viewed At -->
+      <ng-container matColumnDef="viewedAt">
+        <th mat-header-cell *matHeaderCellDef>Viewed At</th>
+        <td mat-cell *matCellDef="let view" class="date-cell">{{ formatDate(view.viewedAt) }}</td>
+      </ng-container>
+
+      <!-- Actions -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Action</th>
+        <td mat-cell *matCellDef="let view">
+          <button mat-raised-button color="warn" (click)="blockUser(view)" class="block-btn"
+                  [matTooltip]="'Block user ' + (view.viewerName || view.viewerUserId)">
+            <mat-icon>block</mat-icon>
+            Block User
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="view-row"></tr>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button mat-icon-button [disabled]="currentPage === 0" (click)="onPageChange(currentPage - 1)">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button mat-button *ngFor="let p of getPages()"
+              [class.active-page]="p === currentPage"
+              (click)="onPageChange(p)">
+        {{ p + 1 }}
+      </button>
+      <button mat-icon-button [disabled]="currentPage >= totalPages - 1" (click)="onPageChange(currentPage + 1)">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <span class="page-info">Page {{ currentPage + 1 }} of {{ totalPages }}</span>
+    </div>
+  </div>
+</div>
