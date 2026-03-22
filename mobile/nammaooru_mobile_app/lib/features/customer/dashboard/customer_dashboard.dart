@@ -150,15 +150,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     // Get location, then load dashboard data (shops need location)
     await _getCurrentLocationOnStartup();
 
-    // Check service area restriction after getting location
-    await _checkServiceArea();
-    if (_serviceAreaBlocked) return;
-
+    // Load dashboard data immediately — don't block on service area check
     _loadDashboardData();
-    // Refresh service grid with actual GPS coordinates
     if (_userLatitude != null && _userLongitude != null) {
       _loadFeatureConfig();
     }
+
+    // Check service area in background — shows dialog if blocked
+    _checkServiceArea();
   }
 
   Future<void> _checkServiceArea() async {
@@ -166,29 +165,33 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     if (_userLatitude == null || _userLongitude == null) return;
 
     try {
-      final result = await _serviceAreaService.checkServiceArea(
+      // Uses cached config for instant check; refreshes cache in background
+      final blocked = await _serviceAreaService.checkAndBlock(
         _userLatitude!,
         _userLongitude!,
       );
 
-      // Fail-open: if null response, allow access
-      if (result == null) return;
-
-      final allowed = result['allowed'] == true;
-      if (!allowed && mounted) {
+      if (blocked && mounted) {
         setState(() => _serviceAreaBlocked = true);
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => ServiceAreaDialog(
-            message: result['message'] ?? 'Service is not available in your area.',
-            radiusKm: (result['radiusKm'] as num?)?.toDouble(),
-            centerLat: (result['centerLat'] as num?)?.toDouble(),
-            centerLng: (result['centerLng'] as num?)?.toDouble(),
-            userLat: _userLatitude,
-            userLng: _userLongitude,
-          ),
+        // Fetch full details for the dialog
+        final result = await _serviceAreaService.checkServiceArea(
+          _userLatitude!,
+          _userLongitude!,
         );
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => ServiceAreaDialog(
+              message: result?['message'] ?? 'Service is not available in your area.',
+              radiusKm: (result?['radiusKm'] as num?)?.toDouble(),
+              centerLat: (result?['centerLat'] as num?)?.toDouble(),
+              centerLng: (result?['centerLng'] as num?)?.toDouble(),
+              userLat: _userLatitude,
+              userLng: _userLongitude,
+            ),
+          );
+        }
       }
     } catch (e) {
       print('Service area check error: $e');
