@@ -8,6 +8,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/providers/cart_provider.dart';
+import '../../../core/providers/language_provider.dart';
 import '../../../shared/models/cart_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../services/voice_assistant_service.dart';
@@ -456,8 +457,11 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   }
 
   Widget _buildProductCard(Map<String, dynamic> product, int index) {
-    final name = product['name']?.toString() ?? '';
-    final nameTamil = product['nameTamil']?.toString() ?? '';
+    final showTamil = context.watch<LanguageProvider>().showTamil;
+    final nameEn = product['name']?.toString() ?? '';
+    final nameTa = product['nameTamil']?.toString() ?? '';
+    final name = showTamil && nameTa.isNotEmpty ? nameTa : nameEn;
+    final subtitle = showTamil && nameTa.isNotEmpty ? nameEn : '';
     final price = product['price']?.toString() ?? '0';
     final weight = product['weightDisplay']?.toString() ?? '';
     final image = product['image']?.toString() ?? '';
@@ -538,9 +542,9 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
-                if (nameTamil.isNotEmpty)
+                if (subtitle.isNotEmpty)
                   Text(
-                    nameTamil,
+                    subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, color: Colors.grey[600]),
