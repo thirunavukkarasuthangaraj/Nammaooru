@@ -64,8 +64,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     'Home Appliances',
     'Tools & Equipment',
     'Sports & Hobbies',
-    'Kids & Baby',
-    'Agriculture',
     'Other',
   ];
 
@@ -202,8 +200,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       'Home Appliances': 'வீட்டு உபகரணங்கள்',
       'Tools & Equipment': 'கருவிகள் & உபகரணங்கள்',
       'Sports & Hobbies': 'விளையாட்டு & பொழுதுபோக்கு',
-      'Kids & Baby': 'குழந்தை பொருட்கள்',
-      'Agriculture': 'விவசாயம்',
       'Other': 'பிற',
     };
     return lang.getText(cat, tamilMap[cat] ?? cat);
