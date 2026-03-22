@@ -2308,15 +2308,38 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildServiceCategories() {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
-        // Show loading shimmer while feature config API is pending
         if (_isLoadingFeatures) {
           return _buildCategoryLoadingShimmer();
         }
-        // Use dynamic features if available, otherwise fallback to hardcoded
         if (_dynamicFeatures.isNotEmpty) {
           return _buildDynamicCategories(languageProvider);
         }
-        return _buildDefaultCategories(languageProvider);
+        // API returned empty — show retry
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Column(
+              children: [
+                Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                Text(
+                  languageProvider.getText('Could not load services', 'சேவைகளை ஏற்ற முடியவில்லை'),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _loadFeatureConfig,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: Text(languageProvider.getText('Retry', 'மீண்டும் முயற்சி')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: VillageTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
@@ -2439,105 +2462,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               child: tile,
             );
           }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDefaultCategories(LanguageProvider languageProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          childAspectRatio: 1.15,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          children: [
-            _buildModernCategoryTile(
-              icon: Icons.shopping_basket_rounded,
-              title: languageProvider.getText('Grocery', 'மளிகை'),
-              subtitle: languageProvider.getText('Daily essentials', 'தினசரி பொருட்கள்'),
-              color: const Color(0xFF4CAF50),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(
-                builder: (context) => const ShopListingScreen(category: 'grocery', categoryTitle: 'Grocery'),
-              ))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.restaurant_rounded,
-              title: languageProvider.getText('Food', 'உணவு'),
-              subtitle: languageProvider.getText('Restaurants & more', 'உணவகங்கள்'),
-              color: const Color(0xFFFF5722),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(
-                builder: (context) => const ShopListingScreen(category: 'food', categoryTitle: 'Food'),
-              ))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.storefront_rounded,
-              title: languageProvider.getText('Second Hand', 'பழைய பொருட்கள்'),
-              subtitle: languageProvider.getText('Buy & Sell Used Items', 'பழைய பொருட்களை வாங்கவும் விற்கவும்'),
-              color: const Color(0xFF2196F3),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.eco_rounded,
-              title: languageProvider.getText('Farm Products', 'விவசாயம்'),
-              subtitle: languageProvider.getText('Shop & Farmer posts', 'கடை & விவசாயி'),
-              color: const Color(0xFF2E7D32),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const FarmerProductsScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.construction_rounded,
-              title: languageProvider.getText('Labours', 'தொழிலாளர்'),
-              subtitle: languageProvider.getText('Find local workers', 'தொழிலாளர் தேடுக'),
-              color: const Color(0xFF1565C0),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.directions_bus_rounded,
-              title: languageProvider.getText('Travels', 'பயணங்கள்'),
-              subtitle: languageProvider.getText('Car, Bus for rent', 'கார், பேருந்து வாடகை'),
-              color: const Color(0xFF00897B),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.vpn_key_rounded,
-              title: languageProvider.getText('Rent', 'வாடகை'),
-              subtitle: languageProvider.getText('Shops, Houses & more', 'கடை, வீடு & மேலும்'),
-              color: const Color(0xFFFF6F00),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.auto_awesome_rounded,
-              title: languageProvider.getText("Women's Corner", 'பெண்கள் பகுதி'),
-              subtitle: languageProvider.getText('Beauty & Fashion', 'அழகு & ஆடை'),
-              color: const Color(0xFFE91E63),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.local_shipping_rounded,
-              title: languageProvider.getText('Packers & Movers', 'பேக்கர்ஸ் & மூவர்ஸ்'),
-              subtitle: languageProvider.getText('Moving services', 'இடமாற்ற சேவை'),
-              color: const Color(0xFFE65100),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.home_work_rounded,
-              title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
-              subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு, விற்கு & வாடகை'),
-              color: const Color(0xFF5C6BC0),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen()))),
-            ),
-            _buildModernCategoryTile(
-              icon: Icons.account_balance_rounded,
-              title: languageProvider.getText('Village', 'கிராமம்'),
-              subtitle: languageProvider.getText('Panchayat details', 'பஞ்சாயத்து விவரம்'),
-              color: const Color(0xFF795548),
-              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()))),
-            ),
-          ],
         ),
       ],
     );
