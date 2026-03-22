@@ -2206,6 +2206,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
     } else if (route.contains('womens-corner')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen()));
+    } else if (route.contains('jobs')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const JobsScreen()));
     } else if (route.contains('village') || route.contains('panchayat')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()));
     }
@@ -2345,7 +2347,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   static const Map<String, List<String>> _tourDescriptions = {
     'grocery':        ['Order grocery & daily essentials from nearby shops.',        'அருகிலுள்ள கடைகளில் மளிகை & தினசரி பொருட்கள் ஆர்டர் செய்யுங்கள்.'],
     'food':           ['Order hot food from restaurants & home kitchens.',            'உணவகங்கள் & வீட்டு சமையல்காரர்களிடம் சாப்பாடு ஆர்டர் செய்யுங்கள்.'],
-    'marketplace':    ['Buy, sell or rent second-hand items locally.',                'உள்ளூரில் பழைய பொருட்களை வாங்கவும் / விற்கவும்.'],
+    'marketplace':    ['Browse local shops & get contact numbers to connect.',        'உள்ளூர் கடைகளை தேடி தொடர்பு கொள்ளுங்கள்.'],
     'farmer':         ['Buy fresh farm produce directly from local farmers.',         'விவசாயிகளிடம் நேரடியாக கொள்முதல் செய்யுங்கள்.'],
     'labours':        ['Find skilled workers for any job in your village.',           'உங்கள் கிராமத்தில் திறமையான தொழிலாளர்களை கண்டறியுங்கள்.'],
     'travels':        ['Book cars & buses for local or outstation trips.',            'உள்ளூர் / வெளியூர் பயணங்களுக்கு வாகனம் பதிவு செய்யுங்கள்.'],
@@ -2354,6 +2356,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     'rentals':        ['Rent shops, houses, vehicles & equipment.',                   'கடை, வீடு, வாகனம் & உபகரணங்களை வாடகைக்கு எடுங்கள்.'],
     'womens-corner':  ['Beauty, fashion & products from women entrepreneurs.',        'பெண் தொழில்முனைவோரிடம் அழகு & ஆடை பொருட்கள்.'],
     'village':        ['Panchayat details & local government information.',           'பஞ்சாயத்து விவரங்கள் & உள்ளாட்சி தகவல்கள்.'],
+    'jobs':           ['Find jobs near you — call or WhatsApp employers directly.',   'அருகிலுள்ள வேலை வாய்ப்புகளை தேடி நேரடியாக தொடர்பு கொள்ளுங்கள்.'],
   };
 
   String _getTourDesc(String? route, bool isTamil) {
