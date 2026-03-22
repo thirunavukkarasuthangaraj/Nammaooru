@@ -11,31 +11,46 @@ class ServiceAreaService {
 
   static const _cacheKey = 'service_area_config';
 
-  /// Check if user is within service area using cached config first (instant),
-  /// then refresh cache from server in background.
-  /// Returns true if blocked, false if allowed.
+  // In-memory result after first check — used for instant per-screen checks
+  static bool? _isBlocked;
+  static Map<String, dynamic>? _lastResult;
+
+  /// Returns true if user is blocked based on last known check result.
+  /// Returns false (allow) if no check has been done yet.
+  static bool get isCurrentlyBlocked => _isBlocked == true;
+
+  /// Full details from last API check (for dialog display)
+  static Map<String, dynamic>? get lastResult => _lastResult;
+
+  /// Check if user is within service area.
+  /// - Uses local cache for instant result on app launch
+  /// - Always fetches fresh from API on each app open (updates memory cache)
+  /// - Subsequent per-screen checks use [isCurrentlyBlocked] (memory, instant)
   Future<bool> checkAndBlock(double lat, double lng) async {
     final cached = await _getCachedConfig();
 
-    // Instant local check using cached config
+    // Instant local check using cached config while API refreshes
+    bool instantBlocked = false;
     if (cached != null) {
-      final blocked = _isBlocked(cached, lat, lng);
-      // Refresh cache in background (don't await)
-      _refreshCache(lat, lng);
-      return blocked;
+      instantBlocked = _localIsBlocked(cached, lat, lng);
     }
 
-    // No cache yet — fetch from server (first launch)
+    // Always fetch fresh from server on app open — update memory + disk cache
     final result = await _fetchFromServer(lat, lng);
     if (result != null) {
       await _saveCache(result);
-      return result['allowed'] != true;
+      final blocked = result['allowed'] != true;
+      _isBlocked = blocked;
+      _lastResult = result;
+      return blocked;
     }
 
-    return false; // fail-open
+    // Server unreachable — use instant local result
+    _isBlocked = instantBlocked;
+    return instantBlocked;
   }
 
-  bool _isBlocked(Map<String, dynamic> config, double lat, double lng) {
+  bool _localIsBlocked(Map<String, dynamic> config, double lat, double lng) {
     final enabled = config['enabled'] == true;
     if (!enabled) return false;
 

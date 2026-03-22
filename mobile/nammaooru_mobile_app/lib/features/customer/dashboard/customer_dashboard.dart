@@ -2177,9 +2177,34 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
 
-  // Navigate based on route from backend
+  /// Checks service area before any navigation — call this for all module tiles
+  void _guardedNavigate(VoidCallback navigate) {
+    if (ServiceAreaService.isCurrentlyBlocked) {
+      final result = ServiceAreaService.lastResult;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ServiceAreaDialog(
+          message: result?['message'] ?? 'Service is not available in your area.',
+          radiusKm: (result?['radiusKm'] as num?)?.toDouble(),
+          centerLat: (result?['centerLat'] as num?)?.toDouble(),
+          centerLng: (result?['centerLng'] as num?)?.toDouble(),
+          userLat: _userLatitude,
+          userLng: _userLongitude,
+        ),
+      );
+      return;
+    }
+    navigate();
+  }
+
+  // Navigate based on route from backend — checks service area on every tap
   void _navigateToFeature(String? route) {
     if (route == null || route.isEmpty) return;
+    _guardedNavigate(() => _doNavigateToFeature(route));
+  }
+
+  void _doNavigateToFeature(String route) {
 
     // Map backend routes to actual navigation
     if (route.contains('category=grocery')) {
@@ -2436,81 +2461,81 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               title: languageProvider.getText('Grocery', 'மளிகை'),
               subtitle: languageProvider.getText('Daily essentials', 'தினசரி பொருட்கள்'),
               color: const Color(0xFF4CAF50),
-              onTap: () => Navigator.push(context, MaterialPageRoute(
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(
                 builder: (context) => const ShopListingScreen(category: 'grocery', categoryTitle: 'Grocery'),
-              )),
+              ))),
             ),
             _buildModernCategoryTile(
               icon: Icons.restaurant_rounded,
               title: languageProvider.getText('Food', 'உணவு'),
               subtitle: languageProvider.getText('Restaurants & more', 'உணவகங்கள்'),
               color: const Color(0xFFFF5722),
-              onTap: () => Navigator.push(context, MaterialPageRoute(
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(
                 builder: (context) => const ShopListingScreen(category: 'food', categoryTitle: 'Food'),
-              )),
+              ))),
             ),
             _buildModernCategoryTile(
               icon: Icons.storefront_rounded,
               title: languageProvider.getText('Second Hand', 'பழைய பொருட்கள்'),
               subtitle: languageProvider.getText('Buy & Sell Used Items', 'பழைய பொருட்களை வாங்கவும் விற்கவும்'),
               color: const Color(0xFF2196F3),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.eco_rounded,
               title: languageProvider.getText('Farm Products', 'விவசாயம்'),
               subtitle: languageProvider.getText('Shop & Farmer posts', 'கடை & விவசாயி'),
               color: const Color(0xFF2E7D32),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FarmerProductsScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const FarmerProductsScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.construction_rounded,
               title: languageProvider.getText('Labours', 'தொழிலாளர்'),
               subtitle: languageProvider.getText('Find local workers', 'தொழிலாளர் தேடுக'),
               color: const Color(0xFF1565C0),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const LabourScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.directions_bus_rounded,
               title: languageProvider.getText('Travels', 'பயணங்கள்'),
               subtitle: languageProvider.getText('Car, Bus for rent', 'கார், பேருந்து வாடகை'),
               color: const Color(0xFF00897B),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.vpn_key_rounded,
               title: languageProvider.getText('Rent', 'வாடகை'),
               subtitle: languageProvider.getText('Shops, Houses & more', 'கடை, வீடு & மேலும்'),
               color: const Color(0xFFFF6F00),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.auto_awesome_rounded,
-              title: languageProvider.getText("Women's Corner", '\u0BAA\u0BC6\u0BA3\u0BCD\u0B95\u0BB3\u0BCD \u0BAA\u0B95\u0BC1\u0BA4\u0BBF'),
-              subtitle: languageProvider.getText('Beauty & Fashion', '\u0B85\u0BB4\u0B95\u0BC1 & \u0B86\u0B9F\u0BC8'),
+              title: languageProvider.getText("Women's Corner", 'பெண்கள் பகுதி'),
+              subtitle: languageProvider.getText('Beauty & Fashion', 'அழகு & ஆடை'),
               color: const Color(0xFFE91E63),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.local_shipping_rounded,
-              title: languageProvider.getText('Packers & Movers', '\u0BAA\u0BC7\u0B95\u0BCD\u0B95\u0BB0\u0BCD\u0BB8\u0BCD & \u0BAE\u0BC2\u0BB5\u0BB0\u0BCD\u0BB8\u0BCD'),
-              subtitle: languageProvider.getText('Moving services', '\u0B87\u0B9F\u0BAE\u0BBE\u0BB1\u0BCD\u0BB1 \u0B9A\u0BC7\u0BB5\u0BC8'),
+              title: languageProvider.getText('Packers & Movers', 'பேக்கர்ஸ் & மூவர்ஸ்'),
+              subtitle: languageProvider.getText('Moving services', 'இடமாற்ற சேவை'),
               color: const Color(0xFFE65100),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParcelScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.home_work_rounded,
               title: languageProvider.getText('Real Estate', 'ரியல் எஸ்டேட்'),
               subtitle: languageProvider.getText('Buy, Sell & Rent', 'வாங்கு, விற்கு & வாடகை'),
               color: const Color(0xFF5C6BC0),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen()))),
             ),
             _buildModernCategoryTile(
               icon: Icons.account_balance_rounded,
               title: languageProvider.getText('Village', 'கிராமம்'),
               subtitle: languageProvider.getText('Panchayat details', 'பஞ்சாயத்து விவரம்'),
               color: const Color(0xFF795548),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen())),
+              onTap: () => _guardedNavigate(() => Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()))),
             ),
           ],
         ),
