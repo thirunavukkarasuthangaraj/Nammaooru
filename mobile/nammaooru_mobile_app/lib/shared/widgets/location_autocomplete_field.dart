@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../../core/services/location_service.dart';
+import '../../core/config/env_config.dart';
 
-/// A TextFormField with Google Places Autocomplete suggestions,
-/// biased to the user's current GPS location.
+/// A TextFormField with location suggestions from the backend villages API.
+/// No CORS issues, no Google API dependency.
 class LocationAutocompleteField extends StatefulWidget {
   final TextEditingController controller;
   final String? labelText;
@@ -27,9 +27,7 @@ class LocationAutocompleteField extends StatefulWidget {
 }
 
 class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
-  static const _apiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
-
-  List<_PlaceSuggestion> _suggestions = [];
+  List<_VillageSuggestion> _suggestions = [];
   bool _loading = false;
   bool _showDropdown = false;
   Timer? _debounce;
@@ -41,9 +39,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   void initState() {
     super.initState();
     _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) {
-        _hideDropdown();
-      }
+      if (!_focusNode.hasFocus) _hideDropdown();
     });
   }
 
@@ -69,36 +65,26 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     setState(() => _loading = true);
 
     try {
-      final lat = LocationService.cachedLatitude ?? 12.4966;
-      final lng = LocationService.cachedLongitude ?? 78.5729;
-
-      final uri = Uri.parse(
-        'https://maps.googleapis.com/maps/api/place/autocomplete/json'
-        '?input=${Uri.encodeComponent(input)}'
-        '&location=$lat,$lng'
-        '&radius=50000'
-        '&components=country:in'
-        '&types=geocode'
-        '&key=$_apiKey',
-      );
+      final uri = Uri.parse('${EnvConfig.baseUrl}/api/villages/search')
+          .replace(queryParameters: {'q': input});
 
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final predictions = (data['predictions'] as List? ?? []);
+        final List<dynamic> items = data['data'] ?? [];
         setState(() {
-          _suggestions = predictions
-              .take(5)
-              .map((p) => _PlaceSuggestion(
-                    mainText: p['structured_formatting']?['main_text'] ?? p['description'],
-                    fullText: p['description'] ?? '',
-                  ))
-              .toList();
+          _suggestions = items.map((v) => _VillageSuggestion(
+            name: v['name'] ?? '',
+            nameTamil: v['nameTamil'] ?? '',
+            district: v['district'] ?? '',
+          )).toList();
           _loading = false;
         });
         if (_suggestions.isNotEmpty) _showSuggestions();
+      } else {
+        if (mounted) setState(() => _loading = false);
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -118,8 +104,8 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     if (mounted) setState(() => _showDropdown = false);
   }
 
-  void _selectSuggestion(_PlaceSuggestion s) {
-    widget.controller.text = s.mainText;
+  void _selectSuggestion(_VillageSuggestion s) {
+    widget.controller.text = s.name;
     _hideDropdown();
     _focusNode.unfocus();
   }
@@ -164,15 +150,19 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(s.mainText,
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                Text(
+                                  s.nameTamil.isNotEmpty ? '${s.name} · ${s.nameTamil}' : s.name,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (s.district.isNotEmpty)
+                                  Text(
+                                    s.district,
+                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
-                                if (s.fullText != s.mainText)
-                                  Text(s.fullText,
-                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                               ],
                             ),
                           ),
@@ -224,8 +214,9 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   }
 }
 
-class _PlaceSuggestion {
-  final String mainText;
-  final String fullText;
-  const _PlaceSuggestion({required this.mainText, required this.fullText});
+class _VillageSuggestion {
+  final String name;
+  final String nameTamil;
+  final String district;
+  const _VillageSuggestion({required this.name, required this.nameTamil, required this.district});
 }

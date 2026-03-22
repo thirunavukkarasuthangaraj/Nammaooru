@@ -12,4 +12,6 @@ public interface VillageRepository extends JpaRepository<Village, Long> {
     List<Village> findByIsActiveTrueOrderByDisplayOrderAscNameAsc();
 
     List<Village> findAllByOrderByDisplayOrderAscNameAsc();
+
+    List<Village> findByIsActiveTrueAndNameContainingIgnoreCaseOrderByDisplayOrderAscNameAsc(String query);
 }

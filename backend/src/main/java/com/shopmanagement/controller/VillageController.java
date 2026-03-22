@@ -20,6 +20,17 @@ public class VillageController {
 
     private final VillageService villageService;
 
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<Village>>> searchVillages(@RequestParam String q) {
+        try {
+            List<Village> villages = villageService.search(q);
+            return ResponseUtil.success(villages, "Villages found");
+        } catch (Exception e) {
+            log.error("Error searching villages", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<Village>>> getActiveVillages() {
         try {

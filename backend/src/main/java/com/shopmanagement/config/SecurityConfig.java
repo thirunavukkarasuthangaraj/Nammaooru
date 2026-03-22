@@ -125,6 +125,7 @@ public class SecurityConfig {
                                 "/api/subscriptions/webhook",  // Public: Razorpay subscription webhooks
                                 "/api/subscriptions/config",  // Public: Get subscription config for mobile
                                 "/api/villages",  // Public: View active villages for mobile
+                                "/api/villages/search",  // Public: Search villages for location autocomplete
                                 "/api/feature-config/visible",  // Public: Get visible features for mobile
                                 "/api/feature-config/app-config",  // Public: Get nav+section visibility for mobile
                                 "/api/settings/public/**",  // Public: Get public settings (privacy policy, etc.)

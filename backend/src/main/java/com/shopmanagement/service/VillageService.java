@@ -20,6 +20,13 @@ public class VillageService {
         return villageRepository.findByIsActiveTrueOrderByDisplayOrderAscNameAsc();
     }
 
+    public List<Village> search(String query) {
+        if (query == null || query.trim().isEmpty()) return List.of();
+        return villageRepository
+                .findByIsActiveTrueAndNameContainingIgnoreCaseOrderByDisplayOrderAscNameAsc(query.trim())
+                .stream().limit(8).toList();
+    }
+
     public List<Village> getAllVillages() {
         return villageRepository.findAllByOrderByDisplayOrderAscNameAsc();
     }
