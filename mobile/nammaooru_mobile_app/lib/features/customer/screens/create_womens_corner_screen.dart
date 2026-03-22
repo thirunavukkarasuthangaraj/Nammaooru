@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/services/contact_request_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/womens_corner_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
@@ -53,6 +54,12 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
     _prefillData();
     _loadCategories();
     _loadImageLimit();
+    // Auto-apply profile phone privacy setting
+    SharedPreferences.getInstance().then((prefs) {
+      if (mounted && (prefs.getBool('phone_privacy_enabled') ?? false)) {
+        setState(() => _phoneLocked = true);
+      }
+    });
   }
 
   @override

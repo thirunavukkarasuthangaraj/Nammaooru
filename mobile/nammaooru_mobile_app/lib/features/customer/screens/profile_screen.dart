@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -42,6 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingPosts = true;
   bool _postsExpanded = false;
   int _pendingContactCount = 0;
+  bool _phonePrivacyEnabled = false;
 
   // Icon string -> IconData mapping (same as dashboard)
   static const _iconMap = <String, IconData>{
@@ -86,6 +88,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadPostCounts();
     ContactRequestService.getPendingCount().then((count) {
       if (mounted) setState(() => _pendingContactCount = count);
+    });
+    SharedPreferences.getInstance().then((prefs) {
+      if (mounted) setState(() => _phonePrivacyEnabled = prefs.getBool('phone_privacy_enabled') ?? false);
     });
     _contact.fetch().then((_) {
       if (mounted) setState(() {});
@@ -519,6 +524,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildUserDetailsCard(),
                               const SizedBox(height: 24),
                               _buildAccountActionsCard(),
+                              const SizedBox(height: 24),
+                              _buildPrivacySettingsCard(),
                               const SizedBox(height: 24),
                               _buildPostStatsCard(),
                               const SizedBox(height: 24),
@@ -1164,6 +1171,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPrivacySettingsCard() {
+    return _buildCard(
+      _t('Privacy Settings', 'தனியுரிமை அமைப்புகள்'),
+      Icons.shield_outlined,
+      [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withOpacity(0.08), width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE91E63).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.phone_locked_outlined, color: Color(0xFFE91E63), size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _t('Lock Phone Number', 'தொலைபேசி எண் பூட்டு'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _t('Buyers must request permission to see your number',
+                         'வாங்குபவர்கள் உங்கள் எண்ணை பார்க்க அனுமதி கோரவேண்டும்'),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _phonePrivacyEnabled,
+                onChanged: (val) async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('phone_privacy_enabled', val);
+                  if (mounted) setState(() => _phonePrivacyEnabled = val);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(val
+                          ? _t('Phone number locked on all new posts', 'புதிய பதிவுகளில் எண் பூட்டப்பட்டது')
+                          : _t('Phone number unlocked', 'தொலைபேசி எண் திறக்கப்பட்டது')),
+                      duration: const Duration(seconds: 2),
+                    ));
+                  }
+                },
+                activeColor: const Color(0xFFE91E63),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
