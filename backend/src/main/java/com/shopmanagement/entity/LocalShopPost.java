@@ -1,0 +1,134 @@
+package com.shopmanagement.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "local_shop_posts")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+public class LocalShopPost {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "shop_name", nullable = false, length = 200)
+    private String shopName;
+
+    @Column(nullable = false, length = 20)
+    private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ShopCategory category;
+
+    @Column(length = 500)
+    private String address;
+
+    @Column(length = 200)
+    private String timings;
+
+    @Column(length = 1000)
+    private String description;
+
+    @Column(name = "image_urls", length = 1500)
+    private String imageUrls;
+
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitude;
+
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitude;
+
+    @Column(name = "seller_user_id", nullable = false)
+    private Long sellerUserId;
+
+    @Column(name = "seller_name", length = 200)
+    private String sellerName;
+
+    @Column(name = "featured")
+    @Builder.Default
+    private Boolean featured = false;
+
+    @Column(name = "report_count")
+    @Builder.Default
+    private Integer reportCount = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    @Builder.Default
+    private PostStatus status = PostStatus.PENDING_APPROVAL;
+
+    @Column(name = "is_paid")
+    @Builder.Default
+    private Boolean isPaid = false;
+
+    @Column(name = "valid_from")
+    private LocalDateTime validFrom;
+
+    @Column(name = "valid_to")
+    private LocalDateTime validTo;
+
+    @Column(name = "expiry_reminder_sent")
+    @Builder.Default
+    private Boolean expiryReminderSent = false;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public enum ShopCategory {
+        GROCERY,
+        MEDICAL,
+        HARDWARE,
+        ELECTRONICS,
+        CLOTHING,
+        STATIONERY,
+        RESTAURANT,
+        BAKERY,
+        VEGETABLES,
+        MEAT_FISH,
+        SALON,
+        GYM,
+        LAUNDRY,
+        TAILORING,
+        PRINTING,
+        MOBILE_SHOP,
+        COMPUTER_SHOP,
+        AUTO_PARTS,
+        PETROL_BUNK,
+        JEWELLERY,
+        COURIER,
+        OTHER
+    }
+
+    public enum PostStatus {
+        PENDING_APPROVAL,
+        APPROVED,
+        REJECTED,
+        SOLD,
+        FLAGGED,
+        HOLD,
+        HIDDEN,
+        CORRECTION_REQUIRED,
+        REMOVED,
+        DELETED
+    }
+}

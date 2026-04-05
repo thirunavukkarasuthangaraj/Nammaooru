@@ -63,6 +63,8 @@ import { WomensCornerReportedComponent } from './components/womens-corner-report
 import { JobManagementComponent } from './components/job-management/job-management.component';
 import { JobReportedComponent } from './components/job-reported/job-reported.component';
 import { ContactViewsComponent } from './components/contact-views/contact-views.component';
+import { LocalShopsManagementComponent } from './components/local-shops-management/local-shops-management.component';
+import { LocalShopsReportedComponent } from './components/local-shops-reported/local-shops-reported.component';
 import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
@@ -103,7 +105,9 @@ import { MatTabsModule } from '@angular/material/tabs';
     WomensCornerReportedComponent,
     JobManagementComponent,
     JobReportedComponent,
-    ContactViewsComponent
+    ContactViewsComponent,
+    LocalShopsManagementComponent,
+    LocalShopsReportedComponent
   ],
   imports: [
     CommonModule,
@@ -278,6 +282,14 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'contact-views',
         component: ContactViewsComponent
+      },
+      {
+        path: 'local-shops',
+        component: LocalShopsManagementComponent
+      },
+      {
+        path: 'local-shops/reported',
+        component: LocalShopsReportedComponent
       },
       {
         path: 'shops',

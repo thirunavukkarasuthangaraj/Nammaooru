@@ -26,6 +26,7 @@ public class FeaturedPostsService {
     private final RealEstatePostRepository realEstatePostRepository;
     private final RentalPostRepository rentalPostRepository;
     private final WomensCornerPostRepository womensCornerPostRepository;
+    private final LocalShopPostRepository localShopPostRepository;
     private final ProductComboRepository productComboRepository;
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
@@ -188,6 +189,22 @@ public class FeaturedPostsService {
             result.put("womensCorner", List.of());
         }
 
+        // Local Shops - paid approved, nearby if location provided
+        try {
+            if (hasLocation) {
+                var lsPosts = localShopPostRepository.findNearbyPosts(approvedStatus, lat, lng, radius, 10, 0);
+                result.put("localShops", lsPosts.stream()
+                        .filter(p -> Boolean.TRUE.equals(p.getIsPaid()))
+                        .map(this::mapLocalShop).toList());
+            } else {
+                var lsPosts = localShopPostRepository.findByStatusAndIsPaidTrueOrderByCreatedAtDesc(
+                        LocalShopPost.PostStatus.APPROVED, top10).getContent();
+                result.put("localShops", lsPosts.stream().map(this::mapLocalShop).toList());
+            }
+        } catch (Exception e) {
+            result.put("localShops", List.of());
+        }
+
         return result;
     }
 
@@ -305,6 +322,20 @@ public class FeaturedPostsService {
         m.put("location", p.getLocation());
         m.put("sellerName", p.getSellerName());
         m.put("sellerPhone", p.getSellerPhone());
+        return m;
+    }
+
+    private Map<String, Object> mapLocalShop(LocalShopPost p) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", p.getId());
+        m.put("shopName", p.getShopName());
+        m.put("description", p.getDescription());
+        m.put("imageUrls", p.getImageUrls());
+        m.put("category", p.getCategory() != null ? p.getCategory().name() : null);
+        m.put("address", p.getAddress());
+        m.put("timings", p.getTimings());
+        m.put("sellerName", p.getSellerName());
+        m.put("phone", p.getPhone());
         return m;
     }
 

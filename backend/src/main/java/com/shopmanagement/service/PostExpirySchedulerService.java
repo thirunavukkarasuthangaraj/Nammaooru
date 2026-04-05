@@ -20,6 +20,7 @@ import java.util.List;
 @Slf4j
 public class PostExpirySchedulerService {
 
+    private final LocalShopPostRepository localShopPostRepository;
     private final MarketplacePostRepository marketplacePostRepository;
     private final FarmerProductRepository farmerProductRepository;
     private final LabourPostRepository labourPostRepository;
@@ -50,6 +51,8 @@ public class PostExpirySchedulerService {
             RealEstatePost.PostStatus.PENDING_APPROVAL, RealEstatePost.PostStatus.APPROVED);
     private static final List<RentalPost.PostStatus> RN_ACTIVE = List.of(
             RentalPost.PostStatus.PENDING_APPROVAL, RentalPost.PostStatus.APPROVED);
+    private static final List<LocalShopPost.PostStatus> LS_ACTIVE = List.of(
+            LocalShopPost.PostStatus.PENDING_APPROVAL, LocalShopPost.PostStatus.APPROVED);
 
     /**
      * Daily at 9 AM: Send expiry reminders for posts expiring within N days
@@ -130,6 +133,15 @@ public class PostExpirySchedulerService {
                 count++;
             }
 
+            // Local shop posts
+            for (LocalShopPost post : localShopPostRepository
+                    .findByValidToBetweenAndExpiryReminderSentFalseAndStatusIn(now, reminderCutoff, LS_ACTIVE)) {
+                sendReminderForPost(post.getSellerUserId(), post.getShopName(), "Local Shops", post.getId(), post.getValidTo());
+                post.setExpiryReminderSent(true);
+                localShopPostRepository.save(post);
+                count++;
+            }
+
             log.info("Post expiry reminder job completed: {} reminders sent", count);
         } catch (Exception e) {
             log.error("Error in post expiry reminder scheduler", e);
@@ -206,6 +218,14 @@ public class PostExpirySchedulerService {
                 rentalPostRepository.delete(post);
                 deleted++;
                 log.info("Deleted expired rental post: id={}, title={}", post.getId(), post.getTitle());
+            }
+
+            // Local shop posts
+            for (LocalShopPost post : localShopPostRepository.findByValidToBeforeAndStatusIn(cutoff, LS_ACTIVE)) {
+                deleteImages(post.getImageUrls());
+                localShopPostRepository.delete(post);
+                deleted++;
+                log.info("Deleted expired local shop post: id={}, shopName={}", post.getId(), post.getShopName());
             }
 
             log.info("Expired post cleanup job completed: {} posts deleted", deleted);

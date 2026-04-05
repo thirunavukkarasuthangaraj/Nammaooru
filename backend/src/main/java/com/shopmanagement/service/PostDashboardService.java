@@ -14,8 +14,10 @@ import com.shopmanagement.repository.MarketplacePostRepository;
 import com.shopmanagement.repository.FarmerProductRepository;
 import com.shopmanagement.repository.RealEstatePostRepository;
 import com.shopmanagement.entity.WomensCornerPost;
+import com.shopmanagement.entity.LocalShopPost;
 import com.shopmanagement.repository.RentalPostRepository;
 import com.shopmanagement.repository.WomensCornerPostRepository;
+import com.shopmanagement.repository.LocalShopPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +36,7 @@ public class PostDashboardService {
     private final RealEstatePostRepository realEstatePostRepository;
     private final RentalPostRepository rentalPostRepository;
     private final WomensCornerPostRepository womensCornerPostRepository;
+    private final LocalShopPostRepository localShopPostRepository;
 
     public Map<String, Map<String, Long>> getDashboardStats() {
         Map<String, Map<String, Long>> stats = new HashMap<>();
@@ -45,6 +48,7 @@ public class PostDashboardService {
         stats.put("realEstate", getRealEstateStats());
         stats.put("rental", getRentalStats());
         stats.put("womensCorner", getWomensCornerStats());
+        stats.put("localShops", getLocalShopsStats());
         return stats;
     }
 
@@ -125,6 +129,16 @@ public class PostDashboardService {
         stats.put("approved", womensCornerPostRepository.countByStatus(WomensCornerPost.PostStatus.APPROVED));
         stats.put("rejected", womensCornerPostRepository.countByStatus(WomensCornerPost.PostStatus.REJECTED));
         stats.put("reported", womensCornerPostRepository.countByReportCountGreaterThan(0));
+        return stats;
+    }
+
+    private Map<String, Long> getLocalShopsStats() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("total", localShopPostRepository.count());
+        stats.put("pending", localShopPostRepository.countByStatus(LocalShopPost.PostStatus.PENDING_APPROVAL));
+        stats.put("approved", localShopPostRepository.countByStatus(LocalShopPost.PostStatus.APPROVED));
+        stats.put("rejected", localShopPostRepository.countByStatus(LocalShopPost.PostStatus.REJECTED));
+        stats.put("reported", localShopPostRepository.countByReportCountGreaterThan(0));
         return stats;
     }
 }

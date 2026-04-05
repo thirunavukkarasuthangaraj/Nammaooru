@@ -58,6 +58,7 @@ import '../screens/travel_post_detail_screen.dart';
 import '../screens/parcel_post_detail_screen.dart';
 import '../screens/panchayat_screen.dart';
 import '../screens/womens_corner_screen.dart';
+import '../screens/local_shops_screen.dart';
 import '../../../core/services/service_area_service.dart';
 import '../../../shared/widgets/service_area_dialog.dart';
 
@@ -282,7 +283,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         // Show login prompt for guests
         final shouldLogin = await _showLocationLoginPrompt();
         if (shouldLogin == true) {
-          context.go('/login');
+          context.go('/register');
         }
         return;
       }
@@ -659,6 +660,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           'screen': const WomensCornerScreen(),
           'titleKey': 'title',
           'subtitleKey': 'description',
+          'imageKey': 'imageUrls',
+        },
+        'localShops': {
+          'icon': Icons.store_rounded,
+          'color': const Color(0xFFFF6F00),
+          'label': 'Local Shops',
+          'labelTamil': 'கடைகள்',
+          'screen': const LocalShopsScreen(),
+          'titleKey': 'shopName',
+          'subtitleKey': 'address',
           'imageKey': 'imageUrls',
         },
       };
@@ -2262,6 +2273,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const WomensCornerScreen()));
     } else if (route.contains('jobs')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const JobsScreen()));
+    } else if (route.contains('local-shops')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const LocalShopsScreen()));
     } else if (route.contains('village') || route.contains('panchayat')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const PanchayatScreen()));
     }
