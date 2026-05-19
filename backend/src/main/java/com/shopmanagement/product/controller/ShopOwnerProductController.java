@@ -52,6 +52,15 @@ public class ShopOwnerProductController {
 
         log.info("Fetching my products for current user - search: {}, page: {}, size: {}", search, page, size);
 
+        // Hard cap page size to protect server from oversized requests
+        if (size > 500) {
+            log.warn("Client requested size={} for /my-products; capping to 500", size);
+            size = 500;
+        }
+        if (size <= 0) {
+            size = 100;
+        }
+
         // Get current user's shop
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();

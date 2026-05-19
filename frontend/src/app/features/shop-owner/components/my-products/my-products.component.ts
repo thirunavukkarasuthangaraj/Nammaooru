@@ -381,49 +381,45 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Sync products from server (background)
    */
-  private syncProductsFromServer(): void {
-    // Load ALL products (unlimited) like mobile app does, then filter client-side
-    const params = new HttpParams()
-      .set('page', '0')
-      .set('size', '100000');  // Unlimited - load all products
+  private async syncProductsFromServer(): Promise<void> {
+    const pageSize = 500;
+    const allRaw: any[] = [];
+    let currentPage = 0;
+    let totalPages = 1;
 
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, { params })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          console.log('Full API response:', response);
-          
-          // Handle paginated response from API
-          // Backend returns ApiResponse<Page<ShopProductResponse>>
-          // So structure is: response.data.content
-          let products = [];
-          let serverTotalElements = 0;
+    try {
+      while (currentPage < totalPages) {
+        const params = new HttpParams()
+          .set('page', String(currentPage))
+          .set('size', String(pageSize));
 
-          console.log('=== API RESPONSE DEBUG ===');
-          console.log('Full response:', JSON.stringify(response, null, 2));
+        const response: any = await this.http.get<any>(
+          `${this.apiUrl}/shop-products/my-products`, { params }
+        ).pipe(takeUntil(this.destroy$)).toPromise();
 
-          if (response && response.data) {
-            if (response.data.content) {
-              // Paginated response
-              products = response.data.content;
-              serverTotalElements = response.data.totalElements || products.length;
-              console.log('Paginated response - content length:', products.length, 'totalElements:', serverTotalElements);
-            } else if (Array.isArray(response.data)) {
-              // Array response
-              products = response.data;
-              serverTotalElements = products.length;
-              console.log('Array response - length:', products.length);
-            } else {
-              console.log('Unexpected response structure:', response.data);
-            }
-          } else if (Array.isArray(response)) {
-            // Direct array response
-            products = response;
-            serverTotalElements = products.length;
-            console.log('Direct array response - length:', products.length);
-          }
+        let content: any[] = [];
+        if (response?.data?.content) {
+          content = response.data.content;
+          totalPages = response.data.totalPages || 1;
+        } else if (Array.isArray(response?.data)) {
+          content = response.data;
+          totalPages = 1;
+        } else if (Array.isArray(response)) {
+          content = response;
+          totalPages = 1;
+        }
+        if (content.length === 0) break;
+        allRaw.push(...content);
 
-          console.log('Products to display:', products.length);
+        currentPage++;
+        if (currentPage > 200) {
+          console.warn('syncProductsFromServer: page guard hit (200) — stopping');
+          break;
+        }
+      }
+
+      const products = allRaw;
+      console.log(`Loaded ${products.length} products across ${currentPage} page(s)`);
 
           // Map API response to component interface
           const serverProducts = products.map((p: any) => {
@@ -484,8 +480,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
 
           // Merge pending offline-created products (async - will re-apply filters if any found)
           this.mergeOfflineProducts(serverProducts);
-        },
-        error: (error) => {
+    } catch (error: any) {
           console.error('Product API error:', error);
           this.loading = false;
 
@@ -496,10 +491,10 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           }
 
           console.error('Error details:', {
-            status: error.status,
-            statusText: error.statusText,
-            message: error.message,
-            url: error.url
+            status: error?.status,
+            statusText: error?.statusText,
+            message: error?.message,
+            url: error?.url
           });
           console.warn('Using fallback product data due to API issues');
           
@@ -599,12 +594,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           this.loading = false;
           this.searching = false;
 
-          this.snackBar.open('Products loaded (API unavailable - showing sample data)', 'Close', { 
+          this.snackBar.open('Products loaded (API unavailable - showing sample data)', 'Close', {
             duration: 5000,
             panelClass: ['warning-snackbar']
           });
-        }
-      });
+    }
   }
 
   loadCategories(): void {

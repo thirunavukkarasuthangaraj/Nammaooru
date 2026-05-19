@@ -118,22 +118,38 @@ export class PosSyncService implements OnDestroy {
       this.updateStatus({ isSyncing: true });
       console.log('Fetching products for cache, shopId:', shopId);
 
-      // Use the existing my-products endpoint which works with auth token
-      const response = await this.http.get<any>(
-        `${this.apiUrl}/shop-products/my-products?page=0&size=100000`
-      ).toPromise();
+      // Paginated load: many small requests instead of one giant one.
+      // Server caps size at 500.
+      const pageSize = 500;
+      const products: CachedProduct[] = [];
+      let page = 0;
+      let totalPages = 1;
 
-      console.log('Products API response:', response);
+      while (page < totalPages) {
+        const response = await this.http.get<any>(
+          `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}`
+        ).toPromise();
 
-      // Handle paginated response: response.data.content or response.data (array)
-      let products: CachedProduct[] = [];
+        const data = response?.data;
+        let content: any[] = [];
+        if (data?.content) {
+          content = data.content;
+          totalPages = data.totalPages || 1;
+        } else if (Array.isArray(data)) {
+          content = data;
+          totalPages = 1;
+        }
 
-      if (response?.data?.content) {
-        // Paginated response
-        products = response.data.content.map((p: any) => this.mapToCache(p));
-      } else if (response?.data && Array.isArray(response.data)) {
-        // Array response
-        products = response.data.map((p: any) => this.mapToCache(p));
+        if (content.length === 0) break;
+        for (const p of content) {
+          products.push(this.mapToCache(p));
+        }
+
+        page++;
+        if (page > 200) {
+          console.warn('refreshProductCache: page guard hit (200) — stopping');
+          break;
+        }
       }
 
       if (products.length > 0) {
@@ -142,9 +158,9 @@ export class PosSyncService implements OnDestroy {
           lastProductSync: new Date(),
           isSyncing: false
         });
-        console.log(`Cached ${products.length} products`);
+        console.log(`Cached ${products.length} products across ${page} page(s)`);
       } else {
-        console.warn('No products in response:', response);
+        console.warn('No products returned from server');
         this.updateStatus({ isSyncing: false });
       }
     } catch (error) {

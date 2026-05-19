@@ -823,57 +823,69 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Load products from server
    */
-  private loadProductsFromServer(): void {
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=100000`)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: async (response) => {
-          let rawProducts: any[] = [];
+  private async loadProductsFromServer(): Promise<void> {
+    const pageSize = 500;
+    const rawProducts: any[] = [];
+    let page = 0;
+    let totalPages = 1;
 
-          if (response?.data?.content) {
-            rawProducts = response.data.content;
-          } else if (response?.data && Array.isArray(response.data)) {
-            rawProducts = response.data;
-          }
+    try {
+      while (page < totalPages) {
+        const response: any = await this.http.get<any>(
+          `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}`
+        ).pipe(takeUntil(this.destroy$)).toPromise();
 
-          // Extract shopId from first product if not set
-          if (rawProducts.length > 0 && (!this.shopId || this.shopId === 0)) {
-            const firstProduct = rawProducts[0];
-            if (firstProduct.shopId) {
-              this.shopId = firstProduct.shopId;
-              localStorage.setItem('current_shop_id', String(this.shopId));
-              console.log('POS: Extracted shopId from products:', this.shopId);
-            }
-          }
-
-          // Map to CachedProduct format and filter out inactive products
-          const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
-          // Filter out inactive - check both isAvailable and status
-          this.products = allProducts.filter(p =>
-            p.isAvailable !== false &&
-            (p as any).status !== 'INACTIVE'
-          );
-          this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-          this.isLoading = false;
-          console.log(`Loaded ${this.products.length} active products (filtered from ${allProducts.length} total)`);
-
-          // Save ALL products to local cache (including inactive) for My Products page
-          await this.offlineStorage.saveProducts(allProducts, this.shopId);
-          // Save sync timestamp
-          localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
-          console.log(`Loaded and cached ${this.products.length} products`);
-
-          // Cache images in background (non-blocking) - don't await
-          this.cacheProductImages().then(() => {
-            console.log('Background image caching complete');
-          }).catch(err => console.warn('Image caching error:', err));
-        },
-        error: (error) => {
-          console.error('Failed to load products:', error);
-          this.swal.error('Error', 'Failed to load products');
-          this.isLoading = false;
+        const data = response?.data;
+        let content: any[] = [];
+        if (data?.content) {
+          content = data.content;
+          totalPages = data.totalPages || 1;
+        } else if (Array.isArray(data)) {
+          content = data;
+          totalPages = 1;
         }
-      });
+        if (content.length === 0) break;
+        rawProducts.push(...content);
+
+        // Progressive render: show products as they arrive so user doesn't see a frozen spinner
+        const mappedSoFar = rawProducts.map((p: any) => this.mapProduct(p));
+        this.products = mappedSoFar.filter(p => p.isAvailable !== false && (p as any).status !== 'INACTIVE');
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+
+        page++;
+        if (page > 200) {
+          console.warn('loadProductsFromServer: page guard hit (200) — stopping');
+          break;
+        }
+      }
+
+      // Extract shopId from first product if not set
+      if (rawProducts.length > 0 && (!this.shopId || this.shopId === 0)) {
+        const firstProduct = rawProducts[0];
+        if (firstProduct.shopId) {
+          this.shopId = firstProduct.shopId;
+          localStorage.setItem('current_shop_id', String(this.shopId));
+          console.log('POS: Extracted shopId from products:', this.shopId);
+        }
+      }
+
+      const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
+      this.isLoading = false;
+      console.log(`Loaded ${this.products.length} active products across ${page} page(s) (${allProducts.length} total)`);
+
+      // Save ALL products (including inactive) to IndexedDB for offline use
+      await this.offlineStorage.saveProducts(allProducts, this.shopId);
+      localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
+      // Cache images in background (non-blocking)
+      this.cacheProductImages().then(() => {
+        console.log('Background image caching complete');
+      }).catch(err => console.warn('Image caching error:', err));
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      this.swal.error('Error', 'Failed to load products');
+      this.isLoading = false;
+    }
   }
 
   /**
@@ -942,44 +954,56 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Sync products in background
    */
-  private syncProductsInBackground(): void {
-    this.http.get<any>(`${this.apiUrl}/shop-products/my-products?page=0&size=100000`)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: async (response) => {
-          let rawProducts: any[] = [];
+  private async syncProductsInBackground(): Promise<void> {
+    const pageSize = 500;
+    const rawProducts: any[] = [];
+    let page = 0;
+    let totalPages = 1;
 
-          if (response?.data?.content) {
-            rawProducts = response.data.content;
-          } else if (response?.data && Array.isArray(response.data)) {
-            rawProducts = response.data;
-          }
+    try {
+      while (page < totalPages) {
+        const response: any = await this.http.get<any>(
+          `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}`
+        ).pipe(takeUntil(this.destroy$)).toPromise();
 
-          const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
-          // Filter out inactive - check both isAvailable and status
-          const activeProducts = allProducts.filter(p =>
-            p.isAvailable !== false &&
-            (p as any).status !== 'INACTIVE'
-          );
-
-          // Update cache with ALL products (including inactive) for My Products page
-          await this.offlineStorage.saveProducts(allProducts, this.shopId);
-
-          // Save sync timestamp
-          localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
-
-          // Update UI with only active products
-          if (activeProducts.length !== this.products.length) {
-            this.products = activeProducts;
-            this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-          }
-
-          console.log(`Background sync complete: ${activeProducts.length} active products (${allProducts.length} total)`);
-        },
-        error: (error) => {
-          console.warn('Background sync failed:', error);
+        const data = response?.data;
+        let content: any[] = [];
+        if (data?.content) {
+          content = data.content;
+          totalPages = data.totalPages || 1;
+        } else if (Array.isArray(data)) {
+          content = data;
+          totalPages = 1;
         }
-      });
+        if (content.length === 0) break;
+        rawProducts.push(...content);
+
+        page++;
+        if (page > 200) {
+          console.warn('syncProductsInBackground: page guard hit (200) — stopping');
+          break;
+        }
+      }
+
+      const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
+      const activeProducts = allProducts.filter(p =>
+        p.isAvailable !== false && (p as any).status !== 'INACTIVE'
+      );
+
+      // Update cache with ALL products (including inactive) for My Products page
+      await this.offlineStorage.saveProducts(allProducts, this.shopId);
+      localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
+      // Update UI with only active products
+      if (activeProducts.length !== this.products.length) {
+        this.products = activeProducts;
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      }
+
+      console.log(`Background sync complete: ${activeProducts.length} active products (${allProducts.length} total) across ${page} page(s)`);
+    } catch (error) {
+      console.warn('Background sync failed:', error);
+    }
   }
 
   /**
@@ -1240,18 +1264,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   handleBarcodeScan(barcode: string): void {
     const now = Date.now();
 
-    // Prevent duplicate scans - ignore if same barcode within 500ms
-    if (barcode === this.lastScannedBarcode && (now - this.lastScanTime) < 500) {
-      console.log('Ignoring duplicate barcode scan:', barcode);
+    // Dedupe scans within 1s — some scanners re-fire faster than 500ms
+    // and the Enter key from some models triggers two events
+    if (barcode === this.lastScannedBarcode && (now - this.lastScanTime) < 1000) {
       return;
     }
 
     this.lastScannedBarcode = barcode;
     this.lastScanTime = now;
 
-    console.log('Barcode scanned:', barcode);
-
-    // Find in loaded products by barcode, barcode1, barcode2, barcode3, or SKU
+    // Find in loaded products by barcode, barcode1, barcode2, barcode3, or SKU.
+    // O(n) lookup over in-memory IndexedDB-backed list — instant for up to ~10k products.
     const product = this.products.find(p =>
       p.barcode === barcode ||
       p.barcode1 === barcode ||
@@ -1261,18 +1284,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     );
 
     if (product) {
-      // In Quick Bill mode: show product card (so user can edit price/qty before adding)
-      // In Browse mode: auto-add to cart
       if (this.activeTab === 'quick') {
-        // Put barcode in search and filter immediately (bypass debounce for instant response)
+        // Show the scanned product immediately. Bypass filterProducts() entirely —
+        // assigning a 1-item array is instantly rendered by Angular's next CD cycle,
+        // and we avoid scanning the whole products array + re-sorting.
         this.searchTerm = barcode;
-        this.filterProducts(barcode); // Direct filter - no debounce delay
-        this.playBeep(true);
+        this.filteredProducts = [product];
       } else {
-        // Browse mode - auto add to cart
         this.addToCart(product);
-        this.playBeep(true);
       }
+      this.playBeep(true);
     } else {
       this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
       this.playBeep(false);
