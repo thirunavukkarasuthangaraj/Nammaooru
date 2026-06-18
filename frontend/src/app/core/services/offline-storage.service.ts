@@ -416,6 +416,26 @@ export class OfflineStorageService {
   }
 
   /**
+   * Persist a few changed products WITHOUT clearing the whole store.
+   * Use after a sale to write only the sold items instead of rewriting all ~2500 products.
+   */
+  async putProducts(products: CachedProduct[]): Promise<void> {
+    if (!products || products.length === 0) return;
+    const db = await this.getDB();
+    const transaction = db.transaction(PRODUCTS_STORE, 'readwrite');
+    const store = transaction.objectStore(PRODUCTS_STORE);
+
+    for (const product of products) {
+      store.put(product);
+    }
+
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
    * Add a single product to cache (for newly created products)
    */
   async addProductToCache(product: Partial<CachedProduct>): Promise<void> {
@@ -775,6 +795,38 @@ export class OfflineStorageService {
   async getPendingOrdersCount(): Promise<number> {
     const pending = await this.getPendingOrders();
     return pending.length;
+  }
+
+  /**
+   * Rewrite a temporary (negative) product ID to its real server ID inside any
+   * unsynced offline orders. Called when an offline-created product gets synced
+   * so that pending orders referencing it can be sent to the server.
+   */
+  async updateOfflineOrderItemProductId(tempId: number, realId: number): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(ORDERS_STORE, 'readwrite');
+    const store = transaction.objectStore(ORDERS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const request = store.openCursor();
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const order = cursor.value as OfflineOrder;
+          if (!order.synced && order.items?.some(it => it.shopProductId === tempId)) {
+            order.items = order.items.map(it =>
+              it.shopProductId === tempId ? { ...it, shopProductId: realId } : it
+            );
+            cursor.update(order);
+            console.log(`Rewrote temp product ID ${tempId} -> ${realId} in offline order ${order.offlineOrderId}`);
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 
   // ==================== OFFLINE EDITS ====================

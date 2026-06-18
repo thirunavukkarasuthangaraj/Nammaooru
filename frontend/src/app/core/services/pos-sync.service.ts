@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subject, fromEvent, merge } from 'rxjs';
-import { takeUntil, debounceTime } from 'rxjs/operators';
+import { takeUntil, debounceTime, timeout } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { OfflineStorageService, CachedProduct, OfflineOrder, OfflineEdit, OfflineProductCreation } from './offline-storage.service';
 
@@ -20,6 +20,10 @@ export interface SyncStatus {
 export class PosSyncService implements OnDestroy {
   private apiUrl = environment.apiUrl;
   private destroy$ = new Subject<void>();
+
+  // Hard timeout so a dead network (navigator.onLine can be true with no real
+  // connectivity) never leaves a request hanging — it fails fast and falls back to offline.
+  private static readonly REQUEST_TIMEOUT_MS = 12000;
 
   private syncStatus$ = new BehaviorSubject<SyncStatus>({
     isOnline: navigator.onLine,
@@ -69,9 +73,14 @@ export class PosSyncService implements OnDestroy {
 
         if (isOnline) {
           console.log('Network online - triggering sync');
-          this.syncPendingOrders();
-          // Edits must sync before creations so offline edits merge into creation records first
-          this.syncPendingEdits().then(() => this.syncPendingProductCreations());
+          // Sequence matters:
+          //  1. edits   - offline edits merge into creation records first
+          //  2. creations - offline-created products get real server IDs
+          //                 (this also rewrites temp IDs inside pending orders)
+          //  3. orders  - sent LAST so they no longer reference temp product IDs
+          this.syncPendingEdits()
+            .then(() => this.syncPendingProductCreations())
+            .then(() => this.syncPendingOrders());
         } else {
           console.log('Network offline');
         }
@@ -244,12 +253,21 @@ export class PosSyncService implements OnDestroy {
         const response = await this.http.post<{ data: any }>(
           `${this.apiUrl}/pos/orders`,
           { ...orderData, shopId }
-        ).toPromise();
+        ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
 
         return { success: true, order: response?.data, offline: false };
-      } catch (error) {
-        console.error('Failed to create online order, saving offline:', error);
-        // Fall through to offline save
+      } catch (error: any) {
+        // Distinguish a genuine server-side rejection (validation / insufficient stock)
+        // from a connectivity failure. A server error would FAIL again on every sync
+        // retry, so it must NOT be silently parked as an offline order — surface it.
+        const status = error?.status;
+        if (typeof status === 'number' && status >= 400 && status < 600) {
+          const message = error?.error?.message || error?.error?.error || error?.message || 'Order could not be created';
+          console.error('Server rejected POS order (not saving offline):', message);
+          throw new Error(message);
+        }
+        // Network failure or timeout (status 0 / TimeoutError) - fall through to offline save
+        console.warn('Network/timeout creating online order, saving offline:', error);
       }
     }
 
@@ -314,6 +332,16 @@ export class PosSyncService implements OnDestroy {
 
     for (const order of pendingOrders) {
       try {
+        // An order can still reference an offline-created product whose creation
+        // hasn't synced yet (negative temp ID). Sending it would 404 on the server,
+        // so leave it pending and retry on the next sync (after creations sync).
+        const hasUnresolvedTempId = order.items.some(item => item.shopProductId < 0);
+        if (hasUnresolvedTempId) {
+          console.warn(`Skipping order ${order.offlineOrderId} - still has unsynced product(s), will retry`);
+          failed++;
+          continue;
+        }
+
         const requestData = {
           shopId: order.shopId,
           items: order.items.map(item => ({
@@ -331,7 +359,7 @@ export class PosSyncService implements OnDestroy {
         await this.http.post(
           `${this.apiUrl}/pos/orders`,
           requestData
-        ).toPromise();
+        ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
 
         // Mark as synced
         await this.offlineStorage.markOrderSynced(order.offlineOrderId);
@@ -392,7 +420,7 @@ export class PosSyncService implements OnDestroy {
           await this.http.patch(
             `${this.apiUrl}/shop-products/${edit.productId}/availability`,
             { isAvailable: edit.changes.isAvailable }
-          ).toPromise();
+          ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
         }
 
         // Sync other field changes via quick-update
@@ -412,7 +440,7 @@ export class PosSyncService implements OnDestroy {
           await this.http.patch(
             `${this.apiUrl}/shop-products/${edit.productId}/quick-update`,
             updateData
-          ).toPromise();
+          ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
         }
 
         // Mark as synced and remove
@@ -500,7 +528,7 @@ export class PosSyncService implements OnDestroy {
         const response = await this.http.post<{ data: any }>(
           `${this.apiUrl}/shop-products/create`,
           requestData
-        ).toPromise();
+        ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
 
         const createdProduct = response?.data;
         const realProductId = createdProduct?.id;
@@ -512,6 +540,10 @@ export class PosSyncService implements OnDestroy {
           // Update local cache with real product ID
           if (creation.tempProductId) {
             await this.offlineStorage.updateLocalProductId(creation.tempProductId, realProductId);
+            // Rewrite this temp ID inside any pending offline orders so they can sync.
+            // Must happen here while we still hold the temp->real mapping (the creation
+            // record is removed below and the cache entry is re-keyed by updateLocalProductId).
+            await this.offlineStorage.updateOfflineOrderItemProductId(creation.tempProductId, realProductId);
           }
 
           // Remove the offline creation record
@@ -609,14 +641,11 @@ export class PosSyncService implements OnDestroy {
       throw new Error('Cannot sync while offline');
     }
 
-    // Sync orders first
-    await this.syncPendingOrders();
-
-    // Sync product edits
+    // Order matters (see initNetworkListener): edits -> creations -> orders.
+    // Orders sync LAST so any offline-created products have real IDs first.
     await this.syncPendingEdits();
-
-    // Sync product creations
     await this.syncPendingProductCreations();
+    await this.syncPendingOrders();
 
     // Then refresh products
     await this.refreshProductCache(shopId);

@@ -77,6 +77,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // Track modifications
   modifiedProducts: Map<number, BulkEditProduct> = new Map();
 
+  // Precomputed duplicate-validation errors keyed by product id -> field -> message.
+  // Computed once on load / on barcode-sku edits instead of scanning all products on
+  // every change-detection cycle from the template (which froze navigation for seconds).
+  private duplicateErrorMap: Map<number, { [field: string]: string }> = new Map();
+
   // Version info
   clientVersion = '';
 
@@ -225,6 +230,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
     this.applyFilters();
     this.extractCategories();
+    this.recomputeDuplicateErrors();
   }
 
   private async syncProductsFromServer(): Promise<void> {
@@ -300,6 +306,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
       this.applyFilters();
       this.extractCategories();
+      this.recomputeDuplicateErrors();
       this.loading = false;
     } catch (error) {
       console.error('Failed to sync products:', error);
@@ -402,21 +409,25 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   onSkuChange(product: BulkEditProduct, value: string): void {
     product.sku = value;
     this.markModified(product);
+    this.recomputeDuplicateErrors();
   }
 
   onBarcode1Change(product: BulkEditProduct, value: string): void {
     product.barcode1 = value;
     this.markModified(product);
+    this.recomputeDuplicateErrors();
   }
 
   onBarcode2Change(product: BulkEditProduct, value: string): void {
     product.barcode2 = value;
     this.markModified(product);
+    this.recomputeDuplicateErrors();
   }
 
   onBarcode3Change(product: BulkEditProduct, value: string): void {
     product.barcode3 = value;
     this.markModified(product);
+    this.recomputeDuplicateErrors();
   }
 
   onTamilNameChange(product: BulkEditProduct, value: string): void {
@@ -552,23 +563,59 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Combined duplicate check
+  // Combined duplicate check - O(1) lookup into the precomputed map.
+  // (Called from the template per cell, so it MUST be cheap.)
   hasDuplicateError(product: BulkEditProduct, field: string): boolean {
-    return this.isDuplicateBarcode(product, field) || this.isDuplicateWithinProduct(product, field);
+    return !!this.duplicateErrorMap.get(product.id)?.[field];
   }
 
-  // Get duplicate error message
+  // Get duplicate error message - O(1) lookup into the precomputed map.
   getDuplicateErrorMessage(product: BulkEditProduct, field: string): string {
-    const value = (product as any)[field]?.trim();
-    if (!value) return '';
+    return this.duplicateErrorMap.get(product.id)?.[field] || '';
+  }
 
-    if (this.isDuplicateWithinProduct(product, field)) {
-      return `'${value}' is used in another field of same product`;
+  /**
+   * Recompute duplicate SKU/barcode errors for ALL products in a single O(products) pass
+   * and cache them. The template then only does O(1) map reads per cell, so change
+   * detection (triggered by clicks, navigation, etc.) no longer re-scans 1000 products
+   * per cell and freezes the UI. Call this on data load and after a SKU/barcode edit.
+   */
+  private recomputeDuplicateErrors(): void {
+    const fields = ['sku', 'barcode1', 'barcode2', 'barcode3'];
+
+    // 1. Build a global count of each normalized value across every product/field.
+    const globalCounts = new Map<string, number>();
+    for (const p of this.products) {
+      for (const f of fields) {
+        const v = ((p as any)[f] || '').trim().toLowerCase();
+        if (v) globalCounts.set(v, (globalCounts.get(v) || 0) + 1);
+      }
     }
-    if (this.isDuplicateBarcode(product, field)) {
-      return `'${value}' already exists in another product`;
+
+    // 2. Per product, derive any per-field error message.
+    const newMap = new Map<number, { [field: string]: string }>();
+    for (const p of this.products) {
+      let errs: { [field: string]: string } | null = null;
+
+      for (const f of fields) {
+        const raw = ((p as any)[f] || '').trim();
+        if (!raw) continue;
+        const v = raw.toLowerCase();
+
+        // How many times this value appears within THIS product's own fields.
+        const selfCount = fields.filter(o => (((p as any)[o] || '').trim().toLowerCase() === v)).length;
+
+        if (selfCount > 1) {
+          (errs ||= {})[f] = `'${raw}' is used in another field of same product`;
+        } else if ((globalCounts.get(v) || 0) > selfCount) {
+          (errs ||= {})[f] = `'${raw}' already exists in another product`;
+        }
+      }
+
+      if (errs) newMap.set(p.id, errs);
     }
-    return '';
+
+    this.duplicateErrorMap = newMap;
   }
 
   // Save changes

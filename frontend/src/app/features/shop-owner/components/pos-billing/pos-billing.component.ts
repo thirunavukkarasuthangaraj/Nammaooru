@@ -183,6 +183,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   // Cache validity - only sync from server if cache is older than this
   private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
   private readonly POS_CACHE_TIMESTAMP_KEY = 'pos_products_last_sync';
+  // Throttle background image re-caching so opening POS doesn't re-scan all images every time
+  private readonly POS_IMAGES_CACHED_KEY = 'pos_images_last_cached';
+  private readonly IMAGE_CACHE_VALIDITY_MS = 60 * 60 * 1000; // 1 hour
 
   // UI state
   isLoading: boolean = true;
@@ -786,9 +789,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         this.isLoading = false;
 
-        // Cache product images to IndexedDB for offline use
+        // Cache product images to IndexedDB for offline use.
+        // Throttled: re-scanning ~2500 images on every POS open is wasteful, so only
+        // run if we haven't cached within the last hour (server-refresh path caches fresh ones anyway).
         if (this.products.length > 0) {
-          this.cacheProductImagesToIndexedDB(this.products);
+          const lastImgCache = parseInt(localStorage.getItem(this.POS_IMAGES_CACHED_KEY) || '0', 10);
+          if (Date.now() - lastImgCache > this.IMAGE_CACHE_VALIDITY_MS) {
+            this.cacheProductImagesToIndexedDB(this.products);
+            localStorage.setItem(this.POS_IMAGES_CACHED_KEY, Date.now().toString());
+          }
         }
 
         // Sync from server if: cache is stale OR no active products found
@@ -1729,10 +1738,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Don't clear cart - allow adding more products and reprinting
         // User can click "New Bill" when they want to start fresh
       }
-    } catch (error) {
+    } catch (error: any) {
       this.swal.close();
       console.error('Failed to create bill:', error);
-      this.swal.error('Error', 'Failed to create bill');
+      // Show the real reason (e.g. insufficient stock) instead of a generic message
+      const message = error?.error?.message || error?.message || 'Failed to create bill';
+      this.swal.error('Error', message);
     }
   }
 
@@ -3268,6 +3279,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Update local stock after creating a bill (fast - no server reload needed)
    */
   private async updateLocalStockAfterBill(): Promise<void> {
+    // Track only the products whose stock actually changed so we persist just those,
+    // instead of rewriting the entire ~2500-product IndexedDB store on every sale.
+    const changedProducts: CachedProduct[] = [];
+
     // Deduct stock for each cart item locally
     for (const cartItem of this.cart) {
       const productId = cartItem.product.id;
@@ -3278,6 +3293,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       if (productIndex !== -1 && this.products[productIndex].trackInventory) {
         const currentStock = this.products[productIndex].stock || 0;
         this.products[productIndex].stock = Math.max(0, currentStock - quantitySold);
+        changedProducts.push(this.products[productIndex]);
       }
 
       // Update in filtered products array
@@ -3288,8 +3304,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
-    // Save updated products to IndexedDB cache
-    await this.offlineStorage.saveProducts(this.products, this.shopId);
+    // Persist ONLY the changed products (fast) rather than clearing + rewriting all products
+    if (changedProducts.length > 0) {
+      await this.offlineStorage.putProducts(changedProducts);
+    }
   }
 
   /**
