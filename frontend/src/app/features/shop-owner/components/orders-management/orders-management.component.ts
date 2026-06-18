@@ -128,11 +128,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Set default date filter to today
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // Format: yyyy-MM-dd
-    this.fromDate = todayStr;
-    this.toDate = todayStr;
+    // Show ALL orders by default (newest first). Previously this auto-restricted
+    // the list to "today" using a UTC date, which hid freshly-synced/POS orders
+    // whose server timestamp fell outside the local "today" window. The date
+    // inputs remain available for the user to filter manually.
+    this.fromDate = '';
+    this.toDate = '';
 
     // Simple: Get shop ID from localStorage and load orders
     this.loadOrdersFromCache();
@@ -374,10 +375,15 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
     console.log('Loading orders for shop:', this.shopId);
 
-    this.orderService.getShopOrders(this.shopId).subscribe({
+    // Load a larger page so recent orders (incl. just-synced POS orders) are present,
+    // not just the first 20.
+    this.orderService.getShopOrders(this.shopId, 0, 200).subscribe({
       next: (orders) => {
         console.log('Orders loaded successfully:', orders.length);
-        this.orders = orders;
+        // Defensive: ensure newest-first regardless of backend pagination/sort quirks
+        this.orders = [...orders].sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
         this.updateOrderLists();
 
         // Smart tab switching: if no real-time orders but there are history orders, switch to history tab
