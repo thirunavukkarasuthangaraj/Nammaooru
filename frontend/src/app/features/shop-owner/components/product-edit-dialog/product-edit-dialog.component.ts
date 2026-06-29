@@ -247,7 +247,7 @@ export class ProductEditDialogComponent implements OnInit {
       sku: v.sku || this.data.sku || '',
       barcode: (v.barcode1 || v.sku || this.data.barcode1 || this.data.sku || '').toString().trim(),
       price: v.price ?? this.data.price,
-      shopName: localStorage.getItem('current_shop_name') || ''
+      shopName: localStorage.getItem('shop_name') || localStorage.getItem('current_shop_name') || ''
     };
 
     this.isPrinting = true;

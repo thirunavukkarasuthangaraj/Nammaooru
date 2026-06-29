@@ -44,7 +44,8 @@ export class LabelDesignerComponent implements OnInit {
     sku: '8906006720077',
     barcode: '8906006720077',
     price: 95,
-    shopName: 'Maragatha Supermarket'
+    // Use the real shop name so the preview matches the actual printed label
+    shopName: localStorage.getItem('shop_name') || localStorage.getItem('current_shop_name') || 'Your Shop Name'
   };
 
   previewHtml: SafeHtml = '';
