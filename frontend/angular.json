@@ -41,7 +41,9 @@
             "scripts": [],
             "allowedCommonJsDependencies": [
               "sweetalert2",
-              "leaflet"
+              "leaflet",
+              "jsbarcode",
+              "qrcode"
             ]
           },
           "configurations": {

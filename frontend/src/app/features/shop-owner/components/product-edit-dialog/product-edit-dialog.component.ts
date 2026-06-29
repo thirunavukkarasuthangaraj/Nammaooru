@@ -6,6 +6,9 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult } from '../category-create-dialog/category-create-dialog.component';
+import { LabelTemplateService } from '../../../../core/services/label-template.service';
+import { LabelPrintService } from '../../../../core/services/label-print.service';
+import { defaultLabelTemplate } from '../../../../core/models/label-template.model';
 
 export interface ProductEditData {
   id: number;
@@ -47,6 +50,7 @@ export class ProductEditDialogComponent implements OnInit {
   private apiUrl = environment.apiUrl;
 
   isSaving = false;
+  isPrinting = false;
 
   constructor(
     private fb: FormBuilder,
@@ -54,6 +58,8 @@ export class ProductEditDialogComponent implements OnInit {
     private http: HttpClient,
     private offlineStorage: OfflineStorageService,
     private dialog: MatDialog,
+    private labelTemplateService: LabelTemplateService,
+    private labelPrintService: LabelPrintService,
     public dialogRef: MatDialogRef<ProductEditDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ProductEditData
   ) {}
@@ -225,6 +231,44 @@ export class ProductEditDialogComponent implements OnInit {
 
   onCancel(): void {
     this.dialogRef.close();
+  }
+
+  /**
+   * Print a barcode label for the current product using the saved common
+   * template. Uses the live form values so edits print without saving first.
+   */
+  printLabel(): void {
+    if (this.isPrinting) {
+      return;
+    }
+    const v = this.editForm.value;
+    const product = {
+      name: v.customName || this.data.customName || '',
+      sku: v.sku || this.data.sku || '',
+      barcode: (v.barcode1 || v.sku || this.data.barcode1 || this.data.sku || '').toString().trim(),
+      price: v.price ?? this.data.price,
+      shopName: localStorage.getItem('current_shop_name') || ''
+    };
+
+    this.isPrinting = true;
+    this.labelTemplateService.getDefault().subscribe({
+      next: (template) => {
+        const tpl = template || defaultLabelTemplate();
+        this.labelPrintService.print(tpl, [product])
+          .catch((err) => {
+            this.snackBar.open(err?.message || 'Failed to print label', 'Close', { duration: 4000 });
+          })
+          .finally(() => { this.isPrinting = false; });
+      },
+      error: () => {
+        // No backend template available - fall back to the built-in default
+        this.labelPrintService.print(defaultLabelTemplate(), [product])
+          .catch((err) => {
+            this.snackBar.open(err?.message || 'Failed to print label', 'Close', { duration: 4000 });
+          })
+          .finally(() => { this.isPrinting = false; });
+      }
+    });
   }
 
   onCategoryChange(value: string): void {

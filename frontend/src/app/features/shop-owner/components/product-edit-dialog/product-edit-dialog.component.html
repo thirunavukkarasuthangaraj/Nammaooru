@@ -224,9 +224,18 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
+  <button mat-stroked-button color="accent"
+          type="button"
+          (click)="printLabel()"
+          [disabled]="isPrinting"
+          matTooltip="Print barcode label for this product"
+          style="margin-right:auto;">
+    <mat-icon>{{ isPrinting ? 'hourglass_empty' : 'qr_code_2' }}</mat-icon>
+    Print Label
+  </button>
   <button mat-button (click)="onCancel()">Cancel</button>
-  <button mat-raised-button color="primary" 
-          (click)="onSubmit()" 
+  <button mat-raised-button color="primary"
+          (click)="onSubmit()"
           [disabled]="!editForm.valid">
     Save Changes
   </button>

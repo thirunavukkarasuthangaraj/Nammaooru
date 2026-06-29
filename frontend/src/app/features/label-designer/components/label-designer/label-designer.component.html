@@ -1,0 +1,114 @@
+<div class="label-designer">
+  <div class="header">
+    <div>
+      <h1><mat-icon>qr_code_2</mat-icon> Barcode Label Designer</h1>
+      <p class="subtitle">Design the common label template. Saved here, it is used by the "Print Label" button on every product.</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button color="primary" (click)="printTest()">
+        <mat-icon>print</mat-icon> Print Test
+      </button>
+      <button mat-raised-button color="primary" (click)="save()" [disabled]="isSaving">
+        <mat-icon>save</mat-icon> {{ isSaving ? 'Saving...' : 'Save Template' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="content" *ngIf="!loading">
+    <!-- Settings -->
+    <mat-card class="settings-card">
+      <h3>Label Size</h3>
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>Template Name</mat-label>
+          <input matInput [(ngModel)]="templateName" />
+        </mat-form-field>
+      </div>
+      <div class="row">
+        <mat-form-field appearance="outline" class="num">
+          <mat-label>Width (mm)</mat-label>
+          <input matInput type="number" min="10" [(ngModel)]="widthMm" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+        <span class="x">×</span>
+        <mat-form-field appearance="outline" class="num">
+          <mat-label>Height (mm)</mat-label>
+          <input matInput type="number" min="5" [(ngModel)]="heightMm" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+      </div>
+      <div class="presets">
+        <span>Presets:</span>
+        <button mat-stroked-button (click)="applyPreset(50, 20)">50 × 20</button>
+        <button mat-stroked-button (click)="applyPreset(40, 30)">40 × 30</button>
+        <button mat-stroked-button (click)="applyPreset(38, 25)">38 × 25</button>
+        <button mat-stroked-button (click)="applyPreset(100, 50)">100 × 50</button>
+      </div>
+
+      <mat-divider></mat-divider>
+      <h3>Layout</h3>
+      <div class="row">
+        <mat-button-toggle-group [(ngModel)]="design.layout" (ngModelChange)="updatePreview()">
+          <mat-button-toggle value="horizontal"><mat-icon>view_column</mat-icon> Horizontal</mat-button-toggle>
+          <mat-button-toggle value="vertical"><mat-icon>view_stream</mat-icon> Vertical</mat-button-toggle>
+        </mat-button-toggle-group>
+        <mat-form-field appearance="outline" class="sel">
+          <mat-label>Align</mat-label>
+          <mat-select [(ngModel)]="design.align" (ngModelChange)="updatePreview()">
+            <mat-option value="left">Left</mat-option>
+            <mat-option value="center">Center</mat-option>
+            <mat-option value="right">Right</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="num">
+          <mat-label>Padding (mm)</mat-label>
+          <input matInput type="number" min="0" step="0.5" [(ngModel)]="design.paddingMm" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+      </div>
+
+      <mat-divider></mat-divider>
+      <h3>Barcode</h3>
+      <div class="row">
+        <mat-form-field appearance="outline" class="sel">
+          <mat-label>Type</mat-label>
+          <mat-select [(ngModel)]="design.barcodeType" (ngModelChange)="updatePreview()">
+            <mat-option *ngFor="let t of barcodeTypes" [value]="t.value">{{ t.label }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="num">
+          <mat-label>Barcode Height (mm)</mat-label>
+          <input matInput type="number" min="3" step="0.5" [(ngModel)]="design.barcodeHeightMm" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+        <mat-checkbox [(ngModel)]="design.showBarcodeText" (ngModelChange)="updatePreview()">Show number under barcode</mat-checkbox>
+      </div>
+
+      <mat-divider></mat-divider>
+      <h3>Fields</h3>
+      <div class="field-row" *ngFor="let key of fieldKeys">
+        <mat-checkbox [(ngModel)]="design.fields[key].show" (ngModelChange)="updatePreview()">
+          {{ fieldLabels[key] }}
+        </mat-checkbox>
+        <mat-form-field appearance="outline" class="num small" *ngIf="design.fields[key].show">
+          <mat-label>Font (pt)</mat-label>
+          <input matInput type="number" min="4" [(ngModel)]="design.fields[key].fontSize" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+        <mat-checkbox *ngIf="design.fields[key].show" [(ngModel)]="design.fields[key].bold" (ngModelChange)="updatePreview()">Bold</mat-checkbox>
+        <mat-form-field appearance="outline" class="num small" *ngIf="design.fields[key].show && key === 'price'">
+          <mat-label>Prefix</mat-label>
+          <input matInput [(ngModel)]="design.fields[key].prefix" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+      </div>
+    </mat-card>
+
+    <!-- Preview -->
+    <mat-card class="preview-card">
+      <h3>Live Preview <span class="size-hint">{{ widthMm }} × {{ heightMm }} mm</span></h3>
+      <div class="preview-stage">
+        <div [innerHTML]="previewHtml"></div>
+      </div>
+      <p class="hint">The label prints at the exact size shown. Use a label/thermal printer and select the matching paper size.</p>
+    </mat-card>
+  </div>
+
+  <div class="loading" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+</div>

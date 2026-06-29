@@ -1,0 +1,149 @@
+import { Component, OnInit } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { LabelTemplateService } from '../../../../core/services/label-template.service';
+import { LabelPrintService } from '../../../../core/services/label-print.service';
+import {
+  BarcodeType,
+  LabelDesign,
+  LabelProductData,
+  LabelTemplate,
+  defaultLabelDesign
+} from '../../../../core/models/label-template.model';
+
+@Component({
+  selector: 'app-label-designer',
+  templateUrl: './label-designer.component.html',
+  styleUrls: ['./label-designer.component.scss']
+})
+export class LabelDesignerComponent implements OnInit {
+
+  templateId?: number;
+  templateName = 'Default Label';
+  widthMm = 50;
+  heightMm = 20;
+  design: LabelDesign = defaultLabelDesign();
+
+  fieldKeys: (keyof LabelDesign['fields'])[] = ['name', 'price', 'sku', 'shopName'];
+  fieldLabels: Record<keyof LabelDesign['fields'], string> = {
+    name: 'Product Name',
+    price: 'Price',
+    sku: 'SKU',
+    shopName: 'Shop Name'
+  };
+
+  barcodeTypes: { value: BarcodeType; label: string }[] = [
+    { value: 'CODE128', label: 'Barcode (CODE128)' },
+    { value: 'QR', label: 'QR Code' },
+    { value: 'NONE', label: 'No barcode' }
+  ];
+
+  // Sample product for live preview
+  sample: LabelProductData = {
+    name: 'LION Deseeded 250g',
+    sku: '8906006720077',
+    barcode: '8906006720077',
+    price: 95,
+    shopName: 'Maragatha Supermarket'
+  };
+
+  previewHtml: SafeHtml = '';
+  isSaving = false;
+  loading = true;
+
+  constructor(
+    private labelTemplateService: LabelTemplateService,
+    private printService: LabelPrintService,
+    private sanitizer: DomSanitizer,
+    private snackBar: MatSnackBar
+  ) {}
+
+  ngOnInit(): void {
+    this.labelTemplateService.getDefault().subscribe({
+      next: (tpl) => {
+        if (tpl) {
+          this.applyTemplate(tpl);
+        }
+        this.loading = false;
+        this.updatePreview();
+      },
+      error: () => {
+        this.loading = false;
+        this.updatePreview();
+      }
+    });
+  }
+
+  private applyTemplate(tpl: LabelTemplate): void {
+    this.templateId = tpl.id;
+    this.templateName = tpl.name || 'Default Label';
+    this.widthMm = tpl.labelWidthMm || 50;
+    this.heightMm = tpl.labelHeightMm || 20;
+    if (tpl.design) {
+      try {
+        this.design = { ...defaultLabelDesign(), ...JSON.parse(tpl.design) };
+      } catch {
+        this.design = defaultLabelDesign();
+      }
+    }
+  }
+
+  private buildTemplate(): LabelTemplate {
+    return {
+      id: this.templateId,
+      name: this.templateName?.trim() || 'Default Label',
+      labelWidthMm: Number(this.widthMm) || 50,
+      labelHeightMm: Number(this.heightMm) || 20,
+      isDefault: true,
+      design: JSON.stringify(this.design)
+    };
+  }
+
+  /** Re-render the live preview whenever a control changes. */
+  async updatePreview(): Promise<void> {
+    const tpl = this.buildTemplate();
+    const inner = await this.printService.renderLabelInner(tpl, this.sample);
+    const horizontal = (this.design.layout || 'horizontal') === 'horizontal';
+    const w = tpl.labelWidthMm;
+    const h = tpl.labelHeightMm;
+    const pad = this.design.paddingMm;
+    const align = this.design.align || 'center';
+    const wrapper =
+      `<div style="width:${w}mm;height:${h}mm;padding:${pad}mm;` +
+      `display:flex;flex-direction:${horizontal ? 'row' : 'column'};` +
+      `align-items:center;justify-content:${horizontal ? 'space-between' : 'center'};` +
+      `text-align:${align};overflow:hidden;` +
+      `font-family:Arial,'Noto Sans Tamil',sans-serif;background:#fff;` +
+      `border:1px solid #bbb;box-shadow:0 1px 4px rgba(0,0,0,0.15);">${inner}</div>`;
+    this.previewHtml = this.sanitizer.bypassSecurityTrustHtml(wrapper);
+  }
+
+  applyPreset(w: number, h: number): void {
+    this.widthMm = w;
+    this.heightMm = h;
+    this.updatePreview();
+  }
+
+  save(): void {
+    if (this.isSaving) {
+      return;
+    }
+    this.isSaving = true;
+    this.labelTemplateService.saveDefault(this.buildTemplate()).subscribe({
+      next: (saved) => {
+        this.templateId = saved.id;
+        this.isSaving = false;
+        this.snackBar.open('Label template saved', 'Close', { duration: 2500 });
+      },
+      error: (err) => {
+        this.isSaving = false;
+        this.snackBar.open(err?.error?.message || 'Failed to save template', 'Close', { duration: 4000 });
+      }
+    });
+  }
+
+  printTest(): void {
+    this.printService.print(this.buildTemplate(), [this.sample])
+      .catch((err) => this.snackBar.open(err?.message || 'Print failed', 'Close', { duration: 4000 }));
+  }
+}
