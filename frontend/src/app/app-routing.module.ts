@@ -55,6 +55,12 @@ const routes: Routes = [
         loadChildren: () => import('./features/orders/orders.module').then(m => m.OrdersModule)
       },
       {
+        path: 'label-designer',
+        loadChildren: () => import('./features/label-designer/label-designer.module').then(m => m.LabelDesignerModule),
+        canActivate: [RoleGuard],
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SHOP_OWNER] }
+      },
+      {
         path: 'users',
         loadChildren: () => import('./features/users/users.module').then(m => m.UsersModule),
         canActivate: [RoleGuard],

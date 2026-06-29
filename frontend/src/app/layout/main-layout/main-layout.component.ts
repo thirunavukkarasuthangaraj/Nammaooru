@@ -99,7 +99,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'All Products', icon: 'inventory', route: '/products', badge: null },
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
         { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
-        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }
+        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null },
+        { title: 'Label Designer', icon: 'qr_code_2', route: '/label-designer', badge: null }
       ]
     },
     {
@@ -200,7 +201,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
         { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
-        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null }
+        { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null },
+        { title: 'Label Designer', icon: 'qr_code_2', route: '/label-designer', badge: null }
       ]
     },
     {
@@ -342,7 +344,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Bulk Edit', icon: 'edit_note', route: '/shop-owner/bulk-edit', badge: null },
         { title: 'Browse Products', icon: 'manage_search', route: '/shop-owner/browse-products', badge: null },
         { title: 'Combos', icon: 'widgets', route: '/shop-owner/combos', badge: null },
-        { title: 'Bulk Import', icon: 'upload_file', route: '/products/bulk-import', badge: null }
+        { title: 'Bulk Import', icon: 'upload_file', route: '/products/bulk-import', badge: null },
+        { title: 'Label Designer', icon: 'qr_code_2', route: '/label-designer', badge: null }
       ]
     },
     {

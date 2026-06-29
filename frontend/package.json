@@ -1,6 +1,6 @@
 {
   "name": "shop-management-frontend",
-  "version": "1.0.263",
+  "version": "1.0.264",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -40,6 +40,7 @@
     "firebase": "^9.23.0",
     "highcharts": "^12.4.0",
     "highcharts-angular": "^4.0.0",
+    "jsbarcode": "^3.12.3",
     "leaflet": "^1.9.4",
     "ng2-charts": "^5.0.4",
     "qrcode": "^1.5.4",
@@ -64,6 +65,7 @@
     "@types/d3-shape": "^3.1.7",
     "@types/file-saver": "^2.0.7",
     "@types/jasmine": "~4.3.0",
+    "@types/jsbarcode": "^3.11.4",
     "@types/node": "^18.7.0",
     "@types/qrcode": "^1.5.6",
     "jasmine-core": "~4.6.0",
