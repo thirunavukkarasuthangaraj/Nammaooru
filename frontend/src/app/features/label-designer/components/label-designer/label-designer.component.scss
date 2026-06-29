@@ -67,6 +67,27 @@
     padding: 4px 0;
   }
 
+  // Remove the reserved subscript (hint/error) space under Material fields so
+  // inputs line up with the button-toggle group and checkboxes on the same row.
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+
+  // Match the toggle group height to the outline form fields so the Layout /
+  // Barcode rows align cleanly.
+  mat-button-toggle-group {
+    height: 56px;
+    border-radius: 6px;
+    align-items: center;
+
+    .mat-button-toggle-label-content {
+      line-height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
   .num { width: 120px; }
   .num.small { width: 90px; }
   .sel { width: 180px; }
