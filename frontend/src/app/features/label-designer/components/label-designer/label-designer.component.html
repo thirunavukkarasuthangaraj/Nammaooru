@@ -91,7 +91,7 @@
           <input matInput type="number" min="4" [(ngModel)]="design.fields[key].fontSize" (ngModelChange)="updatePreview()" />
         </mat-form-field>
         <mat-checkbox *ngIf="design.fields[key].show" [(ngModel)]="design.fields[key].bold" (ngModelChange)="updatePreview()">Bold</mat-checkbox>
-        <mat-form-field appearance="outline" class="num small" *ngIf="design.fields[key].show && key === 'price'">
+        <mat-form-field appearance="outline" class="num small" *ngIf="design.fields[key].show && prefixFields.includes(key)">
           <mat-label>Prefix</mat-label>
           <input matInput [(ngModel)]="design.fields[key].prefix" (ngModelChange)="updatePreview()" />
         </mat-form-field>
@@ -104,7 +104,7 @@
       <div class="preview-stage">
         <div [innerHTML]="previewHtml"></div>
       </div>
-      <p class="hint">The label prints at the exact size shown. Use a label/thermal printer and select the matching paper size.</p>
+      <p class="hint">The preview is the exact print size. If text is cut off at the edges, turn off some fields or increase the label size (mm) until everything fits.</p>
     </mat-card>
   </div>
 
