@@ -76,25 +76,35 @@ export class LabelPrintService {
     if (f.name?.show && product.name) {
       textRows.push(this.line(product.name, f.name));
     }
-    if (f.price?.show && (product.price !== undefined && product.price !== null && product.price !== '')) {
-      textRows.push(this.line(`${f.price.prefix || ''}${product.price}`, f.price));
+    // Price and MRP share one row; pack date and expiry date share one row.
+    const hasPrice = f.price?.show && product.price !== undefined && product.price !== null && product.price !== '';
+    const hasMrp = f.mrp?.show && product.mrp !== undefined && product.mrp !== null && product.mrp !== '';
+    const priceMrpSpans: string[] = [];
+    if (hasPrice) {
+      priceMrpSpans.push(this.span(`${f.price.prefix || ''}${product.price}`, f.price));
     }
-    if (f.mrp?.show && (product.mrp !== undefined && product.mrp !== null && product.mrp !== '')) {
-      // Strike through the MRP only when an actual lower selling price exists;
-      // otherwise show the MRP on its own.
+    if (hasMrp) {
+      // Strike through the MRP only when an actual lower selling price exists.
       const mrpNum = Number(product.mrp);
       const priceNum = Number(product.price);
-      const strike = Number.isFinite(mrpNum) && Number.isFinite(priceNum)
-        && product.price !== '' && product.price !== undefined && product.price !== null
-        && priceNum < mrpNum;
-      textRows.push(this.line(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
+      const strike = !!hasPrice && Number.isFinite(mrpNum) && Number.isFinite(priceNum) && priceNum < mrpNum;
+      priceMrpSpans.push(this.span(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
     }
+    if (priceMrpSpans.length) {
+      textRows.push(this.row(priceMrpSpans));
+    }
+
+    const dateSpans: string[] = [];
     if (f.packedDate?.show && product.packedDate) {
-      textRows.push(this.line(`${f.packedDate.prefix || ''}${this.formatDate(product.packedDate)}`, f.packedDate));
+      dateSpans.push(this.span(`${f.packedDate.prefix || ''}${this.formatDate(product.packedDate)}`, f.packedDate));
     }
     if (f.expiryDate?.show && product.expiryDate) {
-      textRows.push(this.line(`${f.expiryDate.prefix || ''}${this.formatDate(product.expiryDate)}`, f.expiryDate));
+      dateSpans.push(this.span(`${f.expiryDate.prefix || ''}${this.formatDate(product.expiryDate)}`, f.expiryDate));
     }
+    if (dateSpans.length) {
+      textRows.push(this.row(dateSpans));
+    }
+
     if (f.sku?.show && product.sku) {
       textRows.push(this.line(product.sku, f.sku));
     }
@@ -125,6 +135,18 @@ export class LabelPrintService {
   private line(text: string, cfg: { fontSize: number; bold: boolean }, strike = false): string {
     const decoration = strike ? 'text-decoration:line-through;' : '';
     return `<div style="font-size:${cfg.fontSize}pt;font-weight:${cfg.bold ? 700 : 400};line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;${decoration}">${this.escape(text)}</div>`;
+  }
+
+  /** An inline text item (used to place two fields side by side on one row). */
+  private span(text: string, cfg: { fontSize: number; bold: boolean; prefix?: string }, strike = false): string {
+    const decoration = strike ? 'text-decoration:line-through;' : '';
+    return `<span style="font-size:${cfg.fontSize}pt;font-weight:${cfg.bold ? 700 : 400};${decoration}">${this.escape(text)}</span>`;
+  }
+
+  /** A single row holding one or more inline spans, spaced apart and centered by the parent's text-align. */
+  private row(spans: string[]): string {
+    const sep = '<span style="display:inline-block;width:2.5mm;"></span>';
+    return `<div style="line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${spans.join(sep)}</div>`;
   }
 
   private escape(s: string): string {
