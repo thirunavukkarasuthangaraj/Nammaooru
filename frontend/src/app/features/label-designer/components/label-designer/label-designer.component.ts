@@ -8,7 +8,8 @@ import {
   LabelDesign,
   LabelProductData,
   LabelTemplate,
-  defaultLabelDesign
+  defaultLabelDesign,
+  mergeLabelDesign
 } from '../../../../core/models/label-template.model';
 
 @Component({
@@ -21,16 +22,22 @@ export class LabelDesignerComponent implements OnInit {
   templateId?: number;
   templateName = 'Default Label';
   widthMm = 50;
-  heightMm = 20;
+  heightMm = 25;
   design: LabelDesign = defaultLabelDesign();
 
-  fieldKeys: (keyof LabelDesign['fields'])[] = ['name', 'price', 'sku', 'shopName'];
+  fieldKeys: (keyof LabelDesign['fields'])[] = ['name', 'price', 'mrp', 'packedDate', 'expiryDate', 'sku', 'shopName'];
   fieldLabels: Record<keyof LabelDesign['fields'], string> = {
     name: 'Product Name',
     price: 'Price',
     sku: 'SKU',
-    shopName: 'Shop Name'
+    shopName: 'Shop Name',
+    mrp: 'MRP',
+    packedDate: 'Pack Date',
+    expiryDate: 'Expiry Date'
   };
+
+  /** Fields whose prefix text is editable in the designer. */
+  prefixFields: (keyof LabelDesign['fields'])[] = ['price', 'mrp', 'packedDate', 'expiryDate'];
 
   barcodeTypes: { value: BarcodeType; label: string }[] = [
     { value: 'CODE128', label: 'Barcode (CODE128)' },
@@ -44,9 +51,19 @@ export class LabelDesignerComponent implements OnInit {
     sku: '8906006720077',
     barcode: '8906006720077',
     price: 95,
+    mrp: 110,
+    packedDate: LabelDesignerComponent.isoToday(0),
+    expiryDate: LabelDesignerComponent.isoToday(30),
     // Use the real shop name so the preview matches the actual printed label
     shopName: localStorage.getItem('shop_name') || localStorage.getItem('current_shop_name') || 'Your Shop Name'
   };
+
+  /** ISO yyyy-mm-dd for today + offsetDays (used for preview sample dates). */
+  private static isoToday(offsetDays: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  }
 
   previewHtml: SafeHtml = '';
   isSaving = false;
@@ -79,10 +96,10 @@ export class LabelDesignerComponent implements OnInit {
     this.templateId = tpl.id;
     this.templateName = tpl.name || 'Default Label';
     this.widthMm = tpl.labelWidthMm || 50;
-    this.heightMm = tpl.labelHeightMm || 20;
+    this.heightMm = tpl.labelHeightMm || 25;
     if (tpl.design) {
       try {
-        this.design = { ...defaultLabelDesign(), ...JSON.parse(tpl.design) };
+        this.design = mergeLabelDesign(JSON.parse(tpl.design));
       } catch {
         this.design = defaultLabelDesign();
       }
@@ -94,7 +111,7 @@ export class LabelDesignerComponent implements OnInit {
       id: this.templateId,
       name: this.templateName?.trim() || 'Default Label',
       labelWidthMm: Number(this.widthMm) || 50,
-      labelHeightMm: Number(this.heightMm) || 20,
+      labelHeightMm: Number(this.heightMm) || 25,
       isDefault: true,
       design: JSON.stringify(this.design)
     };

@@ -52,6 +52,10 @@ export class ProductEditDialogComponent implements OnInit {
   isSaving = false;
   isPrinting = false;
 
+  // Per-print label dates (not saved to the product). Pack date defaults to today.
+  labelPackedDate = new Date().toISOString().slice(0, 10);
+  labelExpiryDate = '';
+
   constructor(
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
@@ -242,11 +246,16 @@ export class ProductEditDialogComponent implements OnInit {
       return;
     }
     const v = this.editForm.value;
+    const mrp = v.originalPrice ?? this.data.originalPrice;
     const product = {
       name: v.customName || this.data.customName || '',
       sku: v.sku || this.data.sku || '',
       barcode: (v.barcode1 || v.sku || this.data.barcode1 || this.data.sku || '').toString().trim(),
       price: v.price ?? this.data.price,
+      // MRP from the product's original price (only when it's a real positive value)
+      mrp: (mrp !== undefined && mrp !== null && Number(mrp) > 0) ? mrp : undefined,
+      packedDate: this.labelPackedDate || undefined,
+      expiryDate: this.labelExpiryDate || undefined,
       shopName: localStorage.getItem('shop_name') || localStorage.getItem('current_shop_name') || ''
     };
 

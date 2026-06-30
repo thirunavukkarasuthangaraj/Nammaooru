@@ -5,7 +5,8 @@ import {
   LabelDesign,
   LabelProductData,
   LabelTemplate,
-  defaultLabelDesign
+  defaultLabelDesign,
+  mergeLabelDesign
 } from '../models/label-template.model';
 
 /**
@@ -41,10 +42,24 @@ export class LabelPrintService {
       return defaultLabelDesign();
     }
     try {
-      return { ...defaultLabelDesign(), ...JSON.parse(template.design) };
+      return mergeLabelDesign(JSON.parse(template.design));
     } catch {
       return defaultLabelDesign();
     }
+  }
+
+  /** Format a date value as DD/MM/YYYY; passes through non-date display strings. */
+  private formatDate(value?: string): string {
+    if (!value) {
+      return '';
+    }
+    const str = String(value).trim();
+    // ISO yyyy-mm-dd (optionally with time) -> DD/MM/YYYY
+    const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      return `${iso[3]}/${iso[2]}/${iso[1]}`;
+    }
+    return str;
   }
 
   /** Render the inner HTML for a single label (without page wrapper). */
@@ -63,6 +78,22 @@ export class LabelPrintService {
     }
     if (f.price?.show && (product.price !== undefined && product.price !== null && product.price !== '')) {
       textRows.push(this.line(`${f.price.prefix || ''}${product.price}`, f.price));
+    }
+    if (f.mrp?.show && (product.mrp !== undefined && product.mrp !== null && product.mrp !== '')) {
+      // Strike through the MRP only when an actual lower selling price exists;
+      // otherwise show the MRP on its own.
+      const mrpNum = Number(product.mrp);
+      const priceNum = Number(product.price);
+      const strike = Number.isFinite(mrpNum) && Number.isFinite(priceNum)
+        && product.price !== '' && product.price !== undefined && product.price !== null
+        && priceNum < mrpNum;
+      textRows.push(this.line(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
+    }
+    if (f.packedDate?.show && product.packedDate) {
+      textRows.push(this.line(`${f.packedDate.prefix || ''}${this.formatDate(product.packedDate)}`, f.packedDate));
+    }
+    if (f.expiryDate?.show && product.expiryDate) {
+      textRows.push(this.line(`${f.expiryDate.prefix || ''}${this.formatDate(product.expiryDate)}`, f.expiryDate));
     }
     if (f.sku?.show && product.sku) {
       textRows.push(this.line(product.sku, f.sku));
@@ -91,8 +122,9 @@ export class LabelPrintService {
     return `${textBlock}${codeBlock}`;
   }
 
-  private line(text: string, cfg: { fontSize: number; bold: boolean }): string {
-    return `<div style="font-size:${cfg.fontSize}pt;font-weight:${cfg.bold ? 700 : 400};line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${this.escape(text)}</div>`;
+  private line(text: string, cfg: { fontSize: number; bold: boolean }, strike = false): string {
+    const decoration = strike ? 'text-decoration:line-through;' : '';
+    return `<div style="font-size:${cfg.fontSize}pt;font-weight:${cfg.bold ? 700 : 400};line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;${decoration}">${this.escape(text)}</div>`;
   }
 
   private escape(s: string): string {
