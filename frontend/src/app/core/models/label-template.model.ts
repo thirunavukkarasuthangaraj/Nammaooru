@@ -9,6 +9,7 @@ export interface LabelFieldConfig {
   fontSize: number; // pt
   bold: boolean;
   prefix?: string;  // e.g. "₹" for price
+  gapMm?: number;   // vertical space below this field/row, in mm (0 = tight)
 }
 
 export interface LabelDesign {

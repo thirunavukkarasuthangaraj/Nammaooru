@@ -91,7 +91,8 @@ export class LabelPrintService {
       priceMrpSpans.push(this.span(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
     }
     if (priceMrpSpans.length) {
-      textRows.push(this.row(priceMrpSpans));
+      const gapMm = Math.max(hasPrice ? this.gap(f.price) : 0, hasMrp ? this.gap(f.mrp) : 0);
+      textRows.push(this.row(priceMrpSpans, gapMm));
     }
 
     const dateSpans: string[] = [];
@@ -102,7 +103,11 @@ export class LabelPrintService {
       dateSpans.push(this.span(`${f.expiryDate.prefix || ''}${this.formatDate(product.expiryDate)}`, f.expiryDate));
     }
     if (dateSpans.length) {
-      textRows.push(this.row(dateSpans));
+      const gapMm = Math.max(
+        (f.packedDate?.show && product.packedDate) ? this.gap(f.packedDate) : 0,
+        (f.expiryDate?.show && product.expiryDate) ? this.gap(f.expiryDate) : 0
+      );
+      textRows.push(this.row(dateSpans, gapMm));
     }
 
     if (f.sku?.show && product.sku) {
@@ -132,9 +137,15 @@ export class LabelPrintService {
     return `${textBlock}${codeBlock}`;
   }
 
-  private line(text: string, cfg: { fontSize: number; bold: boolean }, strike = false): string {
+  /** Bottom spacing for a field/row, in mm. Defaults to 0 (tight) when unset. */
+  private gap(cfg?: { gapMm?: number }): number {
+    const g = cfg?.gapMm;
+    return (typeof g === 'number' && g >= 0) ? g : 0;
+  }
+
+  private line(text: string, cfg: { fontSize: number; bold: boolean; gapMm?: number }, strike = false): string {
     const decoration = strike ? 'text-decoration:line-through;' : '';
-    return `<div style="font-size:${cfg.fontSize}pt;font-weight:${cfg.bold ? 700 : 400};line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;${decoration}">${this.escape(text)}</div>`;
+    return `<div style="font-size:${cfg.fontSize}pt;font-weight:${cfg.bold ? 700 : 400};line-height:1.05;margin-bottom:${this.gap(cfg)}mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;${decoration}">${this.escape(text)}</div>`;
   }
 
   /** An inline text item (used to place two fields side by side on one row). */
@@ -144,9 +155,9 @@ export class LabelPrintService {
   }
 
   /** A single row holding one or more inline spans, spaced apart and centered by the parent's text-align. */
-  private row(spans: string[]): string {
+  private row(spans: string[], gapMm = 0): string {
     const sep = '<span style="display:inline-block;width:2.5mm;"></span>';
-    return `<div style="line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${spans.join(sep)}</div>`;
+    return `<div style="line-height:1.05;margin-bottom:${gapMm}mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${spans.join(sep)}</div>`;
   }
 
   private escape(s: string): string {
@@ -173,6 +184,10 @@ export class LabelPrintService {
 <style>
   @page { size: ${w}mm ${h}mm; margin: 0; }
   * { box-sizing: border-box; }
+  /* Stop Chrome's text-autosizing from inflating the fonts in this bare print
+     window (the app itself is reset, this popup is not) so the printed label
+     matches the on-screen preview exactly. */
+  html, body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   html, body { margin: 0; padding: 0; }
   body { font-family: Arial, "Noto Sans Tamil", sans-serif; }
   .label {
