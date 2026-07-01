@@ -91,7 +91,8 @@ export class LabelPrintService {
       priceMrpSpans.push(this.span(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
     }
     if (priceMrpSpans.length) {
-      const gapMm = Math.max(hasPrice ? this.gap(f.price) : 0, hasMrp ? this.gap(f.mrp) : 0);
+      // Combined row: use the primary present field's gap (price, else MRP).
+      const gapMm = hasPrice ? this.gap(f.price) : this.gap(f.mrp);
       textRows.push(this.row(priceMrpSpans, gapMm));
     }
 
@@ -103,10 +104,8 @@ export class LabelPrintService {
       dateSpans.push(this.span(`${f.expiryDate.prefix || ''}${this.formatDate(product.expiryDate)}`, f.expiryDate));
     }
     if (dateSpans.length) {
-      const gapMm = Math.max(
-        (f.packedDate?.show && product.packedDate) ? this.gap(f.packedDate) : 0,
-        (f.expiryDate?.show && product.expiryDate) ? this.gap(f.expiryDate) : 0
-      );
+      // Combined row: use the primary present field's gap (pack date, else expiry).
+      const gapMm = (f.packedDate?.show && product.packedDate) ? this.gap(f.packedDate) : this.gap(f.expiryDate);
       textRows.push(this.row(dateSpans, gapMm));
     }
 
@@ -137,10 +136,10 @@ export class LabelPrintService {
     return `${textBlock}${codeBlock}`;
   }
 
-  /** Bottom spacing for a field/row, in mm. Defaults to 0 (tight) when unset. */
+  /** Bottom spacing for a field/row, in mm. Negative values pull the next row up. Defaults to 0. */
   private gap(cfg?: { gapMm?: number }): number {
     const g = cfg?.gapMm;
-    return (typeof g === 'number' && g >= 0) ? g : 0;
+    return (typeof g === 'number' && Number.isFinite(g)) ? g : 0;
   }
 
   private line(text: string, cfg: { fontSize: number; bold: boolean; gapMm?: number }, strike = false): string {
@@ -177,7 +176,7 @@ export class LabelPrintService {
     const horizontal = (design.layout || 'horizontal') === 'horizontal';
 
     const labels = await Promise.all(
-      products.map(async p => `<div class="label">${await this.renderLabelInner(template, p)}</div>`)
+      products.map(async p => `<div class="label"><div class="fit">${await this.renderLabelInner(template, p)}</div></div>`)
     );
 
     return `<!doctype html><html><head><meta charset="utf-8"><title>Label</title>
@@ -185,25 +184,54 @@ export class LabelPrintService {
   @page { size: ${w}mm ${h}mm; margin: 0; }
   * { box-sizing: border-box; }
   /* Stop Chrome's text-autosizing from inflating the fonts in this bare print
-     window (the app itself is reset, this popup is not) so the printed label
-     matches the on-screen preview exactly. */
+     window (the app itself is reset, this popup is not). */
   html, body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   html, body { margin: 0; padding: 0; }
   body { font-family: Arial, "Noto Sans Tamil", sans-serif; }
+  /* .label is the fixed physical box (clips); .fit holds the content and is
+     scaled down to fit so nothing is ever clipped and print matches preview. */
   .label {
     width: ${w}mm; height: ${h}mm; padding: ${pad}mm;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; page-break-after: always;
+  }
+  .label:last-child { page-break-after: auto; }
+  .fit {
     display: flex;
     flex-direction: ${horizontal ? 'row' : 'column'};
     align-items: center;
     justify-content: ${horizontal ? 'space-between' : 'center'};
     text-align: ${align};
-    overflow: hidden; page-break-after: always;
+    transform-origin: center center;
   }
-  .label:last-child { page-break-after: auto; }
   .barcode { display: block; }
 </style></head>
-<body onload="window.focus(); window.print();">
+<body>
 ${labels.join('\n')}
+<script>
+  function fitLabels() {
+    var labels = document.querySelectorAll('.label');
+    for (var i = 0; i < labels.length; i++) {
+      var label = labels[i];
+      var fit = label.querySelector('.fit');
+      if (!fit) continue;
+      fit.style.transform = '';
+      var cs = getComputedStyle(label);
+      var availW = label.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      var availH = label.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var cw = fit.offsetWidth, ch = fit.offsetHeight;
+      if (cw > 0 && ch > 0) {
+        var s = Math.min(1, availW / cw, availH / ch);
+        if (s < 1) { fit.style.transform = 'scale(' + s + ')'; }
+      }
+    }
+  }
+  window.addEventListener('load', function () {
+    fitLabels();
+    window.focus();
+    window.print();
+  });
+</script>
 </body></html>`;
   }
 
