@@ -6,8 +6,8 @@
         <mat-icon>shopping_cart</mat-icon>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ orders.length | number }}</div>
-        <div class="stat-label">Total Orders</div>
+        <div class="stat-value">{{ filteredOrders.length | number }}</div>
+        <div class="stat-label">{{ hasActiveFilters() ? 'Orders (filtered)' : 'Total Orders' }}</div>
       </div>
     </div>
     <div class="stat-card stat-revenue">
@@ -15,7 +15,7 @@
         <mat-icon>account_balance_wallet</mat-icon>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ todayRevenue | currency:'INR':'symbol':'1.0-0' }}</div>
+        <div class="stat-value">{{ filteredRevenue | currency:'INR':'symbol':'1.0-0' }}</div>
         <div class="stat-label">Revenue</div>
       </div>
     </div>
@@ -24,7 +24,7 @@
         <mat-icon>local_shipping</mat-icon>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ getActiveDeliveriesCount() }}</div>
+        <div class="stat-value">{{ filteredActiveCount }}</div>
         <div class="stat-label">Active Deliveries</div>
       </div>
     </div>
@@ -33,8 +33,8 @@
         <mat-icon>check_circle</mat-icon>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ completedOrders.length }}</div>
-        <div class="stat-label">Delivered</div>
+        <div class="stat-value">{{ filteredCompletedCount }}</div>
+        <div class="stat-label">Completed</div>
       </div>
     </div>
   </div>
@@ -64,13 +64,15 @@
       <div class="date-filters">
         <input type="date"
                [(ngModel)]="fromDate"
-               (change)="onDateFilterChange()"
+               (change)="onFromDateChange()"
+               [max]="getMaxFromDate()"
                class="date-input"
                title="From Date">
         <span class="date-separator">to</span>
         <input type="date"
                [(ngModel)]="toDate"
-               (change)="onDateFilterChange()"
+               (change)="onToDateChange()"
+               [min]="getMinToDate()"
                class="date-input"
                title="To Date">
         <button class="clear-date-btn" (click)="clearDateFilter()" *ngIf="fromDate || toDate" title="Clear dates">
@@ -86,6 +88,10 @@
       <button class="export-btn" (click)="exportOrders()">
         <mat-icon>file_download</mat-icon>
         Export
+      </button>
+      <button class="reset-btn" (click)="resetFilters()" *ngIf="hasActiveFilters()" title="Clear all filters">
+        <mat-icon>filter_alt_off</mat-icon>
+        Reset
       </button>
       <button class="refresh-btn" (click)="loadDashboardData()">
         <mat-icon>refresh</mat-icon>
@@ -237,8 +243,8 @@
             <div class="empty-content">
               <mat-icon>inbox</mat-icon>
               <div class="empty-title">No orders found</div>
-              <div class="empty-subtitle" *ngIf="searchTerm || statusFilter !== 'ALL'">Try adjusting your search or filter</div>
-              <div class="empty-subtitle" *ngIf="!searchTerm && statusFilter === 'ALL'">Orders will appear here when customers place them</div>
+              <div class="empty-subtitle" *ngIf="hasActiveFilters()">No orders match the current filters — try changing the date range or press Reset</div>
+              <div class="empty-subtitle" *ngIf="!hasActiveFilters()">Orders will appear here when customers place them</div>
             </div>
           </td>
         </tr>
