@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LabelTemplateService } from '../../../../core/services/label-template.service';
@@ -73,7 +73,8 @@ export class LabelDesignerComponent implements OnInit {
     private labelTemplateService: LabelTemplateService,
     private printService: LabelPrintService,
     private sanitizer: DomSanitizer,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private host: ElementRef<HTMLElement>
   ) {}
 
   ngOnInit(): void {
@@ -126,14 +127,43 @@ export class LabelDesignerComponent implements OnInit {
     const h = tpl.labelHeightMm;
     const pad = this.design.paddingMm;
     const align = this.design.align || 'center';
-    const wrapper =
-      `<div style="width:${w}mm;height:${h}mm;padding:${pad}mm;` +
-      `display:flex;flex-direction:${horizontal ? 'row' : 'column'};` +
+    // Mirror the print structure: a fixed .preview-label box that clips, holding
+    // a .preview-fit content block that we scale down to fit (same as printing).
+    const fit =
+      `<div class="preview-fit" style="display:flex;flex-direction:${horizontal ? 'row' : 'column'};` +
       `align-items:center;justify-content:${horizontal ? 'space-between' : 'center'};` +
-      `text-align:${align};overflow:hidden;` +
+      `text-align:${align};transform-origin:center center;">${inner}</div>`;
+    const wrapper =
+      `<div class="preview-label" style="width:${w}mm;height:${h}mm;padding:${pad}mm;` +
+      `display:flex;align-items:center;justify-content:center;overflow:hidden;` +
       `font-family:Arial,'Noto Sans Tamil',sans-serif;background:#fff;` +
-      `border:1px solid #bbb;box-shadow:0 1px 4px rgba(0,0,0,0.15);">${inner}</div>`;
+      `border:1px solid #bbb;box-shadow:0 1px 4px rgba(0,0,0,0.15);">${fit}</div>`;
     this.previewHtml = this.sanitizer.bypassSecurityTrustHtml(wrapper);
+    // Scale after the DOM updates so the preview matches the printed (scaled) label.
+    // Run twice: immediately, then again after the barcode image has decoded.
+    setTimeout(() => this.scalePreview(), 0);
+    setTimeout(() => this.scalePreview(), 150);
+  }
+
+  /** Shrink the preview content to fit its label box, mirroring the print-time fit. */
+  private scalePreview(): void {
+    const el = this.host.nativeElement;
+    const label = el.querySelector('.preview-label') as HTMLElement | null;
+    const fit = el.querySelector('.preview-fit') as HTMLElement | null;
+    if (!label || !fit) {
+      return;
+    }
+    fit.style.transform = '';
+    const cs = getComputedStyle(label);
+    const availW = label.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH = label.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const cw = fit.offsetWidth, ch = fit.offsetHeight;
+    if (cw > 0 && ch > 0) {
+      const s = Math.min(1, availW / cw, availH / ch);
+      if (s < 1) {
+        fit.style.transform = `scale(${s})`;
+      }
+    }
   }
 
   applyPreset(w: number, h: number): void {

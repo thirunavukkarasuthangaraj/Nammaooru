@@ -80,6 +80,10 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Statistics
   todayRevenue = 0;
   todayProfit = 0;
+  // Stats for the cards — always computed from the currently filtered orders
+  filteredRevenue = 0;
+  filteredActiveCount = 0;
+  filteredCompletedCount = 0;
   profitMargin = 20; // Default 20% profit margin
 
   // Assignment state
@@ -506,9 +510,38 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       return matchesSearch && matchesStatus && matchesDate;
     });
 
+    // Recalculate the stat cards from the filtered list so they always
+    // reflect the active search/status/date filters
+    this.updateFilteredStats();
+
     // Reset infinite scroll when filter changes
     this.displayedCount = 20;
     this.currentPage = 1;
+  }
+
+  // Stats shown in the cards — computed from filteredOrders
+  private updateFilteredStats(): void {
+    const active = ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+    const completed = ['DELIVERED', 'SELF_PICKUP_COLLECTED'];
+
+    this.filteredRevenue = this.filteredOrders
+      .filter(o => o.status !== 'CANCELLED')
+      .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    this.filteredActiveCount = this.filteredOrders.filter(o => active.includes(o.status)).length;
+    this.filteredCompletedCount = this.filteredOrders.filter(o => completed.includes(o.status)).length;
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(this.searchTerm || this.fromDate || this.toDate || this.statusFilter !== 'ALL');
+  }
+
+  // Clear ALL filters (search, status, dates) and show everything again
+  resetFilters(): void {
+    this.searchTerm = '';
+    this.statusFilter = 'ALL';
+    this.fromDate = '';
+    this.toDate = '';
+    this.applyFilter();
   }
 
   matchesDateFilter(order: ShopOwnerOrder): boolean {
@@ -516,62 +549,42 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    const orderDate = new Date(order.createdAt);
-    const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
-
-    if (this.fromDate) {
-      const from = new Date(this.fromDate);
-      const fromDateOnly = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-      if (orderDateOnly < fromDateOnly) {
-        return false;
-      }
+    // Compare using the same IST calendar date that is displayed in the table,
+    // otherwise orders after ~6:30 PM IST fall on the wrong (UTC) day.
+    const orderDay = this.getOrderDateIST(order.createdAt);
+    if (!orderDay) {
+      return true;
     }
 
-    if (this.toDate) {
-      const to = new Date(this.toDate);
-      const toDateOnly = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-      if (orderDateOnly > toDateOnly) {
-        return false;
-      }
+    if (this.fromDate && orderDay < this.fromDate) {
+      return false;
+    }
+    if (this.toDate && orderDay > this.toDate) {
+      return false;
     }
 
     return true;
   }
 
-  onFilterChange(): void {
-    this.applyFilter();
+  // Parse a backend timestamp, treating timezone-less values as UTC
+  // (same rule used by formatOrderTime, so filter and display always agree)
+  private parseOrderDate(dateString: string): Date | null {
+    if (!dateString) return null;
+    const hasTimezone = dateString.endsWith('Z') ||
+                        /[+-]\d{2}:\d{2}$/.test(dateString) ||
+                        /[+-]\d{4}$/.test(dateString);
+    return hasTimezone ? new Date(dateString) : new Date(dateString + 'Z');
   }
 
-  matchesDateRange(order: ShopOwnerOrder): boolean {
-    if (!this.fromDate && !this.toDate) {
-      return true; // No date filter applied
-    }
+  // IST calendar date as 'yyyy-MM-dd' (same format as the <input type="date"> values)
+  private getOrderDateIST(dateString: string): string {
+    const d = this.parseOrderDate(dateString);
+    if (!d || isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  }
 
-    try {
-      const orderDate = new Date(order.createdAt);
-      const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
-
-      if (this.fromDate) {
-        const fromDateParts = this.fromDate.split('-');
-        const fromDateOnly = new Date(parseInt(fromDateParts[0]), parseInt(fromDateParts[1]) - 1, parseInt(fromDateParts[2]));
-        if (orderDateOnly < fromDateOnly) {
-          return false;
-        }
-      }
-
-      if (this.toDate) {
-        const toDateParts = this.toDate.split('-');
-        const toDateOnly = new Date(parseInt(toDateParts[0]), parseInt(toDateParts[1]) - 1, parseInt(toDateParts[2]));
-        if (orderDateOnly > toDateOnly) {
-          return false;
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error in date filtering:', error);
-      return true; // Return true if there's an error to show the order
-    }
+  onFilterChange(): void {
+    this.applyFilter();
   }
 
   clearDateFilter(): void {
