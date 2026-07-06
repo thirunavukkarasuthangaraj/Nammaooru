@@ -9,6 +9,15 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { LabelTemplateService } from '../../../../core/services/label-template.service';
+import { LabelPrintService } from '../../../../core/services/label-print.service';
+import {
+  LabelDesign,
+  LabelProductData,
+  LabelTemplate,
+  defaultLabelTemplate,
+  templateWithFieldsShown
+} from '../../../../core/models/label-template.model';
 // @ts-ignore - qrcode library doesn't have proper type definitions
 import * as QRCode from 'qrcode';
 
@@ -19,18 +28,6 @@ interface CartItem {
   mrp: number;  // MRP price
   total: number;
   discount: number;  // Discount per item (mrp - unitPrice)
-}
-
-interface LabelConfig {
-  showShopName: boolean;
-  showTamilName: boolean;
-  showEnglishName: boolean;
-  showNetQty: boolean;
-  showMrp: boolean;
-  showPackedDate: boolean;
-  showExpiryDate: boolean;
-  showBarcode: boolean;
-  showBarcodeNumber: boolean;
 }
 
 interface CustomField {
@@ -275,20 +272,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   editImagePreview: string = '';
   isSavingEdit: boolean = false;
 
-  // Label Print state
+  // Label Print state (design comes from the shared Label Designer template)
   labelQuantity: number = 1;
   showLabelConfigDialog: boolean = false;
-  labelConfig: LabelConfig = {
-    showShopName: true,
-    showTamilName: true,
-    showEnglishName: true,
-    showNetQty: true,
-    showMrp: true,
-    showPackedDate: true,
-    showExpiryDate: true,
-    showBarcode: true,
-    showBarcodeNumber: true
-  };
   labelPackedDate: string = '';
   labelExpiryDate: string = '';
   labelNetQty: string = '';
@@ -323,13 +309,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     private syncService: PosSyncService,
     private authService: AuthService,
     private swal: SwalService,
-    private shopContext: ShopContextService
+    private shopContext: ShopContextService,
+    private labelTemplateService: LabelTemplateService,
+    private labelPrintService: LabelPrintService
   ) {}
 
   ngOnInit(): void {
     this.loadShopInfo();
     this.loadLanguagePreference();
-    this.loadLabelConfig();
     this.loadReceiptLanguageSettings();
     this.loadBillSettings();
     this.initSyncStatus();
@@ -437,24 +424,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Load label configuration from localStorage
-   */
-  private loadLabelConfig(): void {
-    const saved = localStorage.getItem('pos_label_config');
-    if (saved) {
-      try {
-        this.labelConfig = { ...this.labelConfig, ...JSON.parse(saved) };
-      } catch (e) {
-        console.warn('Failed to parse saved label config:', e);
-      }
-    }
-  }
-
-  /**
-   * Save label configuration to localStorage
+   * Close the label settings dialog. The label data fields (net qty, PKD, EXP)
+   * bind live; the design itself is managed in the shared Label Designer.
    */
   saveLabelConfig(): void {
-    localStorage.setItem('pos_label_config', JSON.stringify(this.labelConfig));
+    this.showLabelConfigDialog = false;
+    this.swal.success('Saved', 'Label data saved for printing');
   }
 
   /**
@@ -2462,376 +2437,50 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Generate Code128B barcode as a PNG data URL using Canvas
-   * Produces pixel-perfect bars that scanners can reliably read
-   */
-  private generateCode128DataUrl(text: string): string {
-    // Code128 patterns indexed by VALUE (0-106), not by character
-    // Values 0-94 = printable ASCII (space through ~)
-    // Values 95-102 = special function codes (DEL, FNC3, FNC2, SHIFT, CODE C, CODE B, CODE A, FNC1)
-    // Values 103-105 = Start codes (A, B, C)
-    const PATTERNS: string[] = [
-      '11011001100', '11001101100', '11001100110', '10010011000', '10010001100', // 0-4
-      '10001001100', '10011001000', '10011000100', '10001100100', '11001001000', // 5-9
-      '11001000100', '11000100100', '10110011100', '10011011100', '10011001110', // 10-14
-      '10111001100', '10011101100', '10011100110', '11001110010', '11001011100', // 15-19
-      '11001001110', '11011100100', '11001110100', '11101101110', '11101001100', // 20-24
-      '11100101100', '11100100110', '11101100100', '11100110100', '11100110010', // 25-29
-      '11011011000', '11011000110', '11000110110', '10100011000', '10001011000', // 30-34
-      '10001000110', '10110001000', '10001101000', '10001100010', '11010001000', // 35-39
-      '11000101000', '11000100010', '10110111000', '10110001110', '10001101110', // 40-44
-      '10111011000', '10111000110', '10001110110', '11101110110', '11010001110', // 45-49
-      '11000101110', '11011101000', '11011100010', '11011101110', '11101011000', // 50-54
-      '11101000110', '11100010110', '11101101000', '11101100010', '11100011010', // 55-59
-      '11101111010', '11001000010', '11110001010', '10100110000', '10100001100', // 60-64
-      '10010110000', '10010000110', '10000101100', '10000100110', '10110010000', // 65-69
-      '10110000100', '10011010000', '10011000010', '10000110100', '10000110010', // 70-74
-      '11000010010', '11001010000', '11110111010', '11000010100', '10001111010', // 75-79
-      '10100111100', '10010111100', '10010011110', '10111100100', '10011110100', // 80-84
-      '10011110010', '11110100100', '11110010100', '11110010010', '11011011110', // 85-89
-      '11011110110', '11110110110', '10101111000', '10100011110', '10001011110', // 90-94
-      '10111101000', '10111100010', '11110101000', '11110100010', '10111011110', // 95-99
-      '10111101110', '11101011110', '11110101110', '11010000100',               // 100-103 (103=Start A)
-      '11010010000', '11010011100'                                              // 104-105 (Start B, Start C)
-    ];
-    const STOP = '1100011101011';
-
-    let pattern = PATTERNS[104]; // Start Code B
-    let checksum = 104;
-
-    for (let i = 0; i < text.length; i++) {
-      const value = text.charCodeAt(i) - 32;
-      if (value >= 0 && value < 95) {
-        pattern += PATTERNS[value];
-        checksum += (i + 1) * value;
-      }
-    }
-
-    // Checksum - use direct value index (works for ALL values 0-102)
-    const checksumValue = checksum % 103;
-    pattern += PATTERNS[checksumValue];
-    pattern += STOP;
-
-    // Canvas rendering - pixel perfect
-    const moduleWidth = 2;       // 2 pixels per module
-    const scale = 3;             // 3x for print quality
-    const mw = moduleWidth * scale; // 6 actual pixels per module
-    const quietZone = 10 * mw;  // 10 modules quiet zone
-    const height = 100 * scale;  // bar height in pixels
-    const canvasWidth = (pattern.length * mw) + (quietZone * 2);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = canvasWidth;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return '';
-
-    // White background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvasWidth, height);
-
-    // Draw bars - merge consecutive black modules into single rectangles
-    ctx.fillStyle = '#000000';
-    let idx = 0;
-    while (idx < pattern.length) {
-      if (pattern[idx] === '1') {
-        const startX = quietZone + (idx * mw);
-        let barWidth = 0;
-        while (idx < pattern.length && pattern[idx] === '1') {
-          barWidth += mw;
-          idx++;
-        }
-        ctx.fillRect(startX, 0, barWidth, height);
-      } else {
-        idx++;
-      }
-    }
-
-    return canvas.toDataURL('image/png');
-  }
-
-  /**
-   * Print product label with barcode
-   * Optimized for 50x25mm thermal labels
+   * Print product labels using the shop's saved Label Designer template, so
+   * POS labels match the design (size, fonts, barcode width/height) configured
+   * in Shop Owner -> Label Designer. Values just typed in the quick-edit
+   * (net qty, PKD, EXP) are forced onto the label even if the template hides them.
    */
   printLabel(): void {
     if (!this.editingProduct) return;
 
     const product = this.editingProduct;
     const barcode = this.editBarcode1 || this.editBarcode || product.sku || '';
-    const quantity = this.labelQuantity || 1;
+    const quantity = Math.max(1, Math.floor(this.labelQuantity || 1));
 
     if (!barcode) {
       this.swal.warning('No Barcode', 'Please add a barcode to print labels');
       return;
     }
 
-    // Generate labels HTML
-    const labelsHtml = this.generateLabelsHtml(product, barcode, quantity);
+    const labelProduct: LabelProductData = {
+      name: this.editName || product.name || '',
+      tamilName: this.editNameTamil || product.nameTamil || '',
+      sku: this.editSku || product.sku || '',
+      barcode,
+      price: this.editPrice || product.price,
+      mrp: (this.editMrp && this.editMrp > 0) ? this.editMrp : undefined,
+      netQty: this.labelNetQty || undefined,
+      packedDate: this.labelPackedDate || undefined,
+      expiryDate: this.labelExpiryDate || undefined,
+      shopName: this.shopName || ''
+    };
+    const labels = Array(quantity).fill(labelProduct);
 
-    // Open print window
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-      this.swal.error('Error', 'Please allow popups to print labels');
-      return;
-    }
+    const printWith = (template: LabelTemplate) => {
+      const forced: (keyof LabelDesign['fields'])[] = [];
+      if (this.labelNetQty) forced.push('netQty');
+      if (this.labelPackedDate) forced.push('packedDate');
+      if (this.labelExpiryDate) forced.push('expiryDate');
+      this.labelPrintService.print(templateWithFieldsShown(template, forced), labels)
+        .catch((err) => this.swal.error('Error', err?.message || 'Failed to print labels'));
+    };
 
-    printWindow.document.write(labelsHtml);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.onafterprint = () => printWindow.close();
-      printWindow.print();
-    }, 300);
-  }
-
-  /**
-   * Generate HTML for multiple labels
-   */
-  private generateLabelsHtml(product: CachedProduct, barcode: string, quantity: number): string {
-    let labels = '';
-    for (let i = 0; i < quantity; i++) {
-      labels += this.generateSingleLabelHtml(product, barcode);
-    }
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Label - ${product.name}</title>
-        <style>
-          @page {
-            size: 50mm 25mm;
-            margin: 0;
-            padding: 0;
-          }
-          @media print {
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 50mm !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .print-instructions { display: none !important; }
-            .label {
-              page-break-after: always;
-              page-break-inside: avoid;
-              border: none !important;
-            }
-            .label:last-child { page-break-after: auto; }
-          }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Noto Sans Tamil', 'Segoe UI', Arial, sans-serif;
-            width: 50mm;
-          }
-          .print-instructions {
-            width: 320px;
-            margin: 10px auto;
-            padding: 12px 16px;
-            background: #fffbeb;
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #92400e;
-            line-height: 1.6;
-          }
-          .print-instructions strong { color: #78350f; }
-          .print-instructions ul { margin: 4px 0 0 16px; }
-          .label {
-            width: 50mm;
-            height: 25mm;
-            padding: 1mm 2mm;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            border: 1px dashed #ccc;
-            background: white;
-            overflow: hidden;
-          }
-          .label-top {
-            width: 100%;
-            text-align: center;
-          }
-          .shop-name {
-            font-size: 6pt;
-            font-weight: 800;
-            color: #000;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            line-height: 1.2;
-            margin-bottom: 0.3mm;
-          }
-          .tamil-name {
-            font-size: 5pt;
-            font-weight: 600;
-            color: #000;
-            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            line-height: 1.2;
-            margin-bottom: 0.3mm;
-          }
-          .english-name {
-            font-size: 5pt;
-            font-weight: 600;
-            color: #000;
-            line-height: 1.2;
-            margin-bottom: 0.3mm;
-          }
-          .info-row {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            font-size: 5pt;
-            font-weight: 700;
-            color: #000;
-            margin-top: 0.3mm;
-            padding: 0 1mm;
-          }
-          .info-item {
-            white-space: nowrap;
-          }
-          .info-item.info-left {
-            text-align: left;
-          }
-          .info-item.info-right {
-            text-align: right;
-          }
-          .date-row {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            font-size: 4.5pt;
-            font-weight: 600;
-            color: #333;
-            margin-top: 0.3mm;
-            padding: 0 1mm;
-          }
-          .date-item {
-            white-space: nowrap;
-          }
-          .date-item.date-left {
-            text-align: left;
-          }
-          .date-item.date-right {
-            text-align: right;
-          }
-          .label-bottom {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 0.5mm;
-          }
-          .barcode {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-          }
-          .barcode img {
-            height: 8mm;
-            width: auto;
-            image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
-          }
-          .barcode-text {
-            font-size: 5pt;
-            font-family: 'Courier New', monospace;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #000;
-            text-align: center;
-            margin-top: 0.3mm;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="print-instructions">
-          <strong>Printer Settings (Important):</strong>
-          <ul>
-            <li>Paper size: <strong>50 x 25 mm</strong> (or custom)</li>
-            <li>Margins: <strong>None</strong></li>
-            <li>Scale: <strong>100%</strong> (not "Fit to page")</li>
-          </ul>
-        </div>
-        ${labels}
-      </body>
-      </html>
-    `;
-  }
-
-  /**
-   * Generate HTML for a single label
-   * Uses labelConfig for customizable label elements
-   */
-  private generateSingleLabelHtml(product: CachedProduct, barcode: string): string {
-    const config = this.labelConfig;
-    const price = this.editPrice || product.price || 0;
-    const mrp = this.editMrp || product.originalPrice || price;
-
-    let html = '<div class="label">';
-
-    // Top section - text content
-    html += '<div class="label-top">';
-
-    // Shop name row
-    if (config.showShopName && this.shopName) {
-      html += `<div class="shop-name">${this.shopName}</div>`;
-    }
-
-    // Tamil name row
-    if (config.showTamilName && product.nameTamil) {
-      html += `<div class="tamil-name">${product.nameTamil}</div>`;
-    }
-
-    // English name row
-    if (config.showEnglishName && product.name) {
-      html += `<div class="english-name">${product.name}</div>`;
-    }
-
-    // Info row (NET QTY on left, MRP on right)
-    const showNetQty = config.showNetQty && this.labelNetQty;
-    const showMrp = config.showMrp;
-    if (showNetQty || showMrp) {
-      html += '<div class="info-row">';
-      html += `<span class="info-item info-left">${showNetQty ? 'NET QTY: ' + this.labelNetQty : ''}</span>`;
-      html += `<span class="info-item info-right">${showMrp ? 'MRP: ₹' + mrp : ''}</span>`;
-      html += '</div>';
-    }
-
-    // Date row (PKD on left, EXP on right)
-    const showPkd = config.showPackedDate && this.labelPackedDate;
-    const showExp = config.showExpiryDate && this.labelExpiryDate;
-    if (showPkd || showExp) {
-      html += '<div class="date-row">';
-      html += `<span class="date-item date-left">${showPkd ? 'PKD: ' + this.labelPackedDate : ''}</span>`;
-      html += `<span class="date-item date-right">${showExp ? 'EXP: ' + this.labelExpiryDate : ''}</span>`;
-      html += '</div>';
-    }
-
-    html += '</div>'; // close label-top
-
-    // Bottom section - barcode
-    html += '<div class="label-bottom">';
-
-    // Barcode (Canvas-rendered PNG for pixel-perfect scanning)
-    if (config.showBarcode) {
-      const barcodeDataUrl = this.generateCode128DataUrl(barcode);
-      html += `<div class="barcode"><img src="${barcodeDataUrl}" alt="${barcode}"></div>`;
-    }
-
-    // Barcode number
-    if (config.showBarcodeNumber) {
-      html += `<div class="barcode-text">${barcode}</div>`;
-    }
-
-    html += '</div>'; // close label-bottom
-    html += '</div>'; // close label
-    return html;
+    this.labelTemplateService.getDefault().subscribe({
+      next: (template) => printWith(template || defaultLabelTemplate()),
+      error: () => printWith(defaultLabelTemplate())
+    });
   }
 
   /**

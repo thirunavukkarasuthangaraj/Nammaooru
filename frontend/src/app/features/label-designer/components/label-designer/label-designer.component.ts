@@ -25,19 +25,22 @@ export class LabelDesignerComponent implements OnInit {
   heightMm = 25;
   design: LabelDesign = defaultLabelDesign();
 
-  fieldKeys: (keyof LabelDesign['fields'])[] = ['name', 'price', 'mrp', 'packedDate', 'expiryDate', 'sku', 'shopName'];
+  fieldKeys: (keyof LabelDesign['fields'])[] =
+    ['shopName', 'tamilName', 'name', 'netQty', 'price', 'mrp', 'packedDate', 'expiryDate', 'sku'];
   fieldLabels: Record<keyof LabelDesign['fields'], string> = {
     name: 'Product Name',
+    tamilName: 'Tamil Name',
     price: 'Price',
     sku: 'SKU',
     shopName: 'Shop Name',
+    netQty: 'Net Qty',
     mrp: 'MRP',
     packedDate: 'Pack Date',
     expiryDate: 'Expiry Date'
   };
 
   /** Fields whose prefix text is editable in the designer. */
-  prefixFields: (keyof LabelDesign['fields'])[] = ['price', 'mrp', 'packedDate', 'expiryDate'];
+  prefixFields: (keyof LabelDesign['fields'])[] = ['netQty', 'price', 'mrp', 'packedDate', 'expiryDate'];
 
   barcodeTypes: { value: BarcodeType; label: string }[] = [
     { value: 'CODE128', label: 'Barcode (CODE128)' },
@@ -47,11 +50,13 @@ export class LabelDesignerComponent implements OnInit {
 
   // Sample product for live preview
   sample: LabelProductData = {
-    name: 'LION Deseeded 250g',
+    name: 'Black Gram',
+    tamilName: 'உளுத்தம் பருப்பு',
     sku: '8906006720077',
     barcode: '8906006720077',
     price: 95,
     mrp: 110,
+    netQty: '250g',
     packedDate: LabelDesignerComponent.isoToday(0),
     expiryDate: LabelDesignerComponent.isoToday(30),
     // Use the real shop name so the preview matches the actual printed label

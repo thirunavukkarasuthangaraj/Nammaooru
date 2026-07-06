@@ -14,6 +14,8 @@ export interface LabelFieldConfig {
 
 export interface LabelDesign {
   barcodeType: BarcodeType;
+  /** Printed barcode/QR box width in mm. 0 (or missing) = auto from height. */
+  barcodeWidthMm: number;
   barcodeHeightMm: number;
   showBarcodeText: boolean;
   paddingMm: number;
@@ -22,9 +24,11 @@ export interface LabelDesign {
   layout: 'horizontal' | 'vertical';
   fields: {
     name: LabelFieldConfig;
+    tamilName: LabelFieldConfig;
     price: LabelFieldConfig;
     sku: LabelFieldConfig;
     shopName: LabelFieldConfig;
+    netQty: LabelFieldConfig;
     mrp: LabelFieldConfig;
     packedDate: LabelFieldConfig;
     expiryDate: LabelFieldConfig;
@@ -48,10 +52,14 @@ export interface LabelTemplate {
 /** Product data rendered onto a label. */
 export interface LabelProductData {
   name: string;
+  /** Tamil product name, printed as its own line when enabled. */
+  tamilName?: string;
   sku?: string;
   barcode?: string;
   price?: number | string;
   shopName?: string;
+  /** Net quantity text, e.g. "250g" or "1kg". */
+  netQty?: string;
   /** Maximum retail price (typically the product's original/strike-through price). */
   mrp?: number | string;
   /** Packed/manufacture date. Accepts ISO (yyyy-mm-dd), Date, or display string. */
@@ -63,19 +71,23 @@ export interface LabelProductData {
 export function defaultLabelDesign(): LabelDesign {
   return {
     barcodeType: 'CODE128',
+    barcodeWidthMm: 0,
     barcodeHeightMm: 8,
     showBarcodeText: true,
     paddingMm: 1.5,
     align: 'center',
-    layout: 'horizontal',
+    // Vertical (text stacked above the barcode) matches the classic POS label.
+    layout: 'vertical',
     fields: {
-      name: { show: true, fontSize: 9, bold: true },
-      price: { show: true, fontSize: 11, bold: true, prefix: '₹' },
+      shopName: { show: true, fontSize: 7, bold: true },
+      tamilName: { show: true, fontSize: 6, bold: false },
+      name: { show: true, fontSize: 6, bold: true },
+      netQty: { show: true, fontSize: 6, bold: true, prefix: 'NET QTY: ' },
+      price: { show: true, fontSize: 7, bold: true, prefix: '₹' },
       sku: { show: false, fontSize: 6, bold: false },
-      shopName: { show: false, fontSize: 6, bold: false },
-      mrp: { show: false, fontSize: 7, bold: false, prefix: 'MRP ₹' },
-      packedDate: { show: false, fontSize: 6, bold: false, prefix: 'Pkd: ' },
-      expiryDate: { show: false, fontSize: 6, bold: false, prefix: 'Exp: ' }
+      mrp: { show: true, fontSize: 6, bold: false, prefix: 'MRP ₹' },
+      packedDate: { show: true, fontSize: 5.5, bold: false, prefix: 'PKD: ' },
+      expiryDate: { show: true, fontSize: 5.5, bold: false, prefix: 'EXP: ' }
     }
   };
 }
@@ -96,6 +108,28 @@ export function mergeLabelDesign(parsed: Partial<LabelDesign> | null | undefined
     merged.fields[key] = { ...base.fields[key], ...(parsedFields[key] || {}) };
   });
   return merged;
+}
+
+/**
+ * Return a copy of the template with the given fields forced visible.
+ * Used when the user just typed a value (e.g. an expiry date) at print time:
+ * it must print even if the saved template still hides that field.
+ */
+export function templateWithFieldsShown(
+  tpl: LabelTemplate,
+  keys: (keyof LabelDesign['fields'])[]
+): LabelTemplate {
+  if (!keys.length) {
+    return tpl;
+  }
+  let design: LabelDesign;
+  try {
+    design = mergeLabelDesign(tpl.design ? JSON.parse(tpl.design) : null);
+  } catch {
+    design = mergeLabelDesign(null);
+  }
+  keys.forEach((k) => { design.fields[k].show = true; });
+  return { ...tpl, design: JSON.stringify(design) };
 }
 
 export function defaultLabelTemplate(): LabelTemplate {
