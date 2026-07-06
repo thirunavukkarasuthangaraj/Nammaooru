@@ -91,11 +91,7 @@ export class LabelPrintService {
       priceMrpSpans.push(this.span(`${f.price.prefix || ''}${product.price}`, f.price));
     }
     if (hasMrp) {
-      // Strike through the MRP only when an actual lower selling price exists.
-      const mrpNum = Number(product.mrp);
-      const priceNum = Number(product.price);
-      const strike = !!hasPrice && Number.isFinite(mrpNum) && Number.isFinite(priceNum) && priceNum < mrpNum;
-      priceMrpSpans.push(this.span(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
+      priceMrpSpans.push(this.span(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp));
     }
     if (priceMrpSpans.length) {
       // Combined row: use the primary present field's gap (net qty, else price, else MRP).
