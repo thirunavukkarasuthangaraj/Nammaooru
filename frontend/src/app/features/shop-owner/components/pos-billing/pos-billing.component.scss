@@ -162,6 +162,7 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
   .config-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; &:last-child { border-bottom: none; } span { font-size: 13px; font-weight: 500; } }
   .config-field { margin-bottom: 12px; label { display: block; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 6px; } input { width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; outline: none; background: #fafbfc; &:focus { border-color: #43a047; background: white; } } }
   .config-field-row { display: flex; gap: 12px; .config-field { flex: 1; } }
+  .config-hint { font-size: 12px; color: #64748b; line-height: 1.5; margin: 0; strong { color: #334155; } }
   .config-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; background: #f5f6fa; border-top: 1px solid #e5e7eb; button { min-width: 100px; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 8px; } button[mat-stroked-button] { background: white; border: 2px solid #e0e0e0; color: #555; } button[mat-raised-button] { background: linear-gradient(135deg, #43a047, #2e7d32); color: white; border: none; } }
 }
 @media(max-width:480px){.label-config-dialog{max-width:95%;.config-field-row{flex-direction:column}}}

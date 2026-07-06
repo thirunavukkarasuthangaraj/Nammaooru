@@ -63,6 +63,7 @@ import { ShopPromoFormComponent } from './components/promo-codes/shop-promo-form
 import { PosBillingComponent } from './components/pos-billing/pos-billing.component';
 import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 import { CategoryCreateDialogComponent } from './components/category-create-dialog/category-create-dialog.component';
+import { LabelDatesDialogComponent } from './components/label-dates-dialog/label-dates-dialog.component';
 
 @NgModule({
   declarations: [
@@ -96,7 +97,8 @@ import { CategoryCreateDialogComponent } from './components/category-create-dial
     ShopPromoFormComponent,
     PosBillingComponent,
     BulkEditComponent,
-    CategoryCreateDialogComponent
+    CategoryCreateDialogComponent,
+    LabelDatesDialogComponent
   ],
   imports: [
     CommonModule,

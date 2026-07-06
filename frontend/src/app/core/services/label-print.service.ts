@@ -73,13 +73,20 @@ export class LabelPrintService {
     if (f.shopName?.show && product.shopName) {
       textRows.push(this.line(product.shopName, f.shopName));
     }
+    if (f.tamilName?.show && product.tamilName) {
+      textRows.push(this.line(product.tamilName, f.tamilName));
+    }
     if (f.name?.show && product.name) {
       textRows.push(this.line(product.name, f.name));
     }
-    // Price and MRP share one row; pack date and expiry date share one row.
+    // Net qty, price and MRP share one row; pack date and expiry date share one row.
+    const hasNetQty = !!(f.netQty?.show && product.netQty);
     const hasPrice = f.price?.show && product.price !== undefined && product.price !== null && product.price !== '';
     const hasMrp = f.mrp?.show && product.mrp !== undefined && product.mrp !== null && product.mrp !== '';
     const priceMrpSpans: string[] = [];
+    if (hasNetQty) {
+      priceMrpSpans.push(this.span(`${f.netQty.prefix || ''}${product.netQty}`, f.netQty));
+    }
     if (hasPrice) {
       priceMrpSpans.push(this.span(`${f.price.prefix || ''}${product.price}`, f.price));
     }
@@ -91,8 +98,8 @@ export class LabelPrintService {
       priceMrpSpans.push(this.span(`${f.mrp.prefix || ''}${product.mrp}`, f.mrp, strike));
     }
     if (priceMrpSpans.length) {
-      // Combined row: use the primary present field's gap (price, else MRP).
-      const gapMm = hasPrice ? this.gap(f.price) : this.gap(f.mrp);
+      // Combined row: use the primary present field's gap (net qty, else price, else MRP).
+      const gapMm = hasNetQty ? this.gap(f.netQty) : (hasPrice ? this.gap(f.price) : this.gap(f.mrp));
       textRows.push(this.row(priceMrpSpans, gapMm));
     }
 
@@ -119,8 +126,15 @@ export class LabelPrintService {
     if (design.barcodeType !== 'NONE' && barcodeValue) {
       const dataUrl = await this.barcodeDataUrl(barcodeValue, design);
       if (dataUrl) {
+        // Width is optional: 0/missing keeps the old behavior (auto width from
+        // height, aspect preserved). An explicit width stretches the code to
+        // exactly width x height (fill), so what you set is what prints.
+        const widthMm = Number(design.barcodeWidthMm) || 0;
+        const sizeCss = widthMm > 0
+          ? `width:${widthMm}mm;height:${design.barcodeHeightMm}mm;object-fit:fill;`
+          : `height:${design.barcodeHeightMm}mm;object-fit:contain;`;
         barcodeHtml =
-          `<img class="barcode" src="${dataUrl}" style="height:${design.barcodeHeightMm}mm;max-width:100%;max-height:100%;object-fit:contain;" />`;
+          `<img class="barcode" src="${dataUrl}" style="${sizeCss}max-width:100%;max-height:100%;" />`;
       }
     }
 

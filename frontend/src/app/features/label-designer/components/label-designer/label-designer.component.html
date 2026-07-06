@@ -74,11 +74,19 @@
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" class="num">
-          <mat-label>Barcode Height (mm)</mat-label>
+          <mat-label>Width (mm)</mat-label>
+          <input matInput type="number" min="0" step="0.5" [(ngModel)]="design.barcodeWidthMm" (ngModelChange)="updatePreview()" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="num">
+          <mat-label>Height (mm)</mat-label>
           <input matInput type="number" min="3" step="0.5" [(ngModel)]="design.barcodeHeightMm" (ngModelChange)="updatePreview()" />
         </mat-form-field>
         <mat-checkbox [(ngModel)]="design.showBarcodeText" (ngModelChange)="updatePreview()">Show number under barcode</mat-checkbox>
       </div>
+      <p class="hint" *ngIf="design.barcodeType !== 'NONE'">
+        Width and Height set the printed size of the {{ design.barcodeType === 'QR' ? 'QR code' : 'barcode' }}.
+        Leave Width at 0 to size it automatically from the height.
+      </p>
 
       <mat-divider></mat-divider>
       <h3>Fields</h3>

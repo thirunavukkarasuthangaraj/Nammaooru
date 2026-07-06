@@ -8,7 +8,8 @@ import { OfflineStorageService } from '../../../../core/services/offline-storage
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult } from '../category-create-dialog/category-create-dialog.component';
 import { LabelTemplateService } from '../../../../core/services/label-template.service';
 import { LabelPrintService } from '../../../../core/services/label-print.service';
-import { defaultLabelTemplate } from '../../../../core/models/label-template.model';
+import { LabelDesign, LabelTemplate, defaultLabelTemplate, templateWithFieldsShown } from '../../../../core/models/label-template.model';
+import { LabelDatesDialogComponent, LabelDatesDialogResult } from '../label-dates-dialog/label-dates-dialog.component';
 
 export interface ProductEditData {
   id: number;
@@ -238,13 +239,50 @@ export class ProductEditDialogComponent implements OnInit {
   }
 
   /**
-   * Print a barcode label for the current product using the saved common
-   * template. Uses the live form values so edits print without saving first.
+   * Print a barcode label for the current product. First asks for the label
+   * dates (pack date defaults to today, expiry picked from quick periods),
+   * then prints using the saved common template with the live form values.
    */
   printLabel(): void {
     if (this.isPrinting) {
       return;
     }
+    const datesRef = this.dialog.open(LabelDatesDialogComponent, {
+      width: '440px',
+      maxWidth: '95vw',
+      data: {
+        productName: this.editForm.value.customName || this.data.customName || '',
+        packedDate: this.labelPackedDate,
+        expiryDate: this.labelExpiryDate
+      }
+    });
+    datesRef.afterClosed().subscribe((dates: LabelDatesDialogResult | undefined) => {
+      if (!dates) {
+        return; // cancelled
+      }
+      this.labelPackedDate = dates.packedDate;
+      this.labelExpiryDate = dates.expiryDate;
+      this.printLabelNow();
+    });
+  }
+
+  /**
+   * The user just typed these dates in the print dialog, so they must print
+   * even if the saved template still has the date fields switched off
+   * (templates saved before the fields existed default them to hidden).
+   */
+  private templateWithDates(tpl: LabelTemplate): LabelTemplate {
+    const keys: (keyof LabelDesign['fields'])[] = [];
+    if (this.labelPackedDate) {
+      keys.push('packedDate');
+    }
+    if (this.labelExpiryDate) {
+      keys.push('expiryDate');
+    }
+    return templateWithFieldsShown(tpl, keys);
+  }
+
+  private printLabelNow(): void {
     const v = this.editForm.value;
     const mrp = v.originalPrice ?? this.data.originalPrice;
     const product = {
@@ -262,7 +300,7 @@ export class ProductEditDialogComponent implements OnInit {
     this.isPrinting = true;
     this.labelTemplateService.getDefault().subscribe({
       next: (template) => {
-        const tpl = template || defaultLabelTemplate();
+        const tpl = this.templateWithDates(template || defaultLabelTemplate());
         this.labelPrintService.print(tpl, [product])
           .catch((err) => {
             this.snackBar.open(err?.message || 'Failed to print label', 'Close', { duration: 4000 });
@@ -271,7 +309,7 @@ export class ProductEditDialogComponent implements OnInit {
       },
       error: () => {
         // No backend template available - fall back to the built-in default
-        this.labelPrintService.print(defaultLabelTemplate(), [product])
+        this.labelPrintService.print(this.templateWithDates(defaultLabelTemplate()), [product])
           .catch((err) => {
             this.snackBar.open(err?.message || 'Failed to print label', 'Close', { duration: 4000 });
           })

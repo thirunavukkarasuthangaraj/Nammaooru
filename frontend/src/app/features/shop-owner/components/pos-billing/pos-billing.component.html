@@ -782,46 +782,14 @@
           </div>
         </div>
 
-        <!-- Toggle switches section -->
+        <!-- Design is controlled by the shared Label Designer template -->
         <div class="config-section">
-          <div class="section-title">Show/Hide Elements</div>
-
-          <div class="config-item">
-            <span>Shop Name</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showShopName" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>Tamil Name</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showTamilName" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>English Name</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showEnglishName" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>Net Quantity</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showNetQty" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>MRP</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showMrp" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>Packed Date (PKD)</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showPackedDate" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>Expiry Date (EXP)</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showExpiryDate" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>Barcode</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showBarcode" color="primary"></mat-slide-toggle>
-          </div>
-          <div class="config-item">
-            <span>Barcode Number</span>
-            <mat-slide-toggle [(ngModel)]="labelConfig.showBarcodeNumber" color="primary"></mat-slide-toggle>
-          </div>
+          <div class="section-title">Label Design</div>
+          <p class="config-hint">
+            Fields, fonts, label size and barcode size are set in the
+            <strong>Label Designer</strong> (Shop Owner menu). The same design is
+            used for every label printed here and from the product edit screen.
+          </p>
         </div>
       </div>
 
