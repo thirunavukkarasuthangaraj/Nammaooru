@@ -53,9 +53,10 @@ export class ProductEditDialogComponent implements OnInit {
   isSaving = false;
   isPrinting = false;
 
-  // Per-print label dates (not saved to the product). Pack date defaults to today.
+  // Per-print label data (not saved to the product). Pack date defaults to today.
   labelPackedDate = new Date().toISOString().slice(0, 10);
   labelExpiryDate = '';
+  labelNetQty = '';
 
   constructor(
     private fb: FormBuilder,
@@ -253,7 +254,8 @@ export class ProductEditDialogComponent implements OnInit {
       data: {
         productName: this.editForm.value.customName || this.data.customName || '',
         packedDate: this.labelPackedDate,
-        expiryDate: this.labelExpiryDate
+        expiryDate: this.labelExpiryDate,
+        netQty: this.labelNetQty
       }
     });
     datesRef.afterClosed().subscribe((dates: LabelDatesDialogResult | undefined) => {
@@ -262,6 +264,7 @@ export class ProductEditDialogComponent implements OnInit {
       }
       this.labelPackedDate = dates.packedDate;
       this.labelExpiryDate = dates.expiryDate;
+      this.labelNetQty = dates.netQty;
       this.printLabelNow();
     });
   }
@@ -279,6 +282,9 @@ export class ProductEditDialogComponent implements OnInit {
     if (this.labelExpiryDate) {
       keys.push('expiryDate');
     }
+    if (this.labelNetQty) {
+      keys.push('netQty');
+    }
     return templateWithFieldsShown(tpl, keys);
   }
 
@@ -287,11 +293,13 @@ export class ProductEditDialogComponent implements OnInit {
     const mrp = v.originalPrice ?? this.data.originalPrice;
     const product = {
       name: v.customName || this.data.customName || '',
+      tamilName: v.nameTamil || this.data.nameTamil || '',
       sku: v.sku || this.data.sku || '',
       barcode: (v.barcode1 || v.sku || this.data.barcode1 || this.data.sku || '').toString().trim(),
       price: v.price ?? this.data.price,
       // MRP from the product's original price (only when it's a real positive value)
       mrp: (mrp !== undefined && mrp !== null && Number(mrp) > 0) ? mrp : undefined,
+      netQty: this.labelNetQty || undefined,
       packedDate: this.labelPackedDate || undefined,
       expiryDate: this.labelExpiryDate || undefined,
       shopName: localStorage.getItem('shop_name') || localStorage.getItem('current_shop_name') || ''

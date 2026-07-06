@@ -5,11 +5,13 @@ export interface LabelDatesDialogData {
   productName?: string;
   packedDate?: string;  // ISO yyyy-mm-dd
   expiryDate?: string;  // ISO yyyy-mm-dd
+  netQty?: string;      // e.g. "250g", "1kg"
 }
 
 export interface LabelDatesDialogResult {
   packedDate: string;
   expiryDate: string;   // '' = no expiry printed
+  netQty: string;       // '' = no net qty printed
 }
 
 /**
@@ -26,6 +28,13 @@ export interface LabelDatesDialogResult {
     </h2>
     <mat-dialog-content>
       <p class="product-name" *ngIf="data?.productName">{{ data.productName }}</p>
+
+      <div class="date-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Net Qty (e.g. 250g, 1kg)</mat-label>
+          <input matInput type="text" [(ngModel)]="netQty">
+        </mat-form-field>
+      </div>
 
       <div class="date-row">
         <mat-form-field appearance="outline">
@@ -70,6 +79,7 @@ export class LabelDatesDialogComponent {
   today = this.toIso(new Date());
   packedDate: string;
   expiryDate: string;
+  netQty: string;
 
   quickOptions: { label: string; days?: number; months?: number }[] = [
     { label: '1 Week', days: 7 },
@@ -86,6 +96,7 @@ export class LabelDatesDialogComponent {
   ) {
     this.packedDate = data?.packedDate || this.today;
     this.expiryDate = data?.expiryDate || '';
+    this.netQty = data?.netQty || '';
   }
 
   /** Set expiry = pack date (today by default) + the chosen period. */
@@ -101,7 +112,11 @@ export class LabelDatesDialogComponent {
   }
 
   print(): void {
-    this.dialogRef.close({ packedDate: this.packedDate || '', expiryDate: this.expiryDate || '' });
+    this.dialogRef.close({
+      packedDate: this.packedDate || '',
+      expiryDate: this.expiryDate || '',
+      netQty: (this.netQty || '').trim()
+    });
   }
 
   cancel(): void {
