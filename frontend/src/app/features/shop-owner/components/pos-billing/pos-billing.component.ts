@@ -121,7 +121,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Products
   products: CachedProduct[] = [];
-  filteredProducts: CachedProduct[] = [];
+  // Full filtered list stays in memory; only `displayedProducts` is rendered.
+  // Rendering the whole catalog (~2500 cards) freezes the browser ("Page Unresponsive").
+  private _filteredProducts: CachedProduct[] = [];
+  displayedProducts: CachedProduct[] = [];
+  private readonly DISPLAY_PAGE_SIZE = 50;
+  private displayLimit = 50;
   searchTerm: string = '';
   barcodeBuffer: string = '';
 
@@ -147,6 +152,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Cart
   cart: CartItem[] = [];
+  // O(1) lookup for template bindings — rebuilt in calculateTotals(). Template
+  // methods run for every rendered card on every change-detection cycle, so
+  // they must not scan the cart array.
+  private cartIndex = new Map<number, CartItem>();
+  cartProducts: CachedProduct[] = [];
   subtotal: number = 0;
   taxAmount: number = 0;
   totalAmount: number = 0;
@@ -313,6 +323,37 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     private labelTemplateService: LabelTemplateService,
     private labelPrintService: LabelPrintService
   ) {}
+
+  /**
+   * All assignments to filteredProducts go through this setter so the
+   * rendered window (displayedProducts) is always capped at displayLimit.
+   */
+  get filteredProducts(): CachedProduct[] {
+    return this._filteredProducts;
+  }
+
+  set filteredProducts(list: CachedProduct[]) {
+    this._filteredProducts = list;
+    this.displayLimit = this.DISPLAY_PAGE_SIZE;
+    this.updateDisplayedProducts();
+  }
+
+  private updateDisplayedProducts(): void {
+    this.displayedProducts = this._filteredProducts.slice(0, this.displayLimit);
+  }
+
+  get hasMoreProducts(): boolean {
+    return this._filteredProducts.length > this.displayLimit;
+  }
+
+  get remainingProductsCount(): number {
+    return Math.max(this._filteredProducts.length - this.displayLimit, 0);
+  }
+
+  loadMoreProducts(): void {
+    this.displayLimit += this.DISPLAY_PAGE_SIZE;
+    this.updateDisplayedProducts();
+  }
 
   ngOnInit(): void {
     this.loadShopInfo();
@@ -1124,7 +1165,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return this.tempPrices.get(product.id)!;
     }
     // If product is in cart, use the cart item's unitPrice
-    const cartItem = this.cart.find(item => item.product.id === product.id);
+    const cartItem = this.cartIndex.get(product.id);
     if (cartItem) {
       return cartItem.unitPrice;
     }
@@ -1370,29 +1411,31 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Check if product is in cart
    */
   isInCart(product: CachedProduct): boolean {
-    return this.cart.some(item => item.product.id === product.id);
+    return this.cartIndex.has(product.id);
   }
 
   /**
    * Get quantity of product in cart
    */
   getCartQuantity(product: CachedProduct): number {
-    const item = this.cart.find(item => item.product.id === product.id);
+    const item = this.cartIndex.get(product.id);
     return item ? item.quantity : 0;
   }
 
   /**
-   * Get products that are currently in the cart (for Quick Bill display)
+   * Get products that are currently in the cart (for Quick Bill display).
+   * Returns the cached array (rebuilt on cart change) — returning a fresh
+   * array here forced Angular to rebuild the cart cards every CD cycle.
    */
   getCartProducts(): CachedProduct[] {
-    return this.cart.map(item => item.product);
+    return this.cartProducts;
   }
 
   /**
    * Get the price of a product in the cart
    */
   getCartItemPrice(product: CachedProduct): number {
-    const item = this.cart.find(item => item.product.id === product.id);
+    const item = this.cartIndex.get(product.id);
     return item ? item.unitPrice : product.price;
   }
 
@@ -1400,7 +1443,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Get the MRP of a product in the cart
    */
   getCartItemMrp(product: CachedProduct): number {
-    const item = this.cart.find(item => item.product.id === product.id);
+    const item = this.cartIndex.get(product.id);
     return item ? item.mrp : (product.originalPrice || product.price);
   }
 
@@ -1408,7 +1451,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Check if cart item price exceeds MRP
    */
   isPriceAboveMrp(product: CachedProduct): boolean {
-    const item = this.cart.find(item => item.product.id === product.id);
+    const item = this.cartIndex.get(product.id);
     if (item) {
       return item.unitPrice > item.mrp;
     }
@@ -1603,6 +1646,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Calculate totals
    */
   private calculateTotals(): void {
+    // Rebuild O(1) lookups used by template bindings (every cart mutation ends here)
+    this.cartIndex = new Map(this.cart.map(item => [item.product.id, item]));
+    this.cartProducts = this.cart.map(item => item.product);
+
     this.subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
     this.totalMrp = this.cart.reduce((sum, item) => sum + (item.mrp * item.quantity), 0);
     this.totalDiscount = this.totalMrp - this.subtotal;

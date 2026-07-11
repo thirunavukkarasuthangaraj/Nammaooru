@@ -76,6 +76,7 @@
             </div>
             <div class="product-image" (click)="addToCart(product)">
               <img *ngIf="product.imageBase64 || product.image"
+                   loading="lazy"
                    [appOfflineImg]="product.imageBase64 || product.image"
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
@@ -122,7 +123,7 @@
 
         <!-- Search Results - Show when searching -->
         <div class="products-grid quick-bill-grid" *ngIf="searchTerm && !isLoading">
-          <div *ngFor="let product of filteredProducts; trackBy: trackByProductId"
+          <div *ngFor="let product of displayedProducts; trackBy: trackByProductId"
                class="product-card billing-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)">
@@ -136,6 +137,7 @@
             </div>
             <div class="product-image" (click)="addToCart(product)">
               <img *ngIf="product.imageBase64 || product.image"
+                   loading="lazy"
                    [appOfflineImg]="product.imageBase64 || product.image"
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
@@ -182,6 +184,13 @@
             </div>
           </div>
 
+          <!-- Load More (only a window of results is rendered to keep the page fast) -->
+          <div *ngIf="hasMoreProducts" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
+            <button mat-stroked-button color="primary" (click)="loadMoreProducts()">
+              Load more ({{ remainingProductsCount }} more)
+            </button>
+          </div>
+
           <!-- No Results -->
           <div *ngIf="filteredProducts.length === 0" class="empty-products">
             <mat-icon>search_off</mat-icon>
@@ -225,7 +234,7 @@
 
         <!-- Products Grid -->
         <div class="products-grid" *ngIf="!isLoading">
-          <div *ngFor="let product of filteredProducts; trackBy: trackByProductId"
+          <div *ngFor="let product of displayedProducts; trackBy: trackByProductId"
                class="product-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)"
@@ -240,6 +249,7 @@
             </button>
             <div class="product-image">
               <img *ngIf="product.imageBase64 || product.image"
+                   loading="lazy"
                    [appOfflineImg]="product.imageBase64 || product.image"
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
@@ -258,6 +268,13 @@
                 <span class="tag" *ngFor="let tag of product.tags.slice(0, 2)">{{ tag }}</span>
               </div>
             </div>
+          </div>
+
+          <!-- Load More (only a window of results is rendered to keep the page fast) -->
+          <div *ngIf="hasMoreProducts" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
+            <button mat-stroked-button color="primary" (click)="loadMoreProducts()">
+              Load more ({{ remainingProductsCount }} more)
+            </button>
           </div>
 
           <!-- Empty State -->
