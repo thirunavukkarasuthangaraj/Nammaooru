@@ -1803,7 +1803,6 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       const tamilName = item.product.nameTamil || '';
       const rate = item.unitPrice || 0;
       const mrp = item.mrp || rate;
-      const showMrp = mrp !== rate;
       // Build name HTML based on receipt language settings from billSettings
       let nameHtml = '';
       if (bs.showEnglish && bs.showTamil && tamilName && tamilName.trim() !== englishName.trim()) {
@@ -1819,14 +1818,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Fallback to English
         nameHtml = englishName;
       }
-      // Thermal printers render strikethrough/gray as garbled dots - print MRP plain and dark
-      const rateHtml = showMrp
-        ? `<span style="font-size: ${Math.max(bodyFontSize - 1, 8)}px;">${mrp}</span><br>${rate}`
-        : `${rate}`;
       return `
       <tr>
         <td style="font-size: ${bodyFontSize}px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
-        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rateHtml}</td>
+        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${mrp}</td>
+        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rate}</td>
         <td style="font-size: ${bodyFontSize}px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
         <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
       </tr>
@@ -2017,7 +2013,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           <thead>
             <tr class="item-header">
               <th style="text-align: left;">ITEM</th>
-              <th style="text-align: right;">MRP<br>RATE</th>
+              <th style="text-align: right;">MRP</th>
+              <th style="text-align: right;">RATE</th>
               <th style="text-align: center;">QTY</th>
               <th style="text-align: right;">AMT</th>
             </tr>
