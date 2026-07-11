@@ -1803,12 +1803,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       const tamilName = item.product.nameTamil || '';
       const rate = item.unitPrice || 0;
       const mrp = item.mrp || rate;
-      const hasDiscount = item.discount > 0;
+      const showMrp = mrp !== rate;
       // Build name HTML based on receipt language settings from billSettings
       let nameHtml = '';
-      if (bs.showEnglish && bs.showTamil && tamilName) {
+      if (bs.showEnglish && bs.showTamil && tamilName && tamilName.trim() !== englishName.trim()) {
         // Both languages
-        nameHtml = `${englishName}<br><span style="font-size: ${Math.max(bodyFontSize - 3, 8)}px; color: #333;">${tamilName}</span>`;
+        nameHtml = `${englishName}<br><span style="font-size: ${Math.max(bodyFontSize - 3, 8)}px; color: #000;">${tamilName}</span>`;
       } else if (bs.showEnglish) {
         // English only
         nameHtml = englishName;
@@ -1819,9 +1819,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Fallback to English
         nameHtml = englishName;
       }
-      // Show MRP with strikethrough if there's discount
-      const rateHtml = hasDiscount
-        ? `<span style="text-decoration: line-through; color: #666; font-size: ${Math.max(bodyFontSize - 1, 8)}px;">${mrp}</span><br>${rate}`
+      // Thermal printers render strikethrough/gray as garbled dots - print MRP plain and dark
+      const rateHtml = showMrp
+        ? `<span style="font-size: ${Math.max(bodyFontSize - 1, 8)}px;">${mrp}</span><br>${rate}`
         : `${rate}`;
       return `
       <tr>
@@ -1922,22 +1922,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           }
           .shop-phone {
             font-size: ${Math.max(headerFontSize - 4, 10)}px;
-            color: #333;
+            color: #000;
+            font-weight: 700;
             margin-bottom: 2px;
           }
           .fssai-info {
             font-size: ${Math.max(footerFontSize, 8)}px;
-            color: #555;
+            color: #000;
             margin-bottom: 2px;
           }
           .order-number {
             font-size: ${Math.max(bodyFontSize, 12)}px;
             font-weight: 700;
-            background: #000;
-            color: #fff;
-            padding: 4px 8px;
-            display: inline-block;
-            border-radius: 3px;
             margin: 4px 0;
           }
           .customer-name {
@@ -1946,7 +1942,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           }
           .customer-phone {
             font-size: ${Math.max(bodyFontSize - 2, 10)}px;
-            color: #333;
+            color: #000;
           }
           .item-header th {
             font-size: ${Math.max(bodyFontSize - 2, 10)}px;
@@ -1966,7 +1962,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           }
           .footer-text {
             font-size: ${footerFontSize}px;
-            color: #666;
+            color: #000;
+            font-weight: 600;
             margin-top: 6px;
           }
           .offline-badge {
@@ -1985,7 +1982,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       </head>
       <body>
         ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
-        ${bs.showShopAddress && bs.shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #555;">${bs.shopAddress}</div>` : ''}
+        ${bs.showShopAddress && bs.shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${bs.shopAddress}</div>` : ''}
         ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">📞 ${shopPhone}</div>` : ''}
         ${bs.showGstNumber && bs.gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${bs.gstNumber}</div>` : ''}
         ${bs.showFssaiInfo && bs.fssaiNumber ? `
@@ -1995,17 +1992,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           </div>
         ` : ''}
         ${this.getCustomFieldsHtml('header', Math.max(footerFontSize, 9))}
-        <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #666;">Order Receipt</div>
+        <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">Order Receipt</div>
         <div class="divider"></div>
 
-        ${bs.showBillNumber ? `
-        <div class="center">
-          <div class="order-number">${billNumber}</div>
-        </div>
-        ` : ''}
-        ${bs.showDateTime ? `
-        <div style="font-size: ${Math.max(footerFontSize, 9)}px; text-align: center; margin-bottom: 4px;">
-          ${formattedDate} | ${formattedTime}
+        ${bs.showBillNumber || bs.showDateTime ? `
+        <div class="center order-number" style="margin-bottom: 4px;">
+          ${[
+            bs.showBillNumber ? billNumber : '',
+            bs.showDateTime ? `${formattedDate} ${formattedTime}` : ''
+          ].filter(Boolean).join(' | ')}
         </div>
         ` : ''}
         <div class="divider"></div>
@@ -2022,7 +2017,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           <thead>
             <tr class="item-header">
               <th style="text-align: left;">ITEM</th>
-              <th style="text-align: right;">RATE</th>
+              <th style="text-align: right;">MRP<br>RATE</th>
               <th style="text-align: center;">QTY</th>
               <th style="text-align: right;">AMT</th>
             </tr>
@@ -2040,10 +2035,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         ${this.totalDiscount > 0 ? `
         <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
-          <span style="font-weight: 600; color: #888;">MRP Total</span>
-          <span style="text-decoration: line-through; color: #888;">₹${this.totalMrp.toFixed(0)}</span>
+          <span style="font-weight: 600;">MRP Total</span>
+          <span style="font-weight: 600;">₹${this.totalMrp.toFixed(0)}</span>
         </div>
-        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0; color: #4caf50;">
+        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
           <span style="font-weight: 600;">You Save</span>
           <span style="font-weight: 700;">₹${this.totalDiscount.toFixed(0)}</span>
         </div>
@@ -2070,7 +2065,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           <img src="${qrCodeDataUrl}"
                alt="UPI QR Code"
                style="width: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; height: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; margin: 4px 0;">
-          <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #666;">${bs.upiId}</div>
+          <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #000;">${bs.upiId}</div>
         </div>
         ` : ''}
 
@@ -2079,7 +2074,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         ${this.getCustomFieldsHtml('footer', footerFontSize)}
 
         ${bs.footerNote ? `
-        <div class="center" style="font-size: ${footerFontSize}px; color: #888; margin: 4px 0;">
+        <div class="center" style="font-size: ${footerFontSize}px; color: #000; font-weight: 600; margin: 4px 0;">
           ${bs.footerNote}
         </div>
         ` : ''}
@@ -2197,7 +2192,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     return fields.map(f => `
       <div style="font-size: ${fontSize}px; text-align: center; margin: 2px 0;">
-        <span style="color: #666;">${f.label}:</span> <span style="font-weight: 500;">${f.value}</span>
+        <span style="color: #000;">${f.label}:</span> <span style="font-weight: 600;">${f.value}</span>
       </div>
     `).join('');
   }
