@@ -126,7 +126,14 @@ public class OrderController {
         Page<OrderResponse> response = orderService.getOrdersByShop(shopId, page, size);
         return ResponseUtil.paginated(response);
     }
-    
+
+    @GetMapping("/shop/{shopId}/stats")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderStatsByShop(@PathVariable Long shopId) {
+        Map<String, Object> stats = orderService.getOrderStatsByShop(shopId);
+        return ResponseUtil.success(stats, "Order stats fetched successfully");
+    }
+
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('USER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getOrdersByCustomer(

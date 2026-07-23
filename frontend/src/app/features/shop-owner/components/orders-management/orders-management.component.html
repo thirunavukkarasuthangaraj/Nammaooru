@@ -6,7 +6,7 @@
         <mat-icon>shopping_cart</mat-icon>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ filteredOrders.length | number }}</div>
+        <div class="stat-value">{{ (hasActiveFilters() ? filteredOrders.length : serverTotalItems) | number }}</div>
         <div class="stat-label">{{ hasActiveFilters() ? 'Orders (filtered)' : 'Total Orders' }}</div>
       </div>
     </div>

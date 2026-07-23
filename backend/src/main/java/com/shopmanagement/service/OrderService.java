@@ -46,6 +46,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -929,6 +931,47 @@ public class OrderService {
         return orders.map(order -> mapToResponse(order, orderAssignmentMap.get(order.getId())));
     }
     
+    @Transactional(readOnly = true)
+    public Map<String, Object> getOrderStatsByShop(Long shopId) {
+        List<Object[]> statusCounts = orderRepository.getOrderStatusDistribution(shopId);
+
+        Set<Order.OrderStatus> activeStatuses = EnumSet.of(
+                Order.OrderStatus.CONFIRMED,
+                Order.OrderStatus.PREPARING,
+                Order.OrderStatus.READY,
+                Order.OrderStatus.READY_FOR_PICKUP,
+                Order.OrderStatus.OUT_FOR_DELIVERY
+        );
+        Set<Order.OrderStatus> completedStatuses = EnumSet.of(
+                Order.OrderStatus.DELIVERED,
+                Order.OrderStatus.COMPLETED,
+                Order.OrderStatus.SELF_PICKUP_COLLECTED
+        );
+
+        long totalOrders = 0;
+        long activeDeliveries = 0;
+        long completedOrders = 0;
+        for (Object[] row : statusCounts) {
+            Order.OrderStatus status = (Order.OrderStatus) row[0];
+            long count = (Long) row[1];
+            totalOrders += count;
+            if (activeStatuses.contains(status)) {
+                activeDeliveries += count;
+            } else if (completedStatuses.contains(status)) {
+                completedOrders += count;
+            }
+        }
+
+        BigDecimal revenue = orderRepository.getTotalRevenueByShop(shopId);
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalOrders", totalOrders);
+        stats.put("activeDeliveries", activeDeliveries);
+        stats.put("completedOrders", completedOrders);
+        stats.put("revenue", revenue != null ? revenue : BigDecimal.ZERO);
+        return stats;
+    }
+
     @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByCustomer(Long customerId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
