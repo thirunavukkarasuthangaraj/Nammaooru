@@ -130,6 +130,64 @@ export class ShopOwnerOrderService {
       );
   }
 
+  // Server-side paginated fetch — returns the page of orders plus the true totals from the backend
+  getShopOrdersPage(shopId: string | number, page: number = 0, size: number = 20): Observable<{ orders: ShopOwnerOrder[]; totalItems: number; totalPages: number }> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    return this.http.get<{data: {content: any[], totalItems: number, totalPages: number}}>(`${this.apiUrl}/orders/shop/${shopId}`, { params })
+      .pipe(
+        map(response => {
+          const orders = response.data?.content || [];
+          const transformedOrders = orders.map((order: any) => ({
+            ...order,
+            items: (order.orderItems || []).map((item: any) => ({
+              id: item.id,
+              name: item.productName,
+              productName: item.productName,
+              quantity: item.quantity,
+              price: item.unitPrice,
+              unitPrice: item.unitPrice,
+              total: item.totalPrice,
+              totalPrice: item.totalPrice,
+              unit: 'pcs',
+              image: item.productImageUrl,
+              productImageUrl: item.productImageUrl,
+              addedByShopOwner: item.addedByShopOwner || false
+            })),
+            customerName: order.customerName,
+            customerPhone: order.customerPhone || order.deliveryPhone,
+            customerEmail: order.customerEmail,
+            customerAddress: order.fullDeliveryAddress || order.deliveryAddress,
+            deliveryAddress: order.fullDeliveryAddress || order.deliveryAddress
+          }));
+
+          return {
+            orders: transformedOrders,
+            totalItems: response.data?.totalItems || 0,
+            totalPages: response.data?.totalPages || 0
+          };
+        }),
+        catchError((error) => {
+          console.error('Error fetching shop orders page:', error);
+          return of({ orders: [], totalItems: 0, totalPages: 0 });
+        })
+      );
+  }
+
+  // Real aggregate stats (total/active/completed/revenue) computed by the DB, not limited to a loaded page
+  getShopOrderStats(shopId: string | number): Observable<{ totalOrders: number; activeDeliveries: number; completedOrders: number; revenue: number }> {
+    return this.http.get<{data: { totalOrders: number; activeDeliveries: number; completedOrders: number; revenue: number }}>(`${this.apiUrl}/orders/shop/${shopId}/stats`)
+      .pipe(
+        map(response => response.data),
+        catchError((error) => {
+          console.error('Error fetching shop order stats:', error);
+          return of({ totalOrders: 0, activeDeliveries: 0, completedOrders: 0, revenue: 0 });
+        })
+      );
+  }
+
   acceptOrder(orderId: number, estimatedTime?: string, notes?: string): Observable<ShopOwnerOrder> {
     const requestBody = {
       estimatedPreparationTime: estimatedTime,

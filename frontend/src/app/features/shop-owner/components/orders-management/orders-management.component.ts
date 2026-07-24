@@ -63,6 +63,13 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   pageSize = 10;
   currentPage = 1;
 
+  // Server-side pagination for the order list (backend is source of truth for how many orders exist)
+  serverPageSize = 50;
+  serverPage = 0;
+  serverTotalPages = 0;
+  serverTotalItems = 0;
+  hasMoreServerOrders = false;
+
   // Modal state
   showDetailsModal = false;
   selectedOrder: ShopOwnerOrder | null = null;
@@ -379,11 +386,26 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
     console.log('Loading orders for shop:', this.shopId);
 
-    // Load a larger page so recent orders (incl. just-synced POS orders) are present,
-    // not just the first 20.
-    this.orderService.getShopOrders(this.shopId, 0, 200).subscribe({
-      next: (orders) => {
-        console.log('Orders loaded successfully:', orders.length);
+    // Load real aggregate stats from the DB (not limited to whatever page is loaded below)
+    this.orderService.getShopOrderStats(this.shopId).subscribe({
+      next: (stats) => {
+        this.serverTotalItems = stats.totalOrders;
+        this.filteredRevenue = stats.revenue;
+        this.filteredActiveCount = stats.activeDeliveries;
+        this.filteredCompletedCount = stats.completedOrders;
+      },
+      error: (error) => console.error('Error loading order stats:', error)
+    });
+
+    // Reset server pagination and load the first page
+    this.serverPage = 0;
+    this.orderService.getShopOrdersPage(this.shopId, this.serverPage, this.serverPageSize).subscribe({
+      next: ({ orders, totalItems, totalPages }) => {
+        console.log('Orders loaded successfully:', orders.length, 'of', totalItems);
+        this.serverTotalPages = totalPages;
+        this.serverTotalItems = totalItems;
+        this.hasMoreServerOrders = (this.serverPage + 1) < totalPages;
+
         // Defensive: ensure newest-first regardless of backend pagination/sort quirks
         this.orders = [...orders].sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -417,7 +439,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     });
   }
 
-  updateOrderLists(): void {
+  updateOrderLists(resetScroll: boolean = true): void {
     this.filteredOrders = [...this.orders];
 
     // Filter orders by status
@@ -443,7 +465,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.calculateStatistics();
 
     // Apply filter to show correct orders based on current tab/status selection
-    this.applyFilter();
+    this.applyFilter(resetScroll);
   }
 
   calculateStatistics(): void {
@@ -485,7 +507,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     return date.toDateString() === today.toDateString();
   }
 
-  applyFilter(): void {
+  applyFilter(resetScroll: boolean = true): void {
     this.filteredOrders = this.orders.filter(order => {
       // Search filter
       const matchesSearch = !this.searchTerm ||
@@ -514,13 +536,22 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     // reflect the active search/status/date filters
     this.updateFilteredStats();
 
-    // Reset infinite scroll when filter changes
-    this.displayedCount = 20;
-    this.currentPage = 1;
+    if (resetScroll) {
+      // Reset infinite scroll when filter changes
+      this.displayedCount = 20;
+      this.currentPage = 1;
+    }
   }
 
-  // Stats shown in the cards — computed from filteredOrders
+  // Stats shown in the cards. With no filters active, these come from the DB-computed
+  // totals fetched in loadOrders() (accurate regardless of how many orders are loaded
+  // into the browser). Only recompute from the loaded/filtered page when the user has
+  // actually applied a search/status/date filter, since filtering only searches what's loaded.
   private updateFilteredStats(): void {
+    if (!this.hasActiveFilters()) {
+      return;
+    }
+
     const active = ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
     const completed = ['DELIVERED', 'SELF_PICKUP_COLLECTED'];
 
@@ -2174,18 +2205,50 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     const element = event.target;
     const atBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + this.scrollThreshold;
 
-    if (atBottom && !this.isLoadingMore && this.displayedCount < this.filteredOrders.length) {
+    if (!atBottom || this.isLoadingMore) {
+      return;
+    }
+
+    if (this.displayedCount < this.filteredOrders.length) {
+      // More of the already-loaded orders can still be revealed
+      this.displayedCount = Math.min(this.displayedCount + 10, this.filteredOrders.length);
+      return;
+    }
+
+    // Everything loaded so far has been shown — fetch the next page from the server
+    if (!this.hasActiveFilters() && this.hasMoreServerOrders) {
       this.loadMoreOrders();
     }
   }
 
+  // Fetches the next page of orders from the backend (real server-side pagination,
+  // not just revealing more of an already-capped in-memory list)
   loadMoreOrders(): void {
+    if (!this.shopId || this.isLoadingMore || !this.hasMoreServerOrders) {
+      return;
+    }
+
     this.isLoadingMore = true;
-    // Simulate loading delay for smooth UX
-    setTimeout(() => {
-      this.displayedCount = Math.min(this.displayedCount + 10, this.filteredOrders.length);
-      this.isLoadingMore = false;
-    }, 300);
+    const nextPage = this.serverPage + 1;
+    this.orderService.getShopOrdersPage(this.shopId, nextPage, this.serverPageSize).subscribe({
+      next: ({ orders, totalItems, totalPages }) => {
+        this.serverPage = nextPage;
+        this.serverTotalPages = totalPages;
+        this.serverTotalItems = totalItems;
+        this.hasMoreServerOrders = (this.serverPage + 1) < totalPages;
+
+        this.orders = [...this.orders, ...orders].sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        this.updateOrderLists(false);
+        this.displayedCount = Math.min(this.displayedCount + orders.length, this.filteredOrders.length);
+        this.isLoadingMore = false;
+      },
+      error: (error) => {
+        console.error('Error loading more orders:', error);
+        this.isLoadingMore = false;
+      }
+    });
   }
 
   getDisplayedOrdersCount(): number {
