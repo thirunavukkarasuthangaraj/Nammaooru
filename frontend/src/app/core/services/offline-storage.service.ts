@@ -233,7 +233,20 @@ export class OfflineStorageService {
   private dbReady: Promise<IDBDatabase>;
 
   constructor() {
+    this.requestPersistentStorage();
     this.dbReady = this.initializeDB();
+  }
+
+  /**
+   * Unsynced bills/products live only in this origin's IndexedDB — without
+   * persistence the browser may evict it under disk pressure.
+   */
+  private requestPersistentStorage(): void {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist()
+        .then(granted => console.log(`Persistent storage ${granted ? 'granted' : 'not granted'}`))
+        .catch(() => {});
+    }
   }
 
   /**

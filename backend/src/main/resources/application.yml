@@ -231,6 +231,7 @@ msg91:
     order-confirmation: ${MSG91_ORDER_CONFIRMATION_TEMPLATE_ID:nammaooru}
     order-status: ${MSG91_ORDER_STATUS_TEMPLATE_ID:nammaooru}
     order-delivered: ${MSG91_ORDER_DELIVERED_TEMPLATE_ID:nammaooru}
+    bill-receipt: ${MSG91_BILL_RECEIPT_TEMPLATE_ID:bill_receipt}
     marketing-test: ${MSG91_MARKETING_TEST_TEMPLATE:test}
     marketing-msg: ${MSG91_MARKETING_MSG_TEMPLATE:marketingmsg}
   whatsapp:
@@ -240,6 +241,16 @@ msg91:
     bulk-api-url: ${MSG91_WHATSAPP_BULK_URL:https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/}
   api:
     base-url: ${MSG91_API_URL:https://control.msg91.com/api/v5}
+
+# WhatsApp provider switch: "msg91" (via MSG91 relay) or "meta" (direct Meta Cloud API).
+# MSG91 config above stays intact so it can be re-enabled by switching back.
+whatsapp:
+  provider: ${WHATSAPP_PROVIDER:msg91}
+  meta:
+    phone-number-id: ${META_WA_PHONE_NUMBER_ID:}
+    access-token: ${META_WA_ACCESS_TOKEN:}
+    api-version: ${META_WA_API_VERSION:v21.0}
+    template-language: ${META_WA_TEMPLATE_LANGUAGE:en}
 
 # SMS Configuration
 sms:

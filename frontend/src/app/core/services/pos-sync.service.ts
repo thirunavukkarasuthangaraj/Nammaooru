@@ -310,6 +310,26 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
+   * Send the bill for an already-synced POS order to the customer via WhatsApp (as a PDF)
+   */
+  async sendWhatsAppBill(orderId: number, customerPhone: string, customerName?: string): Promise<void> {
+    await this.http.post(
+      `${this.apiUrl}/pos/orders/${orderId}/send-whatsapp-bill`,
+      { customerPhone, customerName }
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+  }
+
+  /**
+   * Send the bill for an already-synced POS order to the customer via email (as a PDF)
+   */
+  async sendEmailBill(orderId: number, customerEmail: string, customerName?: string): Promise<void> {
+    await this.http.post(
+      `${this.apiUrl}/pos/orders/${orderId}/send-email-bill`,
+      { customerEmail, customerName }
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+  }
+
+  /**
    * Sync all pending orders to server
    */
   async syncPendingOrders(): Promise<{ synced: number; failed: number }> {

@@ -57,6 +57,36 @@ public class PosController {
     }
 
     /**
+     * Send the bill for an already-created POS order to the customer via WhatsApp (as a PDF).
+     */
+    @PostMapping("/orders/{orderId}/send-whatsapp-bill")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Void>> sendBillViaWhatsApp(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> body) {
+        String phone = body != null ? body.get("customerPhone") : null;
+        String name = body != null ? body.get("customerName") : null;
+        log.info("Sending WhatsApp bill for order: {}", orderId);
+        posService.sendBillViaWhatsApp(orderId, phone, name);
+        return ResponseUtil.success(null, "Bill sent via WhatsApp");
+    }
+
+    /**
+     * Send the bill for an already-created POS order to the customer via email (as a PDF).
+     */
+    @PostMapping("/orders/{orderId}/send-email-bill")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Void>> sendBillViaEmail(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> body) {
+        String email = body != null ? body.get("customerEmail") : null;
+        String name = body != null ? body.get("customerName") : null;
+        log.info("Sending email bill for order: {}", orderId);
+        posService.sendBillViaEmail(orderId, email, name);
+        return ResponseUtil.success(null, "Bill sent via email");
+    }
+
+    /**
      * Get all products for a shop (for offline caching)
      * Returns lightweight product data optimized for POS
      */
