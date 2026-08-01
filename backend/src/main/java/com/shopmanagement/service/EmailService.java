@@ -85,6 +85,36 @@ public class EmailService {
         }
     }
 
+    /**
+     * Send the POS bill as a PDF email attachment. Not @Async: PosService needs
+     * the send to complete (or throw) before it reports success to the caller.
+     */
+    public void sendBillEmail(String to, String customerName, String shopName, String orderNumber,
+                               String amount, byte[] pdfBytes, String pdfFileName) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom(emailProperties.getFrom(), emailProperties.getFromName());
+            helper.setTo(to);
+            helper.setSubject("Your Bill #" + orderNumber + " - " + shopName);
+
+            String greetingName = customerName != null && !customerName.isBlank() ? customerName : "Customer";
+            String body = String.format(
+                "Hi %s,%n%nThank you for shopping at %s.%nYour bill #%s for Rs. %s is attached as a PDF.%n%nRegards,%n%s",
+                greetingName, shopName, orderNumber, amount, shopName
+            );
+            helper.setText(body, false);
+            helper.addAttachment(pdfFileName, new org.springframework.core.io.ByteArrayResource(pdfBytes));
+
+            mailSender.send(mimeMessage);
+            log.info("Bill email sent to: {} for order: {}", to, orderNumber);
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            log.error("Failed to send bill email to: {} for order: {}", to, orderNumber, e);
+            throw new RuntimeException("Failed to send bill email", e);
+        }
+    }
+
     @Async
     public void sendHtmlEmail(String to, String subject, String templateName, Map<String, Object> variables) {
         try {

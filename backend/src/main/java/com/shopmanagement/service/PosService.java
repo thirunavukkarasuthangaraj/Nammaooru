@@ -14,15 +14,20 @@ import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,6 +39,15 @@ public class PosService {
     private final ShopRepository shopRepository;
     private final ShopProductRepository shopProductRepository;
     private final CustomerRepository customerRepository;
+    private final BillPdfService billPdfService;
+    private final WhatsAppNotificationService whatsAppNotificationService;
+    private final EmailService emailService;
+
+    @Value("${app.upload.dir:./uploads}")
+    private String uploadDir;
+
+    @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
+    private String apiBaseUrl;
 
     /**
      * Create a POS order for walk-in customers
@@ -209,6 +223,92 @@ public class PosService {
         }
 
         return responses;
+    }
+
+    /**
+     * Generate the bill PDF for an order and send it to the customer via WhatsApp.
+     * phoneOverride/nameOverride let the shop owner fill in details at send-time
+     * if they weren't captured when the bill was created.
+     */
+    @Transactional
+    public void sendBillViaWhatsApp(Long orderId, String phoneOverride, String nameOverride) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        String phone = phoneOverride != null && !phoneOverride.trim().isEmpty()
+                ? phoneOverride.trim()
+                : (order.getCustomer() != null ? order.getCustomer().getMobileNumber() : null);
+
+        if (phone == null || phone.trim().isEmpty()) {
+            throw new RuntimeException("A customer phone number is required to send the bill via WhatsApp");
+        }
+
+        String name = nameOverride != null && !nameOverride.trim().isEmpty()
+                ? nameOverride.trim()
+                : (order.getCustomer() != null ? order.getCustomer().getFullName() : null);
+
+        byte[] pdfBytes = billPdfService.generateBillPdf(order);
+
+        try {
+            String fileName = "bill_" + order.getOrderNumber() + "_" + UUID.randomUUID().toString().substring(0, 8) + ".pdf";
+            Path billsDir = Paths.get(uploadDir, "bills");
+            Files.createDirectories(billsDir);
+            Files.write(billsDir.resolve(fileName), pdfBytes);
+
+            String pdfUrl = apiBaseUrl + "/uploads/bills/" + fileName;
+
+            boolean sent = whatsAppNotificationService.sendBillDocument(
+                    phone,
+                    name,
+                    order.getShop().getName(),
+                    order.getOrderNumber(),
+                    order.getTotalAmount().toPlainString(),
+                    pdfUrl,
+                    "Bill-" + order.getOrderNumber() + ".pdf"
+            );
+
+            if (!sent) {
+                throw new RuntimeException("WhatsApp send failed. Check that WhatsApp is enabled and the bill-receipt template is configured in MSG91.");
+            }
+        } catch (java.io.IOException e) {
+            log.error("Failed to store bill PDF for order {}", order.getOrderNumber(), e);
+            throw new RuntimeException("Failed to save bill PDF", e);
+        }
+    }
+
+    /**
+     * Generate the bill PDF for an order and email it to the customer.
+     * emailOverride/nameOverride let the shop owner fill in details at send-time
+     * if they weren't captured when the bill was created.
+     */
+    @Transactional
+    public void sendBillViaEmail(Long orderId, String emailOverride, String nameOverride) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        String email = emailOverride != null && !emailOverride.trim().isEmpty()
+                ? emailOverride.trim()
+                : (order.getCustomer() != null ? order.getCustomer().getEmail() : null);
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new RuntimeException("A customer email address is required to send the bill via email");
+        }
+
+        String name = nameOverride != null && !nameOverride.trim().isEmpty()
+                ? nameOverride.trim()
+                : (order.getCustomer() != null ? order.getCustomer().getFullName() : null);
+
+        byte[] pdfBytes = billPdfService.generateBillPdf(order);
+
+        emailService.sendBillEmail(
+                email,
+                name,
+                order.getShop().getName(),
+                order.getOrderNumber(),
+                order.getTotalAmount().toPlainString(),
+                pdfBytes,
+                "Bill-" + order.getOrderNumber() + ".pdf"
+        );
     }
 
     /**

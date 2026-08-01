@@ -245,20 +245,23 @@ public class DeliveryConfirmationService {
      */
     private void sendPickupOTPToCustomer(Long orderId, String otp) {
         try {
-            // TODO: Get customer details from order
-            String customerEmail = "customer@example.com"; // Get from order
-            String customerPhone = "+1234567890"; // Get from order
+            Order order = orderRepository.findById(orderId).orElse(null);
+            if (order == null || order.getCustomer() == null) {
+                log.warn("Cannot send pickup OTP — order or customer not found for order {}", orderId);
+                return;
+            }
+            String customerEmail = order.getCustomer().getEmail();
+            String customerPhone = order.getCustomer().getMobileNumber();
 
             String message = String.format(
                 "Your pickup OTP for order #%d is: %s. Please share this with the delivery partner for pickup confirmation.",
                 orderId, otp
             );
 
-            // Send email
-            emailService.sendSimpleEmail(customerEmail, "Pickup OTP - Order #" + orderId, message);
-
-            // TODO: Send SMS via SMS service
-            log.info("Pickup OTP sent to customer for order {}", orderId);
+            if (customerEmail != null && !customerEmail.isBlank()) {
+                emailService.sendSimpleEmail(customerEmail, "Pickup OTP - Order #" + orderId, message);
+            }
+            log.info("Pickup OTP sent to customer {} for order {}", customerEmail, orderId);
 
         } catch (Exception e) {
             log.error("Error sending pickup OTP to customer for order {}: {}", orderId, e.getMessage());
@@ -270,20 +273,23 @@ public class DeliveryConfirmationService {
      */
     private void sendDeliveryOTPToCustomer(Long orderId, String otp) {
         try {
-            // TODO: Get customer details from order
-            String customerEmail = "customer@example.com"; // Get from order
-            String customerPhone = "+1234567890"; // Get from order
+            Order order = orderRepository.findById(orderId).orElse(null);
+            if (order == null || order.getCustomer() == null) {
+                log.warn("Cannot send delivery OTP — order or customer not found for order {}", orderId);
+                return;
+            }
+            String customerEmail = order.getCustomer().getEmail();
+            String customerPhone = order.getCustomer().getMobileNumber();
 
             String message = String.format(
                 "Your delivery OTP for order #%d is: %s. Please share this with the delivery partner for delivery confirmation.",
                 orderId, otp
             );
 
-            // Send email
-            emailService.sendSimpleEmail(customerEmail, "Delivery OTP - Order #" + orderId, message);
-
-            // TODO: Send SMS via SMS service
-            log.info("Delivery OTP sent to customer for order {}", orderId);
+            if (customerEmail != null && !customerEmail.isBlank()) {
+                emailService.sendSimpleEmail(customerEmail, "Delivery OTP - Order #" + orderId, message);
+            }
+            log.info("Delivery OTP sent to customer {} for order {}", customerEmail, orderId);
 
         } catch (Exception e) {
             log.error("Error sending delivery OTP to customer for order {}: {}", orderId, e.getMessage());

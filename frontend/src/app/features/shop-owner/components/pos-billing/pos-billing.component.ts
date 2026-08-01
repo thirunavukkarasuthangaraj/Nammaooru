@@ -177,6 +177,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   customerPhone: string = '';
   orderNotes: string = '';
 
+  // Last bill created - needed to send it via WhatsApp/email
+  lastOrder: any = null;
+  sendingWhatsAppBill: boolean = false;
+  sendingEmailBill: boolean = false;
+
   // Sync status
   syncStatus: SyncStatus = {
     isOnline: true,
@@ -367,6 +372,37 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Check if products were added while away - force reload from IndexedDB
     this.checkForProductChanges();
+
+    this.autoSyncOnStartup();
+  }
+
+  /**
+   * The 'online' listener only fires on a network transition, so a PC booted
+   * with internet already up never auto-syncs — catch that case on page open.
+   */
+  private async autoSyncOnStartup(): Promise<void> {
+    if (!navigator.onLine) return;
+
+    try {
+      await this.syncService.updatePendingCount();
+      const status = this.syncService.getCurrentStatus();
+      const pending = status.pendingOrders + status.pendingEdits + status.pendingProductCreations;
+      if (pending === 0) return;
+
+      console.log(`Startup sync: ${pending} pending offline record(s) found, syncing...`);
+      // Same sequence as the online listener: edits -> creations -> orders
+      const edits = await this.syncService.syncPendingEdits();
+      const creations = await this.syncService.syncPendingProductCreations();
+      const orders = await this.syncService.syncPendingOrders();
+
+      const synced = edits.synced + creations.synced + orders.synced;
+      if (synced > 0) {
+        await this.loadProducts();
+        this.swal.toast(`${synced} offline record(s) synced to server`, 'success');
+      }
+    } catch (error) {
+      console.error('Startup sync failed (will retry on manual sync):', error);
+    }
   }
 
   /**
@@ -1633,6 +1669,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.customerName = '';
     this.customerPhone = '';
     this.orderNotes = '';
+    this.lastOrder = null;
     // In Quick Bill mode, keep products list empty
     // In Browse mode, show all products
     if (this.activeTab !== 'quick') {
@@ -1751,6 +1788,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           'success'
         );
 
+        // Remember the created order so it can be sent via WhatsApp afterwards.
+        // Offline orders don't have a server id yet, so WhatsApp send stays disabled until synced.
+        this.lastOrder = result.order;
+
         // Print receipt
         this.printReceipt(result.order);
 
@@ -1766,6 +1807,84 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // Show the real reason (e.g. insufficient stock) instead of a generic message
       const message = error?.error?.message || error?.message || 'Failed to create bill';
       this.swal.error('Error', message);
+    }
+  }
+
+  /**
+   * Send the last generated bill to the customer on WhatsApp as a PDF.
+   */
+  async sendBillOnWhatsApp(): Promise<void> {
+    if (!this.lastOrder) {
+      this.swal.warning('No Bill Yet', 'Print a bill first before sending it on WhatsApp');
+      return;
+    }
+
+    if (!this.lastOrder.id) {
+      this.swal.warning('Not Synced Yet', 'This bill was saved offline and needs to sync before it can be sent on WhatsApp');
+      return;
+    }
+
+    let phone = this.lastOrder.customerPhone || this.customerPhone;
+    if (!phone) {
+      const { value } = await this.swal.prompt(
+        'Customer Phone Number',
+        'Enter the customer\'s WhatsApp number to send the bill',
+        'tel'
+      );
+      if (!value) return;
+      phone = value;
+    }
+
+    this.sendingWhatsAppBill = true;
+    this.swal.loading('Sending bill on WhatsApp...');
+
+    try {
+      await this.syncService.sendWhatsAppBill(this.lastOrder.id, phone, this.lastOrder.customerName || this.customerName);
+      this.swal.close();
+      this.swal.toast('Bill sent on WhatsApp', 'success');
+    } catch (error: any) {
+      this.swal.close();
+      const message = error?.error?.message || error?.message || 'Failed to send bill on WhatsApp';
+      this.swal.error('Error', message);
+    } finally {
+      this.sendingWhatsAppBill = false;
+    }
+  }
+
+  /**
+   * Send the last generated bill to the customer by email as a PDF.
+   */
+  async sendBillOnEmail(): Promise<void> {
+    if (!this.lastOrder) {
+      this.swal.warning('No Bill Yet', 'Print a bill first before emailing it');
+      return;
+    }
+
+    if (!this.lastOrder.id) {
+      this.swal.warning('Not Synced Yet', 'This bill was saved offline and needs to sync before it can be emailed');
+      return;
+    }
+
+    const { value: email } = await this.swal.prompt(
+      'Customer Email',
+      'Enter the customer\'s email address to send the bill',
+      'email'
+    );
+    if (!email) return;
+
+    this.sendingEmailBill = true;
+    this.swal.loading('Sending bill by email...');
+
+    try {
+      await this.syncService.sendEmailBill(this.lastOrder.id, email, this.lastOrder.customerName || this.customerName);
+      this.swal.close();
+      this.swal.toast('Bill sent by email', 'success');
+    } catch (error: any) {
+      this.swal.close();
+      const message = error?.error?.message || error?.message || 'Failed to send bill by email';
+      this.swal.error('Error', message);
+    } finally {
+      this.sendingEmailBill = false;
     }
   }
 

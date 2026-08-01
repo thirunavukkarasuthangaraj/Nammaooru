@@ -52,9 +52,29 @@ public class WhatsAppNotificationService {
     
     @Value("${msg91.template.order-delivered:YOUR_ORDER_DELIVERED_TEMPLATE_ID}")
     private String orderDeliveredTemplateId;
+
+    @Value("${msg91.template.bill-receipt:bill_receipt}")
+    private String billReceiptTemplateId;
     
     @Value("${msg91.whatsapp.namespace:020b365c_912b_4032_b27e_c343ddbc1e08}")
     private String whatsappNamespace;
+
+    // Provider switch: "msg91" (default) or "meta" (direct WhatsApp Cloud API).
+    // MSG91 config stays in place so it can be re-enabled by flipping this back.
+    @Value("${whatsapp.provider:msg91}")
+    private String whatsappProvider;
+
+    @Value("${whatsapp.meta.phone-number-id:}")
+    private String metaPhoneNumberId;
+
+    @Value("${whatsapp.meta.access-token:}")
+    private String metaAccessToken;
+
+    @Value("${whatsapp.meta.api-version:v21.0}")
+    private String metaApiVersion;
+
+    @Value("${whatsapp.meta.template-language:en}")
+    private String metaTemplateLanguage;
     
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -300,10 +320,141 @@ public class WhatsAppNotificationService {
     }
 
     /**
-     * Generic WhatsApp message sender using MSG91 API v5
+     * Send the POS bill as a WhatsApp document (PDF).
+     * Requires an MSG91-approved WhatsApp template with a document header
+     * (configured via msg91.template.bill-receipt) whose body params match
+     * the order below: customer_name, shop_name, order_number, amount.
+     */
+    public boolean sendBillDocument(String mobileNumber, String customerName, String shopName,
+                                     String orderNumber, String amount, String pdfUrl, String pdfFileName) {
+        if (!whatsappEnabled) {
+            log.info("WhatsApp disabled. Would send bill {} to {} ({})", orderNumber, mobileNumber, pdfUrl);
+            return false;
+        }
+
+        // LinkedHashMap: sendWhatsAppMessage assigns body_1, body_2... in iteration order,
+        // so insertion order here must match the MSG91 template's variable order exactly.
+        Map<String, Object> templateData = new java.util.LinkedHashMap<>();
+        templateData.put("header_document", pdfUrl);
+        templateData.put("header_document_filename", pdfFileName);
+        templateData.put("customer_name", customerName != null && !customerName.isBlank() ? customerName : "Customer");
+        templateData.put("shop_name", shopName);
+        templateData.put("order_number", orderNumber);
+        templateData.put("amount", amount);
+
+        return sendWhatsAppMessage(mobileNumber, billReceiptTemplateId, templateData, "bill_receipt");
+    }
+
+    /**
+     * Generic WhatsApp template sender. Routes to the configured provider:
+     * MSG91 (default) or Meta WhatsApp Cloud API (whatsapp.provider=meta).
      */
     private boolean sendWhatsAppMessage(String mobileNumber, String templateId,
                                        Map<String, Object> templateData, String messageType) {
+        if ("meta".equalsIgnoreCase(whatsappProvider)) {
+            return sendViaMetaCloudApi(mobileNumber, templateId, templateData, messageType);
+        }
+        return sendViaMsg91(mobileNumber, templateId, templateData, messageType);
+    }
+
+    /**
+     * Send a template message directly via Meta's WhatsApp Cloud API
+     * (graph.facebook.com), bypassing MSG91. Templates must be approved in
+     * Meta WhatsApp Manager under the connected WABA.
+     */
+    private boolean sendViaMetaCloudApi(String mobileNumber, String templateName,
+                                        Map<String, Object> templateData, String messageType) {
+        try {
+            if (metaPhoneNumberId == null || metaPhoneNumberId.isBlank()
+                    || metaAccessToken == null || metaAccessToken.isBlank()) {
+                log.error("Meta WhatsApp Cloud API not configured: set whatsapp.meta.phone-number-id and whatsapp.meta.access-token");
+                return false;
+            }
+
+            String url = String.format("https://graph.facebook.com/%s/%s/messages",
+                    metaApiVersion, metaPhoneNumberId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(metaAccessToken);
+
+            List<Map<String, Object>> components = new ArrayList<>();
+
+            // Header component (image or document), same templateData keys as the MSG91 path
+            if (templateData != null && templateData.containsKey("header_image")) {
+                Map<String, Object> image = new HashMap<>();
+                image.put("link", String.valueOf(templateData.get("header_image")));
+                Map<String, Object> param = new HashMap<>();
+                param.put("type", "image");
+                param.put("image", image);
+                components.add(Map.of("type", "header", "parameters", List.of(param)));
+            } else if (templateData != null && templateData.containsKey("header_document")) {
+                Map<String, Object> document = new HashMap<>();
+                document.put("link", String.valueOf(templateData.get("header_document")));
+                Object fileName = templateData.get("header_document_filename");
+                if (fileName != null) {
+                    document.put("filename", String.valueOf(fileName));
+                }
+                Map<String, Object> param = new HashMap<>();
+                param.put("type", "document");
+                param.put("document", document);
+                components.add(Map.of("type", "header", "parameters", List.of(param)));
+            }
+
+            // Body parameters in templateData iteration order (callers use LinkedHashMap
+            // when order matters, matching the template's {{1}}, {{2}}... variables)
+            if (templateData != null && !templateData.isEmpty()) {
+                List<Map<String, Object>> bodyParams = new ArrayList<>();
+                for (Map.Entry<String, Object> entry : templateData.entrySet()) {
+                    if ("header_image".equals(entry.getKey())
+                            || "header_document".equals(entry.getKey())
+                            || "header_document_filename".equals(entry.getKey())) {
+                        continue;
+                    }
+                    Map<String, Object> param = new HashMap<>();
+                    param.put("type", "text");
+                    param.put("text", String.valueOf(entry.getValue()));
+                    bodyParams.add(param);
+                }
+                if (!bodyParams.isEmpty()) {
+                    components.add(Map.of("type", "body", "parameters", bodyParams));
+                }
+            }
+
+            Map<String, Object> template = new HashMap<>();
+            template.put("name", templateName);
+            template.put("language", Map.of("code", metaTemplateLanguage));
+            template.put("components", components);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("messaging_product", "whatsapp");
+            requestBody.put("to", formatMobileNumber(mobileNumber));
+            requestBody.put("type", "template");
+            requestBody.put("template", template);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            log.debug("Sending WhatsApp message via Meta Cloud API: {}", requestBody);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("WhatsApp {} sent via Meta Cloud API to {}", messageType, mobileNumber);
+                return true;
+            }
+            log.error("Meta Cloud API send failed ({}): {}", response.getStatusCode(), response.getBody());
+            return false;
+
+        } catch (Exception e) {
+            log.error("Error sending WhatsApp message via Meta Cloud API", e);
+            return false;
+        }
+    }
+
+    /**
+     * Generic WhatsApp message sender using MSG91 API v5
+     */
+    private boolean sendViaMsg91(String mobileNumber, String templateId,
+                                 Map<String, Object> templateData, String messageType) {
         try {
             // MSG91 WhatsApp API endpoint (correct URL)
             String url = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
@@ -328,12 +479,30 @@ public class WhatsAppNotificationService {
                 components.put("header_1", headerParam);
             }
 
+            // Add header if present (for templates with a document/PDF attachment)
+            if (templateData != null && templateData.containsKey("header_document")) {
+                Map<String, Object> headerParam = new HashMap<>();
+                headerParam.put("type", "document");
+
+                Map<String, Object> documentObject = new HashMap<>();
+                documentObject.put("link", String.valueOf(templateData.get("header_document")));
+                Object fileName = templateData.get("header_document_filename");
+                if (fileName != null) {
+                    documentObject.put("filename", String.valueOf(fileName));
+                }
+                headerParam.put("document", documentObject);
+
+                components.put("header_1", headerParam);
+            }
+
             // Add body parameters if data exists
             if (templateData != null && !templateData.isEmpty()) {
                 int paramIndex = 1;
                 for (Map.Entry<String, Object> entry : templateData.entrySet()) {
-                    // Skip header_image as it's already processed
-                    if ("header_image".equals(entry.getKey())) {
+                    // Skip header fields as they're already processed above
+                    if ("header_image".equals(entry.getKey())
+                            || "header_document".equals(entry.getKey())
+                            || "header_document_filename".equals(entry.getKey())) {
                         continue;
                     }
                     Map<String, Object> bodyParam = new HashMap<>();
