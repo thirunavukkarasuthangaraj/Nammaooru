@@ -118,6 +118,37 @@ interface CustomerOrder {
               <input matInput [(ngModel)]="searchText" (input)="applyFilter()" placeholder="e.g. 8144 or thiru">
               <mat-icon matSuffix>search</mat-icon>
             </mat-form-field>
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Show</mat-label>
+              <mat-select [(ngModel)]="inactiveDays" (selectionChange)="applyInactiveFilter()">
+                <mat-option [value]="0">All customers</mat-option>
+                <mat-option [value]="30">Not visited in 30 days</mat-option>
+                <mat-option [value]="60">Not visited in 60 days</mat-option>
+                <mat-option [value]="90">Not visited in 90 days</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- WhatsApp Offer Campaign -->
+          <div class="offer-panel" *ngIf="selectedIds.size > 0">
+            <div class="offer-header">
+              <mat-icon>campaign</mat-icon>
+              <span>{{ selectedIds.size }} customer{{ selectedIds.size === 1 ? '' : 's' }} selected -
+                approx cost {{ selectedIds.size * 0.9 | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="offer-input-row">
+              <mat-form-field appearance="outline" class="offer-field">
+                <mat-label>Offer message</mat-label>
+                <input matInput [(ngModel)]="offerText" maxlength="300"
+                       placeholder="e.g. 10% off on all groceries this week!">
+              </mat-form-field>
+              <button mat-raised-button color="primary" class="offer-send-btn"
+                      [disabled]="sendingOffer || !offerText.trim()"
+                      (click)="sendOffer()">
+                <mat-icon>send</mat-icon>
+                {{ sendingOffer ? 'Sending...' : 'Send WhatsApp Offer' }}
+              </button>
+            </div>
           </div>
 
           <div *ngIf="!loading && dataSource.data.length === 0" class="empty-state">
@@ -127,6 +158,21 @@ interface CustomerOrder {
 
           <div class="table-container" *ngIf="dataSource.data.length > 0">
             <table mat-table [dataSource]="dataSource" matSort class="customers-table">
+              <!-- Select Column -->
+              <ng-container matColumnDef="select">
+                <th mat-header-cell *matHeaderCellDef>
+                  <mat-checkbox (change)="toggleSelectAll($event.checked)"
+                                [checked]="allVisibleSelected()"
+                                [indeterminate]="selectedIds.size > 0 && !allVisibleSelected()">
+                  </mat-checkbox>
+                </th>
+                <td mat-cell *matCellDef="let customer" (click)="$event.stopPropagation()">
+                  <mat-checkbox [checked]="selectedIds.has(customer.customerId)"
+                                (change)="toggleSelect(customer)">
+                  </mat-checkbox>
+                </td>
+              </ng-container>
+
               <!-- Name Column -->
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Customer Name</th>
@@ -326,12 +372,53 @@ interface CustomerOrder {
     .table-toolbar {
       display: flex;
       justify-content: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
       padding-top: 8px;
     }
 
     .search-field {
       width: 100%;
       max-width: 400px;
+    }
+
+    .filter-field {
+      width: 100%;
+      max-width: 240px;
+    }
+
+    .offer-panel {
+      border: 1px solid #a7f3d0;
+      background: #ecfdf5;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .offer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #065f46;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .offer-input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .offer-field {
+      flex: 1;
+      min-width: 260px;
+      margin-bottom: -1.25em;
+    }
+
+    .offer-send-btn {
+      white-space: nowrap;
     }
 
     .empty-state {
@@ -515,9 +602,15 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   dataSource = new MatTableDataSource<ShopCustomer>();
-  displayedColumns = ['name', 'phone', 'totalOrders', 'totalSpent', 'averageOrderValue', 'lastOrderDate'];
+  displayedColumns = ['select', 'name', 'phone', 'totalOrders', 'totalSpent', 'averageOrderValue', 'lastOrderDate'];
   loading = false;
   searchText = '';
+  inactiveDays = 0;
+
+  // WhatsApp offer campaign
+  selectedIds = new Set<number>();
+  offerText = '';
+  sendingOffer = false;
 
   customers: ShopCustomer[] = [];
 
@@ -589,6 +682,72 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
 
   applyFilter(): void {
     this.dataSource.filter = this.searchText.trim().toLowerCase();
+  }
+
+  applyInactiveFilter(): void {
+    this.selectedIds.clear();
+    if (!this.inactiveDays) {
+      this.dataSource.data = this.customers;
+      return;
+    }
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - this.inactiveDays);
+    this.dataSource.data = this.customers.filter(
+      c => !c.lastOrderDate || c.lastOrderDate < cutoff
+    );
+  }
+
+  toggleSelect(customer: ShopCustomer): void {
+    if (this.selectedIds.has(customer.customerId)) {
+      this.selectedIds.delete(customer.customerId);
+    } else {
+      this.selectedIds.add(customer.customerId);
+    }
+  }
+
+  allVisibleSelected(): boolean {
+    const visible = this.dataSource.filteredData;
+    return visible.length > 0 && visible.every(c => this.selectedIds.has(c.customerId));
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    if (checked) {
+      this.dataSource.filteredData.forEach(c => this.selectedIds.add(c.customerId));
+    } else {
+      this.selectedIds.clear();
+    }
+  }
+
+  async sendOffer(): Promise<void> {
+    const text = this.offerText.trim();
+    if (!text || this.selectedIds.size === 0 || this.sendingOffer) {
+      return;
+    }
+    const count = this.selectedIds.size;
+    if (!confirm(`Send this offer to ${count} customer${count === 1 ? '' : 's'} on WhatsApp?\n\n"${text}"`)) {
+      return;
+    }
+    this.sendingOffer = true;
+    try {
+      const shopId = this.resolveShopId();
+      const result = await this.syncService.sendOfferToCustomers(shopId, Array.from(this.selectedIds), text);
+      const sent = result.sent ?? 0;
+      const failed = result.failed ?? 0;
+      this.snackBar.open(
+        failed > 0 ? `Offer sent to ${sent} customers (${failed} failed)` : `Offer sent to ${sent} customers`,
+        'Close', { duration: 5000 }
+      );
+      if (sent > 0) {
+        this.selectedIds.clear();
+        this.offerText = '';
+      }
+    } catch (error: any) {
+      console.error('Error sending offer:', error);
+      const message = error?.error?.message || 'Failed to send offer messages';
+      this.snackBar.open(message, 'Close', { duration: 5000 });
+    } finally {
+      this.sendingOffer = false;
+    }
   }
 
   async viewHistory(customer: ShopCustomer): Promise<void> {

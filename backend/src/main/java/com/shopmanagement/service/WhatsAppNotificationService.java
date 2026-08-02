@@ -55,6 +55,11 @@ public class WhatsAppNotificationService {
 
     @Value("${msg91.template.bill-receipt:bill_receipt}")
     private String billReceiptTemplateId;
+
+    // Marketing template for shop offers (must be approved as a MARKETING template
+    // in Meta WhatsApp Manager; variables: customer_name, shop_name, offer_text)
+    @Value("${whatsapp.template.shop-offer:shop_offer}")
+    private String shopOfferTemplateId;
     
     @Value("${msg91.whatsapp.namespace:020b365c_912b_4032_b27e_c343ddbc1e08}")
     private String whatsappNamespace;
@@ -323,6 +328,22 @@ public class WhatsAppNotificationService {
      */
     public boolean sendMarketingMessage(String mobileNumber, String templateName, Map<String, Object> templateData) {
         return sendWhatsAppMessage(mobileNumber, templateName, templateData, "marketing");
+    }
+
+    /**
+     * Send a shop offer to a customer using the approved marketing template.
+     * Template body variables, in order: customer_name, shop_name, offer_text.
+     */
+    public boolean sendShopOffer(String mobileNumber, String customerName, String shopName, String offerText) {
+        if (!whatsappEnabled) {
+            log.info("WhatsApp disabled. Would send offer to {}: {}", mobileNumber, offerText);
+            return false;
+        }
+        Map<String, Object> templateData = new java.util.LinkedHashMap<>();
+        templateData.put("customer_name", customerName != null && !customerName.isBlank() ? customerName : "Customer");
+        templateData.put("shop_name", shopName);
+        templateData.put("offer_text", offerText);
+        return sendWhatsAppMessage(mobileNumber, shopOfferTemplateId, templateData, "shop_offer");
     }
 
     /**

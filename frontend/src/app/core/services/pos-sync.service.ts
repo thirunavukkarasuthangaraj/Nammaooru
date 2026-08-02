@@ -320,6 +320,17 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
+   * Send a WhatsApp offer to selected customers of this shop
+   */
+  async sendOfferToCustomers(shopId: number, customerIds: number[], offerText: string): Promise<any> {
+    const response: any = await this.http.post(
+      `${this.apiUrl}/pos/customers/${shopId}/send-offer`,
+      { customerIds, offerText }
+    ).pipe(timeout(60000)).toPromise();
+    return response?.data || {};
+  }
+
+  /**
    * A customer's purchase history at this shop (orders with line items)
    */
   async getCustomerOrders(shopId: number, customerId: number): Promise<any[]> {

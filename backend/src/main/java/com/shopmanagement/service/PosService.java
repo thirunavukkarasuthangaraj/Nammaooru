@@ -450,6 +450,51 @@ public class PosService {
         return history;
     }
 
+    /**
+     * Send a WhatsApp offer message to selected customers of this shop.
+     * Uses the approved marketing template; returns per-customer results.
+     */
+    public Map<String, Object> sendOfferToCustomers(Long shopId, List<Long> customerIds, String offerText) {
+        if (customerIds == null || customerIds.isEmpty()) {
+            throw new RuntimeException("No customers selected");
+        }
+        if (offerText == null || offerText.trim().isEmpty()) {
+            throw new RuntimeException("Offer text is required");
+        }
+        if (customerIds.size() > 500) {
+            throw new RuntimeException("Too many customers selected (max 500 per campaign)");
+        }
+
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found: " + shopId));
+
+        int sent = 0;
+        List<Map<String, Object>> failures = new ArrayList<>();
+        for (Long customerId : customerIds) {
+            Customer customer = customerRepository.findById(customerId).orElse(null);
+            if (customer == null || customer.getMobileNumber() == null || customer.getMobileNumber().isBlank()) {
+                failures.add(Map.of("customerId", customerId, "reason", "No mobile number"));
+                continue;
+            }
+            String name = customer.getFirstName() != null ? customer.getFirstName() : "Customer";
+            boolean ok = whatsAppNotificationService.sendShopOffer(
+                    customer.getMobileNumber(), name, shop.getName(), offerText.trim());
+            if (ok) {
+                sent++;
+            } else {
+                failures.add(Map.of("customerId", customerId, "reason", "WhatsApp send failed"));
+            }
+        }
+        log.info("Shop {} offer campaign: {} sent, {} failed of {}", shopId, sent, failures.size(), customerIds.size());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("requested", customerIds.size());
+        result.put("sent", sent);
+        result.put("failed", failures.size());
+        result.put("failures", failures);
+        return result;
+    }
+
     private OrderResponse mapToResponse(Order order) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getOrderItems().stream()
                 .map(item -> OrderResponse.OrderItemResponse.builder()

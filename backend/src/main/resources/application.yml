@@ -252,6 +252,8 @@ whatsapp:
     api-version: ${META_WA_API_VERSION:v21.0}
     template-language: ${META_WA_TEMPLATE_LANGUAGE:en}
     app-secret: ${META_WA_APP_SECRET:}
+  template:
+    shop-offer: ${META_WA_OFFER_TEMPLATE:shop_offer}
 
 # SMS Configuration
 sms:

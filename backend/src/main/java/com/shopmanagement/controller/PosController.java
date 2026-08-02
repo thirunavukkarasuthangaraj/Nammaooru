@@ -101,6 +101,23 @@ public class PosController {
     }
 
     /**
+     * Send a WhatsApp offer to selected customers of this shop (marketing template).
+     */
+    @PostMapping("/customers/{shopId}/send-offer")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> sendOfferToCustomers(
+            @PathVariable Long shopId,
+            @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Number> ids = (List<Number>) body.get("customerIds");
+        String offerText = body.get("offerText") != null ? String.valueOf(body.get("offerText")) : null;
+        List<Long> customerIds = ids == null ? List.of() : ids.stream().map(Number::longValue).collect(Collectors.toList());
+        log.info("Sending offer for shop {} to {} customers", shopId, customerIds.size());
+        Map<String, Object> result = posService.sendOfferToCustomers(shopId, customerIds, offerText);
+        return ResponseUtil.success(result, "Offer messages processed");
+    }
+
+    /**
      * A customer's purchase history at this shop (orders with line items, most recent first).
      */
     @GetMapping("/customers/{shopId}/{customerId}/orders")
