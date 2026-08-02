@@ -393,26 +393,61 @@ public class PosService {
      * Used by the POS billing customer autocomplete.
      */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> searchCustomers(Long shopId, String query) {
+    public List<Map<String, Object>> searchCustomers(Long shopId, String query, int limit) {
         String q = query == null ? "" : query.trim();
-        List<Object[]> rows = orderRepository.searchShopCustomers(shopId, q, PageRequest.of(0, 10));
+        int size = Math.min(Math.max(limit, 1), 500);
+        List<Object[]> rows = orderRepository.searchShopCustomers(shopId, q, PageRequest.of(0, size));
         List<Map<String, Object>> results = new ArrayList<>();
         for (Object[] row : rows) {
-            String mobileNumber = (String) row[0];
-            String firstName = (String) row[1];
-            String lastName = (String) row[2];
+            String mobileNumber = (String) row[1];
+            String firstName = (String) row[2];
+            String lastName = (String) row[3];
             // POS-created customers get a placeholder "POS" last name - don't show it
             String name = (lastName == null || "POS".equalsIgnoreCase(lastName))
                     ? (firstName == null ? "" : firstName.trim())
                     : (firstName + " " + lastName).trim();
             Map<String, Object> entry = new HashMap<>();
+            entry.put("customerId", row[0]);
             entry.put("customerName", name);
             entry.put("customerPhone", mobileNumber);
-            entry.put("billCount", row[3]);
-            entry.put("lastOrderDate", row[4] != null ? row[4].toString() : null);
+            entry.put("billCount", row[4]);
+            entry.put("lastOrderDate", row[5] != null ? row[5].toString() : null);
+            entry.put("totalSpent", row[6]);
             results.add(entry);
         }
         return results;
+    }
+
+    /**
+     * A customer's full purchase history at this shop, most recent first, with line items.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getCustomerOrderHistory(Long shopId, Long customerId) {
+        List<Order> orders = orderRepository.findShopCustomerOrdersWithItems(shopId, customerId);
+        List<Map<String, Object>> history = new ArrayList<>();
+        for (Order order : orders) {
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("orderId", order.getId());
+            entry.put("orderNumber", order.getOrderNumber());
+            entry.put("createdAt", order.getCreatedAt() != null ? order.getCreatedAt().toString() : null);
+            entry.put("status", order.getStatus() != null ? order.getStatus().name() : null);
+            entry.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
+            entry.put("totalAmount", order.getTotalAmount());
+            List<Map<String, Object>> items = new ArrayList<>();
+            if (order.getOrderItems() != null) {
+                for (OrderItem item : order.getOrderItems()) {
+                    Map<String, Object> itemEntry = new HashMap<>();
+                    itemEntry.put("productName", item.getProductName());
+                    itemEntry.put("quantity", item.getQuantity());
+                    itemEntry.put("unitPrice", item.getUnitPrice());
+                    itemEntry.put("totalPrice", item.getTotalPrice());
+                    items.add(itemEntry);
+                }
+            }
+            entry.put("items", items);
+            history.add(entry);
+        }
+        return history;
     }
 
     private OrderResponse mapToResponse(Order order) {

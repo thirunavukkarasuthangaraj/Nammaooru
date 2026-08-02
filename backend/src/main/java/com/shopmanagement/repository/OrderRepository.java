@@ -39,7 +39,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByCustomerIdAndStatus(Long customerId, Order.OrderStatus status, Pageable pageable);
     
     // Search customers previously billed at a shop, by mobile number or name (for POS autocomplete)
-    @Query("SELECT c.mobileNumber, c.firstName, c.lastName, COUNT(o), MAX(o.createdAt) " +
+    @Query("SELECT c.id, c.mobileNumber, c.firstName, c.lastName, COUNT(o), MAX(o.createdAt), SUM(o.totalAmount) " +
            "FROM Order o JOIN o.customer c " +
            "WHERE o.shop.id = :shopId AND c.mobileNumber IS NOT NULL AND c.mobileNumber <> '' " +
            "AND (c.mobileNumber LIKE CONCAT('%', :query, '%') " +
@@ -49,6 +49,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Object[]> searchShopCustomers(@Param("shopId") Long shopId,
                                        @Param("query") String query,
                                        Pageable pageable);
+
+    // A customer's full order history at one shop, with items (for POS customer history view)
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems " +
+           "WHERE o.shop.id = :shopId AND o.customer.id = :customerId ORDER BY o.createdAt DESC")
+    List<Order> findShopCustomerOrdersWithItems(@Param("shopId") Long shopId,
+                                                @Param("customerId") Long customerId);
 
     // Find orders within date range
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")

@@ -1,25 +1,29 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomerService } from '@core/services/customer.service';
 import { AuthService } from '@core/services/auth.service';
-import { finalize } from 'rxjs/operators';
+import { PosSyncService } from '@core/services/pos-sync.service';
 
 interface ShopCustomer {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
+  customerId: number;
+  name: string;
+  phone: string;
   totalOrders: number;
   totalSpent: number;
-  lastOrderDate: Date | null;
-  status: 'active' | 'inactive';
-  loyaltyPoints: number;
   averageOrderValue: number;
-  joinDate: Date;
+  lastOrderDate: Date | null;
+}
+
+interface CustomerOrder {
+  orderId: number;
+  orderNumber: string;
+  createdAt: Date | null;
+  status: string;
+  paymentMethod: string;
+  totalAmount: number;
+  items: { productName: string; quantity: number; unitPrice: number; totalPrice: number }[];
 }
 
 @Component({
@@ -29,8 +33,8 @@ interface ShopCustomer {
       <!-- Header -->
       <div class="page-header">
         <div class="header-content">
-          <h1 class="page-title">Customer Management</h1>
-          <p class="page-subtitle">View and manage your shop's customers</p>
+          <h1 class="page-title">Customers</h1>
+          <p class="page-subtitle">Everyone you have billed at your shop</p>
         </div>
         <div class="header-actions">
           <button mat-stroked-button (click)="exportCustomers()">
@@ -60,11 +64,11 @@ interface ShopCustomer {
           <mat-card-content>
             <div class="stat-content">
               <div class="stat-icon active">
-                <mat-icon>person_check</mat-icon>
+                <mat-icon>receipt_long</mat-icon>
               </div>
               <div class="stat-details">
-                <h3>{{ getActiveCustomers() }}</h3>
-                <p>Active Customers</p>
+                <h3>{{ getTotalBills() }}</h3>
+                <p>Total Bills</p>
               </div>
             </div>
           </mat-card-content>
@@ -92,7 +96,7 @@ interface ShopCustomer {
               </div>
               <div class="stat-details">
                 <h3>{{ getLoyalCustomers() }}</h3>
-                <p>Loyal Customers</p>
+                <p>Loyal Customers (10+ bills)</p>
               </div>
             </div>
           </mat-card-content>
@@ -107,95 +111,123 @@ interface ShopCustomer {
 
       <!-- Customers Table -->
       <mat-card class="customers-table-card" *ngIf="!loading">
-        <mat-card-header>
-          <mat-card-title>Customer List</mat-card-title>
-        </mat-card-header>
         <mat-card-content>
-          <div class="table-container">
+          <div class="table-toolbar">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search by name or mobile number</mat-label>
+              <input matInput [(ngModel)]="searchText" (input)="applyFilter()" placeholder="e.g. 8144 or thiru">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+          </div>
+
+          <div *ngIf="!loading && dataSource.data.length === 0" class="empty-state">
+            <mat-icon>person_search</mat-icon>
+            <p>No customers yet. Customers appear here automatically when you add their phone number on a bill.</p>
+          </div>
+
+          <div class="table-container" *ngIf="dataSource.data.length > 0">
             <table mat-table [dataSource]="dataSource" matSort class="customers-table">
               <!-- Name Column -->
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Customer Name</th>
                 <td mat-cell *matCellDef="let customer">
-                  <div class="customer-info">
-                    <span class="customer-name">{{ customer.firstName }} {{ customer.lastName }}</span>
-                    <span class="customer-email">{{ customer.email }}</span>
-                  </div>
+                  <span class="customer-name">{{ customer.name || 'Customer' }}</span>
                 </td>
               </ng-container>
 
               <!-- Phone Column -->
               <ng-container matColumnDef="phone">
-                <th mat-header-cell *matHeaderCellDef>Phone</th>
-                <td mat-cell *matCellDef="let customer">{{ customer.phoneNumber }}</td>
+                <th mat-header-cell *matHeaderCellDef>Mobile Number</th>
+                <td mat-cell *matCellDef="let customer">{{ customer.phone }}</td>
               </ng-container>
 
               <!-- Orders Column -->
-              <ng-container matColumnDef="orders">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Total Orders</th>
+              <ng-container matColumnDef="totalOrders">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Bills</th>
                 <td mat-cell *matCellDef="let customer">{{ customer.totalOrders }}</td>
               </ng-container>
 
               <!-- Spent Column -->
-              <ng-container matColumnDef="spent">
+              <ng-container matColumnDef="totalSpent">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Total Spent</th>
                 <td mat-cell *matCellDef="let customer">{{ customer.totalSpent | currency:'INR':'symbol':'1.0-0' }}</td>
               </ng-container>
 
               <!-- Average Order Value Column -->
-              <ng-container matColumnDef="avgOrder">
-                <th mat-header-cell *matHeaderCellDef>Avg Order</th>
+              <ng-container matColumnDef="averageOrderValue">
+                <th mat-header-cell *matHeaderCellDef>Avg Bill</th>
                 <td mat-cell *matCellDef="let customer">{{ customer.averageOrderValue | currency:'INR':'symbol':'1.0-0' }}</td>
               </ng-container>
 
               <!-- Last Order Column -->
-              <ng-container matColumnDef="lastOrder">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Last Order</th>
+              <ng-container matColumnDef="lastOrderDate">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Last Visit</th>
                 <td mat-cell *matCellDef="let customer">
-                  <span *ngIf="customer.lastOrderDate">{{ customer.lastOrderDate | date:'shortDate' }}</span>
-                  <span *ngIf="!customer.lastOrderDate" class="no-orders">No orders</span>
-                </td>
-              </ng-container>
-
-              <!-- Status Column -->
-              <ng-container matColumnDef="status">
-                <th mat-header-cell *matHeaderCellDef>Status</th>
-                <td mat-cell *matCellDef="let customer">
-                  <span class="status-badge" [class]="'status-' + customer.status">
-                    {{ customer.status | titlecase }}
-                  </span>
-                </td>
-              </ng-container>
-
-              <!-- Actions Column -->
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Actions</th>
-                <td mat-cell *matCellDef="let customer">
-                  <button mat-icon-button [matMenuTriggerFor]="actionMenu">
-                    <mat-icon>more_vert</mat-icon>
-                  </button>
-                  <mat-menu #actionMenu="matMenu">
-                    <button mat-menu-item (click)="viewCustomerDetails(customer)">
-                      <mat-icon>visibility</mat-icon>
-                      View Details
-                    </button>
-                    <button mat-menu-item (click)="viewCustomerOrders(customer)">
-                      <mat-icon>receipt_long</mat-icon>
-                      View Orders
-                    </button>
-                  </mat-menu>
+                  <span *ngIf="customer.lastOrderDate">{{ customer.lastOrderDate | date:'mediumDate' }}</span>
+                  <span *ngIf="!customer.lastOrderDate" class="no-orders">-</span>
                 </td>
               </ng-container>
 
               <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                  class="customer-row"
+                  [class.selected]="selectedCustomer?.customerId === row.customerId"
+                  (click)="viewHistory(row)"></tr>
             </table>
 
-            <mat-paginator #paginator 
-                          [pageSizeOptions]="[10, 25, 50]" 
+            <mat-paginator #paginator
+                          [pageSizeOptions]="[10, 25, 50]"
                           [pageSize]="10"
                           showFirstLastButtons>
             </mat-paginator>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Purchase History Panel -->
+      <mat-card class="history-card" *ngIf="selectedCustomer">
+        <mat-card-content>
+          <div class="history-header">
+            <div>
+              <h2 class="history-title">
+                {{ selectedCustomer.name || 'Customer' }} - Purchase History
+              </h2>
+              <p class="history-subtitle">{{ selectedCustomer.phone }} | {{ customerOrders.length }} bill{{ customerOrders.length === 1 ? '' : 's' }}</p>
+            </div>
+            <button mat-icon-button (click)="closeHistory()" aria-label="Close history">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div *ngIf="loadingHistory" class="loading-container">
+            <mat-spinner diameter="36"></mat-spinner>
+            <p>Loading purchase history...</p>
+          </div>
+
+          <div *ngIf="!loadingHistory && customerOrders.length === 0" class="empty-state">
+            <p>No bills found for this customer.</p>
+          </div>
+
+          <div *ngIf="!loadingHistory" class="history-orders">
+            <div class="history-order" *ngFor="let order of customerOrders">
+              <div class="order-summary">
+                <div class="order-meta">
+                  <span class="order-number">{{ order.orderNumber }}</span>
+                  <span class="order-date">{{ order.createdAt | date:'medium' }}</span>
+                </div>
+                <div class="order-right">
+                  <span class="order-payment" *ngIf="order.paymentMethod">{{ order.paymentMethod.replace('_', ' ') | titlecase }}</span>
+                  <span class="order-total">{{ order.totalAmount | currency:'INR':'symbol':'1.0-2' }}</span>
+                </div>
+              </div>
+              <table class="order-items" *ngIf="order.items.length > 0">
+                <tr *ngFor="let item of order.items">
+                  <td class="item-name">{{ item.productName }}</td>
+                  <td class="item-qty">{{ item.quantity }} x {{ item.unitPrice | currency:'INR':'symbol':'1.0-2' }}</td>
+                  <td class="item-total">{{ item.totalPrice | currency:'INR':'symbol':'1.0-2' }}</td>
+                </tr>
+              </table>
+            </div>
           </div>
         </mat-card-content>
       </mat-card>
@@ -291,6 +323,34 @@ interface ShopCustomer {
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
+    .table-toolbar {
+      display: flex;
+      justify-content: flex-start;
+      padding-top: 8px;
+    }
+
+    .search-field {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 48px 24px;
+      color: #6b7280;
+      text-align: center;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: #9ca3af;
+      }
+    }
+
     .table-container {
       width: 100%;
       overflow-x: auto;
@@ -300,19 +360,9 @@ interface ShopCustomer {
       width: 100%;
     }
 
-    .customer-info {
-      display: flex;
-      flex-direction: column;
-    }
-
     .customer-name {
       font-weight: 500;
       color: #1f2937;
-    }
-
-    .customer-email {
-      font-size: 0.8rem;
-      color: #6b7280;
     }
 
     .no-orders {
@@ -320,22 +370,127 @@ interface ShopCustomer {
       font-style: italic;
     }
 
-    .status-badge {
-      padding: 4px 8px;
+    .customer-row {
+      cursor: pointer;
+    }
+
+    .customer-row:hover {
+      background: #f9fafb;
+    }
+
+    .customer-row.selected {
+      background: #ecfdf5;
+    }
+
+    .history-card {
+      margin-top: 24px;
       border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .history-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 2px 0;
+      color: #1f2937;
+    }
+
+    .history-subtitle {
+      color: #6b7280;
+      margin: 0;
+      font-size: 0.9rem;
+    }
+
+    .history-orders {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-order {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+
+    .order-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .order-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .order-number {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .order-date {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    .order-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .order-payment {
       font-size: 0.8rem;
-      font-weight: 500;
-      text-transform: uppercase;
+      color: #6b7280;
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 2px 10px;
     }
 
-    .status-badge.status-active {
-      background: #d1fae5;
-      color: #065f46;
+    .order-total {
+      font-weight: 700;
+      color: #059669;
+      font-size: 1.05rem;
     }
 
-    .status-badge.status-inactive {
-      background: #fee2e2;
-      color: #991b1b;
+    .order-items {
+      margin-top: 8px;
+      width: 100%;
+      border-top: 1px dashed #e5e7eb;
+      padding-top: 8px;
+      font-size: 0.9rem;
+      border-collapse: collapse;
+    }
+
+    .order-items td {
+      padding: 3px 0;
+    }
+
+    .item-name {
+      color: #374151;
+    }
+
+    .item-qty {
+      color: #6b7280;
+      text-align: right;
+      padding-right: 16px !important;
+      white-space: nowrap;
+    }
+
+    .item-total {
+      text-align: right;
+      color: #1f2937;
+      white-space: nowrap;
     }
 
     @media (max-width: 768px) {
@@ -355,52 +510,27 @@ interface ShopCustomer {
     }
   `]
 })
-export class CustomerManagementComponent implements OnInit {
+export class CustomerManagementComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   dataSource = new MatTableDataSource<ShopCustomer>();
-  displayedColumns = ['name', 'phone', 'orders', 'spent', 'avgOrder', 'lastOrder', 'status', 'actions'];
+  displayedColumns = ['name', 'phone', 'totalOrders', 'totalSpent', 'averageOrderValue', 'lastOrderDate'];
   loading = false;
+  searchText = '';
 
-  customers: ShopCustomer[] = [
-    {
-      id: 1,
-      firstName: 'Rajesh',
-      lastName: 'Kumar',
-      email: 'rajesh.kumar@email.com',
-      phoneNumber: '+91 9876543213',
-      totalOrders: 15,
-      totalSpent: 4500,
-      lastOrderDate: new Date('2024-01-10'),
-      status: 'active',
-      loyaltyPoints: 450,
-      averageOrderValue: 300,
-      joinDate: new Date('2023-06-15')
-    },
-    {
-      id: 2,
-      firstName: 'Priya',
-      lastName: 'Sharma',
-      email: 'priya.sharma@email.com',
-      phoneNumber: '+91 9876543214',
-      totalOrders: 8,
-      totalSpent: 2400,
-      lastOrderDate: new Date('2024-01-05'),
-      status: 'active',
-      loyaltyPoints: 240,
-      averageOrderValue: 300,
-      joinDate: new Date('2023-08-20')
-    }
-  ];
+  customers: ShopCustomer[] = [];
+
+  // Purchase history panel
+  selectedCustomer: ShopCustomer | null = null;
+  customerOrders: CustomerOrder[] = [];
+  loadingHistory = false;
 
   constructor(
     private snackBar: MatSnackBar,
-    private customerService: CustomerService,
-    private authService: AuthService
-  ) {
-    this.dataSource.data = [];
-  }
+    private authService: AuthService,
+    private syncService: PosSyncService
+  ) {}
 
   ngOnInit(): void {
     this.loadCustomers();
@@ -411,92 +541,133 @@ export class CustomerManagementComponent implements OnInit {
     this.dataSource.sort = this.sort;
   }
 
-  loadCustomers(): void {
-    this.loading = true;
-    const currentUser = this.authService.getCurrentUser();
-    
-    if (!currentUser || !currentUser.shopId) {
+  private resolveShopId(): number {
+    const currentUser: any = this.authService.getCurrentUser();
+    if (currentUser?.shopId) {
+      return Number(currentUser.shopId);
+    }
+    const storedShopId = localStorage.getItem('current_shop_id');
+    return storedShopId ? parseInt(storedShopId, 10) : 0;
+  }
+
+  async loadCustomers(): Promise<void> {
+    const shopId = this.resolveShopId();
+    if (!shopId) {
       this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
-      this.loading = false;
-      // Fallback to mock data
-      this.dataSource.data = this.customers;
       return;
     }
 
-    this.customerService.getShopCustomers(currentUser.shopId)
-      .pipe(
-        finalize(() => this.loading = false)
-      )
-      .subscribe({
-        next: (response) => {
-          // Map API response to ShopCustomer interface
-          this.customers = response.map((customer: any) => ({
-            id: customer.id,
-            firstName: customer.firstName,
-            lastName: customer.lastName,
-            email: customer.email,
-            phoneNumber: customer.phoneNumber,
-            totalOrders: customer.totalOrders || 0,
-            totalSpent: customer.totalSpent || 0,
-            lastOrderDate: customer.lastOrderDate ? new Date(customer.lastOrderDate) : null,
-            status: customer.status || 'active',
-            loyaltyPoints: customer.loyaltyPoints || 0,
-            averageOrderValue: customer.averageOrderValue || 0,
-            joinDate: new Date(customer.createdAt)
-          }));
-          
-          this.dataSource.data = this.customers;
-        },
-        error: (error) => {
-          console.error('Error loading customers:', error);
-          this.snackBar.open('Failed to load customers. Showing sample data.', 'Close', { duration: 3000 });
-          // Fallback to mock data on error
-          this.dataSource.data = this.customers;
-        }
+    this.loading = true;
+    try {
+      const results = await this.syncService.searchCustomers(shopId, '', 500);
+      this.customers = (results || []).map((c: any) => {
+        const totalOrders = Number(c.billCount) || 0;
+        const totalSpent = Number(c.totalSpent) || 0;
+        return {
+          customerId: Number(c.customerId),
+          name: c.customerName || '',
+          phone: c.customerPhone || '',
+          totalOrders,
+          totalSpent,
+          averageOrderValue: totalOrders > 0 ? totalSpent / totalOrders : 0,
+          lastOrderDate: c.lastOrderDate ? new Date(c.lastOrderDate) : null
+        };
       });
+      this.dataSource.data = this.customers;
+      // Re-attach paginator/sort after *ngIf re-renders the table
+      setTimeout(() => {
+        this.dataSource.paginator = this.paginator;
+        this.dataSource.sort = this.sort;
+      });
+    } catch (error) {
+      console.error('Error loading customers:', error);
+      this.snackBar.open('Failed to load customers', 'Close', { duration: 3000 });
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  applyFilter(): void {
+    this.dataSource.filter = this.searchText.trim().toLowerCase();
+  }
+
+  async viewHistory(customer: ShopCustomer): Promise<void> {
+    if (this.selectedCustomer?.customerId === customer.customerId) {
+      this.closeHistory();
+      return;
+    }
+    this.selectedCustomer = customer;
+    this.customerOrders = [];
+    this.loadingHistory = true;
+    try {
+      const shopId = this.resolveShopId();
+      const orders = await this.syncService.getCustomerOrders(shopId, customer.customerId);
+      this.customerOrders = (orders || []).map((o: any) => ({
+        orderId: o.orderId,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt ? new Date(o.createdAt) : null,
+        status: o.status || '',
+        paymentMethod: o.paymentMethod || '',
+        totalAmount: Number(o.totalAmount) || 0,
+        items: (o.items || []).map((i: any) => ({
+          productName: i.productName || '',
+          quantity: Number(i.quantity) || 0,
+          unitPrice: Number(i.unitPrice) || 0,
+          totalPrice: Number(i.totalPrice) || 0
+        }))
+      }));
+    } catch (error) {
+      console.error('Error loading purchase history:', error);
+      this.snackBar.open('Failed to load purchase history', 'Close', { duration: 3000 });
+    } finally {
+      this.loadingHistory = false;
+    }
+  }
+
+  closeHistory(): void {
+    this.selectedCustomer = null;
+    this.customerOrders = [];
   }
 
   getTotalCustomers(): number {
     return this.customers.length;
   }
 
-  getActiveCustomers(): number {
-    return this.customers.filter(c => c.status === 'active').length;
+  getTotalBills(): number {
+    return this.customers.reduce((sum, c) => sum + c.totalOrders, 0);
   }
 
   getAverageOrderValue(): number {
-    const total = this.customers.reduce((sum, c) => sum + c.averageOrderValue, 0);
-    return this.customers.length > 0 ? total / this.customers.length : 0;
+    const bills = this.getTotalBills();
+    const spent = this.customers.reduce((sum, c) => sum + c.totalSpent, 0);
+    return bills > 0 ? spent / bills : 0;
   }
 
   getLoyalCustomers(): number {
     return this.customers.filter(c => c.totalOrders >= 10).length;
   }
 
-  viewCustomerDetails(customer: ShopCustomer): void {
-    this.snackBar.open(`Viewing details for ${customer.firstName} ${customer.lastName}`, 'Close', { duration: 2000 });
-  }
-
-  viewCustomerOrders(customer: ShopCustomer): void {
-    this.snackBar.open(`Viewing orders for ${customer.firstName} ${customer.lastName}`, 'Close', { duration: 2000 });
-  }
-
   exportCustomers(): void {
-    const data = {
-      customers: this.customers,
-      exportedAt: new Date().toISOString(),
-      totalCustomers: this.getTotalCustomers(),
-      activeCustomers: this.getActiveCustomers()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    if (this.customers.length === 0) {
+      this.snackBar.open('No customers to export', 'Close', { duration: 2000 });
+      return;
+    }
+    const header = 'Name,Mobile Number,Bills,Total Spent,Last Visit';
+    const rows = this.customers.map(c => [
+      `"${(c.name || '').replace(/"/g, '""')}"`,
+      c.phone,
+      c.totalOrders,
+      c.totalSpent,
+      c.lastOrderDate ? c.lastOrderDate.toISOString().split('T')[0] : ''
+    ].join(','));
+    const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `customers-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `customers-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
-    
-    this.snackBar.open('Customer data exported successfully', 'Close', { duration: 2000 });
+
+    this.snackBar.open('Customer list exported', 'Close', { duration: 2000 });
   }
 }

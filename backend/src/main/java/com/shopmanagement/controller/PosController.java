@@ -94,9 +94,22 @@ public class PosController {
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> searchCustomers(
             @PathVariable Long shopId,
-            @RequestParam(value = "q", required = false) String query) {
-        List<Map<String, Object>> customers = posService.searchCustomers(shopId, query);
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+        List<Map<String, Object>> customers = posService.searchCustomers(shopId, query, size);
         return ResponseUtil.success(customers, "Customers fetched");
+    }
+
+    /**
+     * A customer's purchase history at this shop (orders with line items, most recent first).
+     */
+    @GetMapping("/customers/{shopId}/{customerId}/orders")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getCustomerOrderHistory(
+            @PathVariable Long shopId,
+            @PathVariable Long customerId) {
+        List<Map<String, Object>> history = posService.getCustomerOrderHistory(shopId, customerId);
+        return ResponseUtil.success(history, "Customer order history fetched");
     }
 
     /**

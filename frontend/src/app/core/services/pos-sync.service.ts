@@ -312,9 +312,19 @@ export class PosSyncService implements OnDestroy {
   /**
    * Search customers previously billed at this shop (POS customer autocomplete)
    */
-  async searchCustomers(shopId: number, query: string): Promise<any[]> {
+  async searchCustomers(shopId: number, query: string, size: number = 10): Promise<any[]> {
     const response: any = await this.http.get(
-      `${this.apiUrl}/pos/customers/${shopId}?q=${encodeURIComponent(query)}`
+      `${this.apiUrl}/pos/customers/${shopId}?q=${encodeURIComponent(query)}&size=${size}`
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+    return response?.data || [];
+  }
+
+  /**
+   * A customer's purchase history at this shop (orders with line items)
+   */
+  async getCustomerOrders(shopId: number, customerId: number): Promise<any[]> {
+    const response: any = await this.http.get(
+      `${this.apiUrl}/pos/customers/${shopId}/${customerId}/orders`
     ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
     return response?.data || [];
   }
