@@ -310,6 +310,16 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
+   * Search customers previously billed at this shop (POS customer autocomplete)
+   */
+  async searchCustomers(shopId: number, query: string): Promise<any[]> {
+    const response: any = await this.http.get(
+      `${this.apiUrl}/pos/customers/${shopId}?q=${encodeURIComponent(query)}`
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+    return response?.data || [];
+  }
+
+  /**
    * Send the bill for an already-synced POS order to the customer via WhatsApp (as a PDF)
    */
   async sendWhatsAppBill(orderId: number, customerPhone: string, customerName?: string): Promise<void> {

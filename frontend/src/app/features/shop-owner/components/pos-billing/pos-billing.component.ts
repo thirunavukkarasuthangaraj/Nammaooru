@@ -177,6 +177,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   customerPhone: string = '';
   orderNotes: string = '';
 
+  // Saved-customer autocomplete (suggestions from past bills, matched by phone or name)
+  customerSuggestions: any[] = [];
+  showCustomerSuggestions: boolean = false;
+  private customerSearchTimer: any = null;
+
   // Last bill created - needed to send it via WhatsApp/email
   lastOrder: any = null;
   sendingWhatsAppBill: boolean = false;
@@ -2461,6 +2466,52 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private playBeep(success: boolean): void {
     // Sound disabled for now
     return;
+  }
+
+  /**
+   * Called as the shop owner types in the customer name/phone fields.
+   * Debounced lookup of customers previously billed at this shop.
+   */
+  onCustomerFieldInput(query: string): void {
+    if (this.customerSearchTimer) {
+      clearTimeout(this.customerSearchTimer);
+    }
+    const q = (query || '').trim();
+    if (q.length < 2 || !this.shopId || !this.syncStatus.isOnline) {
+      this.customerSuggestions = [];
+      this.showCustomerSuggestions = false;
+      return;
+    }
+    this.customerSearchTimer = setTimeout(async () => {
+      try {
+        const results = await this.syncService.searchCustomers(this.shopId, q);
+        this.customerSuggestions = results || [];
+        this.showCustomerSuggestions = this.customerSuggestions.length > 0;
+      } catch (error) {
+        console.error('Customer lookup failed:', error);
+        this.customerSuggestions = [];
+        this.showCustomerSuggestions = false;
+      }
+    }, 300);
+  }
+
+  /**
+   * Fill name + phone from a picked suggestion
+   */
+  selectCustomerSuggestion(suggestion: any): void {
+    this.customerName = suggestion.customerName || '';
+    this.customerPhone = suggestion.customerPhone || '';
+    this.customerSuggestions = [];
+    this.showCustomerSuggestions = false;
+  }
+
+  /**
+   * Delay hiding so a click on a suggestion still registers
+   */
+  hideCustomerSuggestions(): void {
+    setTimeout(() => {
+      this.showCustomerSuggestions = false;
+    }, 200);
   }
 
   /**

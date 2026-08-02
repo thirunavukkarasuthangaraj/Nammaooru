@@ -358,8 +358,23 @@
             Customer Details (Optional)
           </button>
           <div *ngIf="showCustomerForm" class="customer-form">
-            <input type="text" [(ngModel)]="customerName" placeholder="Customer Name" class="customer-input">
-            <input type="tel" [(ngModel)]="customerPhone" placeholder="Phone Number" class="customer-input">
+            <input type="text" [(ngModel)]="customerName" placeholder="Customer Name" class="customer-input"
+                   autocomplete="off"
+                   (input)="onCustomerFieldInput(customerName)"
+                   (blur)="hideCustomerSuggestions()">
+            <input type="tel" [(ngModel)]="customerPhone" placeholder="Phone Number" class="customer-input"
+                   autocomplete="off"
+                   (input)="onCustomerFieldInput(customerPhone)"
+                   (blur)="hideCustomerSuggestions()">
+            <div *ngIf="showCustomerSuggestions" class="customer-suggestions">
+              <div *ngFor="let suggestion of customerSuggestions"
+                   class="customer-suggestion"
+                   (mousedown)="selectCustomerSuggestion(suggestion)">
+                <span class="suggestion-name">{{ suggestion.customerName || 'Customer' }}</span>
+                <span class="suggestion-phone">{{ suggestion.customerPhone }}</span>
+                <span class="suggestion-bills">{{ suggestion.billCount }} bill{{ suggestion.billCount > 1 ? 's' : '' }}</span>
+              </div>
+            </div>
             <input type="text" [(ngModel)]="orderNotes" placeholder="Notes" class="customer-input">
           </div>
         </div>

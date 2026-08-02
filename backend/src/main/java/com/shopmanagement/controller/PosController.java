@@ -87,6 +87,19 @@ public class PosController {
     }
 
     /**
+     * Search customers previously billed at this shop (for POS customer autocomplete).
+     * Matches by mobile number or name; returns name, phone, bill count and last visit.
+     */
+    @GetMapping("/customers/{shopId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> searchCustomers(
+            @PathVariable Long shopId,
+            @RequestParam(value = "q", required = false) String query) {
+        List<Map<String, Object>> customers = posService.searchCustomers(shopId, query);
+        return ResponseUtil.success(customers, "Customers fetched");
+    }
+
+    /**
      * Get all products for a shop (for offline caching)
      * Returns lightweight product data optimized for POS
      */

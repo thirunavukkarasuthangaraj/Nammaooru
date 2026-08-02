@@ -25,8 +25,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import org.springframework.data.domain.PageRequest;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -384,6 +388,33 @@ public class PosService {
     /**
      * Map Order entity to OrderResponse DTO
      */
+    /**
+     * Search customers previously billed at this shop by mobile number or name.
+     * Used by the POS billing customer autocomplete.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> searchCustomers(Long shopId, String query) {
+        String q = query == null ? "" : query.trim();
+        List<Object[]> rows = orderRepository.searchShopCustomers(shopId, q, PageRequest.of(0, 10));
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (Object[] row : rows) {
+            String mobileNumber = (String) row[0];
+            String firstName = (String) row[1];
+            String lastName = (String) row[2];
+            // POS-created customers get a placeholder "POS" last name - don't show it
+            String name = (lastName == null || "POS".equalsIgnoreCase(lastName))
+                    ? (firstName == null ? "" : firstName.trim())
+                    : (firstName + " " + lastName).trim();
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("customerName", name);
+            entry.put("customerPhone", mobileNumber);
+            entry.put("billCount", row[3]);
+            entry.put("lastOrderDate", row[4] != null ? row[4].toString() : null);
+            results.add(entry);
+        }
+        return results;
+    }
+
     private OrderResponse mapToResponse(Order order) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getOrderItems().stream()
                 .map(item -> OrderResponse.OrderItemResponse.builder()

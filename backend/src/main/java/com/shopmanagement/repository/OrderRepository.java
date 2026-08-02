@@ -38,6 +38,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find orders by customer and status
     Page<Order> findByCustomerIdAndStatus(Long customerId, Order.OrderStatus status, Pageable pageable);
     
+    // Search customers previously billed at a shop, by mobile number or name (for POS autocomplete)
+    @Query("SELECT c.mobileNumber, c.firstName, c.lastName, COUNT(o), MAX(o.createdAt) " +
+           "FROM Order o JOIN o.customer c " +
+           "WHERE o.shop.id = :shopId AND c.mobileNumber IS NOT NULL AND c.mobileNumber <> '' " +
+           "AND (c.mobileNumber LIKE CONCAT('%', :query, '%') " +
+           "     OR LOWER(c.firstName) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "GROUP BY c.id, c.mobileNumber, c.firstName, c.lastName " +
+           "ORDER BY MAX(o.createdAt) DESC")
+    List<Object[]> searchShopCustomers(@Param("shopId") Long shopId,
+                                       @Param("query") String query,
+                                       Pageable pageable);
+
     // Find orders within date range
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
     Page<Order> findByDateRange(@Param("startDate") LocalDateTime startDate, 
