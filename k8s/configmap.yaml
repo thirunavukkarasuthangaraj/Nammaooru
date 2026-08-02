@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nammaooru-config
+  namespace: nammaooru
+data:
+  # JVM Settings
+  JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxMetaspaceSize=256m"
+
+  # Database
+  DB_URL: "jdbc:postgresql://postgres-service:5432/shop_management_db"
+  DB_USERNAME: "postgres"
+
+  # JPA
+  JPA_DDL_AUTO: "update"
+  JPA_SHOW_SQL: "false"
+
+  # App
+  APP_SCHEDULING_ENABLED: "true"
+  FILE_UPLOAD_PATH: "/app/uploads"
+  APP_UPLOAD_DIR: "/app/uploads"
+  DOCUMENT_UPLOAD_PATH: "/app/uploads/documents/shops"
+  DELIVERY_PARTNER_DOCUMENT_PATH: "/app/uploads/documents/delivery-partners"
+  PRODUCT_IMAGES_PATH: "/app/uploads/products"
+  FIREBASE_SERVICE_ACCOUNT_PATH: "/app/firebase-config/firebase-service-account.json"
+
+  # Mail
+  MAIL_HOST: "smtp.hostinger.com"
+  MAIL_PORT: "587"
+  MAIL_USERNAME: "noreplay@nammaoorudelivary.in"
+
+  # Razorpay
+  RAZORPAY_MODE: "live"
+
+  # MSG91
+  MSG91_SENDER_ID: "NAMMAO"
+
+  # Gemini AI
+  GEMINI_ENABLED: "true"
+
+  # Microservice
+  MICROSERVICE_USER_ENABLED: "false"
+  MICROSERVICE_USER_URL: "http://46.225.224.191:8081"

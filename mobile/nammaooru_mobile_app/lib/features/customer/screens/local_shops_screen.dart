@@ -402,7 +402,7 @@ class _LocalShopsScreenState extends State<LocalShopsScreen> with SingleTickerPr
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: CachedNetworkImage(
-                  imageUrl: ImageUrlHelper.getFullUrl(imageUrls.first),
+                  imageUrl: ImageUrlHelper.getFullImageUrl(imageUrls.first),
                   height: 160,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -680,15 +680,20 @@ class _LocalShopsScreenState extends State<LocalShopsScreen> with SingleTickerPr
             children: [
               PostFilterBar(
                 categories: _categoryLabels.keys.toList(),
-                categoryLabels: _categoryLabels,
-                categoryTamilMap: _categoryTamilMap,
-                selectedCategory: _selectedCategory ?? 'All',
-                onCategorySelected: _onCategorySelected,
-                onSearchChanged: (text) {
-                  _searchText = text;
+                selectedCategory: _selectedCategory,
+                onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
+                selectedRadius: _selectedRadius,
+                onRadiusChanged: (radius) {
+                  setState(() => _selectedRadius = radius ?? 50.0);
                   _loadPosts();
                 },
-                themeColor: _shopColor,
+                searchText: _searchText,
+                onSearchSubmitted: (text) {
+                  setState(() => _searchText = text);
+                  _loadPosts();
+                },
+                accentColor: _shopColor,
+                categoryLabelBuilder: (cat) => _categoryLabels[cat] ?? cat,
               ),
               Expanded(
                 child: _isLoading

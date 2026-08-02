@@ -66,6 +66,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     'Home Appliances',
     'Tools & Equipment',
     'Sports & Hobbies',
+    'Rent',
     'Other',
   ];
 
@@ -203,6 +204,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       'Home Appliances': 'வீட்டு உபகரணங்கள்',
       'Tools & Equipment': 'கருவிகள் & உபகரணங்கள்',
       'Sports & Hobbies': 'விளையாட்டு & பொழுதுபோக்கு',
+      'Rent': 'வாடகை',
       'Other': 'பிற',
     };
     return lang.getText(cat, tamilMap[cat] ?? cat);
@@ -218,7 +220,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   void _callOrLogin(Map<String, dynamic> post) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
     // Log contact view
@@ -1302,7 +1304,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   void _navigateToCreatePost() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
 

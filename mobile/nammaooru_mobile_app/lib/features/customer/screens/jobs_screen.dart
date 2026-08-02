@@ -246,7 +246,7 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   void _callOrLogin(Map<String, dynamic> post) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) { context.go('/login'); return; }
+    if (!auth.isAuthenticated) { context.go('/register'); return; }
     final phone = post['phone'] ?? '';
     ContactViewService.log(
       postType: 'JOBS',
@@ -268,7 +268,7 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   Future<void> _whatsApp(Map<String, dynamic> post) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) { context.go('/login'); return; }
+    if (!auth.isAuthenticated) { context.go('/register'); return; }
     final phone = (post['phone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
     final jobTitle = post['jobTitle'] ?? post['title'] ?? 'Job';
     final company = post['companyName'] ?? '';
@@ -280,7 +280,7 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
 
   void _navigateToCreate() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) { context.go('/login'); return; }
+    if (!auth.isAuthenticated) { context.go('/register'); return; }
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CreateJobScreen()),
@@ -830,12 +830,12 @@ class _JobsScreenState extends State<JobsScreen> with SingleTickerProviderStateM
           children: [
             Icon(Icons.lock_outline, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('Please log in to see your job postings', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+            Text('Please register or log in to see your job postings', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => context.go('/login'),
+              onPressed: () => context.go('/register'),
               style: ElevatedButton.styleFrom(backgroundColor: _jobGreen, foregroundColor: Colors.white),
-              child: const Text('Login'),
+              child: const Text('Register / Login'),
             ),
           ],
         ),

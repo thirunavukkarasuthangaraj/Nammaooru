@@ -5,9 +5,9 @@ services:
   backend:
     build:
       context: ./backend
-      # Limit build memory so it doesn't kill running app
-      args:
-        - MAVEN_OPTS=-Xmx512m
+      # Runtime-only image: CI builds the JAR, server just packages it.
+      # For a full local build (Maven inside Docker) use ./backend/Dockerfile.
+      dockerfile: Dockerfile.prebuilt
     # REMOVED container_name to allow multiple instances
     # Limit runtime CPU/memory
     deploy:
@@ -86,9 +86,11 @@ services:
       - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
+      # Short interval so the deploy script detects "healthy" quickly
+      # (checks during start_period don't count as failures)
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 40s
     restart: unless-stopped
     # Allow scaling

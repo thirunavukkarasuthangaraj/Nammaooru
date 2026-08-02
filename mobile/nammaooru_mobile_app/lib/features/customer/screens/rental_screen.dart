@@ -384,80 +384,225 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
   }
 
   Widget _buildAllRentalsTab(LanguageProvider langProvider) {
-    return RefreshIndicator(
-      color: _rentalOrange,
-      onRefresh: () => _loadPosts(refresh: true),
+    return Column(
+      children: [
+        // Category filter chips
+        PostFilterBar(
+          categories: _categoryLabels.keys.toList(),
+          selectedCategory: _selectedCategory,
+          onCategoryChanged: (cat) => _onCategorySelected(cat),
+          selectedRadius: _selectedRadius,
+          onRadiusChanged: (radius) {
+            setState(() => _selectedRadius = radius ?? 50.0);
+            _loadPosts(refresh: true);
+          },
+          searchText: _searchText,
+          onSearchSubmitted: (text) {
+            setState(() => _searchText = text);
+            _loadPosts(refresh: true);
+          },
+          accentColor: _rentalOrange,
+          categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
+        ),
+        // Grid + posts scrollable together
+        Expanded(
+          child: RefreshIndicator(
+            color: _rentalOrange,
+            onRefresh: () => _loadPosts(refresh: true),
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  if (_selectedCategory == null)
+                    _buildCategoryGrid()
+                  else
+                    _buildSelectedCategoryHeader(),
+                  if (_isLoading && _posts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: LoadingWidget()),
+                    )
+                  else if (_posts.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.vpn_key_rounded, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            langProvider.getText('No rental posts yet', 'இன்னும் வாடகை பதிவுகள் இல்லை'),
+                            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    )
+                  else ...[
+                    Builder(builder: (context) {
+                      final carouselPosts = _buildCarouselPosts();
+                      if (carouselPosts.isEmpty) return const SizedBox.shrink();
+                      return _FeaturedBannerCarousel(
+                        posts: carouselPosts,
+                        onPostTap: (post) => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RentalPostDetailScreen(post: post),
+                          ),
+                        ),
+                        accentColor: _rentalOrange,
+                      );
+                    }),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: _posts.map((p) => _buildPostCard(p, langProvider)).toList(),
+                      ),
+                    ),
+                    if (_hasMore)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    final langProvider = Provider.of<LanguageProvider>(context);
+    final categories = _categoryLabels.keys.where((k) => k != 'All').toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 0.9,
+        ),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final isSelected = _selectedCategory == cat;
+          final english = _categoryLabels[cat] ?? cat;
+          final tamil = _categoryTamilMap[cat] ?? cat;
+          final icon = _categoryIcons[cat] ?? Icons.vpn_key;
+
+          return GestureDetector(
+            onTap: () => _onCategorySelected(isSelected ? null : cat),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? _rentalOrange.withOpacity(0.12)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? _rentalOrange : Colors.grey.shade300,
+                  width: isSelected ? 2 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: _rentalOrange.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 28,
+                    color: isSelected ? _rentalOrange : Colors.grey.shade700,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    langProvider.showTamil ? tamil : english,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? _rentalOrange : Colors.grey.shade800,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedCategoryHeader() {
+    final cat = _selectedCategory!;
+    final english = _categoryLabels[cat] ?? cat;
+    final tamil = _categoryTamilMap[cat] ?? cat;
+    final icon = _categoryIcons[cat] ?? Icons.vpn_key;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: _rentalOrange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _rentalOrange, width: 2),
+      ),
       child: Column(
         children: [
-          // Category filter chips
-          PostFilterBar(
-            categories: _categoryLabels.keys.toList(),
-            selectedCategory: _selectedCategory,
-            onCategoryChanged: (cat) => _onCategorySelected(cat),
-            selectedRadius: _selectedRadius,
-            onRadiusChanged: (radius) {
-              setState(() => _selectedRadius = radius ?? 50.0);
-              _loadPosts(refresh: true);
-            },
-            searchText: _searchText,
-            onSearchSubmitted: (text) {
-              setState(() => _searchText = text);
-              _loadPosts(refresh: true);
-            },
-            accentColor: VillageTheme.primaryGreen,
-            categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SizedBox(width: 40),
+              Icon(icon, size: 52, color: _rentalOrange),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.grey),
+                onPressed: () => _onCategorySelected(null),
+                tooltip: 'Show all categories',
+              ),
+            ],
           ),
-
-          // Posts list
-          Expanded(
-            child: _isLoading && _posts.isEmpty
-                ? const Center(child: LoadingWidget())
-                : _posts.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.vpn_key_rounded, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              langProvider.getText('No rental posts yet', 'இன்னும் வாடகை பதிவுகள் இல்லை'),
-                              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Builder(builder: (context) {
-                        final carouselPosts = _buildCarouselPosts();
-                        final hasCarousel = carouselPosts.isNotEmpty;
-                        final offset = hasCarousel ? 1 : 0;
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _posts.length + offset + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (hasCarousel && index == 0) {
-                              return _FeaturedBannerCarousel(
-                                posts: carouselPosts,
-                                onPostTap: (post) => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => RentalPostDetailScreen(post: post),
-                                  ),
-                                ),
-                                accentColor: const Color(0xFFFF6F00),
-                              );
-                            }
-                            final postIndex = index - offset;
-                            if (postIndex == _posts.length) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            return _buildPostCard(_posts[postIndex], langProvider);
-                          },
-                        );
-                      }),
+          const SizedBox(height: 6),
+          Text(
+            english,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: _rentalOrange,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            tamil,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

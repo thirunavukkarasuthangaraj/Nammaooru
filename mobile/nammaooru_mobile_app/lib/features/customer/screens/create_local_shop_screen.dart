@@ -332,20 +332,18 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
   }
 
   void _showPaymentHandler() {
-    showModalBottomSheet(
+    final handler = PostPaymentHandler(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => PostPaymentHandler(
-        featureName: 'LOCAL_SHOPS',
-        onPaymentSuccess: (tokenId, isBanner) {
-          Navigator.pop(context);
-          _submit(paidTokenId: tokenId, isBanner: isBanner);
-        },
-      ),
+      postType: 'LOCAL_SHOPS',
+      onPaymentSuccess: () {},
+      onTokenReceived: (tokenId) {
+        _submit(paidTokenId: tokenId);
+      },
+      onPaymentCancelled: () {
+        if (mounted) setState(() => _isSubmitting = false);
+      },
     );
+    handler.startPayment();
   }
 
   @override
@@ -434,16 +432,8 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
             // Address / Location
             LocationAutocompleteField(
               controller: _addressController,
-              label: lang.getText('Address / Location *', 'முகவரி *'),
-              onLocationSelected: (lat, lng, address) {
-                setState(() {
-                  _latitude = lat;
-                  _longitude = lng;
-                  _addressController.text = address;
-                });
-              },
-              onGpsPressed: _getLocation,
-              themeColor: _shopColor,
+              labelText: lang.getText('Address / Location *', 'முகவரி *'),
+              accentColor: _shopColor,
             ),
             const SizedBox(height: 16),
 
@@ -484,14 +474,7 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                VoiceInputButton(
-                  onTextReceived: (text) {
-                    setState(() {
-                      _descriptionController.text += (_descriptionController.text.isEmpty ? '' : ' ') + text;
-                    });
-                  },
-                  color: _shopColor,
-                ),
+                VoiceInputButton(controller: _descriptionController),
               ],
             ),
             const SizedBox(height: 16),

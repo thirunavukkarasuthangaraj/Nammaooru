@@ -85,7 +85,7 @@ class _NammaOoruAppState extends State<NammaOoruApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Namma Ooru Delivery',
+      title: 'Namma Ooru Connect',
       theme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
       routerConfig: AppRouter.router,

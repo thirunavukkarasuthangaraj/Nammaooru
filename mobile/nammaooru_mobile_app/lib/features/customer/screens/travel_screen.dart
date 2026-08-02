@@ -260,7 +260,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   void _callOrLogin(Map<String, dynamic> post) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
     final phone = post['phone'] ?? '';
@@ -402,7 +402,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   void _navigateToCreatePost() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
 
@@ -792,7 +792,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
                                 child: IconButton(
                                   onPressed: () async {
                                     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                                    if (!authProvider.isAuthenticated) { context.go('/login'); return; }
+                                    if (!authProvider.isAuthenticated) { context.go('/register'); return; }
                                     final phone = post['phone'].toString().replaceAll(RegExp(r'[^0-9]'), '');
                                     final uri = Uri.parse('https://wa.me/91$phone');
                                     try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}

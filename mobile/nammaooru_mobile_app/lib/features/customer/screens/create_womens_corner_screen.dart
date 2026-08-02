@@ -274,6 +274,95 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
     );
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.category_outlined, 'color': Colors.pink.shade600,
+        'title': isTamil ? '1. வகை தேர்வு செய்யவும்' : '1. Choose a Category',
+        'desc': isTamil ? 'உங்கள் சேவை அல்லது பொருளுக்கு பொருத்தமான வகையை தேர்வு செய்யவும். வகைகள் நிர்வாகியால் நிர்ணயிக்கப்படும்.' : 'Select the right category for your service or product. Categories are set by admin.'},
+      {'icon': Icons.title, 'color': Colors.orange.shade600,
+        'title': isTamil ? '2. தலைப்பு & விவரம்' : '2. Title & Description',
+        'desc': isTamil ? 'உங்கள் சேவை என்ன என்று தெளிவான தலைப்பு எழுதவும். விவரத்தில் முழு தகவல் தரவும். குரல் பொத்தான் உதவும்.' : 'Write a clear title for your service. Add full details in description. Use mic button.'},
+      {'icon': Icons.currency_rupee, 'color': Colors.green.shade700,
+        'title': isTamil ? '3. விலை (விருப்பம்)' : '3. Price (Optional)',
+        'desc': isTamil ? 'சேவைக்கான விலை இருந்தால் குறிப்பிடவும். விலை இல்லாமலும் பதிவிடலாம்.' : 'Enter price if applicable. You can also post without a price (for free services).'},
+      {'icon': Icons.lock_outline, 'color': Colors.purple.shade600,
+        'title': isTamil ? '4. தொலைபேசி & பூட்டு தேர்வு' : '4. Phone & Privacy Lock',
+        'desc': isTamil ? '"தொலைபேசி எண் பூட்டு" இயக்கினால் உங்கள் எண் மறைக்கப்படும். வாங்குவோர் அனுமதி கோரவேண்டும். பெண்களுக்கு பாதுகாப்பான அம்சம்.' : 'Enable "Lock Phone" to hide your number. Buyers must request permission first. Safe for women.'},
+      {'icon': Icons.location_on_outlined, 'color': Colors.red.shade600,
+        'title': isTamil ? '5. இடம்' : '5. Location',
+        'desc': isTamil ? 'உங்கள் கிராமம் அல்லது நகரம் உள்ளிடவும். இது அருகில் உள்ளவர்களுக்கு உங்கள் பதிவை காட்ட உதவும்.' : 'Enter your village or town. This helps show your post to nearby customers.'},
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '6. புகைப்படம்' : '6. Add Photos',
+        'desc': isTamil ? 'உங்கள் பொருள் அல்லது சேவையின் படம் சேர்க்கவும். கேமரா அல்லது கேலரியிலிருந்து தேர்வு செய்யலாம்.' : 'Add photos of your product or service. Choose from camera or gallery.'},
+      {'icon': Icons.check_circle_outline, 'color': _primaryColor,
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit Post',
+        'desc': isTamil ? '"பதிவு சமர்ப்பிக்கவும்" அழுத்தவும். உங்கள் பதிவு உடனே பட்டியலில் தோன்றும்.' : 'Tap "Submit Post". Your post will appear in the listing immediately.'},
+    ];
+    _showGuideSheet(langProvider, steps,
+      isTamil ? 'பதிவு உருவாக்குவது எப்படி?' : 'How to Create a Post?',
+      isTamil ? '7 எளிய படிகளில் பதிவு உருவாக்கவும்' : 'Create your post in 7 easy steps',
+      isTamil ? 'குறிப்பு: தொலைபேசி எண் பூட்டு அம்சம் பெண்களுக்கு தனியுரிமை மற்றும் பாதுகாப்பை உறுதி செய்கிறது.' : 'Tip: Phone Lock feature ensures privacy and safety for women sellers.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          child: Column(children: [
+            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.lightbulb_outline, color: _primaryColor, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ])),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ])),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(
+              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final s = steps[i];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
+                      const SizedBox(height: 4),
+                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                    ])),
+                  ]),
+                );
+              },
+            )),
+            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+              child: Row(children: [
+                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -287,6 +376,13 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
         ),
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(langProvider),
+          ),
+        ],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

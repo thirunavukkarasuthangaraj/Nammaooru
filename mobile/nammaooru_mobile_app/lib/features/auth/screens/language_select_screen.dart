@@ -38,24 +38,11 @@ class _LanguageSelectScreenState extends State<LanguageSelectScreen> {
             children: [
               const Spacer(flex: 2),
               // Logo
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(Icons.storefront_rounded,
-                    size: 44, color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'NammaOoru',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B5E20),
-                ),
+              Image.asset(
+                'assets/icons/logo-new.png',
+                width: 200,
+                height: 200,
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 4),
               Text(

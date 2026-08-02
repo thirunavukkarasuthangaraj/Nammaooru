@@ -26,9 +26,13 @@ log_step() { echo -e "${BLUE}→ [$(date '+%Y-%m-%d %H:%M:%S')] $1${NC}"; }
 
 cd $PROJECT_DIR
 
-# Step 1: Build new image
+# Step 1: Build new image (fast: just packages the prebuilt JAR uploaded by CI)
 log_step "Building new backend image..."
-DOCKER_BUILDKIT=1 docker-compose -f $COMPOSE_FILE build --no-cache --build-arg MAVEN_OPTS="-Xmx512m" backend
+if [ ! -f "$PROJECT_DIR/backend/target/app.jar" ]; then
+    log_error "backend/target/app.jar not found! CI must upload the prebuilt JAR before deploying."
+    exit 1
+fi
+DOCKER_BUILDKIT=1 docker-compose -f $COMPOSE_FILE build backend
 log_info "Backend image built successfully"
 
 # Step 2: Get current backend container

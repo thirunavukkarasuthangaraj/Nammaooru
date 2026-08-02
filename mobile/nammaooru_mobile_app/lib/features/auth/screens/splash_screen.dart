@@ -115,11 +115,11 @@ class _SplashScreenState extends State<SplashScreen>
                         child: ScaleTransition(
                           scale: _scaleAnimation,
                           child: Container(
-                            width: 120,
-                            height: 120,
+                            width: 180,
+                            height: 180,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.2),
@@ -128,10 +128,10 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.storefront,
-                              size: 60,
-                              color: AppColors.primary,
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              'assets/icons/logo-new.png',
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
@@ -145,9 +145,9 @@ class _SplashScreenState extends State<SplashScreen>
                       return FadeTransition(
                         opacity: _fadeAnimation,
                         child: const Text(
-                          'NammaOoru',
+                          'Namma Ooru Connect',
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             letterSpacing: 1.2,
@@ -163,7 +163,7 @@ class _SplashScreenState extends State<SplashScreen>
                       return FadeTransition(
                         opacity: _fadeAnimation,
                         child: const Text(
-                          'Multi-Service Delivery Platform',
+                          'Hyperlocal Community Platform',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.white70,

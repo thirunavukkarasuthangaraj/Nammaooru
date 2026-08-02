@@ -301,7 +301,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
             Icon(Icons.shopping_bag_outlined, size: 100, color: Colors.grey.shade300),
             const SizedBox(height: 24),
             const Text(
-              'Login to View Orders',
+              'Register to View Orders',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -311,7 +311,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 12),
             Text(
-              'Please log in to view your order history and track your deliveries',
+              'Please register or log in to view your order history and track your deliveries',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -323,7 +323,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  context.go('/login');
+                  context.go('/register');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: VillageTheme.primaryGreen,

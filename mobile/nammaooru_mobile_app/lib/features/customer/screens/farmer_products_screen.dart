@@ -224,7 +224,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   void _callOrLogin(Map<String, dynamic> post) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
     final phone = post['sellerPhone'] ?? '';
@@ -377,7 +377,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   void _navigateToCreatePost() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
 

@@ -419,6 +419,95 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     });
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '1. புகைப்படம் (விருப்பம்)' : '1. Photos (Optional)',
+        'desc': isTamil ? 'தொழிலாளரின் வேலை செய்யும் புகைப்படம் சேர்த்தால் வாடிக்கையாளர்கள் நம்பிக்கையாக தொடர்பு கொள்வார்கள்.' : 'Add a work photo of the worker. It builds trust and gets more inquiries.'},
+      {'icon': Icons.person_outline, 'color': Colors.orange.shade600,
+        'title': isTamil ? '2. தொழிலாளர் பெயர்' : '2. Worker Name',
+        'desc': isTamil ? 'தொழிலாளரின் பெயரை உள்ளிடவும் (அதிகபட்சம் 3 வார்த்தைகள்). குரல் பொத்தானை பயன்படுத்தி சொல்லலாம்.' : 'Enter the worker\'s name (max 3 words). Use the mic button to speak.'},
+      {'icon': Icons.construction_outlined, 'color': Colors.teal.shade600,
+        'title': isTamil ? '3. திறன் வகை' : '3. Skill Category',
+        'desc': isTamil ? 'பெயிண்டர், தச்சர், எலக்ட்ரீஷியன், மெக்கானிக் என 23+ வகைகளில் சரியானதை தேர்வு செய்யவும்.' : 'Select from 23+ skill types: Painter, Carpenter, Electrician, Mechanic, etc.'},
+      {'icon': Icons.phone_outlined, 'color': Colors.indigo.shade600,
+        'title': isTamil ? '4. தொலைபேசி & அனுபவம்' : '4. Phone & Experience',
+        'desc': isTamil ? '10-இலக்க மொபைல் எண் உள்ளிடவும். அனுபவ வருடங்களும் குறிப்பிட்டால் மேலும் நம்பகமாக இருக்கும்.' : 'Enter 10-digit mobile number. Adding years of experience builds more trust.'},
+      {'icon': Icons.location_on_outlined, 'color': Colors.red.shade600,
+        'title': isTamil ? '5. இடம்' : '5. Location',
+        'desc': isTamil ? 'தொழிலாளர் எங்கு பணி செய்கிறார் என்ற இடத்தை உள்ளிடவும். GPS பொத்தான் அழுத்தி தானாக கண்டுபிடிக்கலாம்.' : 'Enter where the worker is available. Tap GPS to auto-detect current location.'},
+      {'icon': Icons.description_outlined, 'color': Colors.purple.shade600,
+        'title': isTamil ? '6. விவரம்' : '6. Description',
+        'desc': isTamil ? 'தொழிலாளரின் திறன்கள், வேலை முடித்த திட்டங்கள் பற்றி எழுதவும். குரல் பொத்தான் உதவும்.' : 'Describe the worker\'s skills and past projects. Use the mic button to speak.'},
+      {'icon': Icons.check_circle_outline, 'color': _labourBlue,
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit Listing',
+        'desc': isTamil ? '"பதிவு சமர்ப்பிக்கவும்" அழுத்தவும். உடனே பட்டியலில் தெரியும், வாடிக்கையாளர்கள் நேரடியாக அழைப்பார்கள்.' : 'Tap "Submit". Your listing goes live immediately and customers call directly.'},
+    ];
+    _showGuideSheet(langProvider, steps,
+      isTamil ? 'தொழிலாளர் பதிவிடுவது எப்படி?' : 'How to Add a Labour Listing?',
+      isTamil ? '7 எளிய படிகளில் தொழிலாளரை பட்டியலிடவும்' : 'List a worker in 7 easy steps',
+      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். திறன் வகை சரியாக தேர்வு செய்தால் சரியான வாடிக்கையாளர் கிடைப்பார்.' : 'Tip: 3 free posts per day. Choosing the right skill category gets the right customers.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          child: Column(children: [
+            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: _labourBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.lightbulb_outline, color: _labourBlue, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ])),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ])),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(
+              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final s = steps[i];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
+                      const SizedBox(height: 4),
+                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                    ])),
+                  ]),
+                );
+              },
+            )),
+            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+              child: Row(children: [
+                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -433,6 +522,13 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         backgroundColor: _labourBlue,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(langProvider),
+          ),
+        ],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

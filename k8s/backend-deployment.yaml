@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nammaooru-backend
+  namespace: nammaooru
+  labels:
+    app: backend
+spec:
+  replicas: 2                        # Run 2 copies for high availability
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate              # Zero downtime deploy
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: nammaooru-backend:1.0.267   # Your backend image
+          ports:
+            - containerPort: 8080
+          # Load config from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: nammaooru-config
+          # Load secrets
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: JWT_SECRET
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: MAIL_PASSWORD
+            - name: RAZORPAY_TEST_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: RAZORPAY_TEST_KEY_ID
+            - name: RAZORPAY_TEST_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: RAZORPAY_TEST_KEY_SECRET
+            - name: RAZORPAY_LIVE_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: RAZORPAY_LIVE_KEY_ID
+            - name: RAZORPAY_LIVE_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: RAZORPAY_LIVE_KEY_SECRET
+            - name: MSG91_AUTH_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: MSG91_AUTH_KEY
+            - name: MSG91_OTP_TEMPLATE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: MSG91_OTP_TEMPLATE_ID
+            - name: MSG91_NAMESPACE
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: MSG91_NAMESPACE
+            - name: MSG91_INTEGRATED_NUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: MSG91_INTEGRATED_NUMBER
+            - name: MSG91_FORGOT_PASSWORD_TEMPLATE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: MSG91_FORGOT_PASSWORD_TEMPLATE_ID
+            - name: GEMINI_API_KEY_1
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: GEMINI_API_KEY_1
+            - name: GEMINI_API_KEY_2
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: GEMINI_API_KEY_2
+            - name: GEMINI_API_KEY_3
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: GEMINI_API_KEY_3
+            - name: GEMINI_API_KEY_4
+              valueFrom:
+                secretKeyRef:
+                  name: nammaooru-secrets
+                  key: GEMINI_API_KEY_4
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1024Mi"
+              cpu: "1500m"
+          volumeMounts:
+            - name: uploads-storage
+              mountPath: /app/uploads
+            - name: firebase-config
+              mountPath: /app/firebase-config
+              readOnly: true
+          # Health checks
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: uploads-storage
+          persistentVolumeClaim:
+            claimName: uploads-pvc
+        - name: firebase-config
+          configMap:
+            name: firebase-config
