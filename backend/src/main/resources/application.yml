@@ -251,6 +251,7 @@ whatsapp:
     access-token: ${META_WA_ACCESS_TOKEN:}
     api-version: ${META_WA_API_VERSION:v21.0}
     template-language: ${META_WA_TEMPLATE_LANGUAGE:en}
+    app-secret: ${META_WA_APP_SECRET:}
 
 # SMS Configuration
 sms:

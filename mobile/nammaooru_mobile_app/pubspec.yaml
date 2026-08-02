@@ -1,7 +1,7 @@
 name: nammaooru_mobile_app
-description: NammaOoru Multi-Service Delivery Platform - Flutter Mobile App
+description: Namma Ooru Connect - Hyperlocal Community Platform (Flutter Mobile App)
 publish_to: 'none'
-version: 1.2.43+76
+version: 1.2.45+78
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -91,9 +91,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/icons/logo-new.jpeg"
-  adaptive_icon_background: "#4CAF50"
-  adaptive_icon_foreground: "assets/icons/logo-new.jpeg"
+  image_path: "assets/icons/logo-new.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/logo-new.png"
 
 # Disabled native splash - using custom splash screen only
 # flutter_native_splash:

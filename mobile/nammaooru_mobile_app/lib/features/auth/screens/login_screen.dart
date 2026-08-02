@@ -243,23 +243,23 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 8),
         Container(
-          width: 64,
-          height: 64,
+          width: 110,
+          height: 110,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: VillageTheme.primaryGreen,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: VillageTheme.primaryGreen.withOpacity(0.3),
-                blurRadius: 8,
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.home,
-            size: 32,
-            color: Colors.white,
+          child: Image.asset(
+            'assets/icons/logo-new.png',
+            fit: BoxFit.contain,
           ),
         ),
         const SizedBox(height: 16),
@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          languageProvider.getText('Join Namma Ooru Delivery', 'நம்ம ஊரு டெலிவரி'),
+          languageProvider.getText('Join Namma Ooru Connect', 'நம்ம ஊரு கனெக்ட்'),
           style: const TextStyle(
             fontSize: 16,
             color: Colors.white,
@@ -506,7 +506,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               )
             : Text(
-                langProvider.getText('Sign In', 'உள்நுழை'),
+                langProvider.getText('Login', 'உள்நுழை'),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -522,7 +522,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         Text(
-          langProvider.getText('New to NammaOoru?', 'NammaOoru-வில் புதியவரா?'),
+          langProvider.getText('New to Namma Ooru Connect?', 'நம்ம ஊரு கனெக்ட்-வில் புதியவரா?'),
           style: const TextStyle(
             fontSize: 13,
             color: Colors.white70,
@@ -546,7 +546,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             child: Text(
-              langProvider.getText('Sign Up', 'பதிவு செய்'),
+              langProvider.getText('Register', 'பதிவு செய்'),
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,

@@ -259,14 +259,16 @@ class VoiceAssistantService {
     }
 
     _sttText = '';
+    double sttConfidence = 0;
     onStateChanged?.call();
 
-    // Listen for up to 7 seconds
+    // Listen for up to 7 seconds — Tamil first
     await _stt.listen(
       onResult: (r) {
         if (r.recognizedWords.isNotEmpty) _sttText = r.recognizedWords;
+        sttConfidence = r.confidence;
         if (r.finalResult && _sttText.isNotEmpty) {
-          debugPrint('Agent: STT final: "$_sttText"');
+          debugPrint('Agent: STT final (ta-IN): "$_sttText" conf=$sttConfidence');
         }
       },
       localeId: 'ta-IN',
@@ -283,10 +285,38 @@ class VoiceAssistantService {
     }
     if (_stt.isListening) await _stt.stop();
 
+    var text = _sttText.trim();
+
+    // Fall back to en-IN if Tamil produced nothing OR very low confidence
+    // (villager may have spoken English/Tanglish — Tamil locale garbles it)
+    if (!_stopped && (text.isEmpty || sttConfidence < 0.3)) {
+      debugPrint('Agent: ta-IN gave weak result (text="$text", conf=$sttConfidence), '
+          'trying en-IN...');
+      _sttText = '';
+      await _stt.listen(
+        onResult: (r) {
+          if (r.recognizedWords.isNotEmpty) _sttText = r.recognizedWords;
+          if (r.finalResult && _sttText.isNotEmpty) {
+            debugPrint('Agent: STT final (en-IN): "$_sttText" conf=${r.confidence}');
+          }
+        },
+        localeId: 'en-IN',
+        listenMode: stt.ListenMode.search,
+        partialResults: true,
+        cancelOnError: false,
+        pauseFor: const Duration(seconds: 2),
+        listenFor: const Duration(seconds: 5),
+      );
+      for (int i = 0; i < 18 && _stt.isListening && !_stopped; i++) {
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      if (_stt.isListening) await _stt.stop();
+      final enText = _sttText.trim();
+      if (enText.isNotEmpty) text = enText;
+    }
+
     _isAutoListening = false;
     if (_stopped) return;
-
-    final text = _sttText.trim();
     _sttText = '';
 
     if (text.isEmpty) {
@@ -457,52 +487,48 @@ class VoiceAssistantService {
   }
 
   String _buildSystemPrompt(String shopLabel) {
-    return '''You are NammaOoru's AI shopping assistant at "$shopLabel". You help customers order groceries through natural Tamil voice conversation.
+    return '''You are NammaOoru's shopping assistant at "$shopLabel". Customers speak Tamil, English, or Tanglish.
 
-HOW TO RESPOND:
-- Always respond as: "Tamil text | English translation"
-- Keep responses SHORT: 1-2 sentences maximum
-- Be warm, friendly, natural — like a real Tamil shopkeeper
-- Use casual Tamil: "வேணும்", "சொல்லுங்க", "போட்டாச்சு"
+HARD RULES — never break these:
+1. NEVER invent products, prices, or stock. ALWAYS call search_products first.
+2. NEVER reply with a product name unless it came from a search_products result.
+3. If search returns nothing: say "கிடைக்கவில்லை | Not available" and ask for another product.
+4. Every reply: "Tamil | English". 1 sentence each. No long paragraphs.
 
 CONVERSATION FLOW:
-1. Customer says a product name → call search_products with corrected name
-2. Search returns results → list them numbered: "1. Name Weight ₹Price, 2. Name Weight ₹Price. எது வேணும்? | Which one?"
-3. Customer says a number (1, 2, 3) → call add_to_cart with that product's ID from the last search
-4. After adding → confirm and ask: "வேற என்ன வேணும்? | What else do you need?"
-5. Customer says done/போதும்/bye/enough → call end_session
-6. Customer says remove/நீக்கு + product name → call remove_from_cart
-7. Customer says cart/கார்ட்/what's in cart → call get_cart
-8. Customer asks about price/cost → search and tell them
-9. Customer is unsure → ask helpful questions: "அரிசியா? எந்த brand? | Rice? Which brand?"
+- Customer says product name → call search_products(query) using the CORRECTED name (apply STT rules below)
+- Results returned → list numbered: "1. Name 1kg ₹50, 2. Name 500g ₹25. எது? | Which?"
+- Customer says "1" / "ஒன்று" / "first" → call add_to_cart with that product_id
+- After adding → confirm + ask "வேற என்ன? | What else?"
+- "done" / "போதும்" / "bye" / "enough" → call end_session
+- "remove X" / "X நீக்கு" → call remove_from_cart
+- "cart" / "கார்ட்" / "what's in cart" → call get_cart
 
-VOICE RECOGNITION INTELLIGENCE:
-Speech-to-text makes many mistakes. You MUST understand the intent:
-- "only on" / "onli on" / "union" = onion (வெங்காயம்)
-- "to motto" / "tomotto" / "tamoto" = tomato (தக்காளி)
-- "arise" / "arisi" / "race" = rice (அரிசி)
-- "flower" / "collar flower" = cauliflower
-- "should gar" / "sugar" = sugar (சர்க்கரை)
-- "doll" / "dal" = dal/lentils (பருப்பு)
-- "pot auto" / "potato" = potato (உருளைக்கிழங்கு)
-- "coco not" = coconut (தேங்காய்)
-- Numbers in Tamil: ஒன்று=1, இரண்டு=2, மூன்று=3, நான்கு=4, ஐந்து=5
-- Ordinals in Tamil: முதலாவது/ஒன்னாவது=1, இரண்டாவது/ரெண்டாவது=2, மூன்றாவது=3
-- "இரண்டாவது நம்பர்" = option 2, "மூன்றாவது நம்பர்" = option 3
+STT ERROR MAPPING (speech-to-text mangles these — fix BEFORE calling search_products):
+  onion: "only on", "onli", "oniyan", "union", "vengayam", "vangayam", "wengayam" → search "onion"
+  tomato: "to motto", "tomotto", "tamoto", "takkali", "thakkali", "dakali" → search "tomato"
+  rice: "arise", "arisi", "race", "arisee", "arici" → search "rice"
+  dal: "doll", "dhal", "paruppu", "parupu" → search "dal"
+  sugar: "should gar", "sugaar", "chakkarai", "sakkarai" → search "sugar"
+  potato: "pot auto", "potatto", "urulai" → search "potato"
+  coconut: "coco not", "thengai" → search "coconut"
+  oil: "ennai", "yennai" → search "oil"
+  garlic: "poondu", "poonthu" → search "garlic"
+  ginger: "inji", "ingee" → search "ginger"
+  cauliflower: "collar flower", "cauli flower" → search "cauliflower"
 
-CONTEXT AWARENESS:
-- If you just showed numbered options and customer says "1" or "first one" or "ஒன்று" → they're selecting option 1
-- If customer says "yes"/"ஆமா"/"சரி" after you suggested something → proceed with that
-- If customer says "no"/"வேண்டாம்"/"இல்லை" → ask what they want instead
-- Remember what was discussed — "that one" refers to the product being talked about
-- If customer asks for multiple items ("rice and dal") → search for each one at a time
+NUMBERS (Tamil):
+  ஒன்று/ஒண்ணு/onnu=1, இரண்டு/ரெண்டு/rendu=2, மூன்று/மூணு/moonu=3, நான்கு=4, ஐந்து=5
+  முதலாவது=1st, இரண்டாவது/ரெண்டாவது=2nd, மூன்றாவது=3rd
 
-RULES:
-- ALWAYS call search_products before suggesting any product — NEVER invent products or prices
-- After adding to cart, ALWAYS ask what else they need
-- If not found: "கிடைக்கவில்லை, வேற சொல்லுங்க | Not available, try something else"
-- Products have different weights (100g, 250g, 500g, 1kg) — show all variants
-- Be patient if customer repeats or corrects themselves''';
+CONTEXT:
+- "1"/"first"/"ஒன்று" after a numbered list = pick option 1
+- "yes"/"ஆமா"/"சரி" = proceed with last suggestion
+- "no"/"வேண்டாம்"/"இல்லை" = ask what else
+- "rice and dal" = search each separately, one at a time
+- If customer asked for multiple items, after adding the first one, search for the next one BEFORE asking "what else"
+
+TONE: Warm Tamil shopkeeper. Casual: "வேணும்", "சொல்லுங்க", "போட்டாச்சு", "சேர்த்தாச்சு".''';
   }
 
   List<Map<String, dynamic>> _buildToolDeclarations() {

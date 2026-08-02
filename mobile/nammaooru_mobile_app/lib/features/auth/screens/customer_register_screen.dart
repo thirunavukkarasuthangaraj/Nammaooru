@@ -73,7 +73,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
             await authProvider.setUser(response['user'], response['token']);
             
             Navigator.of(context).pushReplacementNamed('/customer-dashboard');
-            Helpers.showSnackBar(context, 'Registration successful! Welcome to NammaOoru.');
+            Helpers.showSnackBar(context, 'Registration successful! Welcome to Namma Ooru Connect.');
           } else {
             // Navigate to login screen
             Navigator.of(context).pop();
@@ -170,7 +170,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Join NammaOoru and get your favorite items delivered',
+          'Join Namma Ooru Connect and get access to labour, rentals, and more',
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,

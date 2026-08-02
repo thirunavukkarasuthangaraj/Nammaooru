@@ -44,7 +44,7 @@ class EnvConfig {
   static const String fcmServerKey = 'YOUR_FCM_SERVER_KEY';
 
   // App Configuration
-  static const String appName = 'Namma Ooru Delivery';
+  static const String appName = 'Namma Ooru Connect';
   static const String appZone = 'Thirupattur';
   static const String appVersion = '1.0.0';
   static const int appBuildNumber = 1;

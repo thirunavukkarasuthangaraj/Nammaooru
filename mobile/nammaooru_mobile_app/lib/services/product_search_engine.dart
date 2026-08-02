@@ -25,6 +25,7 @@ class ProductSearchEngine {
   final Map<String, Set<String>> _tamilIndex = {};     // Tamil script words
   final Map<String, Set<String>> _translitIndex = {};  // Latin transliteration
   final Map<String, Set<String>> _phoneticIndex = {};  // Phonetic keys
+  final Map<String, Set<String>> _consonantIndex = {}; // Consonant-only keys (last-resort)
   final Map<String, Set<String>> _categoryIndex = {};  // Category → products
   final Map<String, Set<String>> _synonymIndex = {};   // Synonym → products
 
@@ -45,6 +46,7 @@ class ProductSearchEngine {
     _tamilIndex.clear();
     _translitIndex.clear();
     _phoneticIndex.clear();
+    _consonantIndex.clear();
     _categoryIndex.clear();
     _synonymIndex.clear();
     _synonymPairs.clear();
@@ -84,8 +86,13 @@ class ProductSearchEngine {
                 _tagsIndex.putIfAbsent(word, () => {}).add(id);
                 // Phonetic key for tag transliterations
                 final phonetic = _phoneticKey(word);
-                if (phonetic.isNotEmpty) {
+                if (phonetic.length >= 2) {
                   _phoneticIndex.putIfAbsent(phonetic, () => {}).add(id);
+                }
+                // Consonant-only key — catches very mangled STT
+                final cons = _consonantKey(word);
+                if (cons.length >= 2) {
+                  _consonantIndex.putIfAbsent(cons, () => {}).add(id);
                 }
               }
             }
@@ -111,8 +118,13 @@ class ProductSearchEngine {
             _translitIndex.putIfAbsent(word, () => {}).add(id);
             // Also index phonetic key
             final phonetic = _phoneticKey(word);
-            if (phonetic.isNotEmpty) {
+            if (phonetic.length >= 2) {
               _phoneticIndex.putIfAbsent(phonetic, () => {}).add(id);
+            }
+            // Consonant-only key — catches very mangled STT
+            final cons = _consonantKey(word);
+            if (cons.length >= 2) {
+              _consonantIndex.putIfAbsent(cons, () => {}).add(id);
             }
           }
         }
@@ -126,8 +138,12 @@ class ProductSearchEngine {
           // Index English name phonetically too
           for (final word in _tokenize(name)) {
             final phonetic = _phoneticKey(word);
-            if (phonetic.isNotEmpty) {
+            if (phonetic.length >= 2) {
               _phoneticIndex.putIfAbsent(phonetic, () => {}).add(id);
+            }
+            final cons = _consonantKey(word);
+            if (cons.length >= 2) {
+              _consonantIndex.putIfAbsent(cons, () => {}).add(id);
             }
           }
         }
@@ -149,6 +165,7 @@ class ProductSearchEngine {
         '${_nameIndex.length} name terms, '
         '${_translitIndex.length} translit terms, '
         '${_phoneticIndex.length} phonetic keys, '
+        '${_consonantIndex.length} consonant keys, '
         '${_categoryIndex.length} categories');
   }
 
@@ -191,10 +208,19 @@ class ProductSearchEngine {
     //   User types "arisi" → matches transliteration index "arisi" → finds "Rice"
     _scoreFromIndex(_translitIndex, _tokenize(q), scores, baseScore: 90);
 
-    // Strategy 5: Phonetic match (80 pts — handles th/t, kk/k variations)
+    // Strategy 5: Phonetic match (80 pts — handles th/t, kk/k, d/t, l/L/zh variations)
     //   "takkali" → phonetic "takali" → matches "thakkali" → "Tomato"
-    final phoneticTokens = _tokenize(q).map(_phoneticKey).where((p) => p.length >= 3).toList();
+    //   "dakali" → phonetic "takali" → same product (d↔t collapse)
+    final phoneticTokens = _tokenize(q).map(_phoneticKey).where((p) => p.length >= 2).toList();
     _scoreFromIndex(_phoneticIndex, phoneticTokens, scores, baseScore: 80);
+
+    // Strategy 5b: Consonant-only match (60 pts — last-resort for very mangled STT)
+    //   "vangayam" / "vingayam" / "vengayama" all → "vngy" → matches onion
+    //   Only runs if regular phonetic missed
+    if (scores.isEmpty) {
+      final consonantTokens = _tokenize(q).map(_consonantKey).where((c) => c.length >= 2).toList();
+      _scoreFromIndex(_consonantIndex, consonantTokens, scores, baseScore: 60);
+    }
 
     // Strategy 6: Synonym lookup
     //   User types "thakkali" → synonym map → "tomato" → search in name/tags
@@ -492,15 +518,55 @@ class ProductSearchEngine {
   static String _phoneticKey(String text) {
     if (text.isEmpty) return '';
     var s = text.toLowerCase().trim();
-    // Remove 'h' after consonants
+
+    // Strip leading/trailing punctuation and spaces
+    s = s.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    if (s.isEmpty) return '';
+
+    // 1. Remove 'h' after consonants — th→t, dh→d, sh→s, etc.
+    //    (Tamil has no aspirated/unaspirated distinction in modern speech)
     s = s.replaceAll('th', 't').replaceAll('dh', 'd').replaceAll('bh', 'b')
          .replaceAll('kh', 'k').replaceAll('ph', 'p').replaceAll('gh', 'g')
          .replaceAll('sh', 's').replaceAll('zh', 'z').replaceAll('ch', 'c');
-    // Collapse double consonants
+
+    // 2. Tamil retroflex / dental collapse — STT swaps these constantly
+    //    ட/த both → 't', ண/ந/ன all → 'n', ல/ள/ழ all → 'l', ர/ற both → 'r'
+    s = s.replaceAll('d', 't');     // d↔t — "dakali"/"takali" both → "takali"
+    s = s.replaceAll('w', 'v');     // w↔v — "wengayam"/"vengayam"
+    s = s.replaceAll('j', 'y');     // j↔y — "yendrum"/"jendrum"
+
+    // 3. Common STT mishearings for Indian English speakers
+    s = s.replaceAll('f', 'p');     // f↔p — "phul"/"ful"
+    s = s.replaceAll('q', 'k');     // q→k
+
+    // 4. Collapse double consonants — "thakkali"/"thakali" → "takali"
     s = s.replaceAll(RegExp(r'([bcdfghjklmnpqrstvwxyz])\1+'), r'$1');
-    // Normalize vowel variations
+
+    // 5. Normalize vowel variations — long/short and diphthong reductions
     s = s.replaceAll('aa', 'a').replaceAll('ee', 'e').replaceAll('ii', 'i')
-         .replaceAll('oo', 'o').replaceAll('uu', 'u').replaceAll('ai', 'a');
+         .replaceAll('oo', 'o').replaceAll('uu', 'u')
+         .replaceAll('ai', 'a').replaceAll('au', 'o').replaceAll('ou', 'o');
+
+    // 6. Drop trailing vowels (Tamil words often gain/lose a final vowel in STT)
+    //    "vengayam"/"vengayama" → both end at consonant after this step
+    s = s.replaceAll(RegExp(r'[aeiou]$'), '');
+
+    // 7. Drop trailing 'm'/'n' nasalization which STT often misses
+    //    "vengaya"/"vengayam" both → "vengaya"
+    //    Keep at least 3 chars
+    if (s.length > 3 && (s.endsWith('m') || s.endsWith('n'))) {
+      s = s.substring(0, s.length - 1);
+    }
+
+    return s;
+  }
+
+  /// More aggressive phonetic key — used as a last-resort match.
+  /// Strips ALL vowels so "vengayam" / "vangayam" / "vingayam" collapse to one key.
+  static String _consonantKey(String text) {
+    if (text.isEmpty) return '';
+    var s = _phoneticKey(text);
+    s = s.replaceAll(RegExp(r'[aeiou]'), '');
     return s;
   }
 

@@ -270,7 +270,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   void _callOrLogin(Map<String, dynamic> post) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
     final phone = post['phone'] ?? '';
@@ -412,7 +412,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   void _navigateToCreatePost() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
 
@@ -502,44 +502,199 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           accentColor: VillageTheme.primaryGreen,
           categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
         ),
-        // Posts list
+        // Grid + posts scrollable together
         Expanded(
-          child: _isLoading
-              ? const Center(child: LoadingWidget())
-              : _posts.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      onRefresh: _loadPosts,
-                      child: Builder(builder: (context) {
-                        final carouselPosts = _buildCarouselPosts();
-                        final hasCarousel = carouselPosts.isNotEmpty;
-                        final offset = hasCarousel ? 1 : 0;
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _posts.length + offset + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (hasCarousel && index == 0) {
-                              return _FeaturedBannerCarousel(
-                                posts: carouselPosts,
-                                onPostTap: (post) => _navigateToDetail(post),
-                                accentColor: const Color(0xFF1565C0),
-                              );
-                            }
-                            final postIndex = index - offset;
-                            if (postIndex == _posts.length) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            return _buildPostCard(_posts[postIndex]);
-                          },
-                        );
-                      }),
+          child: RefreshIndicator(
+            onRefresh: _loadPosts,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  if (_selectedCategory == null)
+                    _buildCategoryGrid()
+                  else
+                    _buildSelectedCategoryHeader(),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: LoadingWidget()),
+                    )
+                  else if (_posts.isEmpty)
+                    _buildEmptyState()
+                  else ...[
+                    Builder(builder: (context) {
+                      final carouselPosts = _buildCarouselPosts();
+                      if (carouselPosts.isEmpty) return const SizedBox.shrink();
+                      return _FeaturedBannerCarousel(
+                        posts: carouselPosts,
+                        onPostTap: (post) => _navigateToDetail(post),
+                        accentColor: const Color(0xFF1565C0),
+                      );
+                    }),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: _posts.map((p) => _buildPostCard(p)).toList(),
+                      ),
                     ),
+                    if (_hasMore)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    final langProvider = Provider.of<LanguageProvider>(context);
+    final categories = _categoryLabels.keys.where((k) => k != 'All').toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 0.9,
+        ),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final isSelected = _selectedCategory == cat;
+          final english = _categoryLabels[cat] ?? cat;
+          final tamil = _categoryTamilMap[cat] ?? cat;
+          final icon = _categoryIcons[cat] ?? Icons.work;
+
+          return GestureDetector(
+            onTap: () => _onCategorySelected(isSelected ? 'All' : cat),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? VillageTheme.primaryGreen.withOpacity(0.12)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? VillageTheme.primaryGreen
+                      : Colors.grey.shade300,
+                  width: isSelected ? 2 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: VillageTheme.primaryGreen.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 28,
+                    color: isSelected
+                        ? VillageTheme.primaryGreen
+                        : Colors.grey.shade700,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    langProvider.showTamil ? tamil : english,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? VillageTheme.primaryGreen
+                          : Colors.grey.shade800,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedCategoryHeader() {
+    final cat = _selectedCategory!;
+    final english = _categoryLabels[cat] ?? cat;
+    final tamil = _categoryTamilMap[cat] ?? cat;
+    final icon = _categoryIcons[cat] ?? Icons.work;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: VillageTheme.primaryGreen.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: VillageTheme.primaryGreen,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SizedBox(width: 40),
+              Icon(icon, size: 52, color: VillageTheme.primaryGreen),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.grey),
+                onPressed: () => _onCategorySelected('All'),
+                tooltip: 'Show all categories',
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            english,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: VillageTheme.primaryGreen,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            tamil,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

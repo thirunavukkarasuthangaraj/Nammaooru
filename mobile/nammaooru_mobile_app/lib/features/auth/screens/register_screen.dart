@@ -131,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: VillageTheme.spacingM),
                           Text(
-                            'Creating Account...',
+                            'Registering...',
                             style: VillageTheme.bodyLarge.copyWith(
                               color: VillageTheme.primaryGreen,
                             ),
@@ -184,28 +184,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         Container(
-          width: 80,
-          height: 80,
+          width: 110,
+          height: 110,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: VillageTheme.primaryGreen,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: VillageTheme.primaryGreen.withOpacity(0.3),
-                blurRadius: 8,
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.home,
-            size: 40,
-            color: Colors.white,
+          child: Image.asset(
+            'assets/icons/logo-new.png',
+            fit: BoxFit.contain,
           ),
         ),
         const SizedBox(height: 24),
         const Text(
-          'Create Account!',
+          'Register!',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
@@ -449,7 +449,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         child: const Text(
-          'Create Account',
+          'Register',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -476,7 +476,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           child: const Text(
-            'Sign In',
+            'Login',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white,

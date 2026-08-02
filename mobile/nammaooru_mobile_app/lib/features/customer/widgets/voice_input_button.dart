@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-/// Hold-to-record voice input button — uses device STT.
+/// Tap-to-start / tap-to-stop voice input button.
+/// Shows "Tap to speak" hint for first-time users.
 /// Tamil text gets sent to Gemini AI search on backend which corrects errors.
 class VoiceInputButton extends StatefulWidget {
   final TextEditingController controller;
@@ -56,7 +57,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     super.dispose();
   }
 
-  void _showHoldHint() {
+  void _showOverlayHint(String message, {Color color = Colors.black87, int durationMs = 2000}) {
     _removeHint();
     final overlay = Overlay.of(context);
     final renderBox = context.findRenderObject() as RenderBox?;
@@ -67,26 +68,46 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
 
     _hintOverlay = OverlayEntry(
       builder: (_) => Positioned(
-        top: pos.dy - 38,
-        left: pos.dx + size.width / 2 - 52,
+        top: pos.dy - 42,
+        left: pos.dx + size.width / 2 - 70,
         child: Material(
           color: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(8),
+              color: color,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: const Text(
-              'Hold to record',
-              style: TextStyle(color: Colors.white, fontSize: 11),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  color == Colors.red.shade700 ? Icons.mic : Icons.mic_none,
+                  color: Colors.white,
+                  size: 12,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  message,
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
     overlay.insert(_hintOverlay!);
-    Future.delayed(const Duration(milliseconds: 1500), _removeHint);
+    if (durationMs > 0) {
+      Future.delayed(Duration(milliseconds: durationMs), _removeHint);
+    }
   }
 
   void _removeHint() {
@@ -94,7 +115,17 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     _hintOverlay = null;
   }
 
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      await _stopListening();
+    } else {
+      await _startListening();
+    }
+  }
+
   Future<void> _startListening() async {
+    HapticFeedback.mediumImpact();
+
     try {
       final available = await _speech.initialize(
         onStatus: (status) {
@@ -127,6 +158,9 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       _pulseController.repeat(reverse: true);
       _rippleController.repeat();
 
+      // Show "tap to stop" hint while recording
+      _showOverlayHint('கேட்கிறது... நிறுத்த தட்டவும்', color: Colors.red.shade700, durationMs: 2500);
+
       await _speech.listen(
         onResult: (result) {
           if (result.recognizedWords.isNotEmpty) {
@@ -155,71 +189,106 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
   }
 
   Future<void> _stopListening() async {
-    await _speech.stop();
+    if (!_isListening) return; // guard: prevent double-stop
     if (!mounted) return;
+    // Update UI immediately — don't wait for _speech.stop()
     setState(() => _isListening = false);
     _pulseController.stop();
     _pulseController.reset();
     _rippleController.stop();
     _rippleController.reset();
+    _removeHint();
+    await _speech.stop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _showHoldHint,
-      onLongPressStart: (_) async {
-        HapticFeedback.mediumImpact();
-        await _startListening();
-      },
-      onLongPressEnd: (_) => _stopListening(),
-      onLongPressCancel: () => _stopListening(),
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_pulseAnimation, _rippleAnimation]),
-        builder: (context, _) {
-          return SizedBox(
-            width: 40,
-            height: 40,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (_isListening)
-                  Transform.scale(
-                    scale: 1.0 + _rippleAnimation.value * 1.8,
-                    child: Opacity(
-                      opacity: (1.0 - _rippleAnimation.value).clamp(0.0, 1.0),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.red,
+    return Tooltip(
+      message: _isListening ? 'நிறுத்த தட்டவும் • Tap to stop' : 'குரல் உள்ளீடு • Tap to speak',
+      preferBelow: false,
+      child: GestureDetector(
+        onTap: _toggleListening,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_pulseAnimation, _rippleAnimation]),
+          builder: (context, _) {
+            return SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Ripple ring when recording
+                  if (_isListening)
+                    Transform.scale(
+                      scale: 1.0 + _rippleAnimation.value * 1.8,
+                      child: Opacity(
+                        opacity: (1.0 - _rippleAnimation.value).clamp(0.0, 1.0),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.red,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                Transform.scale(
-                  scale: _isListening ? _pulseAnimation.value : 1.0,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isListening
-                          ? Colors.red
-                          : Colors.transparent,
+
+                  // Mic icon button
+                  Transform.scale(
+                    scale: _isListening ? _pulseAnimation.value : 1.0,
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isListening
+                            ? Colors.red
+                            : Colors.green.shade50,
+                        border: Border.all(
+                          color: _isListening
+                              ? Colors.red.shade700
+                              : Colors.green.shade300,
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Icon(
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: _isListening ? Colors.white : Colors.green.shade700,
+                        size: 18,
+                      ),
                     ),
-                    child: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening ? Colors.white : Colors.grey[600],
-                      size: 20,
-                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+
+                  // "LIVE" dot badge when recording
+                  if (_isListening)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 5,
+                            height: 5,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

@@ -96,19 +96,40 @@ public class GeminiSearchService {
         try {
             log.info("🧠 Gemini AI Product Search - Query: '{}'", query);
 
-            String prompt = "You are a smart product search engine for an Indian grocery/general store.\n" +
-                    "Given the product catalog and customer query, find the most relevant products.\n\n" +
-                    "Rules:\n" +
-                    "- Understand intent, not just keywords (\"breakfast items\" → idli mix, bread, etc.)\n" +
-                    "- Handle Tamil (script + transliteration) naturally\n" +
-                    "- Match synonyms (\"cooking oil\" → sunflower oil, groundnut oil, etc.)\n" +
-                    "- Handle typos and partial words\n" +
-                    "- Return ONLY a JSON array of product IDs, max 20, ordered by relevance\n" +
-                    "- If no products match, return []\n" +
-                    "- Example response: [42, 15, 7, 103]\n\n" +
-                    "Product Catalog (format: id|name|tamilName|category):\n" +
+            // High-leverage prompt: explicit Tanglish examples + STT-error mappings + strict JSON output.
+            // Tamil village customers speak Tanglish (Tamil words in Latin/English script), and STT mangles
+            // it constantly. The catalog has products with English+Tamil names; we need to match across both.
+            String prompt = "You are a product search engine for a Tamil village grocery shop.\n" +
+                    "Customers speak Tamil, English, or Tanglish (Tamil words in English script).\n" +
+                    "Their voice input often has speech-to-text errors. Your job: find the products they meant.\n\n" +
+                    "MATCHING RULES (apply in order):\n" +
+                    "1. Tamil script (தக்காளி) → match products with that Tamil name OR English equivalent (Tomato)\n" +
+                    "2. Tanglish (\"thakkali\", \"thakali\", \"takkali\", \"dakkali\") → match Tomato\n" +
+                    "3. English (\"tomato\", \"tomatto\") → match Tomato + Tamil தக்காளி\n" +
+                    "4. STT errors — these all mean the SAME product:\n" +
+                    "   • onion/union/only-on/oniyan/vengayam/vangayam/wengayam → வெங்காயம் (Onion)\n" +
+                    "   • tomato/tamato/to-motto/thakkali/takkali/dakali → தக்காளி (Tomato)\n" +
+                    "   • rice/arisi/arice/race/arisee → அரிசி (Rice)\n" +
+                    "   • dal/doll/dhal/paruppu/parupu → பருப்பு (Dal/Lentils)\n" +
+                    "   • sugar/sugaar/sakkarai/chakkarai/should-gar → சர்க்கரை (Sugar)\n" +
+                    "   • oil/ennai/yennai → எண்ணெய் (Oil)\n" +
+                    "   • potato/pot-auto/urulai-kizhangu → உருளைக்கிழங்கு (Potato)\n" +
+                    "   • coconut/coco-not/thengai/thenkai → தேங்காய் (Coconut)\n" +
+                    "   • garlic/poondu/poonthu → பூண்டு (Garlic)\n" +
+                    "   • ginger/inji/ingee → இஞ்சி (Ginger)\n" +
+                    "   • milk/paal → பால் (Milk)\n" +
+                    "5. Intent queries — \"breakfast items\" → idli mix/dosa batter/bread; \"cooking oil\" → all oil products\n" +
+                    "6. If product has multiple weights (500g, 1kg), return ALL matching SKUs\n" +
+                    "7. NEVER invent products. Match ONLY against the catalog below.\n" +
+                    "8. If nothing in the catalog matches, return [].\n\n" +
+                    "OUTPUT FORMAT (strict):\n" +
+                    "Return ONLY a JSON array of product IDs (integers), ordered by relevance (best first), max 20.\n" +
+                    "No prose, no markdown, no code fences. Just the array.\n" +
+                    "Examples: [42,15,7]  OR  []\n\n" +
+                    "Product Catalog (format: id|englishName|tamilName|category):\n" +
                     productCatalog + "\n\n" +
-                    "Customer Query: \"" + query + "\"";
+                    "Customer voice query: \"" + query + "\"\n" +
+                    "Matching product IDs:";
 
             String aiResponse = callGeminiAPI(prompt);
 
@@ -204,12 +225,18 @@ public class GeminiSearchService {
             String url = String.format("%s/%s:generateContent?key=%s",
                 geminiConfig.getApiUrl(), geminiConfig.getModel(), currentApiKey);
 
-            // Build request body
+            // Build request body — low temperature for deterministic search/extraction.
+            // Higher temperature only hurts product matching (we want the same answer twice).
             Map<String, Object> requestBody = Map.of(
                 "contents", List.of(
                     Map.of("parts", List.of(
                         Map.of("text", prompt)
                     ))
+                ),
+                "generationConfig", Map.of(
+                    "temperature", 0.1,
+                    "topP", 0.9,
+                    "maxOutputTokens", 1024
                 )
             );
 

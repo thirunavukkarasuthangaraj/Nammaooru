@@ -178,6 +178,140 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     }
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '1. புகைப்படம் சேர்க்கவும் (விருப்பம்)' : '1. Add Photos (Optional)',
+        'desc': isTamil ? 'கடை அல்லது பணியிடத்தின் புகைப்படம் சேர்த்தால் விண்ணப்பதாரர்கள் விரைவாக தொடர்பு கொள்வார்கள்.' : 'Add a photo of your workplace or team. It helps applicants trust your listing.'},
+      {'icon': Icons.business, 'color': Colors.teal.shade600,
+        'title': isTamil ? '2. நிறுவன பெயர்' : '2. Company / Shop Name',
+        'desc': isTamil ? 'உங்கள் கடை அல்லது நிறுவனத்தின் பெயரை உள்ளிடவும். எ.கா: ஸ்ரீ சூப்பர்மார்க்கெட்.' : 'Enter your shop or company name. e.g., Sri Supermarket.'},
+      {'icon': Icons.work_outline, 'color': Colors.orange.shade600,
+        'title': isTamil ? '3. வேலை தலைப்பு & வகை' : '3. Job Title & Category',
+        'desc': isTamil ? 'வேலை தலைப்பு மற்றும் சரியான வகையை தேர்வு செய்யவும். எ.கா: கடை ஊழியர், டிரைவர்.' : 'Enter job title and select the right category. e.g., Shop Worker, Driver.'},
+      {'icon': Icons.access_time, 'color': Colors.purple.shade600,
+        'title': isTamil ? '4. வேலை வகை & காலியிடங்கள்' : '4. Job Type & Vacancies',
+        'desc': isTamil ? 'முழு நேரம் / பகுதி நேரம் / நாள் கூலி தேர்வு செய்யவும். எத்தனை பேர் தேவை என்றும் குறிப்பிடவும்.' : 'Select Full Time / Part Time / Daily Wage. Enter how many people you need.'},
+      {'icon': Icons.currency_rupee, 'color': Colors.green.shade700,
+        'title': isTamil ? '5. சம்பளம்' : '5. Salary',
+        'desc': isTamil ? 'சம்பள தொகையும் வகையும் (மாதம்/நாள்/மணி) குறிப்பிடவும். "பேசலாம்" என்றும் தேர்வு செய்யலாம்.' : 'Enter salary amount and type (monthly/daily/hourly). You can also select "Negotiable".'},
+      {'icon': Icons.location_on_outlined, 'color': Colors.red.shade600,
+        'title': isTamil ? '6. இடம் & விவரம்' : '6. Location & Description',
+        'desc': isTamil ? 'பணி இடம் உள்ளிடவும். வேலை பணிகள், தகுதிகள் என விவரமாக எழுதவும். குரல் பொத்தானை பயன்படுத்தலாம்.' : 'Enter work location. Describe job duties and requirements. Use the mic button to speak.'},
+      {'icon': Icons.check_circle_outline, 'color': _jobGreen,
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Post Job',
+        'desc': isTamil ? '"வேலை பதிவிடு" பொத்தானை அழுத்தவும். விண்ணப்பதாரர்கள் உங்களை நேரடியாக தொடர்பு கொள்வார்கள்.' : 'Tap "Post Job". Applicants will contact you directly on your phone number.'},
+    ];
+    _showGuideSheet(langProvider, steps, isTamil ? 'வேலை பதிவிடுவது எப்படி?' : 'How to Post a Job?',
+      isTamil ? '7 எளிய படிகளில் வேலை பதிவிடவும்' : 'Post your job in 7 easy steps',
+      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச வேலை பதிவுகள் மட்டுமே சமர்ப்பிக்கலாம்.' : 'Tip: You can post up to 3 job listings per day for free.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 4),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: _jobGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.lightbulb_outline, color: _jobGreen, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                    ),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  itemCount: steps.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, index) {
+                    final step = steps[index];
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: (step['color'] as Color).withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: (step['color'] as Color).withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: (step['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                            child: Icon(step['icon'] as IconData, color: step['color'] as Color, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(step['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (step['color'] as Color).withOpacity(0.9))),
+                                const SizedBox(height: 4),
+                                Text(step['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+                child: Row(
+                  children: [
+                    Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
@@ -191,6 +325,13 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         backgroundColor: _jobGreen,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: lang.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(lang),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,

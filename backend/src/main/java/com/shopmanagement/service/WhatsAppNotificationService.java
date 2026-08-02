@@ -75,6 +75,12 @@ public class WhatsAppNotificationService {
 
     @Value("${whatsapp.meta.template-language:en}")
     private String metaTemplateLanguage;
+
+    // Optional: when set, appsecret_proof is attached to every Graph API call so a
+    // leaked access token is useless without the app secret (enable together with
+    // "Require app secret proof" + server IP allow list in the Meta app settings).
+    @Value("${whatsapp.meta.app-secret:}")
+    private String metaAppSecret;
     
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -373,6 +379,9 @@ public class WhatsAppNotificationService {
 
             String url = String.format("https://graph.facebook.com/%s/%s/messages",
                     metaApiVersion, metaPhoneNumberId);
+            if (metaAppSecret != null && !metaAppSecret.isBlank()) {
+                url += "?appsecret_proof=" + computeAppSecretProof(metaAccessToken, metaAppSecret);
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -569,6 +578,22 @@ public class WhatsAppNotificationService {
         }
     }
     
+    /** HMAC-SHA256 of the access token keyed with the app secret (Meta appsecret_proof). */
+    private String computeAppSecretProof(String accessToken, String appSecret) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(appSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(accessToken.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to compute appsecret_proof", e);
+        }
+    }
+
     /**
      * Resend OTP
      */

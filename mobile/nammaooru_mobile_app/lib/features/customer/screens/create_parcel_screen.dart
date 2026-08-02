@@ -392,6 +392,95 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
     });
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.business_center_outlined, 'color': Colors.orange.shade700,
+        'title': isTamil ? '1. சேவை பெயர் & வகை' : '1. Service Name & Type',
+        'desc': isTamil ? 'உங்கள் நிறுவன பெயர் மற்றும் கதவு-கதவு / பிக்அப் பாயிண்ட் என சேவை வகை தேர்வு செய்யவும்.' : 'Enter your service name and choose type: Door to Door, Pickup Point, or Both.'},
+      {'icon': Icons.route_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '2. பயண இடங்கள்' : '2. From → To Locations',
+        'desc': isTamil ? 'எங்கிருந்து எங்கு பொருட்கள் கொண்டு செல்வீர்கள் என்ற இடங்களை உள்ளிடவும்.' : 'Enter pickup location and delivery destination. Be specific about routes covered.'},
+      {'icon': Icons.currency_rupee, 'color': Colors.green.shade700,
+        'title': isTamil ? '3. விலை தகவல்' : '3. Price Information',
+        'desc': isTamil ? 'கிலோ அல்லது தூரத்திற்கு தகுந்தாற்போல் விலையை குறிப்பிடவும். எ.கா: "₹50/kg" அல்லது "₹500 முதல்".' : 'Describe your pricing. e.g., "₹50/kg" or "Starting from ₹500". Be clear and fair.'},
+      {'icon': Icons.phone_outlined, 'color': Colors.indigo.shade600,
+        'title': isTamil ? '4. தொலைபேசி & முகவரி' : '4. Phone & Address',
+        'desc': isTamil ? 'தொடர்பு எண் மற்றும் அலுவலக / கடை முகவரியை தெளிவாக உள்ளிடவும்.' : 'Enter contact number and your office/shop address clearly.'},
+      {'icon': Icons.access_time, 'color': Colors.teal.shade600,
+        'title': isTamil ? '5. நேரங்கள்' : '5. Timings',
+        'desc': isTamil ? 'சேவை கிடைக்கும் நேரங்களை குறிப்பிடவும். எ.கா: "காலை 8 - இரவு 8", "24 மணி நேரமும்".' : 'Mention available hours. e.g., "8 AM - 8 PM", "24/7 Available".'},
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.purple.shade600,
+        'title': isTamil ? '6. புகைப்படம் & விவரம்' : '6. Photos & Description',
+        'desc': isTamil ? 'வாகன புகைப்படம் சேர்க்கவும். விவரமான சேவை தகவல் எழுதவும்.' : 'Add vehicle photos. Write detailed description of your service and coverage area.'},
+      {'icon': Icons.check_circle_outline, 'color': _parcelOrange,
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit for Approval',
+        'desc': isTamil ? '"ஒப்புதலுக்கு சமர்ப்பிக்கவும்" அழுத்தவும். நிர்வாகி ஒப்புதல் அளித்தவுடன் வாடிக்கையாளர்கள் தெரியும்.' : 'Tap "Submit". Your listing goes live after admin approval.'},
+    ];
+    _showGuideSheet(langProvider, steps,
+      isTamil ? 'பேக்கர்ஸ் & மூவர்ஸ் பதிவிடுவது எப்படி?' : 'How to Add Packers & Movers?',
+      isTamil ? '7 எளிய படிகளில் சேவை பட்டியலிடவும்' : 'List your service in 7 easy steps',
+      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். விலை தெளிவாக குறிப்பிட்டால் அதிக வாடிக்கையாளர்கள் கிடைப்பார்கள்.' : 'Tip: 3 free posts per day. Clear pricing attracts more customers.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          child: Column(children: [
+            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: _parcelOrange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.lightbulb_outline, color: _parcelOrange, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ])),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ])),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(
+              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final s = steps[i];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
+                      const SizedBox(height: 4),
+                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                    ])),
+                  ]),
+                );
+              },
+            )),
+            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+              child: Row(children: [
+                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -406,6 +495,13 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
         backgroundColor: _parcelOrange,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(langProvider),
+          ),
+        ],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

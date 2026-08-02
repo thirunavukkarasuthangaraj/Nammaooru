@@ -1,0 +1,31 @@
+# Runtime-only image for CI/CD deployments.
+# Expects the JAR to already be built (by GitHub Actions) at target/app.jar.
+# The full multi-stage build (Maven inside Docker) lives in ./Dockerfile for local use.
+FROM eclipse-temurin:17-jre-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Create app user for security
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+WORKDIR /app
+
+# Copy the prebuilt JAR (uploaded by CI)
+COPY target/app.jar app.jar
+
+# Create uploads directory structure and set permissions
+RUN mkdir -p /app/uploads/products/master && \
+    mkdir -p /app/uploads/products/shop && \
+    mkdir -p /app/uploads/documents/shops && \
+    chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

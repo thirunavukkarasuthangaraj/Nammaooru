@@ -392,6 +392,95 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
     });
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.title, 'color': Colors.orange.shade600,
+        'title': isTamil ? '1. தலைப்பு எழுதவும்' : '1. Write a Title',
+        'desc': isTamil ? 'பயண சேவையின் சுருக்கமான தலைப்பு எழுதவும். எ.கா: "சென்னை பேருந்து சேவை", "திருப்பூர் வேன் வாடகை".' : 'Write a short title. e.g., "Chennai Bus Service", "Tiruppur Van Rental".'},
+      {'icon': Icons.directions_bus_outlined, 'color': Colors.teal.shade600,
+        'title': isTamil ? '2. வாகன வகை' : '2. Vehicle Type',
+        'desc': isTamil ? 'பேருந்து / லாரி / மினி பஸ் / வாடகை / கார் என சரியான வாகன வகையை தேர்வு செய்யவும்.' : 'Select vehicle type: Bus, Lorry, Mini Bus, Rent Car, etc.'},
+      {'icon': Icons.route_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '3. பயண இடங்கள்' : '3. From → To Locations',
+        'desc': isTamil ? 'புறப்படும் இடம் மற்றும் சென்று சேரும் இடத்தை உள்ளிடவும். GPS மூலம் தானாக கண்டுபிடிக்கலாம்.' : 'Enter departure and destination locations. GPS auto-fills your current location.'},
+      {'icon': Icons.currency_rupee, 'color': Colors.green.shade700,
+        'title': isTamil ? '4. இருக்கை விலை & எண்ணிக்கை' : '4. Price per Seat & Seats',
+        'desc': isTamil ? 'ஒரு இருக்கைக்கான விலையும், மொத்த இருக்கைகளின் எண்ணிக்கையும் குறிப்பிடவும்.' : 'Enter price per seat and total number of seats available.'},
+      {'icon': Icons.description_outlined, 'color': Colors.purple.shade600,
+        'title': isTamil ? '5. விவரம்' : '5. Description',
+        'desc': isTamil ? 'பயண நேரம், சேவை வழி, வசதிகள் பற்றி விவரமாக எழுதவும். குரல் பொத்தானை பயன்படுத்தலாம்.' : 'Describe travel timings, route stops, and amenities. Use mic button to speak.'},
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.indigo.shade600,
+        'title': isTamil ? '6. வாகன புகைப்படம்' : '6. Vehicle Photos',
+        'desc': isTamil ? 'வாகனத்தின் உள்ளே மற்றும் வெளியே புகைப்படங்கள் சேர்க்கவும். இது பயணிகளுக்கு நம்பிக்கை தரும்.' : 'Add interior and exterior photos of the vehicle. This builds passenger trust.'},
+      {'icon': Icons.check_circle_outline, 'color': _travelTeal,
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit for Approval',
+        'desc': isTamil ? '"ஒப்புதலுக்கு சமர்ப்பிக்கவும்" அழுத்தவும். நிர்வாகி சரிபார்த்த பின் பயணிகள் தொடர்பு கொள்வார்கள்.' : 'Tap "Submit". Passengers will contact you directly after admin review.'},
+    ];
+    _showGuideSheet(langProvider, steps,
+      isTamil ? 'பயண சேவை பதிவிடுவது எப்படி?' : 'How to Add a Travel Listing?',
+      isTamil ? '7 எளிய படிகளில் பயண சேவை பட்டியலிடவும்' : 'List your travel service in 7 easy steps',
+      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். வாகன புகைப்படம் சேர்த்தால் அதிக பயணிகள் தொடர்பு கொள்வார்கள்.' : 'Tip: 3 free posts per day. Adding vehicle photos gets more passenger inquiries.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          child: Column(children: [
+            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: _travelTeal.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.lightbulb_outline, color: _travelTeal, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ])),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ])),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(
+              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final s = steps[i];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
+                      const SizedBox(height: 4),
+                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                    ])),
+                  ]),
+                );
+              },
+            )),
+            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+              child: Row(children: [
+                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -406,6 +495,13 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         backgroundColor: _travelTeal,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(langProvider),
+          ),
+        ],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

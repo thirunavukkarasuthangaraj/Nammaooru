@@ -120,7 +120,7 @@ class LocalShopPostDetailScreen extends StatelessWidget {
                 child: PageView.builder(
                   itemCount: imageUrls.length,
                   itemBuilder: (context, index) => CachedNetworkImage(
-                    imageUrl: ImageUrlHelper.getFullUrl(imageUrls[index].trim()),
+                    imageUrl: ImageUrlHelper.getFullImageUrl(imageUrls[index].trim()),
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                       color: Colors.grey[200],

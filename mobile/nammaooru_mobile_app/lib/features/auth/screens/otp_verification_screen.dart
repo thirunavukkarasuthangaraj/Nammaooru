@@ -241,7 +241,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
                             const SizedBox(height: 30),
                             _buildTimer(),
                             const SizedBox(height: 30),
-                            _buildVerifyButton(),
+                            _buildVerifyButton(authProvider.authState == AuthState.loading),
                             const SizedBox(height: 20),
                             _buildResendButton(),
                             const SizedBox(height: 30),
@@ -412,10 +412,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     );
   }
 
-  Widget _buildVerifyButton() {
+  Widget _buildVerifyButton(bool isLoading) {
     return PrimaryButton(
-      text: 'Verify OTP',
+      text: isLoading ? 'Verifying...' : 'Verify OTP',
       onPressed: _handleVerifyOtp,
+      isLoading: isLoading,
       height: 56,
     );
   }

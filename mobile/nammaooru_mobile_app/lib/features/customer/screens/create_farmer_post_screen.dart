@@ -409,6 +409,96 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
     });
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '1. புகைப்படம் சேர்க்கவும் (5 வரை)' : '1. Add Photos (up to 5)',
+        'desc': isTamil ? 'புதிய காய்கறி, பழம் அல்லது பொருளின் தெளிவான படம் எடுக்கவும். பல படங்கள் சேர்க்கலாம்.' : 'Take clear photos of your fresh produce or product. You can add multiple photos.'},
+      {'icon': Icons.eco_outlined, 'color': Colors.green.shade700,
+        'title': isTamil ? '2. பொருள் பெயர்' : '2. Product Name',
+        'desc': isTamil ? 'பொருளின் சரியான பெயர் எழுதவும் (அதிகபட்சம் 3 வார்த்தைகள்). எ.கா: புதிய தக்காளி, நாட்டு கோழி முட்டை.' : 'Write the product name (max 3 words). e.g., Fresh Tomatoes, Country Eggs.'},
+      {'icon': Icons.currency_rupee, 'color': Colors.orange.shade600,
+        'title': isTamil ? '3. விலை & அளவு' : '3. Price & Unit',
+        'desc': isTamil ? 'ஒரு யூனிட்டிற்கான விலை குறிப்பிடவும். கிலோ / லிட்டர் / எண்ணிக்கை / கட்டு என அளவை தேர்வு செய்யவும்.' : 'Enter price per unit. Select unit type: kg, litre, piece, bunch, etc.'},
+      {'icon': Icons.category_outlined, 'color': Colors.teal.shade600,
+        'title': isTamil ? '4. வகை தேர்வு' : '4. Select Category',
+        'desc': isTamil ? 'காய்கறி, பழம், தானியம், பால் பொருட்கள் என சரியான வகையை தேர்வு செய்யவும்.' : 'Choose the right category: Vegetables, Fruits, Grains, Dairy, Spices, etc.'},
+      {'icon': Icons.description_outlined, 'color': Colors.purple.shade600,
+        'title': isTamil ? '5. விவரம் எழுதவும்' : '5. Add Description',
+        'desc': isTamil ? 'பொருளின் தரம், அளவு, அறுவடை நேரம் போன்ற விவரங்கள் எழுதவும். குரல் பொத்தானை பயன்படுத்தலாம்.' : 'Describe quality, quantity, harvest date. Use the mic button to speak in Tamil.'},
+      {'icon': Icons.location_on_outlined, 'color': Colors.red.shade600,
+        'title': isTamil ? '6. தொலைபேசி & இடம்' : '6. Phone & Location',
+        'desc': isTamil ? 'தொடர்பு எண் மற்றும் கிராமம்/நகர பெயர் உள்ளிடவும். GPS பொத்தான் அழுத்தி இடம் கண்டுபிடிக்கலாம்.' : 'Enter contact number and village/town. Tap GPS icon to auto-detect location.'},
+      {'icon': Icons.check_circle_outline, 'color': const Color(0xFF2E7D32),
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit for Approval',
+        'desc': isTamil ? '"ஒப்புதலுக்கு சமர்ப்பிக்கவும்" அழுத்தவும். நிர்வாகி ஒப்புதல் அளித்தவுடன் வாங்குவோர் தொடர்பு கொள்வார்கள்.' : 'Tap "Submit". Buyers will contact you directly after admin approves your post.'},
+    ];
+    _showGuideSheet(langProvider, steps,
+      isTamil ? 'விவசாய பொருள் விற்பது எப்படி?' : 'How to Sell Farm Products?',
+      isTamil ? '7 எளிய படிகளில் பொருளை பட்டியலிடவும்' : 'List your farm product in 7 easy steps',
+      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள் சமர்ப்பிக்கலாம். இயற்கை பொருட்களுக்கு "Organic" வகை தேர்வு செய்யவும்.' : 'Tip: 3 free posts per day. Select "Organic" category for natural farm products.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    const accentColor = Color(0xFF2E7D32);
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          child: Column(children: [
+            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: accentColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.lightbulb_outline, color: accentColor, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ])),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ])),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(
+              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final s = steps[i];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
+                      const SizedBox(height: 4),
+                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                    ])),
+                  ]),
+                );
+              },
+            )),
+            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+              child: Row(children: [
+                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -423,6 +513,13 @@ class _CreateFarmerPostScreenState extends State<CreateFarmerPostScreen> {
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(langProvider),
+          ),
+        ],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

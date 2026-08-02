@@ -208,7 +208,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   void _callOrLogin(Map<String, dynamic> post) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
     final phone = post['phone'] ?? '';
@@ -350,7 +350,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   void _navigateToCreatePost() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      context.go('/login');
+      context.go('/register');
       return;
     }
 

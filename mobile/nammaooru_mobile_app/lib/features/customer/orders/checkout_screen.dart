@@ -181,7 +181,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
       // Navigate to login screen using GoRouter
-      context.go('/login');
+      context.go('/register');
     }
   }
 

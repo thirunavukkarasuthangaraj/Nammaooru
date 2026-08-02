@@ -37,9 +37,12 @@ class VoiceSearchService {
     }
   }
 
-  /// Start listening for voice input
-  /// Uses ta-IN (Tamil India) for better Tamil recognition.
-  /// Even if STT gives wrong text, Gemini AI search on backend corrects it.
+  /// Last confidence score from STT (0.0–1.0)
+  double _lastConfidence = 0;
+
+  /// Start listening for voice input.
+  /// Tries Tamil (ta-IN) first; if confidence is low OR result is empty,
+  /// the caller can retry via [listenEnglish] for English-India fallback.
   Future<String?> listen({String? localeId, Duration? pauseFor, Duration? listenFor}) async {
     debugPrint('VoiceSearch: listen() called');
     if (!await initialize()) {
@@ -49,16 +52,17 @@ class VoiceSearchService {
 
     try {
       _lastWords = '';
+      _lastConfidence = 0;
       _isListening = true;
       _lastError = null;
 
-      // Try Tamil first, then fallback to English-India
       final locale = localeId ?? 'ta-IN';
       debugPrint('VoiceSearch: Starting with $locale locale...');
 
       await _speech.listen(
         onResult: (result) {
           _lastWords = result.recognizedWords;
+          _lastConfidence = result.confidence;
           debugPrint('VoiceSearch: Recognized: $_lastWords (confidence: ${result.confidence})');
         },
         localeId: locale,
@@ -89,7 +93,7 @@ class VoiceSearchService {
         return null;
       }
 
-      debugPrint('VoiceSearch: Final text: $_lastWords');
+      debugPrint('VoiceSearch: Final text: $_lastWords (conf: $_lastConfidence)');
       return _lastWords;
     } catch (e) {
       _lastError = 'Error during speech recognition: $e';
@@ -98,6 +102,29 @@ class VoiceSearchService {
       return null;
     }
   }
+
+  /// Listen in Tamil, then fall back to English-India if:
+  ///   - the result is empty, OR
+  ///   - confidence is below [minConfidence] (default 0.3)
+  /// This handles villagers who actually speak English/Tanglish naturally —
+  /// ta-IN locale would otherwise produce garbled output.
+  Future<String?> listenSmart({double minConfidence = 0.3}) async {
+    final tamil = await listen(localeId: 'ta-IN');
+    if (tamil != null && tamil.trim().isNotEmpty && _lastConfidence >= minConfidence) {
+      debugPrint('VoiceSearch: ta-IN result accepted (conf: $_lastConfidence)');
+      return tamil;
+    }
+    debugPrint('VoiceSearch: ta-IN result rejected (text: "$tamil", conf: $_lastConfidence), '
+        'trying en-IN...');
+    final english = await listen(localeId: 'en-IN');
+    if (english != null && english.trim().isNotEmpty) {
+      return english;
+    }
+    // Last resort: return whatever Tamil gave us (even if low confidence)
+    return tamil;
+  }
+
+  double get lastConfidence => _lastConfidence;
 
   /// Listen with Tamil locale specifically
   Future<String?> listenTamil() async {
@@ -175,9 +202,10 @@ class VoiceSearchService {
     }
   }
 
-  /// Voice search: listen + AI search
+  /// Voice search: listen (Tamil + English fallback) + AI search.
+  /// Uses [listenSmart] so very low-confidence Tamil falls back to en-IN automatically.
   Future<List<dynamic>> voiceSearch(int shopId) async {
-    final query = await listen();
+    final query = await listenSmart();
 
     if (query == null || query.trim().isEmpty) {
       _lastError = _lastError ?? 'No voice input detected';

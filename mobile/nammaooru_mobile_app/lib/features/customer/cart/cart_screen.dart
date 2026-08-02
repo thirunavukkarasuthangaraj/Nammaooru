@@ -873,7 +873,7 @@ class _CartScreenState extends State<CartScreen> {
 
       // Navigate to login screen
       if (mounted) {
-        context.go('/login');
+        context.go('/register');
       }
       return;
     }

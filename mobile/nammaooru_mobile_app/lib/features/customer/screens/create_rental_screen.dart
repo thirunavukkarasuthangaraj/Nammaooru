@@ -393,6 +393,104 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
     });
   }
 
+  void _showHelpGuide(LanguageProvider langProvider) {
+    final isTamil = langProvider.showTamil;
+    final steps = [
+      {'icon': Icons.camera_alt_outlined, 'color': Colors.blue.shade600,
+        'title': isTamil ? '1. புகைப்படம் சேர்க்கவும்' : '1. Add Photos',
+        'desc': isTamil ? 'வீடு, வாகனம் அல்லது பொருளின் தெளிவான படம் சேர்க்கவும். நல்ல படம் வாடகைக்கு வேகமாக கிடைக்க உதவும்.' : 'Add clear photos of the house, vehicle, or item. Good photos help get it rented faster.'},
+      {'icon': Icons.title, 'color': Colors.orange.shade600,
+        'title': isTamil ? '2. தலைப்பு (அதிகபட்சம் 3 வார்த்தைகள்)' : '2. Title (max 3 words)',
+        'desc': isTamil ? 'சுருக்கமான தலைப்பு எழுதவும். எ.கா: "2BHK வீடு வாடகை", "பைக் வாடகை".' : 'Write a short title. e.g., "2BHK House Rent", "Bike for Rent".'},
+      {'icon': Icons.category_outlined, 'color': Colors.teal.shade600,
+        'title': isTamil ? '3. வகை தேர்வு செய்யவும்' : '3. Choose Category',
+        'desc': isTamil ? 'வீடு, வாகனம், உபகரணம், நிகழ்வு என சரியான வகையை தேர்வு செய்யவும்.' : 'Select the right category: House, Vehicle, Equipment, Events, etc.'},
+      {'icon': Icons.currency_rupee, 'color': Colors.green.shade700,
+        'title': isTamil ? '4. விலை & காலம்' : '4. Price & Period',
+        'desc': isTamil ? 'வாடகை தொகையும், மணி/நாள்/மாதம் என காலத்தையும் தேர்வு செய்யவும்.' : 'Enter rental price and select the period: Per Hour, Per Day, or Per Month.'},
+      {'icon': Icons.phone_outlined, 'color': Colors.indigo.shade600,
+        'title': isTamil ? '5. தொலைபேசி & இடம்' : '5. Phone & Location',
+        'desc': isTamil ? 'உங்கள் 10-இலக்க எண் மற்றும் கிராமம்/நகர பெயர் உள்ளிடவும். GPS பொத்தான் அழுத்தி தானாக கண்டுபிடிக்கலாம்.' : 'Enter your 10-digit number and location. Tap the GPS icon to auto-detect.'},
+      {'icon': Icons.star_outlined, 'color': Colors.amber.shade700,
+        'title': isTamil ? '6. பேனர் (விருப்பம்)' : '6. Banner Boost (Optional)',
+        'desc': isTamil ? '"பேனராக காட்டு" இயக்கினால் உங்கள் பதிவு மேலே தோன்றும். இது கட்டணம் செலுத்தும் சேவை.' : 'Enable "Feature as Banner" to show your post at the top. This is a paid feature.'},
+      {'icon': Icons.check_circle_outline, 'color': _rentalOrange,
+        'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit for Approval',
+        'desc': isTamil ? '"ஒப்புதலுக்கு சமர்ப்பிக்கவும்" அழுத்தவும். நிர்வாகி சரிபார்த்த பின் பதிவு தெரியும்.' : 'Tap "Submit for Approval". Your post goes live after admin review.'},
+    ];
+    _showGuideSheet(langProvider, steps,
+      isTamil ? 'வாடகை பதிவிடுவது எப்படி?' : 'How to Post for Rent?',
+      isTamil ? '7 எளிய படிகளில் வாடகை பதிவிடவும்' : 'List your rental in 7 easy steps',
+      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள் சமர்ப்பிக்கலாம்.' : 'Tip: You can post up to 3 rental listings per day for free.');
+  }
+
+  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          child: Column(children: [
+            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: _rentalOrange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.lightbulb_outline, color: _rentalOrange, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ])),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ]),
+            ),
+            const Divider(height: 1),
+            Expanded(child: ListView.separated(
+              controller: sc,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final s = steps[i];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
+                      const SizedBox(height: 4),
+                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+                    ])),
+                  ]),
+                );
+              },
+            )),
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
+              child: Row(children: [
+                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final langProvider = Provider.of<LanguageProvider>(context);
@@ -407,6 +505,13 @@ class _CreateRentalScreenState extends State<CreateRentalScreen> {
         backgroundColor: _rentalOrange,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            onPressed: () => _showHelpGuide(langProvider),
+          ),
+        ],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
