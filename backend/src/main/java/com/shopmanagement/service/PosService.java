@@ -268,7 +268,7 @@ public class PosService {
             );
 
             if (!sent) {
-                throw new RuntimeException("WhatsApp send failed. Check that WhatsApp is enabled and the bill-receipt template is configured in MSG91.");
+                throw new RuntimeException("WhatsApp send failed. Possible reasons: bill_receipt template not yet approved, access token expired, or recipient not allowed (test numbers can only message registered recipients). Check backend logs for the exact WhatsApp API error.");
             }
         } catch (java.io.IOException e) {
             log.error("Failed to store bill PDF for order {}", order.getOrderNumber(), e);
