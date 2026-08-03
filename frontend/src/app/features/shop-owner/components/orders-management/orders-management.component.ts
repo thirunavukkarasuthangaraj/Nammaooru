@@ -507,6 +507,17 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     return date.toDateString() === today.toDateString();
   }
 
+  /**
+   * Hide the shared walk-in placeholder number (90000 + shop id) — it is a
+   * synthetic bucket, not a dialable customer number.
+   */
+  displayPhone(phone: string | null | undefined): string {
+    if (!phone || /^90000\d{5}$/.test(phone)) {
+      return '';
+    }
+    return phone;
+  }
+
   applyFilter(resetScroll: boolean = true): void {
     this.filteredOrders = this.orders.filter(order => {
       // Search filter
@@ -1318,7 +1329,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
         <div style="margin-bottom: 4px;">
           <div class="customer-name">${order.customerName}</div>
-          <div class="customer-phone">${order.customerPhone || ''}</div>
+          <div class="customer-phone">${this.displayPhone(order.customerPhone)}</div>
         </div>
         <div class="divider"></div>
 
@@ -1410,7 +1421,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         <div class="customer-info">
           <h3>Customer Details</h3>
           <p><strong>Name:</strong> ${order.customerName}</p>
-          <p><strong>Phone:</strong> ${order.customerPhone}</p>
+          <p><strong>Phone:</strong> ${this.displayPhone(order.customerPhone) || 'Walk-in customer'}</p>
           <p><strong>Address:</strong> ${order.customerAddress || order.deliveryAddress}</p>
         </div>
 
@@ -1757,7 +1768,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
                 </div>
                 <div class="info-item">
                   <div class="info-label">Phone Number</div>
-                  <div class="info-value">${order.customerPhone || 'Not provided'}</div>
+                  <div class="info-value">${this.displayPhone(order.customerPhone) || 'Walk-in customer'}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">Email</div>
@@ -2458,7 +2469,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     const rows = this.filteredOrders.map(order => [
       order.orderNumber,
       order.customerName,
-      order.customerPhone || '',
+      this.displayPhone(order.customerPhone),
       this.getDeliveryTypeLabel(order),
       this.getStatusLabel(order.status),
       order.totalAmount.toString(),

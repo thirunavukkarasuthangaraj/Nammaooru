@@ -254,6 +254,7 @@ whatsapp:
     app-secret: ${META_WA_APP_SECRET:}
   template:
     shop-offer: ${META_WA_OFFER_TEMPLATE:shop_offer}
+    shop-offer-image: ${META_WA_OFFER_IMAGE_TEMPLATE:shop_offer_image}
 
 # SMS Configuration
 sms:

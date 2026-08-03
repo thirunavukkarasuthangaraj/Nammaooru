@@ -111,10 +111,24 @@ public class PosController {
         @SuppressWarnings("unchecked")
         List<Number> ids = (List<Number>) body.get("customerIds");
         String offerText = body.get("offerText") != null ? String.valueOf(body.get("offerText")) : null;
+        String imageUrl = body.get("imageUrl") != null && !String.valueOf(body.get("imageUrl")).isBlank()
+                ? String.valueOf(body.get("imageUrl")) : null;
         List<Long> customerIds = ids == null ? List.of() : ids.stream().map(Number::longValue).collect(Collectors.toList());
-        log.info("Sending offer for shop {} to {} customers", shopId, customerIds.size());
-        Map<String, Object> result = posService.sendOfferToCustomers(shopId, customerIds, offerText);
+        log.info("Sending offer for shop {} to {} customers (image: {})", shopId, customerIds.size(), imageUrl != null);
+        Map<String, Object> result = posService.sendOfferToCustomers(shopId, customerIds, offerText, imageUrl);
         return ResponseUtil.success(result, "Offer messages processed");
+    }
+
+    /**
+     * Upload an image for a WhatsApp offer campaign; returns its public URL.
+     */
+    @PostMapping("/customers/{shopId}/offer-image")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> uploadOfferImage(
+            @PathVariable Long shopId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        String url = posService.storeOfferImage(shopId, file);
+        return ResponseUtil.success(Map.of("url", url), "Offer image uploaded");
     }
 
     /**

@@ -138,7 +138,7 @@
                 <div class="customer-avatar">{{ getCustomerInitials(order.customerName) }}</div>
                 <div class="customer-details">
                   <div class="customer-name">{{ order.customerName }}</div>
-                  <div class="customer-phone" *ngIf="order.customerPhone">{{ order.customerPhone }}</div>
+                  <div class="customer-phone" *ngIf="displayPhone(order.customerPhone)">{{ displayPhone(order.customerPhone) }}</div>
                 </div>
               </div>
             </td>

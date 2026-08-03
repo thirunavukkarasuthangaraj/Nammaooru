@@ -58,6 +58,11 @@ public class WhatsAppNotificationService {
 
     // Marketing template for shop offers (must be approved as a MARKETING template
     // in Meta WhatsApp Manager; variables: customer_name, shop_name, offer_text)
+    // Same as shop_offer but with an IMAGE header; used when the shop attaches
+    // a picture to the offer (variables: customer_name, shop_name, offer_text)
+    @Value("${whatsapp.template.shop-offer-image:shop_offer_image}")
+    private String shopOfferImageTemplateId;
+
     @Value("${whatsapp.template.shop-offer:shop_offer}")
     private String shopOfferTemplateId;
     
@@ -335,15 +340,31 @@ public class WhatsAppNotificationService {
      * Template body variables, in order: customer_name, shop_name, offer_text.
      */
     public boolean sendShopOffer(String mobileNumber, String customerName, String shopName, String offerText) {
+        return sendShopOffer(mobileNumber, customerName, shopName, offerText, null);
+    }
+
+    /**
+     * Offer with an optional image attachment. When imageUrl is present the
+     * shop_offer_image template (IMAGE header) is used instead of shop_offer,
+     * so both templates must exist with the same body variables.
+     */
+    public boolean sendShopOffer(String mobileNumber, String customerName, String shopName,
+                                 String offerText, String imageUrl) {
         if (!whatsappEnabled) {
             log.info("WhatsApp disabled. Would send offer to {}: {}", mobileNumber, offerText);
             return false;
         }
+        boolean withImage = imageUrl != null && !imageUrl.isBlank();
         Map<String, Object> templateData = new java.util.LinkedHashMap<>();
+        if (withImage) {
+            templateData.put("header_image", imageUrl);
+        }
         templateData.put("customer_name", customerName != null && !customerName.isBlank() ? customerName : "Customer");
         templateData.put("shop_name", shopName);
         templateData.put("offer_text", offerText);
-        return sendWhatsAppMessage(mobileNumber, shopOfferTemplateId, templateData, "shop_offer");
+        return sendWhatsAppMessage(mobileNumber,
+                withImage ? shopOfferImageTemplateId : shopOfferTemplateId,
+                templateData, "shop_offer");
     }
 
     /**

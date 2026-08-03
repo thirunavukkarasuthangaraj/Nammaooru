@@ -454,7 +454,38 @@ public class PosService {
      * Send a WhatsApp offer message to selected customers of this shop.
      * Uses the approved marketing template; returns per-customer results.
      */
-    public Map<String, Object> sendOfferToCustomers(Long shopId, List<Long> customerIds, String offerText) {
+    /**
+     * Store an offer campaign image and return its public URL, for use as the
+     * IMAGE header of the shop_offer_image WhatsApp template.
+     */
+    public String storeOfferImage(Long shopId, org.springframework.web.multipart.MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("No image file provided");
+        }
+        String contentType = file.getContentType() != null ? file.getContentType() : "";
+        String extension;
+        switch (contentType) {
+            case "image/jpeg" -> extension = ".jpg";
+            case "image/png" -> extension = ".png";
+            default -> throw new RuntimeException("Only JPEG or PNG images are supported for WhatsApp offers");
+        }
+        // WhatsApp rejects image headers above 5MB
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new RuntimeException("Image too large (max 5MB)");
+        }
+        try {
+            String fileName = "offer_" + shopId + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+            Path offersDir = Paths.get(uploadDir, "offers");
+            Files.createDirectories(offersDir);
+            Files.write(offersDir.resolve(fileName), file.getBytes());
+            return apiBaseUrl + "/uploads/offers/" + fileName;
+        } catch (java.io.IOException e) {
+            log.error("Failed to store offer image for shop {}", shopId, e);
+            throw new RuntimeException("Failed to save offer image", e);
+        }
+    }
+
+    public Map<String, Object> sendOfferToCustomers(Long shopId, List<Long> customerIds, String offerText, String imageUrl) {
         if (customerIds == null || customerIds.isEmpty()) {
             throw new RuntimeException("No customers selected");
         }
@@ -476,9 +507,14 @@ public class PosService {
                 failures.add(Map.of("customerId", customerId, "reason", "No mobile number"));
                 continue;
             }
+            // Shared walk-in placeholder (90000 + shopId) is not a real number
+            if (customer.getMobileNumber().matches("90000\\d{5}")) {
+                failures.add(Map.of("customerId", customerId, "reason", "Walk-in customer (no real number)"));
+                continue;
+            }
             String name = customer.getFirstName() != null ? customer.getFirstName() : "Customer";
             boolean ok = whatsAppNotificationService.sendShopOffer(
-                    customer.getMobileNumber(), name, shop.getName(), offerText.trim());
+                    customer.getMobileNumber(), name, shop.getName(), offerText.trim(), imageUrl);
             if (ok) {
                 sent++;
             } else {

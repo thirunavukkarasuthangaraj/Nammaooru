@@ -130,24 +130,80 @@ interface CustomerOrder {
           </div>
 
           <!-- WhatsApp Offer Campaign -->
-          <div class="offer-panel" *ngIf="selectedIds.size > 0">
-            <div class="offer-header">
-              <mat-icon>campaign</mat-icon>
-              <span>{{ selectedIds.size }} customer{{ selectedIds.size === 1 ? '' : 's' }} selected -
-                approx cost {{ selectedIds.size * 0.9 | currency:'INR':'symbol':'1.0-0' }}</span>
+          <div class="offer-panel" *ngIf="realSelectedCount() > 0">
+            <div class="offer-panel-header">
+              <div class="offer-title">
+                <mat-icon>campaign</mat-icon>
+                <span>WhatsApp Offer</span>
+              </div>
+              <div class="offer-meta">
+                <span class="offer-chip">{{ realSelectedCount() }} customer{{ realSelectedCount() === 1 ? '' : 's' }}</span>
+                <span class="offer-chip cost">~{{ realSelectedCount() * 0.9 | currency:'INR':'symbol':'1.0-0' }}</span>
+              </div>
             </div>
-            <div class="offer-input-row">
-              <mat-form-field appearance="outline" class="offer-field">
-                <mat-label>Offer message</mat-label>
-                <input matInput [(ngModel)]="offerText" maxlength="300"
-                       placeholder="e.g. 10% off on all groceries this week!">
-              </mat-form-field>
-              <button mat-raised-button color="primary" class="offer-send-btn"
-                      [disabled]="sendingOffer || !offerText.trim()"
-                      (click)="sendOffer()">
-                <mat-icon>send</mat-icon>
-                {{ sendingOffer ? 'Sending...' : 'Send WhatsApp Offer' }}
+            <mat-form-field appearance="outline" class="offer-field">
+              <mat-label>Offer message</mat-label>
+              <textarea matInput [(ngModel)]="offerText" maxlength="300" rows="2"
+                        placeholder="e.g. 10% off on all groceries this week!"></textarea>
+              <mat-hint align="end">{{ offerText.length }}/300</mat-hint>
+            </mat-form-field>
+            <div class="offer-actions">
+              <input type="file" #offerImageInput hidden accept="image/jpeg,image/png"
+                     (change)="onOfferImageSelected($event)">
+              <button mat-stroked-button (click)="offerImageInput.click()" *ngIf="!offerImagePreview">
+                <mat-icon>add_photo_alternate</mat-icon>
+                Add image (optional)
               </button>
+              <div class="offer-image-chip" *ngIf="offerImagePreview">
+                <img [src]="offerImagePreview" alt="Offer image">
+                <span>{{ offerImageFile?.name }}</span>
+                <button mat-icon-button (click)="removeOfferImage()" aria-label="Remove image">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              <span class="offer-spacer"></span>
+              <button mat-raised-button color="primary"
+                      [disabled]="sendingOffer || !offerText.trim()"
+                      (click)="openOfferPreview()">
+                <mat-icon>visibility</mat-icon>
+                Preview & Send
+              </button>
+            </div>
+          </div>
+
+          <!-- Offer preview + double confirmation modal -->
+          <div class="offer-modal-backdrop" *ngIf="showOfferPreview" (click)="closeOfferPreview()">
+            <div class="offer-modal" (click)="$event.stopPropagation()">
+              <div class="offer-modal-header">
+                <mat-icon>preview</mat-icon>
+                <span>Customers will see it like this</span>
+                <button mat-icon-button (click)="closeOfferPreview()" [disabled]="sendingOffer" aria-label="Close preview">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div class="wa-chat">
+                <div class="wa-bubble">
+                  <img *ngIf="offerImagePreview" [src]="offerImagePreview" class="wa-image" alt="Offer image">
+                  <p class="wa-text">Hi <b>{{ previewCustomerName() }}</b>, {{ shopDisplayName() }} has an offer for you: {{ offerText.trim() }}</p>
+                  <span class="wa-time">{{ now | date:'shortTime' }}</span>
+                </div>
+                <p class="wa-note">Each customer sees their own name. Sent from your business number.</p>
+              </div>
+
+              <div class="offer-confirm">
+                <p>
+                  Send this offer to <b>{{ realSelectedCount() }} customer{{ realSelectedCount() === 1 ? '' : 's' }}</b>
+                  (approx cost {{ realSelectedCount() * 0.9 | currency:'INR':'symbol':'1.0-0' }})?
+                </p>
+                <div class="offer-confirm-actions">
+                  <button mat-stroked-button (click)="closeOfferPreview()" [disabled]="sendingOffer">Cancel</button>
+                  <button mat-raised-button color="primary" (click)="confirmSendOffer()" [disabled]="sendingOffer">
+                    <mat-icon>send</mat-icon>
+                    {{ sendingOffer ? 'Sending...' : 'Yes, Send Now' }}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -168,6 +224,8 @@ interface CustomerOrder {
                 </th>
                 <td mat-cell *matCellDef="let customer" (click)="$event.stopPropagation()">
                   <mat-checkbox [checked]="selectedIds.has(customer.customerId)"
+                                [disabled]="isWalkIn(customer)"
+                                [matTooltip]="isWalkIn(customer) ? 'Walk-in customers have no real number' : ''"
                                 (change)="toggleSelect(customer)">
                   </mat-checkbox>
                 </td>
@@ -184,7 +242,10 @@ interface CustomerOrder {
               <!-- Phone Column -->
               <ng-container matColumnDef="phone">
                 <th mat-header-cell *matHeaderCellDef>Mobile Number</th>
-                <td mat-cell *matCellDef="let customer">{{ customer.phone }}</td>
+                <td mat-cell *matCellDef="let customer">
+                  <span *ngIf="!isWalkIn(customer)">{{ customer.phone }}</span>
+                  <span *ngIf="isWalkIn(customer)" class="no-orders">Walk-in (no number)</span>
+                </td>
               </ng-container>
 
               <!-- Orders Column -->
@@ -388,37 +449,188 @@ interface CustomerOrder {
     }
 
     .offer-panel {
-      border: 1px solid #a7f3d0;
-      background: #ecfdf5;
-      border-radius: 8px;
-      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #25d366;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px 20px;
       margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
 
-    .offer-header {
+    .offer-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .offer-title {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: #065f46;
-      font-weight: 500;
-      margin-bottom: 8px;
+      font-weight: 600;
+      color: #1f2937;
+      font-size: 1.05rem;
+
+      mat-icon { color: #25d366; }
     }
 
-    .offer-input-row {
+    .offer-meta {
       display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .offer-chip {
+      background: #f3f4f6;
+      color: #374151;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .offer-chip.cost {
+      background: #ecfdf5;
+      color: #065f46;
     }
 
     .offer-field {
-      flex: 1;
-      min-width: 260px;
-      margin-bottom: -1.25em;
+      width: 100%;
     }
 
-    .offer-send-btn {
-      white-space: nowrap;
+    .offer-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .offer-spacer { flex: 1; }
+
+    .offer-image-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 4px 4px 4px 4px;
+      background: #f9fafb;
+      max-width: 320px;
+
+      img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 6px;
+      }
+
+      span {
+        font-size: 0.85rem;
+        color: #374151;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .offer-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.55);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .offer-modal {
+      background: #ffffff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+
+    .offer-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 8px 16px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+      color: #1f2937;
+
+      mat-icon { color: #25d366; }
+      span { flex: 1; }
+    }
+
+    .wa-chat {
+      background: #ece5dd;
+      padding: 20px;
+    }
+
+    .wa-bubble {
+      background: #ffffff;
+      border-radius: 10px;
+      border-top-left-radius: 2px;
+      padding: 8px;
+      max-width: 85%;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.12);
+      position: relative;
+    }
+
+    .wa-image {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .wa-text {
+      margin: 0 6px 14px 6px;
+      color: #111827;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .wa-time {
+      position: absolute;
+      right: 10px;
+      bottom: 6px;
+      font-size: 0.7rem;
+      color: #6b7280;
+    }
+
+    .wa-note {
+      margin: 12px 0 0 0;
+      font-size: 0.8rem;
+      color: #4b5563;
+      text-align: center;
+    }
+
+    .offer-confirm {
+      padding: 16px 20px 20px 20px;
+
+      p {
+        margin: 0 0 16px 0;
+        color: #374151;
+        text-align: center;
+      }
+    }
+
+    .offer-confirm-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
     }
 
     .empty-state {
@@ -611,6 +823,10 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   selectedIds = new Set<number>();
   offerText = '';
   sendingOffer = false;
+  offerImageFile: File | null = null;
+  offerImagePreview: string | null = null;
+  showOfferPreview = false;
+  now = new Date();
 
   customers: ShopCustomer[] = [];
 
@@ -697,7 +913,20 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
     );
   }
 
+  /** Shared per-shop walk-in placeholder (90000 + shop id) is not a real mobile number */
+  isWalkIn(customer: ShopCustomer): boolean {
+    return /^90000\d{5}$/.test(customer.phone || '');
+  }
+
+  /** Selected customers excluding walk-in placeholders */
+  realSelectedCount(): number {
+    return this.customers.filter(c => this.selectedIds.has(c.customerId) && !this.isWalkIn(c)).length;
+  }
+
   toggleSelect(customer: ShopCustomer): void {
+    if (this.isWalkIn(customer)) {
+      return;
+    }
     if (this.selectedIds.has(customer.customerId)) {
       this.selectedIds.delete(customer.customerId);
     } else {
@@ -706,31 +935,89 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   }
 
   allVisibleSelected(): boolean {
-    const visible = this.dataSource.filteredData;
+    const visible = this.dataSource.filteredData.filter(c => !this.isWalkIn(c));
     return visible.length > 0 && visible.every(c => this.selectedIds.has(c.customerId));
   }
 
   toggleSelectAll(checked: boolean): void {
     if (checked) {
-      this.dataSource.filteredData.forEach(c => this.selectedIds.add(c.customerId));
+      this.dataSource.filteredData.filter(c => !this.isWalkIn(c))
+        .forEach(c => this.selectedIds.add(c.customerId));
     } else {
       this.selectedIds.clear();
     }
   }
 
-  async sendOffer(): Promise<void> {
-    const text = this.offerText.trim();
-    if (!text || this.selectedIds.size === 0 || this.sendingOffer) {
+  onOfferImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) {
       return;
     }
-    const count = this.selectedIds.size;
-    if (!confirm(`Send this offer to ${count} customer${count === 1 ? '' : 's'} on WhatsApp?\n\n"${text}"`)) {
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      this.snackBar.open('Only JPEG or PNG images are supported', 'Close', { duration: 4000 });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.snackBar.open('Image too large (max 5MB)', 'Close', { duration: 4000 });
+      return;
+    }
+    this.offerImageFile = file;
+    const reader = new FileReader();
+    reader.onload = () => this.offerImagePreview = reader.result as string;
+    reader.readAsDataURL(file);
+  }
+
+  removeOfferImage(): void {
+    this.offerImageFile = null;
+    this.offerImagePreview = null;
+  }
+
+  shopDisplayName(): string {
+    const currentUser: any = this.authService.getCurrentUser();
+    return currentUser?.shopName || currentUser?.businessName || 'Your shop';
+  }
+
+  /** Name of the first selected customer, used to make the preview concrete */
+  previewCustomerName(): string {
+    const first = this.customers.find(c => this.selectedIds.has(c.customerId) && !this.isWalkIn(c));
+    return first?.name || 'Customer';
+  }
+
+  openOfferPreview(): void {
+    if (!this.offerText.trim() || this.realSelectedCount() === 0) {
+      return;
+    }
+    this.now = new Date();
+    this.showOfferPreview = true;
+  }
+
+  closeOfferPreview(): void {
+    if (!this.sendingOffer) {
+      this.showOfferPreview = false;
+    }
+  }
+
+  async confirmSendOffer(): Promise<void> {
+    const text = this.offerText.trim();
+    const ids = this.customers
+      .filter(c => this.selectedIds.has(c.customerId) && !this.isWalkIn(c))
+      .map(c => c.customerId);
+    if (!text || ids.length === 0 || this.sendingOffer) {
       return;
     }
     this.sendingOffer = true;
     try {
       const shopId = this.resolveShopId();
-      const result = await this.syncService.sendOfferToCustomers(shopId, Array.from(this.selectedIds), text);
+      let imageUrl: string | undefined;
+      if (this.offerImageFile) {
+        imageUrl = await this.syncService.uploadOfferImage(shopId, this.offerImageFile);
+        if (!imageUrl) {
+          throw new Error('Image upload failed');
+        }
+      }
+      const result = await this.syncService.sendOfferToCustomers(shopId, ids, text, imageUrl);
       const sent = result.sent ?? 0;
       const failed = result.failed ?? 0;
       this.snackBar.open(
@@ -740,10 +1027,12 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
       if (sent > 0) {
         this.selectedIds.clear();
         this.offerText = '';
+        this.removeOfferImage();
       }
+      this.showOfferPreview = false;
     } catch (error: any) {
       console.error('Error sending offer:', error);
-      const message = error?.error?.message || 'Failed to send offer messages';
+      const message = error?.error?.message || error?.message || 'Failed to send offer messages';
       this.snackBar.open(message, 'Close', { duration: 5000 });
     } finally {
       this.sendingOffer = false;
@@ -789,7 +1078,8 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   }
 
   getTotalCustomers(): number {
-    return this.customers.length;
+    // Walk-in placeholder rows are bill buckets, not real customers
+    return this.customers.filter(c => !this.isWalkIn(c)).length;
   }
 
   getTotalBills(): number {
@@ -803,7 +1093,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   }
 
   getLoyalCustomers(): number {
-    return this.customers.filter(c => c.totalOrders >= 10).length;
+    return this.customers.filter(c => !this.isWalkIn(c) && c.totalOrders >= 10).length;
   }
 
   exportCustomers(): void {

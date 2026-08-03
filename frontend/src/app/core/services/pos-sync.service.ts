@@ -322,12 +322,25 @@ export class PosSyncService implements OnDestroy {
   /**
    * Send a WhatsApp offer to selected customers of this shop
    */
-  async sendOfferToCustomers(shopId: number, customerIds: number[], offerText: string): Promise<any> {
+  async sendOfferToCustomers(shopId: number, customerIds: number[], offerText: string, imageUrl?: string): Promise<any> {
     const response: any = await this.http.post(
       `${this.apiUrl}/pos/customers/${shopId}/send-offer`,
-      { customerIds, offerText }
-    ).pipe(timeout(60000)).toPromise();
+      { customerIds, offerText, imageUrl: imageUrl || null }
+    ).pipe(timeout(120000)).toPromise();
     return response?.data || {};
+  }
+
+  /**
+   * Upload an offer campaign image; returns its public URL for the WhatsApp image header.
+   */
+  async uploadOfferImage(shopId: number, file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response: any = await this.http.post(
+      `${this.apiUrl}/pos/customers/${shopId}/offer-image`,
+      formData
+    ).pipe(timeout(60000)).toPromise();
+    return response?.data?.url || '';
   }
 
   /**
