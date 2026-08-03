@@ -73,7 +73,7 @@ export class SwalService {
   }
 
   // Text input prompt (e.g. collecting a value not already on the form)
-  prompt(title: string, text?: string, inputType: 'text' | 'tel' | 'email' = 'text'): Promise<SweetAlertResult> {
+  prompt(title: string, text?: string, inputType: 'text' | 'tel' | 'email' | 'number' = 'text'): Promise<SweetAlertResult> {
     return Swal.fire({
       title: title,
       text: text,

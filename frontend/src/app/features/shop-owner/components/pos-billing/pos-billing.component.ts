@@ -1397,9 +1397,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Add product to cart
    */
   addToCart(product: CachedProduct): void {
-    // Check stock
+    // Out of stock: offer to restock on the spot and continue billing
     if (product.trackInventory && product.stock <= 0) {
-      this.swal.error('Out of Stock', `${product.name} is out of stock`);
+      this.promptRestockAndAdd(product);
       return;
     }
 
@@ -1445,6 +1445,93 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     } else {
       this.searchTerm = '';
       this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+    }
+  }
+
+  /**
+   * Out-of-stock product during billing: ask for the new stock quantity,
+   * update it (server or offline queue) and add the product to the cart.
+   */
+  async promptRestockAndAdd(product: CachedProduct): Promise<void> {
+    const { value } = await this.swal.prompt(
+      'Out of Stock',
+      `${product.name} is out of stock. Enter new stock quantity to update and continue billing:`,
+      'number'
+    );
+    if (!value) return;
+    const newStock = parseInt(String(value), 10);
+    if (isNaN(newStock) || newStock <= 0) {
+      this.swal.error('Invalid Stock', 'Enter a stock quantity greater than 0');
+      return;
+    }
+    const updated = await this.updateProductStock(product, newStock);
+    if (updated) {
+      this.addToCart(product);
+    }
+  }
+
+  /**
+   * Update just the stock of a product: server first, offline queue on
+   * network failure, then local caches so POS reflects it immediately.
+   */
+  private async updateProductStock(product: CachedProduct, newStock: number): Promise<boolean> {
+    const productId = product.id;
+    try {
+      const isOfflineProduct = productId < 0;
+      if (navigator.onLine && !isOfflineProduct) {
+        try {
+          const response: any = await this.http.patch<any>(
+            `${this.apiUrl}/shop-products/${productId}/quick-update`,
+            { stockQuantity: newStock }
+          ).toPromise();
+          if (response?.statusCode && response.statusCode !== '0000') {
+            this.swal.error('Error', response.message || 'Failed to update stock');
+            return false;
+          }
+        } catch (apiError: any) {
+          const isNetworkError = !apiError?.status || apiError.status === 0;
+          if (!isNetworkError) {
+            this.swal.error('Error', apiError?.error?.message || apiError?.message || 'Failed to update stock');
+            return false;
+          }
+          await this.queueOfflineStockEdit(product, newStock);
+        }
+      } else {
+        await this.queueOfflineStockEdit(product, newStock);
+      }
+
+      // Optimistic local update everywhere POS reads stock from
+      product.stock = newStock;
+      const idx = this.products.findIndex(p => p.id === productId);
+      if (idx !== -1) this.products[idx].stock = newStock;
+      const fidx = this.filteredProducts.findIndex(p => p.id === productId);
+      if (fidx !== -1) this.filteredProducts[fidx].stock = newStock;
+      await this.offlineStorage.updateLocalProduct(productId, { stock: newStock })
+        .catch(err => console.warn('Failed to update stock in cache:', err));
+      localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
+      this.swal.toast(`Stock updated: ${product.name} - ${newStock}`, 'success');
+      return true;
+    } catch (error) {
+      console.error('Stock update failed:', error);
+      this.swal.error('Error', 'Failed to update stock');
+      return false;
+    }
+  }
+
+  private async queueOfflineStockEdit(product: CachedProduct, newStock: number): Promise<void> {
+    const offlineEdit: OfflineEdit = {
+      editId: this.offlineStorage.generateOfflineEditId(),
+      productId: product.id,
+      shopId: this.shopId,
+      changes: { stockQuantity: newStock },
+      previousValues: { stockQuantity: product.stock },
+      createdAt: new Date().toISOString(),
+      synced: false
+    };
+    await this.offlineStorage.saveOfflineEdit(offlineEdit);
+    if (product.id < 0) {
+      await this.offlineStorage.applyEditToProductCreation(product.id, { stockQuantity: newStock });
     }
   }
 
