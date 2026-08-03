@@ -206,7 +206,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // UI state
   isLoading: boolean = true;
-  showCustomerForm: boolean = false;
+  showCustomerModal: boolean = false;
 
   // Language toggle
   showTamil: boolean = false;
@@ -2604,8 +2604,26 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Toggle customer form
    */
-  toggleCustomerForm(): void {
-    this.showCustomerForm = !this.showCustomerForm;
+  hasCustomer(): boolean {
+    return !!((this.customerName && this.customerName.trim()) || (this.customerPhone && this.customerPhone.trim()));
+  }
+
+  openCustomerModal(): void {
+    this.showCustomerModal = true;
+    this.showCustomerSuggestions = false;
+  }
+
+  closeCustomerModal(): void {
+    this.showCustomerModal = false;
+    this.showCustomerSuggestions = false;
+  }
+
+  clearCustomer(): void {
+    this.customerName = '';
+    this.customerPhone = '';
+    this.orderNotes = '';
+    this.customerSuggestions = [];
+    this.showCustomerSuggestions = false;
   }
 
   /**

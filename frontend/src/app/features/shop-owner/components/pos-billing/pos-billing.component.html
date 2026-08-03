@@ -349,22 +349,30 @@
         </div>
       </div>
 
-      <!-- Cart Footer - fixed at bottom -->
-      <div class="cart-footer">
-        <!-- Customer Info (Collapsible) -->
-        <div class="customer-section">
-          <button mat-button (click)="toggleCustomerForm()" class="customer-toggle">
-            <mat-icon>{{ showCustomerForm ? 'expand_less' : 'expand_more' }}</mat-icon>
-            Customer Details (Optional)
-          </button>
-          <div *ngIf="showCustomerForm" class="customer-form">
+      <!-- Floating add/edit customer button -->
+      <button mat-mini-fab class="customer-fab" (click)="openCustomerModal()"
+              [title]="hasCustomer() ? 'Edit customer' : 'Add customer'">
+        <mat-icon>{{ hasCustomer() ? 'how_to_reg' : 'person_add' }}</mat-icon>
+      </button>
+
+      <!-- Customer entry modal -->
+      <div class="customer-modal-backdrop" *ngIf="showCustomerModal" (click)="closeCustomerModal()">
+        <div class="customer-modal" (click)="$event.stopPropagation()">
+          <div class="customer-modal-header">
+            <mat-icon>person_add</mat-icon>
+            <span>Customer Details</span>
+            <button mat-icon-button (click)="closeCustomerModal()" aria-label="Close">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="customer-modal-body">
+            <input type="tel" [(ngModel)]="customerPhone" placeholder="Mobile Number" class="customer-input"
+                   autocomplete="off"
+                   (input)="onCustomerFieldInput(customerPhone)"
+                   (blur)="hideCustomerSuggestions()">
             <input type="text" [(ngModel)]="customerName" placeholder="Customer Name" class="customer-input"
                    autocomplete="off"
                    (input)="onCustomerFieldInput(customerName)"
-                   (blur)="hideCustomerSuggestions()">
-            <input type="tel" [(ngModel)]="customerPhone" placeholder="Phone Number" class="customer-input"
-                   autocomplete="off"
-                   (input)="onCustomerFieldInput(customerPhone)"
                    (blur)="hideCustomerSuggestions()">
             <div *ngIf="showCustomerSuggestions" class="customer-suggestions">
               <div *ngFor="let suggestion of customerSuggestions"
@@ -375,8 +383,24 @@
                 <span class="suggestion-bills">{{ suggestion.billCount }} bill{{ suggestion.billCount > 1 ? 's' : '' }}</span>
               </div>
             </div>
-            <input type="text" [(ngModel)]="orderNotes" placeholder="Notes" class="customer-input">
+            <input type="text" [(ngModel)]="orderNotes" placeholder="Notes (optional)" class="customer-input">
           </div>
+          <div class="customer-modal-actions">
+            <button mat-stroked-button (click)="clearCustomer()">Clear</button>
+            <button mat-raised-button color="primary" (click)="closeCustomerModal()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cart Footer - fixed at bottom -->
+      <div class="cart-footer">
+        <!-- Compact customer chip (set via the floating + button) -->
+        <div class="customer-chip-row" *ngIf="hasCustomer()">
+          <mat-icon>person</mat-icon>
+          <span class="chip-text">{{ customerName || 'Customer' }}<ng-container *ngIf="customerPhone"> · {{ customerPhone }}</ng-container></span>
+          <button mat-icon-button (click)="openCustomerModal()" title="Edit customer">
+            <mat-icon>edit</mat-icon>
+          </button>
         </div>
 
         <!-- Totals -->
