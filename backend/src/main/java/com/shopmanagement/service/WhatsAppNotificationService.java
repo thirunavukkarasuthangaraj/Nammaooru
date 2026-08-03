@@ -452,56 +452,90 @@ public class WhatsAppNotificationService {
                 components.add(Map.of("type", "header", "parameters", List.of(param)));
             }
 
-            // Body parameters in templateData iteration order (callers use LinkedHashMap
-            // when order matters). Templates in the production WABA use named variables
-            // ({{customer_name}}...), so each parameter carries parameter_name = the map key,
-            // which callers keep identical to the template's variable names.
-            if (templateData != null && !templateData.isEmpty()) {
-                List<Map<String, Object>> bodyParams = new ArrayList<>();
-                for (Map.Entry<String, Object> entry : templateData.entrySet()) {
-                    if ("header_image".equals(entry.getKey())
-                            || "header_document".equals(entry.getKey())
-                            || "header_document_filename".equals(entry.getKey())) {
-                        continue;
-                    }
-                    Map<String, Object> param = new HashMap<>();
-                    param.put("type", "text");
-                    param.put("parameter_name", entry.getKey());
-                    param.put("text", String.valueOf(entry.getValue()));
-                    bodyParams.add(param);
-                }
-                if (!bodyParams.isEmpty()) {
-                    components.add(Map.of("type", "body", "parameters", bodyParams));
-                }
-            }
-
-            Map<String, Object> template = new HashMap<>();
-            template.put("name", templateName);
-            template.put("language", Map.of("code", metaTemplateLanguage));
-            template.put("components", components);
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("messaging_product", "whatsapp");
-            requestBody.put("to", formatMobileNumber(mobileNumber));
-            requestBody.put("type", "template");
-            requestBody.put("template", template);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            // First attempt sends parameter_name (required for named-variable templates
+            // like bill_receipt); if Meta rejects it because the template uses numbered
+            // variables ({{1}}, {{2}}...), retry once without the names — parameter order
+            // already matches because callers use LinkedHashMap.
+            Map<String, Object> requestBody = buildMetaTemplateRequest(
+                    mobileNumber, templateName, templateData, components, true);
             log.debug("Sending WhatsApp message via Meta Cloud API: {}", requestBody);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("WhatsApp {} sent via Meta Cloud API to {}", messageType, mobileNumber);
-                return true;
+            try {
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,
+                        new HttpEntity<>(requestBody, headers), String.class);
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    log.info("WhatsApp {} sent via Meta Cloud API to {}", messageType, mobileNumber);
+                    return true;
+                }
+                log.error("Meta Cloud API send failed ({}): {}", response.getStatusCode(), response.getBody());
+                return false;
+            } catch (org.springframework.web.client.HttpStatusCodeException e) {
+                String errorBody = e.getResponseBodyAsString();
+                if (errorBody != null && errorBody.contains("parameter_name")) {
+                    log.info("Template {} uses positional variables; retrying without parameter_name", templateName);
+                    Map<String, Object> retryBody = buildMetaTemplateRequest(
+                            mobileNumber, templateName, templateData, components, false);
+                    ResponseEntity<String> retry = restTemplate.exchange(url, HttpMethod.POST,
+                            new HttpEntity<>(retryBody, headers), String.class);
+                    if (retry.getStatusCode().is2xxSuccessful()) {
+                        log.info("WhatsApp {} sent via Meta Cloud API to {}", messageType, mobileNumber);
+                        return true;
+                    }
+                    log.error("Meta Cloud API retry failed ({}): {}", retry.getStatusCode(), retry.getBody());
+                    return false;
+                }
+                log.error("Meta Cloud API send failed ({}): {}", e.getStatusCode(), errorBody);
+                return false;
             }
-            log.error("Meta Cloud API send failed ({}): {}", response.getStatusCode(), response.getBody());
-            return false;
 
         } catch (Exception e) {
             log.error("Error sending WhatsApp message via Meta Cloud API", e);
             return false;
         }
+    }
+
+    /**
+     * Build the Cloud API template payload. headerComponents holds the already-built
+     * header (image/document) component; body parameters are appended in templateData
+     * iteration order, with parameter_name included only for named-variable templates.
+     */
+    private Map<String, Object> buildMetaTemplateRequest(String mobileNumber, String templateName,
+                                                         Map<String, Object> templateData,
+                                                         List<Map<String, Object>> headerComponents,
+                                                         boolean includeParameterNames) {
+        List<Map<String, Object>> components = new ArrayList<>(headerComponents);
+
+        if (templateData != null && !templateData.isEmpty()) {
+            List<Map<String, Object>> bodyParams = new ArrayList<>();
+            for (Map.Entry<String, Object> entry : templateData.entrySet()) {
+                if ("header_image".equals(entry.getKey())
+                        || "header_document".equals(entry.getKey())
+                        || "header_document_filename".equals(entry.getKey())) {
+                    continue;
+                }
+                Map<String, Object> param = new HashMap<>();
+                param.put("type", "text");
+                if (includeParameterNames) {
+                    param.put("parameter_name", entry.getKey());
+                }
+                param.put("text", String.valueOf(entry.getValue()));
+                bodyParams.add(param);
+            }
+            if (!bodyParams.isEmpty()) {
+                components.add(Map.of("type", "body", "parameters", bodyParams));
+            }
+        }
+
+        Map<String, Object> template = new HashMap<>();
+        template.put("name", templateName);
+        template.put("language", Map.of("code", metaTemplateLanguage));
+        template.put("components", components);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("messaging_product", "whatsapp");
+        requestBody.put("to", formatMobileNumber(mobileNumber));
+        requestBody.put("type", "template");
+        requestBody.put("template", template);
+        return requestBody;
     }
 
     /**
