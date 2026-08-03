@@ -386,6 +386,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     const allRaw: any[] = [];
     let currentPage = 0;
     let totalPages = 1;
+    let totalElements = -1;
 
     try {
       while (currentPage < totalPages) {
@@ -397,10 +398,20 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           `${this.apiUrl}/shop-products/my-products`, { params }
         ).pipe(takeUntil(this.destroy$)).toPromise();
 
+        // takeUntil fired (navigation/destroy) — the request was cancelled, not empty.
+        // Abort without touching cache or UI so a partial list is never saved as truth.
+        if (response === undefined || response === null) {
+          console.warn('syncProductsFromServer: sync cancelled mid-flight, keeping existing data');
+          return;
+        }
+
         let content: any[] = [];
         if (response?.data?.content) {
           content = response.data.content;
           totalPages = response.data.totalPages || 1;
+          if (typeof response.data.totalElements === 'number') {
+            totalElements = response.data.totalElements;
+          }
         } else if (Array.isArray(response?.data)) {
           content = response.data;
           totalPages = 1;
@@ -416,6 +427,15 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           console.warn('syncProductsFromServer: page guard hit (200) — stopping');
           break;
         }
+      }
+
+      // Incomplete sync (a page failed or came back short): never overwrite good
+      // cached data with a partial list — that's what caused wrong product counts.
+      const syncComplete = totalElements < 0 || allRaw.length >= totalElements;
+      if (!syncComplete && this.loadedFromCache) {
+        console.warn(`syncProductsFromServer: incomplete sync (${allRaw.length}/${totalElements}), keeping cached data`);
+        this.loading = false;
+        return;
       }
 
       const products = allRaw;
@@ -462,8 +482,16 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           // Set products from server immediately (before async merge)
           this.products = serverProducts;
 
-          // Save server products to IndexedDB cache for fast loading next time
-          this.saveProductsToCache(serverProducts);
+          // Save to IndexedDB only when the sync is complete — caching a partial
+          // list would show a low product count for the next 5 minutes.
+          if (syncComplete) {
+            this.saveProductsToCache(serverProducts);
+          } else {
+            this.snackBar.open(`Only ${serverProducts.length} of ${totalElements} products loaded. Pull to refresh or retry.`, 'Retry', {
+              duration: 10000,
+              panelClass: ['warning-snackbar']
+            }).onAction().subscribe(() => this.forceRefreshProducts());
+          }
 
           this.usingFallbackData = false;
           this.loadedFromCache = false;
@@ -496,96 +524,12 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
             message: error?.message,
             url: error?.url
           });
-          console.warn('Using fallback product data due to API issues');
-          
-          // Fallback to sample products that match the real order items
-          this.products = [
-            {
-              id: 50,
-              customName: 'Coffee Beans Arabica',
-              description: 'Premium roasted coffee beans',
-              price: 999,
-              costPrice: 750,
-              stockQuantity: 15,
-              isAvailable: true,
-              status: 'ACTIVE',
-              imageUrl: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=400&fit=crop',
-              category: 'Food & Beverages',
-              unit: 'kg',
-              sku: 'COFFEE-ARB-001',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 51,
-              customName: 'Garden Soil Organic',
-              description: 'Premium organic potting soil',
-              price: 199,
-              costPrice: 150,
-              stockQuantity: 8,
-              isAvailable: true,
-              status: 'ACTIVE',
-              imageUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=400&fit=crop',
-              category: 'Garden',
-              unit: 'bag',
-              sku: 'SOIL-ORG-001',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 49,
-              customName: "Levi's Jeans 501",
-              description: 'Classic straight fit denim jeans',
-              price: 2999,
-              costPrice: 2000,
-              stockQuantity: 25,
-              isAvailable: true,
-              status: 'ACTIVE',
-              imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop',
-              category: 'Clothing',
-              unit: 'piece',
-              sku: 'LEVI-501-001',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 12,
-              customName: 'Dell Laptop XPS 13',
-              description: 'High-performance ultrabook for professionals',
-              price: 85000,
-              costPrice: 75000,
-              stockQuantity: 3,
-              isAvailable: true,
-              status: 'ACTIVE',
-              imageUrl: 'https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=400&fit=crop',
-              category: 'Electronics',
-              unit: 'piece',
-              sku: 'DELL-XPS13-001',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 11,
-              customName: 'Samsung Galaxy S24',
-              description: 'Latest Samsung smartphone with advanced camera',
-              price: 75000,
-              costPrice: 65000,
-              stockQuantity: 5,
-              isAvailable: true,
-              status: 'ACTIVE',
-              imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop',
-              category: 'Electronics',
-              unit: 'piece',
-              sku: 'SGS24-001',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
-          ];
-          
-          this.filteredProducts = [...this.products];
-          this.totalProducts = this.products.length;
-          this.usingFallbackData = true;
-          // Clear previous selections when using fallback data
+          // No cache and the sync failed: show an honest empty state with retry
+          // instead of fake sample products (which read as a "low product count").
+          this.products = [];
+          this.filteredProducts = [];
+          this.totalProducts = 0;
+          this.usingFallbackData = false;
           this.selectedProducts = [];
           this.selectAll = false;
           this.loadCategories();
@@ -594,10 +538,10 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           this.loading = false;
           this.searching = false;
 
-          this.snackBar.open('Products loaded (API unavailable - showing sample data)', 'Close', {
-            duration: 5000,
+          this.snackBar.open('Could not load products. Check your connection and try again.', 'Retry', {
+            duration: 10000,
             panelClass: ['warning-snackbar']
-          });
+          }).onAction().subscribe(() => this.forceRefreshProducts());
     }
   }
 
