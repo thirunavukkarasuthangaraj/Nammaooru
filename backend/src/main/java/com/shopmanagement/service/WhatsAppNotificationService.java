@@ -432,7 +432,9 @@ public class WhatsAppNotificationService {
             }
 
             // Body parameters in templateData iteration order (callers use LinkedHashMap
-            // when order matters, matching the template's {{1}}, {{2}}... variables)
+            // when order matters). Templates in the production WABA use named variables
+            // ({{customer_name}}...), so each parameter carries parameter_name = the map key,
+            // which callers keep identical to the template's variable names.
             if (templateData != null && !templateData.isEmpty()) {
                 List<Map<String, Object>> bodyParams = new ArrayList<>();
                 for (Map.Entry<String, Object> entry : templateData.entrySet()) {
@@ -443,6 +445,7 @@ public class WhatsAppNotificationService {
                     }
                     Map<String, Object> param = new HashMap<>();
                     param.put("type", "text");
+                    param.put("parameter_name", entry.getKey());
                     param.put("text", String.valueOf(entry.getValue()));
                     bodyParams.add(param);
                 }
