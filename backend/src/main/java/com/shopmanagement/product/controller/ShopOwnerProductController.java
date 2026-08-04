@@ -48,9 +48,10 @@ public class ShopOwnerProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection) {
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) Long updatedAfter) {
 
-        log.info("Fetching my products for current user - search: {}, page: {}, size: {}", search, page, size);
+        log.info("Fetching my products for current user - search: {}, page: {}, size: {}, updatedAfter: {}", search, page, size, updatedAfter);
 
         // Hard cap page size to protect server from oversized requests
         if (size > 500) {
@@ -97,6 +98,13 @@ public class ShopOwnerProductController {
                     cb.like(cb.lower(cb.coalesce(root.get("barcode3"), "")), searchPattern),
                     cb.like(cb.lower(cb.coalesce(root.get("tags"), "")), searchPattern)
                 ));
+            }
+
+            // Delta sync: only products changed after the given epoch-millis timestamp
+            if (updatedAfter != null && updatedAfter > 0) {
+                java.time.LocalDateTime since = java.time.LocalDateTime.ofInstant(
+                        java.time.Instant.ofEpochMilli(updatedAfter), java.time.ZoneId.systemDefault());
+                spec = spec.and((root, query, cb) -> cb.greaterThan(root.get("updatedAt"), since));
             }
 
             // Add category filter

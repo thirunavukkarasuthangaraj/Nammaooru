@@ -200,6 +200,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   // Cache validity - only sync from server if cache is older than this
   private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
   private readonly POS_CACHE_TIMESTAMP_KEY = 'pos_products_last_sync';
+  // Delta sync: stale-cache refreshes fetch only changed products; a heavy full
+  // re-download happens at most once a day (catches hard-deleted rows the delta can't see)
+  private readonly POS_FULL_SYNC_KEY = 'pos_products_last_full_sync';
+  private readonly FULL_SYNC_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly DELTA_OVERLAP_MS = 2 * 60 * 1000; // overlap to absorb client/server clock skew
   // Throttle background image re-caching so opening POS doesn't re-scan all images every time
   private readonly POS_IMAGES_CACHED_KEY = 'pos_images_last_cached';
   private readonly IMAGE_CACHE_VALIDITY_MS = 60 * 60 * 1000; // 1 hour
@@ -942,6 +947,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // Save ALL products (including inactive) to IndexedDB for offline use
       await this.offlineStorage.saveProducts(allProducts, this.shopId);
       localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+      localStorage.setItem(this.POS_FULL_SYNC_KEY, Date.now().toString());
 
       // Cache images in background (non-blocking)
       this.cacheProductImages().then(() => {
@@ -1018,9 +1024,86 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Sync products in background
+   * Sync products in background.
+   * Normally fetches ONLY products changed since the last sync (delta) — re-downloading
+   * the whole ~2500-product catalog every 5 minutes caused latency and screen hangs.
+   * A full re-download still runs at most once a day to catch hard deletes.
    */
   private async syncProductsInBackground(): Promise<void> {
+    const lastSync = parseInt(localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY) || '0', 10);
+    const lastFullSync = parseInt(localStorage.getItem(this.POS_FULL_SYNC_KEY) || '0', 10);
+
+    if (!lastSync || Date.now() - lastFullSync > this.FULL_SYNC_VALIDITY_MS) {
+      return this.fullSyncInBackground();
+    }
+
+    const updatedAfter = Math.max(0, lastSync - this.DELTA_OVERLAP_MS);
+    const pageSize = 500;
+    const rawProducts: any[] = [];
+    let page = 0;
+    let totalPages = 1;
+
+    try {
+      while (page < totalPages) {
+        const response: any = await this.http.get<any>(
+          `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}&updatedAfter=${updatedAfter}`
+        ).pipe(takeUntil(this.destroy$)).toPromise();
+
+        const data = response?.data;
+        let content: any[] = [];
+        if (data?.content) {
+          content = data.content;
+          totalPages = data.totalPages || 1;
+        } else if (Array.isArray(data)) {
+          content = data;
+          totalPages = 1;
+        }
+        if (content.length === 0) break;
+        rawProducts.push(...content);
+
+        page++;
+        if (page > 200) {
+          console.warn('syncProductsInBackground: page guard hit (200) — stopping');
+          break;
+        }
+      }
+
+      localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
+      if (rawProducts.length === 0) {
+        console.log('Delta sync: no product changes since last sync');
+        return;
+      }
+
+      const changed = rawProducts.map((p: any) => this.mapProduct(p));
+
+      // put() upserts by id — only the changed rows are written, cache stays intact
+      await this.offlineStorage.putProducts(changed);
+
+      // Merge into the on-screen list: upsert active items, drop deactivated ones
+      const byId = new Map(this.products.map(p => [p.id, p]));
+      for (const p of changed) {
+        const isActive = p.isAvailable !== false && (p as any).status !== 'INACTIVE';
+        if (isActive) {
+          byId.set(p.id, p);
+        } else {
+          byId.delete(p.id);
+        }
+      }
+      this.products = Array.from(byId.values());
+      this.filterProducts(this.searchTerm);
+
+      console.log(`Delta sync: merged ${changed.length} changed product(s)`);
+    } catch (error) {
+      console.warn('Delta sync failed:', error);
+    }
+  }
+
+  /**
+   * Full background re-download of the catalog (heavy — runs at most once a day
+   * or when there is no sync watermark yet)
+   */
+  private async fullSyncInBackground(): Promise<void> {
     const pageSize = 500;
     const rawProducts: any[] = [];
     let page = 0;
@@ -1046,7 +1129,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         page++;
         if (page > 200) {
-          console.warn('syncProductsInBackground: page guard hit (200) — stopping');
+          console.warn('fullSyncInBackground: page guard hit (200) — stopping');
           break;
         }
       }
@@ -1059,6 +1142,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // Update cache with ALL products (including inactive) for My Products page
       await this.offlineStorage.saveProducts(allProducts, this.shopId);
       localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+      localStorage.setItem(this.POS_FULL_SYNC_KEY, Date.now().toString());
 
       // Update UI with only active products
       if (activeProducts.length !== this.products.length) {
