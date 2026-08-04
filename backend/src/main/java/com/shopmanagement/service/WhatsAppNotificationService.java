@@ -57,8 +57,9 @@ public class WhatsAppNotificationService {
     private String billReceiptTemplateId;
 
     // Same bill but with an IMAGE header — images show inline on WhatsApp (no
-    // tap-to-download like PDFs), much friendlier for customers
-    @Value("${whatsapp.template.bill-receipt-image:bill_receipt_image}")
+    // tap-to-download like PDFs), much friendlier for customers.
+    // pos_bill_image uses positional variables {{1}}..{{4}} in the same order.
+    @Value("${whatsapp.template.bill-receipt-image:pos_bill_image}")
     private String billReceiptImageTemplateId;
 
     // Marketing template for shop offers (must be approved as a MARKETING template
