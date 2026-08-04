@@ -13,11 +13,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 1024M
+          cpus: '2'
+          memory: 2560M
     environment:
-      # JVM memory limits (prevent swap on 4GB server)
-      - JAVA_OPTS=-Xms512m -Xmx768m -XX:+UseG1GC -XX:MaxMetaspaceSize=192m
+      # JVM memory limits sized for the 8GB server. Zero-downtime deploys run TWO
+      # backend containers at once, so keep 2x(heap+overhead) + PostgreSQL + OS under 8GB.
+      - JAVA_OPTS=-Xms768m -Xmx1536m -XX:+UseG1GC -XX:MaxMetaspaceSize=256m
       # Database configuration
       - DB_URL=${DB_URL:-jdbc:postgresql://host.docker.internal:5432/shop_management_db}
       - DB_USERNAME=${DB_USERNAME:-postgres}
