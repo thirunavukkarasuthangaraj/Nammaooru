@@ -11,6 +11,7 @@ import com.shopmanagement.entity.User;
 import com.shopmanagement.event.LoginEvent;
 import com.shopmanagement.exception.AuthenticationFailedException;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.util.PhoneNumberUtil;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
@@ -59,14 +60,28 @@ public class AuthService {
         String normalizedEmail = request.getEmail() != null ? request.getEmail().toLowerCase().trim() : null;
         String normalizedUsername = request.getUsername() != null ? request.getUsername().toLowerCase().trim() : null;
 
-        // Check if user already exists by email or mobile
+        // Normalize mobile to plain 10 digits ("+91 98765 43210" / "098765..." all
+        // become "9876543210") — MSG91 refuses anything else, so an unnormalized
+        // number registers fine but never receives its OTP
+        if (request.getMobileNumber() != null && !request.getMobileNumber().trim().isEmpty()) {
+            try {
+                request.setMobileNumber(PhoneNumberUtil.normalize(request.getMobileNumber()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Please enter a valid 10-digit Indian mobile number");
+            }
+        }
+
+        // Check if user already exists by mobile or email. Mobile first — it is
+        // the OTP identity, so the row owning the mobile number must be the one
+        // we reuse; otherwise updating another row's mobile_number to it
+        // violates the unique constraint (users_mobile_number_key).
         User existingUser = null;
 
-        if (normalizedEmail != null) {
-            existingUser = userRepository.findByEmail(normalizedEmail).orElse(null);
-        }
-        if (existingUser == null && request.getMobileNumber() != null) {
+        if (request.getMobileNumber() != null) {
             existingUser = userRepository.findByMobileNumber(request.getMobileNumber()).orElse(null);
+        }
+        if (existingUser == null && normalizedEmail != null) {
+            existingUser = userRepository.findByEmail(normalizedEmail).orElse(null);
         }
 
         if (existingUser != null) {
@@ -76,6 +91,28 @@ public class AuthService {
             Boolean isActive = existingUser.getIsActive();
 
             if (isUnverified || !Boolean.TRUE.equals(isActive)) {
+                // The mobile/email being registered may belong to a DIFFERENT row
+                // than the one we're reusing — updating would hit a unique
+                // constraint and leak a raw SQL error to the app. Reject cleanly.
+                if (request.getMobileNumber() != null) {
+                    User mobileOwner = userRepository.findByMobileNumber(request.getMobileNumber()).orElse(null);
+                    if (mobileOwner != null && !mobileOwner.getId().equals(existingUser.getId())) {
+                        throw new RuntimeException("Mobile number already exists");
+                    }
+                }
+                if (normalizedEmail != null) {
+                    User emailOwner = userRepository.findByEmail(normalizedEmail).orElse(null);
+                    if (emailOwner != null && !emailOwner.getId().equals(existingUser.getId())) {
+                        throw new RuntimeException("Email already registered with another account");
+                    }
+                }
+                if (normalizedUsername != null) {
+                    User usernameOwner = userRepository.findByUsername(normalizedUsername).orElse(null);
+                    if (usernameOwner != null && !usernameOwner.getId().equals(existingUser.getId())) {
+                        throw new RuntimeException("Username already taken");
+                    }
+                }
+
                 // Update existing unverified user's details and resend OTP
                 String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
                 existingUser.setUsername(normalizedUsername);
