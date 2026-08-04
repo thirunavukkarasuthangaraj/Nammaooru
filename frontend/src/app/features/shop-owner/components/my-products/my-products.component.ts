@@ -6,7 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
@@ -92,6 +92,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   searchTerm = '';
   selectedCategory = '';
   selectedStatus = '';
+  // Stock filter driven by dashboard tiles (?stock=out / ?stock=low)
+  stockFilter: '' | 'low' | 'out' = '';
   
   // Bulk selection
   selectedProducts: ShopProduct[] = [];
@@ -143,6 +145,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   constructor(
     private router: Router,
+    private route: ActivatedRoute,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private http: HttpClient,
@@ -192,6 +195,15 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
+    // Stock filter from dashboard tiles: /my-products?stock=out or ?stock=low
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      const stock = params['stock'];
+      this.stockFilter = stock === 'out' || stock === 'low' ? stock : '';
+      if (this.products.length > 0) {
+        this.applyFilters();
+      }
+    });
+
     // Always load products immediately - /my-products uses JWT token to identify user's shop
     console.log('Loading products for current authenticated user');
     this.loadProducts();
@@ -554,6 +566,13 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     this.applyFilters();
   }
 
+  /** Remove the dashboard stock filter and show the full list again */
+  clearStockFilter(): void {
+    this.stockFilter = '';
+    this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+    this.applyFilters();
+  }
+
   getActiveCount(): number {
     return this.products.filter(p => p.status === 'ACTIVE' || p.isAvailable === true).length;
   }
@@ -587,7 +606,13 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
         (this.selectedStatus === 'available' && product.isAvailable) ||
         (this.selectedStatus === 'unavailable' && !product.isAvailable);
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      // Stock filter from dashboard: out = zero stock, low = below 10 (matches getStockClass)
+      const qty = product.stockQuantity ?? 0;
+      const matchesStock = !this.stockFilter ||
+        (this.stockFilter === 'out' && qty === 0) ||
+        (this.stockFilter === 'low' && qty > 0 && qty < 10);
+
+      return matchesSearch && matchesCategory && matchesStatus && matchesStock;
     });
 
     // Sort: offline products (negative IDs) first, then by ID descending

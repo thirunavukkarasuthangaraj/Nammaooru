@@ -137,21 +137,23 @@ interface DashboardStats {
                 </button>
               </div>
               <div class="inventory-grid">
-                <div class="inventory-item">
+                <div class="inventory-item clickable" routerLink="/shop-owner/my-products">
                   <div class="inv-icon green">
                     <mat-icon>inventory_2</mat-icon>
                   </div>
                   <span class="inv-value">{{ stats.totalProducts }}</span>
                   <span class="inv-label">Total Products</span>
                 </div>
-                <div class="inventory-item" [class.warning]="stats.lowStockProducts > 0">
+                <div class="inventory-item clickable" [class.warning]="stats.lowStockProducts > 0"
+                     routerLink="/shop-owner/my-products" [queryParams]="{ stock: 'low' }">
                   <div class="inv-icon yellow">
                     <mat-icon>warning_amber</mat-icon>
                   </div>
                   <span class="inv-value">{{ stats.lowStockProducts }}</span>
                   <span class="inv-label">Low Stock</span>
                 </div>
-                <div class="inventory-item" [class.danger]="stats.outOfStockProducts > 0">
+                <div class="inventory-item clickable" [class.danger]="stats.outOfStockProducts > 0"
+                     routerLink="/shop-owner/my-products" [queryParams]="{ stock: 'out' }">
                   <div class="inv-icon red">
                     <mat-icon>error_outline</mat-icon>
                   </div>
@@ -539,6 +541,16 @@ interface DashboardStats {
       background: #f8fafc;
       border-radius: 12px;
       transition: all 0.2s ease;
+    }
+
+    .inventory-item.clickable {
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .inventory-item.clickable:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .inventory-item.warning {

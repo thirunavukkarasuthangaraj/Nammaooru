@@ -37,6 +37,13 @@
       </div>
     </div>
 
+    <!-- Stock filter applied from dashboard tiles -->
+    <div class="stock-filter-banner" *ngIf="stockFilter" [class.out]="stockFilter === 'out'">
+      <mat-icon>{{ stockFilter === 'out' ? 'error_outline' : 'warning_amber' }}</mat-icon>
+      <span>Showing {{ stockFilter === 'out' ? 'out of stock' : 'low stock' }} products ({{ filteredProducts.length }})</span>
+      <button mat-button (click)="clearStockFilter()">Show All</button>
+    </div>
+
     <!-- Filters Bar -->
     <div class="filters-bar">
       <div class="filters-row-1">
