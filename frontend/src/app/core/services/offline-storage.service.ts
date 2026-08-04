@@ -1060,9 +1060,13 @@ export class OfflineStorageService {
     // Save updated counter
     localStorage.setItem(counterKey, counter.toString());
 
-    // Format: POS-1301-001 (date + sequential)
+    // Format: POS-1301-001-X7K2F9 (date + sequential + random).
+    // The random suffix makes the ID globally unique — it doubles as the
+    // server-side idempotency key, so it must never collide across
+    // devices/shops or repeat across years (the date has no year part).
     const paddedCounter = counter.toString().padStart(3, '0');
-    return `POS-${datePrefix}-${paddedCounter}`;
+    const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `POS-${datePrefix}-${paddedCounter}-${rand}`;
   }
 
   /**

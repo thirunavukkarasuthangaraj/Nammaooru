@@ -11,7 +11,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", uniqueConstraints = {
+        // Idempotency key for offline POS sync — unique per shop, not globally,
+        // because legacy clients generate IDs like POS-0408-001 that can repeat across shops
+        @UniqueConstraint(name = "uk_orders_shop_offline_order", columnNames = {"shop_id", "offline_order_id"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -73,7 +77,11 @@ public class Order {
     
     @Column(length = 500)
     private String notes;
-    
+
+    // Client-generated ID of a POS order created offline; used to dedupe sync retries
+    @Column(name = "offline_order_id", length = 100)
+    private String offlineOrderId;
+
     @Column(length = 500)
     private String cancellationReason;
     

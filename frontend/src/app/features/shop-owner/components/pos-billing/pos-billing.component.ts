@@ -400,12 +400,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       if (pending === 0) return;
 
       console.log(`Startup sync: ${pending} pending offline record(s) found, syncing...`);
-      // Same sequence as the online listener: edits -> creations -> orders
-      const edits = await this.syncService.syncPendingEdits();
-      const creations = await this.syncService.syncPendingProductCreations();
-      const orders = await this.syncService.syncPendingOrders();
+      // Same guarded sequence as the online listener: edits -> creations -> orders
+      const { synced } = await this.syncService.runSyncSequence();
 
-      const synced = edits.synced + creations.synced + orders.synced;
       if (synced > 0) {
         await this.loadProducts();
         this.swal.toast(`${synced} offline record(s) synced to server`, 'success');
@@ -2586,40 +2583,19 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.swal.loading('Syncing pending data...');
 
     try {
-      // Sync pending orders
-      const orderSyncResult = await this.syncService.syncPendingOrders();
-      console.log('Order sync result:', orderSyncResult);
-
-      // Sync pending product edits
-      const editSyncResult = await this.syncService.syncPendingEdits();
-      console.log('Edit sync result:', editSyncResult);
-
-      // Sync pending product creations
-      const productCreationResult = await this.syncService.syncPendingProductCreations();
-      console.log('Product creation sync result:', productCreationResult);
+      // Guarded sequence in the correct order: edits -> creations -> orders
+      // (orders LAST so offline-created products have real server IDs first)
+      const { synced: totalSynced, failed: totalFailed } = await this.syncService.runSyncSequence();
 
       // Refresh products
       await this.loadProducts();
       this.swal.close();
 
-      const totalSynced = orderSyncResult.synced + editSyncResult.synced + productCreationResult.synced;
-      const totalFailed = orderSyncResult.failed + editSyncResult.failed + productCreationResult.failed;
-
       if (totalSynced > 0 || totalFailed > 0) {
         if (totalFailed > 0) {
           this.swal.warning('Sync Partial', `Synced: ${totalSynced}, Failed: ${totalFailed}`);
         } else {
-          let message = '';
-          if (orderSyncResult.synced > 0) message += `${orderSyncResult.synced} order(s)`;
-          if (editSyncResult.synced > 0) {
-            if (message) message += ', ';
-            message += `${editSyncResult.synced} product edit(s)`;
-          }
-          if (productCreationResult.synced > 0) {
-            if (message) message += ', ';
-            message += `${productCreationResult.synced} product(s) created`;
-          }
-          this.swal.success('Synced', `${message} synced successfully`);
+          this.swal.success('Synced', `${totalSynced} record(s) synced successfully`);
         }
       } else {
         this.swal.success('Synced', 'No pending data to sync. Products updated.');

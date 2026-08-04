@@ -25,6 +25,13 @@ export class PosSyncService implements OnDestroy {
   // connectivity) never leaves a request hanging — it fails fast and falls back to offline.
   private static readonly REQUEST_TIMEOUT_MS = 12000;
 
+  // The 'online' event only fires on a network TRANSITION the browser notices.
+  // Wifi that stays "connected" while the internet drops and returns never fires it,
+  // leaving offline orders stuck until a page reload — so also retry on a timer.
+  private static readonly RETRY_INTERVAL_MS = 2 * 60 * 1000;
+  private retryTimer: any = null;
+  private syncSequenceRunning = false;
+
   private syncStatus$ = new BehaviorSubject<SyncStatus>({
     isOnline: navigator.onLine,
     pendingOrders: 0,
@@ -39,6 +46,51 @@ export class PosSyncService implements OnDestroy {
     private offlineStorage: OfflineStorageService
   ) {
     this.initNetworkListener();
+    this.startPeriodicRetry();
+  }
+
+  /**
+   * Retry pending offline records every few minutes as long as the app is open.
+   * Covers the case where connectivity comes back WITHOUT an 'online' event
+   * (navigator.onLine stayed true through an internet outage).
+   */
+  private startPeriodicRetry(): void {
+    this.retryTimer = setInterval(async () => {
+      if (!navigator.onLine) return;
+      try {
+        await this.updatePendingCount();
+        const status = this.getCurrentStatus();
+        const pending = status.pendingOrders + status.pendingEdits + status.pendingProductCreations;
+        if (pending === 0) return;
+        console.log(`Periodic retry: ${pending} pending offline record(s), syncing...`);
+        await this.runSyncSequence();
+      } catch (e) {
+        console.warn('Periodic retry failed (will retry again):', e);
+      }
+    }, PosSyncService.RETRY_INTERVAL_MS);
+  }
+
+  /**
+   * Run the full sync sequence (edits -> creations -> orders), guarding against
+   * overlapping runs from the timer, the 'online' event and page-open sync.
+   */
+  async runSyncSequence(): Promise<{ synced: number; failed: number }> {
+    if (this.syncSequenceRunning) {
+      console.log('Sync sequence already running - skipping');
+      return { synced: 0, failed: 0 };
+    }
+    this.syncSequenceRunning = true;
+    try {
+      const edits = await this.syncPendingEdits();
+      const creations = await this.syncPendingProductCreations();
+      const orders = await this.syncPendingOrders();
+      return {
+        synced: edits.synced + creations.synced + orders.synced,
+        failed: edits.failed + creations.failed + orders.failed
+      };
+    } finally {
+      this.syncSequenceRunning = false;
+    }
   }
 
   /**
@@ -78,9 +130,7 @@ export class PosSyncService implements OnDestroy {
           //  2. creations - offline-created products get real server IDs
           //                 (this also rewrites temp IDs inside pending orders)
           //  3. orders  - sent LAST so they no longer reference temp product IDs
-          this.syncPendingEdits()
-            .then(() => this.syncPendingProductCreations())
-            .then(() => this.syncPendingOrders());
+          this.runSyncSequence();
         } else {
           console.log('Network offline');
         }
@@ -247,12 +297,17 @@ export class PosSyncService implements OnDestroy {
   async createPosOrder(orderData: any, shopId: number, shopName?: string): Promise<{ success: boolean; order?: any; offline?: boolean }> {
     // Try to get shop name from localStorage if not provided
     const resolvedShopName = shopName || localStorage.getItem('shop_name') || 'Shop';
+    // Generate the idempotency ID BEFORE the online attempt and send it with the
+    // request. If the request times out but the server actually saved the order,
+    // the offline copy keeps the SAME ID, so the sync retry is deduped server-side
+    // instead of creating a duplicate bill.
+    const offlineOrderId = this.offlineStorage.generateOfflineOrderId();
     if (navigator.onLine) {
       // Online - send directly to server
       try {
         const response = await this.http.post<{ data: any }>(
           `${this.apiUrl}/pos/orders`,
-          { ...orderData, shopId }
+          { ...orderData, shopId, offlineOrderId }
         ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
 
         return { success: true, order: response?.data, offline: false };
@@ -271,9 +326,9 @@ export class PosSyncService implements OnDestroy {
       }
     }
 
-    // Offline - save locally
+    // Offline - save locally (reuse the same ID sent with the online attempt)
     const offlineOrder: OfflineOrder = {
-      offlineOrderId: this.offlineStorage.generateOfflineOrderId(),
+      offlineOrderId,
       shopId,
       items: orderData.items,
       paymentMethod: orderData.paymentMethod,
@@ -707,9 +762,7 @@ export class PosSyncService implements OnDestroy {
 
     // Order matters (see initNetworkListener): edits -> creations -> orders.
     // Orders sync LAST so any offline-created products have real IDs first.
-    await this.syncPendingEdits();
-    await this.syncPendingProductCreations();
-    await this.syncPendingOrders();
+    await this.runSyncSequence();
 
     // Then refresh products
     await this.refreshProductCache(shopId);

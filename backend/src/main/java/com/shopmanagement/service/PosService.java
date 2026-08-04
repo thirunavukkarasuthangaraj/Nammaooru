@@ -63,6 +63,18 @@ public class PosService {
     public OrderResponse createPosOrder(PosOrderRequest request) {
         log.info("Creating POS order for shop: {}", request.getShopId());
 
+        // 0. Idempotency: an offline order may be re-sent if the client timed out or
+        // retried after a partial sync — return the already-created order, don't duplicate
+        if (request.getOfflineOrderId() != null && !request.getOfflineOrderId().isBlank()) {
+            var existing = orderRepository.findByShopIdAndOfflineOrderId(
+                    request.getShopId(), request.getOfflineOrderId());
+            if (existing.isPresent()) {
+                log.info("Offline order {} already synced as {} - returning existing order",
+                        request.getOfflineOrderId(), existing.get().getOrderNumber());
+                return mapToResponse(existing.get());
+            }
+        }
+
         // 1. Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found with id: " + request.getShopId()));
@@ -186,6 +198,8 @@ public class PosService {
                 .discountAmount(discountAmount)
                 .totalAmount(totalAmount)
                 .notes(request.getNotes())
+                .offlineOrderId(request.getOfflineOrderId() != null && !request.getOfflineOrderId().isBlank()
+                        ? request.getOfflineOrderId() : null)
                 .createdBy(getCurrentUsername())
                 .updatedBy(getCurrentUsername())
                 .build();

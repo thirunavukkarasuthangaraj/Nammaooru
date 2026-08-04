@@ -18,6 +18,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     // Find order by order number
     Optional<Order> findByOrderNumber(String orderNumber);
+
+    // Dedupe offline POS order sync retries (scoped per shop — see Order.uk_orders_shop_offline_order)
+    Optional<Order> findByShopIdAndOfflineOrderId(Long shopId, String offlineOrderId);
     
     // Find orders by customer
     Page<Order> findByCustomerId(Long customerId, Pageable pageable);
