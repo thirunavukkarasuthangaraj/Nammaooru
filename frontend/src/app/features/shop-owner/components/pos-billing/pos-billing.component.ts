@@ -208,6 +208,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly DELTA_OVERLAP_MS = 2 * 60 * 1000; // overlap to absorb client/server clock skew
   // Throttle background image re-caching so opening POS doesn't re-scan all images every time
   private readonly POS_IMAGES_CACHED_KEY = 'pos_images_last_cached';
+  // In-progress bill survives page refreshes (PWA auto-update reloads, accidental F5)
+  private readonly POS_CART_BACKUP_KEY = 'pos_cart_backup';
   private readonly IMAGE_CACHE_VALIDITY_MS = 60 * 60 * 1000; // 1 hour
 
   // UI state
@@ -379,7 +381,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.initSyncStatus();
     this.initSearch();
     this.initBarcodeScanner();
-    this.loadProducts();
+    this.loadProducts().then(() => this.restoreCartBackup());
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
 
     // Check if products were added while away - force reload from IndexedDB
     this.checkForProductChanges();
@@ -439,6 +442,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    // Keep the in-progress bill if the owner navigates away and comes back
+    this.saveCartBackup();
+    window.removeEventListener('beforeunload', this.beforeUnloadHandler);
 
     // Remove barcode scanner keyboard listener to prevent memory leaks and duplicate handlers
     if (this.barcodeKeyHandler) {
@@ -1869,7 +1876,84 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.totalDiscount < 0) this.totalDiscount = 0;
     this.taxAmount = this.subtotal * this.taxRate;
     this.totalAmount = this.subtotal + this.taxAmount;
+
+    this.saveCartBackup();
   }
+
+  /**
+   * Persist the in-progress bill so it survives a page refresh (the PWA
+   * auto-updater force-reloads all tabs when a new version is deployed).
+   * imageBase64 is stripped — it would blow the localStorage quota; images
+   * are re-linked from the product cache on restore.
+   */
+  private saveCartBackup(): void {
+    try {
+      // Empty cart, or the cart was already billed (kept on screen only for
+      // reprint/WhatsApp) — restoring it after a refresh could double-bill
+      if (this.cart.length === 0 || this.lastOrder) {
+        localStorage.removeItem(this.POS_CART_BACKUP_KEY);
+        return;
+      }
+      const slimCart = this.cart.map(item => ({
+        ...item,
+        product: { ...item.product, imageBase64: undefined }
+      }));
+      localStorage.setItem(this.POS_CART_BACKUP_KEY, JSON.stringify({
+        shopId: this.shopId,
+        cart: slimCart,
+        customerName: this.customerName,
+        customerPhone: this.customerPhone,
+        customerEmail: this.customerEmail,
+        orderNotes: this.orderNotes,
+        savedAt: Date.now()
+      }));
+    } catch (e) {
+      // Quota exceeded or storage unavailable — losing the backup is acceptable
+      console.warn('Failed to save cart backup:', e);
+    }
+  }
+
+  /**
+   * Restore an unsaved bill after a refresh. Called once products are loaded
+   * so cart items can be re-linked to full cached products (images, stock).
+   */
+  private restoreCartBackup(): void {
+    try {
+      const raw = localStorage.getItem(this.POS_CART_BACKUP_KEY);
+      if (!raw || this.cart.length > 0) return;
+
+      const backup = JSON.parse(raw);
+      if (!backup?.cart?.length) return;
+
+      // Ignore stale backups (older than 12 hours) and other shops' carts
+      const twelveHours = 12 * 60 * 60 * 1000;
+      if (Date.now() - (backup.savedAt || 0) > twelveHours) {
+        localStorage.removeItem(this.POS_CART_BACKUP_KEY);
+        return;
+      }
+      if (backup.shopId && this.shopId && backup.shopId !== this.shopId) return;
+
+      this.cart = backup.cart.map((item: CartItem) => {
+        const fullProduct = this.products.find(p => p.id === item.product.id);
+        return fullProduct ? { ...item, product: fullProduct } : item;
+      });
+      this.customerName = backup.customerName || '';
+      this.customerPhone = backup.customerPhone || '';
+      this.customerEmail = backup.customerEmail || '';
+      this.orderNotes = backup.orderNotes || '';
+      this.calculateTotals();
+
+      this.swal.toast(`Restored unsaved bill (${this.cart.length} item${this.cart.length > 1 ? 's' : ''})`, 'info');
+    } catch (e) {
+      console.warn('Failed to restore cart backup:', e);
+    }
+  }
+
+  /**
+   * Customer fields are typed after the last cart change, so back them up
+   * right before the page unloads (covers the auto-update reload too).
+   */
+  private beforeUnloadHandler = (): void => this.saveCartBackup();
 
   /**
    * Generate bill
@@ -1967,6 +2051,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Remember the created order so it can be sent via WhatsApp afterwards.
         // Offline orders don't have a server id yet, so WhatsApp send stays disabled until synced.
         this.lastOrder = result.order;
+
+        // Bill is saved — drop the backup so a refresh can't restore an
+        // already-billed cart and cause double billing. If the owner keeps
+        // adding items afterwards, the next cart change re-creates it.
+        localStorage.removeItem(this.POS_CART_BACKUP_KEY);
 
         // Print receipt
         this.printReceipt(result.order);
