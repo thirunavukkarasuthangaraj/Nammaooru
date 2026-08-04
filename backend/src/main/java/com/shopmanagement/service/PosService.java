@@ -15,10 +15,14 @@ import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -46,6 +50,7 @@ public class PosService {
     private final BillPdfService billPdfService;
     private final WhatsAppNotificationService whatsAppNotificationService;
     private final EmailService emailService;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
@@ -347,7 +352,7 @@ public class PosService {
 
         // If phone provided, try to find existing customer or create new
         if (customerPhone != null && !customerPhone.trim().isEmpty()) {
-            Customer existing = customerRepository.findByMobileNumber(customerPhone).orElse(null);
+            Customer existing = customerRepository.findFirstByMobileNumberOrderByIdAsc(customerPhone).orElse(null);
             if (existing != null) {
                 return existing;
             }
@@ -364,14 +369,14 @@ public class PosService {
                     .updatedBy(getCurrentUsername())
                     .build();
 
-            return customerRepository.save(newCustomer);
+            return saveCustomerOrFetchExisting(newCustomer, customerPhone);
         }
 
         // No phone provided - use shared walk-in customer for this shop
         // This avoids creating thousands of dummy customer records
         // Use a valid phone format: 9000000 + shopId (padded to 10 digits)
         String walkInPhone = String.format("90000%05d", shop.getId());
-        Customer walkInCustomer = customerRepository.findByMobileNumber(walkInPhone).orElse(null);
+        Customer walkInCustomer = customerRepository.findFirstByMobileNumberOrderByIdAsc(walkInPhone).orElse(null);
 
         if (walkInCustomer == null) {
             // Create one walk-in customer per shop (first time only)
@@ -384,11 +389,32 @@ public class PosService {
                     .updatedBy(getCurrentUsername())
                     .build();
 
-            walkInCustomer = customerRepository.save(walkInCustomer);
+            walkInCustomer = saveCustomerOrFetchExisting(walkInCustomer, walkInPhone);
             log.info("Created walk-in customer for shop: {}", shop.getId());
         }
 
         return walkInCustomer;
+    }
+
+    /**
+     * Save a new customer, tolerating the create-create race: when offline orders
+     * sync in a burst, two requests can both see "no customer" and both insert —
+     * the loser hits the unique constraint on mobile_number. Fetch the winner
+     * instead of failing the whole order with a red DB error on the POS screen.
+     * The insert runs in its OWN transaction (REQUIRES_NEW): a constraint violation
+     * inside the order's transaction would mark it rollback-only and doom the order
+     * even if we caught the exception here.
+     */
+    private Customer saveCustomerOrFetchExisting(Customer newCustomer, String phone) {
+        try {
+            TransactionTemplate tt = new TransactionTemplate(transactionManager);
+            tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            return tt.execute(status -> customerRepository.save(newCustomer));
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Customer with phone {} was created concurrently - using existing record", phone);
+            return customerRepository.findFirstByMobileNumberOrderByIdAsc(phone)
+                    .orElseThrow(() -> e);
+        }
     }
 
     private String getCurrentUsername() {

@@ -19,6 +19,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Optional<Customer> findByEmail(String email);
     
     Optional<Customer> findByMobileNumber(String mobileNumber);
+
+    // Duplicate-tolerant lookup: findByMobileNumber throws NonUniqueResultException
+    // if duplicate phones ever got into the table — POS billing must never die on that
+    Optional<Customer> findFirstByMobileNumberOrderByIdAsc(String mobileNumber);
     
     Optional<Customer> findByReferralCode(String referralCode);
     
