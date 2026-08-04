@@ -42,12 +42,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByCustomerIdAndStatus(Long customerId, Order.OrderStatus status, Pageable pageable);
     
     // Search customers previously billed at a shop, by mobile number or name (for POS autocomplete)
-    @Query("SELECT c.id, c.mobileNumber, c.firstName, c.lastName, COUNT(o), MAX(o.createdAt), SUM(o.totalAmount) " +
+    @Query("SELECT c.id, c.mobileNumber, c.firstName, c.lastName, COUNT(o), MAX(o.createdAt), SUM(o.totalAmount), c.email " +
            "FROM Order o JOIN o.customer c " +
            "WHERE o.shop.id = :shopId AND c.mobileNumber IS NOT NULL AND c.mobileNumber <> '' " +
            "AND (c.mobileNumber LIKE CONCAT('%', :query, '%') " +
            "     OR LOWER(c.firstName) LIKE LOWER(CONCAT('%', :query, '%'))) " +
-           "GROUP BY c.id, c.mobileNumber, c.firstName, c.lastName " +
+           "GROUP BY c.id, c.mobileNumber, c.firstName, c.lastName, c.email " +
            "ORDER BY MAX(o.createdAt) DESC")
     List<Object[]> searchShopCustomers(@Param("shopId") Long shopId,
                                        @Param("query") String query,

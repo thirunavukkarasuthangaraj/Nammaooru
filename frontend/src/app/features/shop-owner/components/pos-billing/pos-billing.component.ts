@@ -175,6 +175,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   // Customer info (optional)
   customerName: string = '';
   customerPhone: string = '';
+  customerEmail: string = '';
   orderNotes: string = '';
 
   // Saved-customer autocomplete (suggestions from past bills, matched by phone or name)
@@ -1841,6 +1842,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.calculateTotals();
     this.customerName = '';
     this.customerPhone = '';
+    this.customerEmail = '';
     this.orderNotes = '';
     this.lastOrder = null;
     // In Quick Bill mode, keep products list empty
@@ -1942,6 +1944,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         paymentMethod: this.selectedPaymentMethod,
         customerName: this.customerName || undefined,
         customerPhone: this.customerPhone || undefined,
+        customerEmail: this.customerEmail || undefined,
         notes: this.orderNotes || undefined,
         subtotal: this.subtotal,
         taxAmount: this.taxAmount,
@@ -2017,7 +2020,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.swal.loading('Sending bill on WhatsApp...');
 
     try {
-      await this.syncService.sendWhatsAppBill(this.lastOrder.id, phone, this.lastOrder.customerName || this.customerName);
+      // Prefer the name typed in the form NOW; the order's stored name may be the
+      // "Walk-in Customer" placeholder when the bill was printed before adding the customer
+      const orderName = this.lastOrder.customerName && !/walk-?in/i.test(this.lastOrder.customerName)
+        ? this.lastOrder.customerName : '';
+      await this.syncService.sendWhatsAppBill(this.lastOrder.id, phone, this.customerName || orderName);
       this.swal.close();
       this.swal.toast('Bill sent on WhatsApp', 'success');
     } catch (error: any) {
@@ -2043,18 +2050,27 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const { value: email } = await this.swal.prompt(
-      'Customer Email',
-      'Enter the customer\'s email address to send the bill',
-      'email'
-    );
-    if (!email) return;
+    // Use the email typed in the customer popup if present; ask only when missing
+    let email = this.customerEmail || '';
+    if (!email) {
+      const { value } = await this.swal.prompt(
+        'Customer Email',
+        'Enter the customer\'s email address to send the bill',
+        'email'
+      );
+      if (!value) return;
+      email = value;
+    }
 
     this.sendingEmailBill = true;
     this.swal.loading('Sending bill by email...');
 
     try {
-      await this.syncService.sendEmailBill(this.lastOrder.id, email, this.lastOrder.customerName || this.customerName);
+      // Prefer the name typed in the form NOW; the order's stored name may be the
+      // "Walk-in Customer" placeholder when the bill was printed before adding the customer
+      const orderName = this.lastOrder.customerName && !/walk-?in/i.test(this.lastOrder.customerName)
+        ? this.lastOrder.customerName : '';
+      await this.syncService.sendEmailBill(this.lastOrder.id, email, this.customerName || orderName);
       this.swal.close();
       this.swal.toast('Bill sent by email', 'success');
     } catch (error: any) {
@@ -2653,6 +2669,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   selectCustomerSuggestion(suggestion: any): void {
     this.customerName = suggestion.customerName || '';
     this.customerPhone = suggestion.customerPhone || '';
+    this.customerEmail = suggestion.customerEmail || '';
     this.customerSuggestions = [];
     this.showCustomerSuggestions = false;
   }
@@ -2686,6 +2703,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   clearCustomer(): void {
     this.customerName = '';
     this.customerPhone = '';
+    this.customerEmail = '';
     this.orderNotes = '';
     this.customerSuggestions = [];
     this.showCustomerSuggestions = false;

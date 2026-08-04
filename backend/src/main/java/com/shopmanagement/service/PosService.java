@@ -275,6 +275,38 @@ public class PosService {
         String name = nameOverride != null && !nameOverride.trim().isEmpty()
                 ? nameOverride.trim()
                 : (order.getCustomer() != null ? order.getCustomer().getFullName() : null);
+        // "Walk-in Customer" is the shared placeholder's name, not the real person's
+        if (name != null && name.toLowerCase().contains("walk-in")) {
+            name = null;
+        }
+
+        // Common flow: bill printed without a customer (order linked to the shared
+        // walk-in record), then the owner adds the real customer and sends. Re-link
+        // the order to the real customer so the message, PDF and purchase history
+        // stop saying "Walk-in Customer".
+        if (order.getCustomer() != null
+                && order.getCustomer().getMobileNumber() != null
+                && order.getCustomer().getMobileNumber().matches("^90000\\d{5}$")) {
+            Customer real = customerRepository.findFirstByMobileNumberOrderByIdAsc(phone).orElse(null);
+            if (real == null) {
+                Customer newCustomer = Customer.builder()
+                        .firstName(name != null ? name : "Customer")
+                        .lastName("POS")
+                        .mobileNumber(phone)
+                        .email(phone + "@pos.local")
+                        .createdBy(getCurrentUsername())
+                        .updatedBy(getCurrentUsername())
+                        .build();
+                real = saveCustomerOrFetchExisting(newCustomer, phone);
+            }
+            order.setCustomer(real);
+            orderRepository.save(order);
+        }
+        if (name == null && order.getCustomer() != null
+                && order.getCustomer().getFullName() != null
+                && !order.getCustomer().getFullName().toLowerCase().contains("walk-in")) {
+            name = order.getCustomer().getFullName();
+        }
 
         byte[] pdfBytes = billPdfService.generateBillPdf(order);
 
@@ -359,6 +391,11 @@ public class PosService {
                 ? emailOverride.trim()
                 : (order.getCustomer() != null ? order.getCustomer().getEmail() : null);
 
+        // POS-created customers get a placeholder "<phone>@pos.local" email — never send to it
+        if (email != null && email.endsWith("@pos.local")) {
+            email = null;
+        }
+
         if (email == null || email.trim().isEmpty()) {
             throw new RuntimeException("A customer email address is required to send the bill via email");
         }
@@ -396,10 +433,19 @@ public class PosService {
         String customerPhone = request.getCustomerPhone();
         String customerName = request.getCustomerName();
 
+        String customerEmail = request.getCustomerEmail() != null && request.getCustomerEmail().contains("@")
+                ? request.getCustomerEmail().trim()
+                : null;
+
         // If phone provided, try to find existing customer or create new
         if (customerPhone != null && !customerPhone.trim().isEmpty()) {
             Customer existing = customerRepository.findFirstByMobileNumberOrderByIdAsc(customerPhone).orElse(null);
             if (existing != null) {
+                // Upgrade a placeholder email to the real one entered at the POS
+                if (customerEmail != null && (existing.getEmail() == null || existing.getEmail().endsWith("@pos.local"))) {
+                    existing.setEmail(customerEmail);
+                    customerRepository.save(existing);
+                }
                 return existing;
             }
 
@@ -410,7 +456,7 @@ public class PosService {
                             : "Customer")
                     .lastName("POS")
                     .mobileNumber(customerPhone)
-                    .email(customerPhone + "@pos.local")
+                    .email(customerEmail != null ? customerEmail : customerPhone + "@pos.local")
                     .createdBy(getCurrentUsername())
                     .updatedBy(getCurrentUsername())
                     .build();
@@ -499,6 +545,9 @@ public class PosService {
             entry.put("billCount", row[4]);
             entry.put("lastOrderDate", row[5] != null ? row[5].toString() : null);
             entry.put("totalSpent", row[6]);
+            // Hide the "<phone>@pos.local" placeholder — only real emails are useful to the UI
+            String email = (String) row[7];
+            entry.put("customerEmail", email != null && !email.endsWith("@pos.local") ? email : null);
             results.add(entry);
         }
         return results;

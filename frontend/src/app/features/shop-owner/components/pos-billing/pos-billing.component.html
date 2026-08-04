@@ -377,6 +377,8 @@
                 <span class="suggestion-bills">{{ suggestion.billCount }} bill{{ suggestion.billCount > 1 ? 's' : '' }}</span>
               </div>
             </div>
+            <input type="email" [(ngModel)]="customerEmail" placeholder="Email (optional)" class="customer-input"
+                   autocomplete="off">
             <input type="text" [(ngModel)]="orderNotes" placeholder="Notes (optional)" class="customer-input">
           </div>
           <div class="customer-modal-actions">

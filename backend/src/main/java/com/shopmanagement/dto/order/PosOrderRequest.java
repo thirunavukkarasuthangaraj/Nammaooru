@@ -31,6 +31,7 @@ public class PosOrderRequest {
     // Optional customer info (for walk-in customers)
     private String customerName;
     private String customerPhone;
+    private String customerEmail;
 
     // Optional notes
     private String notes;
