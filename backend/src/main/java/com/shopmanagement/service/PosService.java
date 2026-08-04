@@ -262,6 +262,12 @@ public class PosService {
                 ? phoneOverride.trim()
                 : (order.getCustomer() != null ? order.getCustomer().getMobileNumber() : null);
 
+        // The shared per-shop walk-in customer has a placeholder number (90000 + shop id).
+        // It is not a real phone — sending to it silently goes nowhere.
+        if (phone != null && phone.matches("^90000\\d{5}$")) {
+            phone = null;
+        }
+
         if (phone == null || phone.trim().isEmpty()) {
             throw new RuntimeException("A customer phone number is required to send the bill via WhatsApp");
         }

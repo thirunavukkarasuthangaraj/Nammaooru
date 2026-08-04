@@ -1997,7 +1997,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    let phone = this.lastOrder.customerPhone || this.customerPhone;
+    // Prefer the number typed in the form NOW — covers "billed first, added the
+    // customer after printing". The order's own phone may be the shared walk-in
+    // placeholder (90000 + shop id) when billed without a customer: never send to it.
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    let phone = [this.customerPhone, this.lastOrder.customerPhone]
+      .find(p => p && !isWalkInPlaceholder(p)) || '';
     if (!phone) {
       const { value } = await this.swal.prompt(
         'Customer Phone Number',
