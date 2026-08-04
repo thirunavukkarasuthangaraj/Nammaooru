@@ -56,6 +56,11 @@ public class WhatsAppNotificationService {
     @Value("${msg91.template.bill-receipt:bill_receipt}")
     private String billReceiptTemplateId;
 
+    // Same bill but with an IMAGE header — images show inline on WhatsApp (no
+    // tap-to-download like PDFs), much friendlier for customers
+    @Value("${whatsapp.template.bill-receipt-image:bill_receipt_image}")
+    private String billReceiptImageTemplateId;
+
     // Marketing template for shop offers (must be approved as a MARKETING template
     // in Meta WhatsApp Manager; variables: customer_name, shop_name, offer_text)
     // Same as shop_offer but with an IMAGE header; used when the shop attaches
@@ -391,6 +396,28 @@ public class WhatsAppNotificationService {
         templateData.put("amount", amount);
 
         return sendWhatsAppMessage(mobileNumber, billReceiptTemplateId, templateData, "bill_receipt");
+    }
+
+    /**
+     * Send the POS bill as an inline WhatsApp IMAGE (renders immediately in the chat,
+     * no tap-to-download). Requires the bill_receipt_image template (IMAGE header,
+     * body params: customer_name, shop_name, order_number, amount).
+     */
+    public boolean sendBillImage(String mobileNumber, String customerName, String shopName,
+                                 String orderNumber, String amount, String imageUrl) {
+        if (!whatsappEnabled) {
+            log.info("WhatsApp disabled. Would send bill image {} to {} ({})", orderNumber, mobileNumber, imageUrl);
+            return false;
+        }
+
+        Map<String, Object> templateData = new java.util.LinkedHashMap<>();
+        templateData.put("header_image", imageUrl);
+        templateData.put("customer_name", customerName != null && !customerName.isBlank() ? customerName : "Customer");
+        templateData.put("shop_name", shopName);
+        templateData.put("order_number", orderNumber);
+        templateData.put("amount", amount);
+
+        return sendWhatsAppMessage(mobileNumber, billReceiptImageTemplateId, templateData, "bill_receipt_image");
     }
 
     /**

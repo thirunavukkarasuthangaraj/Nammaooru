@@ -255,6 +255,7 @@ whatsapp:
   template:
     shop-offer: ${META_WA_OFFER_TEMPLATE:shop_offer}
     shop-offer-image: ${META_WA_OFFER_IMAGE_TEMPLATE:shop_offer_image}
+    bill-receipt-image: ${META_WA_BILL_RECEIPT_IMAGE_TEMPLATE:bill_receipt_image}
 
 # SMS Configuration
 sms:

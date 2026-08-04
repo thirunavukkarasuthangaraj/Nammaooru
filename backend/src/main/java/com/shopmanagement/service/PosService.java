@@ -279,22 +279,42 @@ public class PosService {
         byte[] pdfBytes = billPdfService.generateBillPdf(order);
 
         try {
-            String fileName = "bill_" + order.getOrderNumber() + "_" + UUID.randomUUID().toString().substring(0, 8) + ".pdf";
+            String suffix = UUID.randomUUID().toString().substring(0, 8);
             Path billsDir = Paths.get(uploadDir, "bills");
             Files.createDirectories(billsDir);
-            Files.write(billsDir.resolve(fileName), pdfBytes);
 
-            String pdfUrl = apiBaseUrl + "/uploads/bills/" + fileName;
+            String pdfFileName = "bill_" + order.getOrderNumber() + "_" + suffix + ".pdf";
+            Files.write(billsDir.resolve(pdfFileName), pdfBytes);
+            String pdfUrl = apiBaseUrl + "/uploads/bills/" + pdfFileName;
 
-            boolean sent = whatsAppNotificationService.sendBillDocument(
-                    phone,
-                    name,
-                    order.getShop().getName(),
-                    order.getOrderNumber(),
-                    order.getTotalAmount().toPlainString(),
-                    pdfUrl,
-                    "Bill-" + order.getOrderNumber() + ".pdf"
-            );
+            // Prefer sending the bill as an inline IMAGE — it shows full-size in the
+            // chat immediately, unlike a PDF which customers must tap to download.
+            boolean sent = false;
+            byte[] jpegBytes = renderBillJpeg(pdfBytes, order.getOrderNumber());
+            if (jpegBytes != null) {
+                String imgFileName = "bill_" + order.getOrderNumber() + "_" + suffix + ".jpg";
+                Files.write(billsDir.resolve(imgFileName), jpegBytes);
+                String imgUrl = apiBaseUrl + "/uploads/bills/" + imgFileName;
+                sent = whatsAppNotificationService.sendBillImage(
+                        phone, name, order.getShop().getName(),
+                        order.getOrderNumber(), order.getTotalAmount().toPlainString(), imgUrl);
+                if (!sent) {
+                    log.warn("Bill image template send failed for {} - falling back to PDF template", order.getOrderNumber());
+                }
+            }
+
+            // Fallback: PDF document template (also used until bill_receipt_image is approved)
+            if (!sent) {
+                sent = whatsAppNotificationService.sendBillDocument(
+                        phone,
+                        name,
+                        order.getShop().getName(),
+                        order.getOrderNumber(),
+                        order.getTotalAmount().toPlainString(),
+                        pdfUrl,
+                        "Bill-" + order.getOrderNumber() + ".pdf"
+                );
+            }
 
             if (!sent) {
                 throw new RuntimeException("WhatsApp send failed. Possible reasons: bill_receipt template not yet approved, access token expired, or recipient not allowed (test numbers can only message registered recipients). Check backend logs for the exact WhatsApp API error.");
@@ -302,6 +322,26 @@ public class PosService {
         } catch (java.io.IOException e) {
             log.error("Failed to store bill PDF for order {}", order.getOrderNumber(), e);
             throw new RuntimeException("Failed to save bill PDF", e);
+        }
+    }
+
+    /**
+     * Render page 1 of the bill PDF as a JPEG for inline WhatsApp display.
+     * Returns null on any rendering problem so callers can fall back to the PDF.
+     */
+    private byte[] renderBillJpeg(byte[] pdfBytes, String orderNumber) {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc =
+                     org.apache.pdfbox.pdmodel.PDDocument.load(pdfBytes)) {
+            org.apache.pdfbox.rendering.PDFRenderer renderer =
+                    new org.apache.pdfbox.rendering.PDFRenderer(doc);
+            java.awt.image.BufferedImage image =
+                    renderer.renderImageWithDPI(0, 200, org.apache.pdfbox.rendering.ImageType.RGB);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(image, "jpg", out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            log.warn("Could not render bill {} as image - will send PDF instead: {}", orderNumber, e.getMessage());
+            return null;
         }
     }
 
