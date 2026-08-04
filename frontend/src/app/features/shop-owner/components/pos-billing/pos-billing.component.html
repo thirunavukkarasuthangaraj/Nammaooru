@@ -300,10 +300,6 @@
           <mat-icon>shopping_cart</mat-icon>
           Cart ({{ cart.length }})
         </h2>
-        <button mat-mini-fab class="customer-fab" (click)="openCustomerModal()"
-                [title]="hasCustomer() ? 'Edit customer' : 'Add customer'">
-          <mat-icon>{{ hasCustomer() ? 'how_to_reg' : 'person_add' }}</mat-icon>
-        </button>
         <button mat-icon-button color="warn" (click)="clearCart()" *ngIf="cart.length > 0" title="Clear Cart">
           <mat-icon>delete_sweep</mat-icon>
         </button>
@@ -415,6 +411,23 @@
             <span>TOTAL</span>
             <span>₹{{ totalAmount | number:'1.0-0' }}</span>
           </div>
+        </div>
+
+        <!-- Customer (bottom bar - always visible while billing so it's never forgotten) -->
+        <div class="customer-bar" *ngIf="cart.length > 0" (click)="openCustomerModal()"
+             [class.has-customer]="hasCustomer()">
+          <mat-icon>{{ hasCustomer() ? 'how_to_reg' : 'person_add' }}</mat-icon>
+          <div class="customer-bar-text">
+            <ng-container *ngIf="hasCustomer(); else noCustomer">
+              <span class="customer-bar-name">{{ customerName || 'Customer' }}</span>
+              <span class="customer-bar-phone" *ngIf="customerPhone">{{ customerPhone }}</span>
+            </ng-container>
+            <ng-template #noCustomer>
+              <span class="customer-bar-add">Add Customer</span>
+              <span class="customer-bar-hint">name & WhatsApp number for the bill</span>
+            </ng-template>
+          </div>
+          <mat-icon class="customer-bar-edit">{{ hasCustomer() ? 'edit' : 'chevron_right' }}</mat-icon>
         </div>
 
         <!-- Payment Methods -->
