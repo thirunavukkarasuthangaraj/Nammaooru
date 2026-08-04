@@ -18,6 +18,8 @@ public class OrderResponse {
     
     private Long id;
     private String orderNumber;
+    // Present on POS orders billed offline; lets clients match a synced order to its local copy
+    private String offlineOrderId;
     private Order.OrderStatus status;
     private Order.OrderType orderType;
     private Order.PaymentStatus paymentStatus;

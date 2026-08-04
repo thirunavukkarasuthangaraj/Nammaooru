@@ -378,6 +378,61 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Last successful server order list, kept so the screen still works offline
+  private readonly ORDERS_CACHE_KEY = 'orders_mgmt_cache';
+
+  /**
+   * Offline-created POS bills not yet synced, mapped to the display shape.
+   * These must show in the list (with a badge) so daily counts include them.
+   */
+  private async getOfflinePendingOrders(): Promise<any[]> {
+    try {
+      const pending = await this.offlineStorage.getPendingOrders();
+      return pending
+        .filter(o => !this.shopId || o.shopId === this.shopId)
+        .map(o => ({
+          id: null,
+          orderNumber: o.offlineOrderId,
+          status: 'SELF_PICKUP_COLLECTED',
+          paymentStatus: 'PAID',
+          orderType: 'WALK_IN',
+          paymentMethod: o.paymentMethod,
+          createdAt: o.createdAt,
+          totalAmount: o.totalAmount,
+          subtotal: o.subtotal,
+          customerName: o.customerName || 'Walk-in Customer',
+          customerPhone: o.customerPhone || '',
+          offlinePending: true,
+          items: (o.items || []).map(it => ({
+            name: it.productName,
+            productName: it.productName,
+            quantity: it.quantity,
+            price: it.unitPrice,
+            unitPrice: it.unitPrice,
+            total: it.unitPrice * it.quantity,
+            totalPrice: it.unitPrice * it.quantity,
+            unit: 'pcs'
+          }))
+        }));
+    } catch (e) {
+      console.warn('Could not load offline pending orders:', e);
+      return [];
+    }
+  }
+
+  /** Merge server + offline-pending orders (newest first) into the view */
+  private async setOrders(serverOrders: any[]): Promise<void> {
+    const offlinePending = await this.getOfflinePendingOrders();
+    // A pending order that also came back from the server (just synced) — keep the server copy
+    const serverOfflineIds = new Set(serverOrders.map(o => o.offlineOrderId).filter(Boolean));
+    const unsyncedOnly = offlinePending.filter(o => !serverOfflineIds.has(o.orderNumber));
+
+    this.orders = [...unsyncedOnly, ...serverOrders].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    this.updateOrderLists();
+  }
+
   loadOrders(): void {
     if (!this.shopId) {
       console.log('No shop ID available, cannot load orders');
@@ -385,6 +440,12 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     }
 
     console.log('Loading orders for shop:', this.shopId);
+
+    // No connection: show cached server orders + offline-created bills, no error popup
+    if (!navigator.onLine) {
+      this.loadOrdersOffline();
+      return;
+    }
 
     // Load real aggregate stats from the DB (not limited to whatever page is loaded below)
     this.orderService.getShopOrderStats(this.shopId).subscribe({
@@ -400,17 +461,17 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     // Reset server pagination and load the first page
     this.serverPage = 0;
     this.orderService.getShopOrdersPage(this.shopId, this.serverPage, this.serverPageSize).subscribe({
-      next: ({ orders, totalItems, totalPages }) => {
+      next: async ({ orders, totalItems, totalPages }) => {
         console.log('Orders loaded successfully:', orders.length, 'of', totalItems);
         this.serverTotalPages = totalPages;
         this.serverTotalItems = totalItems;
         this.hasMoreServerOrders = (this.serverPage + 1) < totalPages;
 
-        // Defensive: ensure newest-first regardless of backend pagination/sort quirks
-        this.orders = [...orders].sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        this.updateOrderLists();
+        // Cache this page so the screen still works with no internet
+        this.cacheServerOrders(orders);
+
+        // Merge in offline-created bills (newest first)
+        await this.setOrders(orders);
 
         // Smart tab switching: if no real-time orders but there are history orders, switch to history tab
         const realtimeCount = this.getRealtimeOrdersCount();
@@ -432,11 +493,44 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         // Check if it's an authentication error
         if (error.status === 401 || error.status === 403) {
           this.swal.error('Authentication Required', 'Please login to view orders.');
+        } else if (!navigator.onLine || error.status === 0) {
+          // Connection died mid-request - fall back to cached + offline orders
+          this.loadOrdersOffline();
         } else {
           this.swal.error('Error', 'Failed to load orders. Please try again.');
         }
       }
     });
+  }
+
+  /** Save the latest server order page for offline viewing (trimmed to 100) */
+  private cacheServerOrders(orders: any[]): void {
+    try {
+      localStorage.setItem(
+        `${this.ORDERS_CACHE_KEY}_${this.shopId}`,
+        JSON.stringify(orders.slice(0, 100))
+      );
+    } catch (e) {
+      // localStorage full - drop the cache rather than break the page
+      console.warn('Could not cache orders:', e);
+    }
+  }
+
+  /** No internet: show last-known server orders + offline-created bills */
+  private async loadOrdersOffline(): Promise<void> {
+    console.log('Offline - loading orders from cache + pending offline bills');
+    let cached: any[] = [];
+    try {
+      cached = JSON.parse(localStorage.getItem(`${this.ORDERS_CACHE_KEY}_${this.shopId}`) || '[]');
+    } catch { cached = []; }
+
+    this.hasMoreServerOrders = false;
+    await this.setOrders(cached);
+
+    if (this.orders.length > 0) {
+      this.successMessage = `Offline mode: showing ${this.orders.length} saved order(s)`;
+      setTimeout(() => this.successMessage = '', 4000);
+    }
   }
 
   updateOrderLists(resetScroll: boolean = true): void {

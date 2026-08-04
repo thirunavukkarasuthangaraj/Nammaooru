@@ -1459,6 +1459,7 @@ public class OrderService {
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
+                .offlineOrderId(order.getOfflineOrderId())
                 .status(order.getStatus())
                 .orderType(order.getOrderType())
                 .paymentStatus(order.getPaymentStatus())

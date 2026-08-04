@@ -129,6 +129,7 @@
             <!-- Order ID -->
             <td class="col-order-id">
               <span class="order-number" (click)="showOrderDetailsModal(order)">#{{ order.orderNumber }}</span>
+              <span class="offline-pending-badge" *ngIf="order.offlinePending" title="Billed offline — will sync to server automatically">Offline</span>
               <div class="order-time">{{ formatOrderTime(order.createdAt) }}</div>
             </td>
 

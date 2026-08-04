@@ -588,6 +588,7 @@ public class PosService {
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
+                .offlineOrderId(order.getOfflineOrderId())
                 .customerId(order.getCustomer().getId())
                 .customerName(order.getCustomer().getFullName())
                 .customerPhone(order.getCustomer().getMobileNumber())
