@@ -300,6 +300,10 @@
           <mat-icon>shopping_cart</mat-icon>
           Cart ({{ cart.length }})
         </h2>
+        <button mat-mini-fab class="customer-fab" (click)="openCustomerModal()"
+                [title]="hasCustomer() ? 'Edit customer' : 'Add customer'">
+          <mat-icon>{{ hasCustomer() ? 'how_to_reg' : 'person_add' }}</mat-icon>
+        </button>
         <button mat-icon-button color="warn" (click)="clearCart()" *ngIf="cart.length > 0" title="Clear Cart">
           <mat-icon>delete_sweep</mat-icon>
         </button>
@@ -348,12 +352,6 @@
           <span>Add products to start billing</span>
         </div>
       </div>
-
-      <!-- Floating add/edit customer button -->
-      <button mat-mini-fab class="customer-fab" (click)="openCustomerModal()"
-              [title]="hasCustomer() ? 'Edit customer' : 'Add customer'">
-        <mat-icon>{{ hasCustomer() ? 'how_to_reg' : 'person_add' }}</mat-icon>
-      </button>
 
       <!-- Customer entry modal -->
       <div class="customer-modal-backdrop" *ngIf="showCustomerModal" (click)="closeCustomerModal()">
