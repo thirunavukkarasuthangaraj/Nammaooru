@@ -27,6 +27,10 @@ export interface ShopOwnerOrder {
   shopId: number;
   shopName?: string;
   couponCode?: string;
+  // POS offline support: idempotency key of a bill made offline, and a flag
+  // marking a local bill that hasn't reached the server yet
+  offlineOrderId?: string;
+  offlinePending?: boolean;
   discountAmount?: number;
   assignedToDeliveryPartner?: boolean;
   assignedDriver?: {
