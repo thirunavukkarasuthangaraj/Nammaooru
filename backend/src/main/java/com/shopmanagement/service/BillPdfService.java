@@ -47,21 +47,58 @@ public class BillPdfService {
     private static final Color RULE_GRAY = new Color(229, 231, 235);
     private static final Color HEADER_BG = new Color(243, 244, 246);
 
-    public byte[] generateBillPdf(Order order) {
-        // Narrow page like a receipt (80mm wide roll). Height is a generous
-        // upper bound so even long item lists never overflow to page 2 -
-        // the page is cropped down to the actual content height below,
-        // so short bills don't end up with a big blank area underneath
-        // (which pushed the header off-screen on WhatsApp mobile).
-        Rectangle pageSize = new Rectangle(227f, 3000f);
-        Document document = new Document(pageSize, 0f, 0f, 0f, 14f);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        float[] contentBottomY = {0f};
+    private static final float PAGE_WIDTH = 227f;
+    private static final float MAX_PAGE_HEIGHT = 6000f;
+    private static final float BOTTOM_PADDING = 14f;
 
+    public byte[] generateBillPdf(Order order) {
+        // Narrow page like a receipt (80mm wide roll). Pass 1 renders onto a
+        // tall throwaway page just to measure how far the content reaches;
+        // pass 2 rebuilds the real PDF sized to exactly that height, so
+        // short bills don't carry a big blank area below the footer (which
+        // pushed the header off-screen on WhatsApp mobile) and long bills
+        // never silently overflow onto a second page that never gets sent.
+        float contentHeight = measureContentHeight(order);
+        return renderBill(order, Math.min(contentHeight + BOTTOM_PADDING, MAX_PAGE_HEIGHT));
+    }
+
+    private float measureContentHeight(Order order) {
+        Rectangle pageSize = new Rectangle(PAGE_WIDTH, MAX_PAGE_HEIGHT);
+        Document document = new Document(pageSize, 0f, 0f, 0f, 0f);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             PdfWriter writer = PdfWriter.getInstance(document, out);
             document.open();
+            buildContent(document, order);
+            float bottomY = writer.getVerticalPosition(true);
+            return MAX_PAGE_HEIGHT - bottomY;
+        } catch (Exception e) {
+            log.warn("Could not measure bill content height for order {}, using max page height: {}",
+                    order.getOrderNumber(), e.getMessage());
+            return MAX_PAGE_HEIGHT;
+        } finally {
+            document.close();
+        }
+    }
 
+    private byte[] renderBill(Order order, float pageHeight) {
+        Rectangle pageSize = new Rectangle(PAGE_WIDTH, pageHeight);
+        Document document = new Document(pageSize, 0f, 0f, 0f, 0f);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            PdfWriter.getInstance(document, out);
+            document.open();
+            buildContent(document, order);
+        } catch (Exception e) {
+            log.error("Failed to generate bill PDF for order {}", order.getOrderNumber(), e);
+            throw new RuntimeException("Failed to generate bill PDF", e);
+        } finally {
+            document.close();
+        }
+        return out.toByteArray();
+    }
+
+    private void buildContent(Document document, Order order) throws Exception {
             Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, Color.WHITE);
             Font headerSubFont = FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(209, 250, 229));
             Font labelFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
@@ -226,44 +263,6 @@ public class BillPdfService {
 
             body.addCell(bodyCell);
             document.add(body);
-
-            contentBottomY[0] = writer.getVerticalPosition(true);
-
-        } catch (Exception e) {
-            log.error("Failed to generate bill PDF for order {}", order.getOrderNumber(), e);
-            throw new RuntimeException("Failed to generate bill PDF", e);
-        } finally {
-            document.close();
-        }
-
-        return cropToContentHeight(out.toByteArray(), pageSize.getWidth(), pageSize.getHeight(), contentBottomY[0]);
-    }
-
-    /**
-     * Crops the oversized page down to just the printed content (plus a small
-     * bottom margin) so the bill image/PDF doesn't carry a large blank area
-     * below the footer. Falls back to the uncropped PDF if cropping fails.
-     */
-    private byte[] cropToContentHeight(byte[] pdfBytes, float pageWidth, float pageHeight, float contentBottomY) {
-        try {
-            float bottomMargin = 14f;
-            float newBottom = Math.max(0f, contentBottomY - bottomMargin);
-            com.lowagie.text.pdf.PdfReader reader = new com.lowagie.text.pdf.PdfReader(pdfBytes);
-            com.lowagie.text.pdf.PdfRectangle croppedBox =
-                    new com.lowagie.text.pdf.PdfRectangle(0, newBottom, pageWidth, pageHeight);
-            com.lowagie.text.pdf.PdfDictionary page = reader.getPageN(1);
-            page.put(com.lowagie.text.pdf.PdfName.MEDIABOX, croppedBox);
-            page.put(com.lowagie.text.pdf.PdfName.CROPBOX, croppedBox);
-
-            ByteArrayOutputStream croppedOut = new ByteArrayOutputStream();
-            com.lowagie.text.pdf.PdfStamper stamper = new com.lowagie.text.pdf.PdfStamper(reader, croppedOut);
-            stamper.close();
-            reader.close();
-            return croppedOut.toByteArray();
-        } catch (Exception e) {
-            log.warn("Could not crop bill PDF to content height, using full page: {}", e.getMessage());
-            return pdfBytes;
-        }
     }
 
     /**
