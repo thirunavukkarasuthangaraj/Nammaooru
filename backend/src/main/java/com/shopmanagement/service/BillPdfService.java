@@ -130,18 +130,59 @@ public class BillPdfService {
         return font;
     }
 
+    /** True for characters in the Tamil Unicode block (U+0B80-U+0BFF). */
+    private boolean isTamil(char c) {
+        return c >= 0x0B80 && c <= 0x0BFF;
+    }
+
+    /**
+     * Splits text into same-script runs and renders each with the matching
+     * font, so a single font's missing glyphs don't blank out the rest of
+     * the line. The bundled Tamil face only covers the Tamil block (it's a
+     * script-specific subset, like the one shipped to the frontend) - it
+     * has no Latin letters - so English text must stay on the Latin font.
+     */
+    private Phrase mixedPhrase(String text, Font latinFont, Font tamilFont) {
+        Phrase phrase = new Phrase();
+        if (text == null || text.isEmpty()) {
+            return phrase;
+        }
+        StringBuilder run = new StringBuilder();
+        Boolean runIsTamil = null;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            boolean tamil = isTamil(c);
+            if (runIsTamil != null && tamil != runIsTamil) {
+                phrase.add(new com.lowagie.text.Chunk(run.toString(), runIsTamil ? tamilFont : latinFont));
+                run.setLength(0);
+            }
+            run.append(c);
+            runIsTamil = tamil;
+        }
+        if (run.length() > 0) {
+            phrase.add(new com.lowagie.text.Chunk(run.toString(), runIsTamil ? tamilFont : latinFont));
+        }
+        return phrase;
+    }
+
     private void buildContent(Document document, Order order) throws Exception {
-            BaseFont base = tamilBaseFont();
-            Font shopFont = new Font(base, 13, Font.BOLD, Color.WHITE);
-            Font headerSubFont = new Font(base, 7, Font.NORMAL, new Color(209, 250, 229));
-            Font labelFont = new Font(base, 7, Font.NORMAL, MUTED_TEXT);
-            Font normalFont = new Font(base, 8, Font.NORMAL, DARK_TEXT);
-            Font boldFont = new Font(base, 8, Font.BOLD, DARK_TEXT);
-            Font tableHeadFont = new Font(base, 7, Font.BOLD, MUTED_TEXT);
-            Font saveFont = new Font(base, 8, Font.BOLD, BRAND_GREEN);
-            Font totalFont = new Font(base, 13, Font.BOLD, BRAND_GREEN);
-            Font footerFont = new Font(base, 7, Font.NORMAL, MUTED_TEXT);
-            Font thanksFont = new Font(base, 9, Font.BOLD, BRAND_GREEN);
+            BaseFont tamil = tamilBaseFont();
+            Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, Color.WHITE);
+            Font headerSubFont = FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(209, 250, 229));
+            Font labelFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 8, DARK_TEXT);
+            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, DARK_TEXT);
+            Font tableHeadFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7, MUTED_TEXT);
+            Font saveFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BRAND_GREEN);
+            Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, BRAND_GREEN);
+            Font footerFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
+            Font thanksFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, BRAND_GREEN);
+
+            // Tamil-capable counterparts, only for fields that can contain Tamil text
+            Font shopFontTamil = new Font(tamil, 13, Font.BOLD, Color.WHITE);
+            Font headerSubFontTamil = new Font(tamil, 7, Font.NORMAL, new Color(209, 250, 229));
+            Font normalFontTamil = new Font(tamil, 8, Font.NORMAL, DARK_TEXT);
+            Font boldFontTamil = new Font(tamil, 8, Font.BOLD, DARK_TEXT);
 
             // ===== Green brand header =====
             PdfPTable header = new PdfPTable(1);
@@ -154,13 +195,15 @@ public class BillPdfService {
             headerCell.setPaddingLeft(12f);
             headerCell.setPaddingRight(12f);
 
-            Paragraph shopName = new Paragraph(order.getShop().getName(), shopFont);
+            Paragraph shopName = new Paragraph();
+            shopName.add(mixedPhrase(order.getShop().getName(), shopFont, shopFontTamil));
             shopName.setAlignment(Element.ALIGN_CENTER);
             headerCell.addElement(shopName);
 
             String shopLine = joinNonBlank(order.getShop().getAddressLine1(), order.getShop().getCity());
             if (!shopLine.isEmpty()) {
-                Paragraph addr = new Paragraph(shopLine, headerSubFont);
+                Paragraph addr = new Paragraph();
+                addr.add(mixedPhrase(shopLine, headerSubFont, headerSubFontTamil));
                 addr.setAlignment(Element.ALIGN_CENTER);
                 headerCell.addElement(addr);
             }
@@ -197,7 +240,9 @@ public class BillPdfService {
                 Paragraph custLabel = new Paragraph("Billed To", labelFont);
                 bodyCell.addElement(custLabel);
                 String custLine = joinNonBlank(customerName, customerPhone);
-                bodyCell.addElement(new Paragraph(custLine, boldFont));
+                Paragraph custPara = new Paragraph();
+                custPara.add(mixedPhrase(custLine, boldFont, boldFontTamil));
+                bodyCell.addElement(custPara);
             }
 
             bodyCell.addElement(spacer(6f));
@@ -220,7 +265,7 @@ public class BillPdfService {
                 mrpTotal = mrpTotal.add(lineMrp);
                 totalQty += item.getQuantity();
 
-                addCell(table, item.getProductName(), normalFont, Element.ALIGN_LEFT);
+                addCellMixed(table, item.getProductName(), normalFont, normalFontTamil, Element.ALIGN_LEFT);
                 addCell(table, stripZeros(mrp), normalFont, Element.ALIGN_RIGHT);
                 addCell(table, stripZeros(item.getUnitPrice()), normalFont, Element.ALIGN_RIGHT);
                 addCell(table, String.valueOf(item.getQuantity()), normalFont, Element.ALIGN_RIGHT);
@@ -371,6 +416,18 @@ public class BillPdfService {
 
     private void addCell(PdfPTable table, String text, Font font, int align) {
         PdfPCell cell = new PdfPCell(new Paragraph(text, font));
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(align);
+        cell.setPaddingTop(2f);
+        cell.setPaddingBottom(2f);
+        table.addCell(cell);
+    }
+
+    /** Like addCell, but splits Latin/Tamil runs across two fonts (see mixedPhrase). */
+    private void addCellMixed(PdfPTable table, String text, Font latinFont, Font tamilFont, int align) {
+        Paragraph para = new Paragraph();
+        para.add(mixedPhrase(text, latinFont, tamilFont));
+        PdfPCell cell = new PdfPCell(para);
         cell.setBorder(Rectangle.NO_BORDER);
         cell.setHorizontalAlignment(align);
         cell.setPaddingTop(2f);
