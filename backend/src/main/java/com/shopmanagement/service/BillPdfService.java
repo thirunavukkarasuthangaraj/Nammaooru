@@ -7,12 +7,14 @@ import com.lowagie.text.FontFactory;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
+import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -98,17 +100,48 @@ public class BillPdfService {
         return out.toByteArray();
     }
 
+    private static volatile BaseFont TAMIL_BASE_FONT;
+
+    /**
+     * Loads (once) a Unicode font covering both Latin and Tamil glyphs.
+     * Item/customer names can contain Tamil text, and the built-in PDF
+     * standard fonts (Helvetica) only support Latin - Tamil characters
+     * would render blank. Falls back to Helvetica if the font can't load.
+     */
+    private BaseFont tamilBaseFont() throws Exception {
+        BaseFont font = TAMIL_BASE_FONT;
+        if (font == null) {
+            synchronized (BillPdfService.class) {
+                font = TAMIL_BASE_FONT;
+                if (font == null) {
+                    try {
+                        byte[] fontBytes = new ClassPathResource("fonts/NotoSansTamil-Regular.ttf")
+                                .getInputStream().readAllBytes();
+                        font = BaseFont.createFont("NotoSansTamil-Regular.ttf", BaseFont.IDENTITY_H,
+                                BaseFont.EMBEDDED, true, fontBytes, null);
+                    } catch (Exception e) {
+                        log.warn("Could not load Tamil font, falling back to Helvetica: {}", e.getMessage());
+                        font = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
+                    }
+                    TAMIL_BASE_FONT = font;
+                }
+            }
+        }
+        return font;
+    }
+
     private void buildContent(Document document, Order order) throws Exception {
-            Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, Color.WHITE);
-            Font headerSubFont = FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(209, 250, 229));
-            Font labelFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
-            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 8, DARK_TEXT);
-            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, DARK_TEXT);
-            Font tableHeadFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7, MUTED_TEXT);
-            Font saveFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BRAND_GREEN);
-            Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, BRAND_GREEN);
-            Font footerFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
-            Font thanksFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, BRAND_GREEN);
+            BaseFont base = tamilBaseFont();
+            Font shopFont = new Font(base, 13, Font.BOLD, Color.WHITE);
+            Font headerSubFont = new Font(base, 7, Font.NORMAL, new Color(209, 250, 229));
+            Font labelFont = new Font(base, 7, Font.NORMAL, MUTED_TEXT);
+            Font normalFont = new Font(base, 8, Font.NORMAL, DARK_TEXT);
+            Font boldFont = new Font(base, 8, Font.BOLD, DARK_TEXT);
+            Font tableHeadFont = new Font(base, 7, Font.BOLD, MUTED_TEXT);
+            Font saveFont = new Font(base, 8, Font.BOLD, BRAND_GREEN);
+            Font totalFont = new Font(base, 13, Font.BOLD, BRAND_GREEN);
+            Font footerFont = new Font(base, 7, Font.NORMAL, MUTED_TEXT);
+            Font thanksFont = new Font(base, 9, Font.BOLD, BRAND_GREEN);
 
             // ===== Green brand header =====
             PdfPTable header = new PdfPTable(1);
