@@ -367,9 +367,22 @@ public class PosService {
             org.apache.pdfbox.rendering.PDFRenderer renderer =
                     new org.apache.pdfbox.rendering.PDFRenderer(doc);
             java.awt.image.BufferedImage image =
-                    renderer.renderImageWithDPI(0, 200, org.apache.pdfbox.rendering.ImageType.RGB);
+                    renderer.renderImageWithDPI(0, 300, org.apache.pdfbox.rendering.ImageType.RGB);
+
+            // Java's default JPEG quality is heavily compressed, which blurs the
+            // small receipt text. Force near-lossless quality explicitly.
+            javax.imageio.ImageWriter writer = javax.imageio.ImageIO.getImageWritersByFormatName("jpg").next();
+            javax.imageio.ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(0.95f);
+
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-            javax.imageio.ImageIO.write(image, "jpg", out);
+            try (javax.imageio.stream.ImageOutputStream ios = javax.imageio.ImageIO.createImageOutputStream(out)) {
+                writer.setOutput(ios);
+                writer.write(null, new javax.imageio.IIOImage(image, null, null), param);
+            } finally {
+                writer.dispose();
+            }
             return out.toByteArray();
         } catch (Exception e) {
             log.warn("Could not render bill {} as image - will send PDF instead: {}", orderNumber, e.getMessage());
