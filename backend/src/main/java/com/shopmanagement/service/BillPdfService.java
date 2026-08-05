@@ -48,13 +48,18 @@ public class BillPdfService {
     private static final Color HEADER_BG = new Color(243, 244, 246);
 
     public byte[] generateBillPdf(Order order) {
-        // Narrow page like a receipt (80mm wide roll)
-        Rectangle pageSize = new Rectangle(227f, 600f);
+        // Narrow page like a receipt (80mm wide roll). Height is a generous
+        // upper bound so even long item lists never overflow to page 2 -
+        // the page is cropped down to the actual content height below,
+        // so short bills don't end up with a big blank area underneath
+        // (which pushed the header off-screen on WhatsApp mobile).
+        Rectangle pageSize = new Rectangle(227f, 3000f);
         Document document = new Document(pageSize, 0f, 0f, 0f, 14f);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
+        float[] contentBottomY = {0f};
 
         try {
-            PdfWriter.getInstance(document, out);
+            PdfWriter writer = PdfWriter.getInstance(document, out);
             document.open();
 
             Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, Color.WHITE);
@@ -222,6 +227,8 @@ public class BillPdfService {
             body.addCell(bodyCell);
             document.add(body);
 
+            contentBottomY[0] = writer.getVerticalPosition(true);
+
         } catch (Exception e) {
             log.error("Failed to generate bill PDF for order {}", order.getOrderNumber(), e);
             throw new RuntimeException("Failed to generate bill PDF", e);
@@ -229,7 +236,34 @@ public class BillPdfService {
             document.close();
         }
 
-        return out.toByteArray();
+        return cropToContentHeight(out.toByteArray(), pageSize.getWidth(), pageSize.getHeight(), contentBottomY[0]);
+    }
+
+    /**
+     * Crops the oversized page down to just the printed content (plus a small
+     * bottom margin) so the bill image/PDF doesn't carry a large blank area
+     * below the footer. Falls back to the uncropped PDF if cropping fails.
+     */
+    private byte[] cropToContentHeight(byte[] pdfBytes, float pageWidth, float pageHeight, float contentBottomY) {
+        try {
+            float bottomMargin = 14f;
+            float newBottom = Math.max(0f, contentBottomY - bottomMargin);
+            com.lowagie.text.pdf.PdfReader reader = new com.lowagie.text.pdf.PdfReader(pdfBytes);
+            com.lowagie.text.pdf.PdfRectangle croppedBox =
+                    new com.lowagie.text.pdf.PdfRectangle(0, newBottom, pageWidth, pageHeight);
+            com.lowagie.text.pdf.PdfDictionary page = reader.getPageN(1);
+            page.put(com.lowagie.text.pdf.PdfName.MEDIABOX, croppedBox);
+            page.put(com.lowagie.text.pdf.PdfName.CROPBOX, croppedBox);
+
+            ByteArrayOutputStream croppedOut = new ByteArrayOutputStream();
+            com.lowagie.text.pdf.PdfStamper stamper = new com.lowagie.text.pdf.PdfStamper(reader, croppedOut);
+            stamper.close();
+            reader.close();
+            return croppedOut.toByteArray();
+        } catch (Exception e) {
+            log.warn("Could not crop bill PDF to content height, using full page: {}", e.getMessage());
+            return pdfBytes;
+        }
     }
 
     /**
