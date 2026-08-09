@@ -2205,31 +2205,70 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       const links = await this.syncService.getBillShareLinks(this.lastOrder.id);
       this.swal.close();
 
-      // Image link first: WhatsApp previews the first URL, so the customer sees
-      // the bill as a thumbnail right in the chat. PDF below for download/print.
+      // Short text only — the bill goes as an actual FILE, not links. No emojis:
+      // they arrived as broken characters (�) on WhatsApp desktop via wa.me.
       const shopName = this.billSettings.shopName || this.shopName || links.shopName || '';
       const lines = [
-        `🧾 *${shopName}*`,
+        `*${shopName}*`,
         `Bill No: ${links.orderNumber || this.lastOrder.orderNumber || ''}`,
-        `Amount: ₹${links.amount || ''}`,
-        ''
+        `Amount: Rs.${links.amount || ''}`,
+        '',
+        'நன்றி! Thank you for shopping with us'
       ];
-      if (links.imageUrl) {
-        lines.push(`📷 View bill: ${links.imageUrl}`);
-      }
-      if (links.pdfUrl) {
-        lines.push(`📄 Download PDF: ${links.pdfUrl}`);
-      }
-      lines.push('', 'நன்றி! Thank you for shopping with us 🙏');
 
       const { value: message, isConfirmed } = await this.swal.promptTextarea(
-        'Preview WhatsApp Message', lines.join('\n'), 'Open WhatsApp'
+        'Preview WhatsApp Message', lines.join('\n'), 'Send Bill'
       );
       if (!isConfirmed || !message) return;
 
       const digits = phone.replace(/\D/g, '');
       const waNumber = digits.length === 10 ? '91' + digits : digits;
+
+      // Download the actual bill file to attach
+      const fileUrl = links.imageUrl || links.pdfUrl;
+      const isPdf = !links.imageUrl;
+      let file: File | null = null;
+      try {
+        const resp = await fetch(fileUrl, { mode: 'cors', credentials: 'omit' });
+        if (resp.ok) {
+          const blob = await resp.blob();
+          file = new File(
+            [blob],
+            `Bill-${links.orderNumber || this.lastOrder.orderNumber || 'receipt'}.${isPdf ? 'pdf' : 'jpg'}`,
+            { type: blob.type || (isPdf ? 'application/pdf' : 'image/jpeg') }
+          );
+        }
+      } catch {
+        // fall through to text-only chat below
+      }
+
+      // Mobile/tablet: system share sheet sends the real file into WhatsApp
+      const nav = navigator as any;
+      if (file && nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], text: message });
+        return;
+      }
+
+      // Desktop: copy the bill image to the clipboard, open the customer's chat,
+      // owner presses Ctrl+V to attach it and hits send
+      let copied = false;
+      if (file && !isPdf && navigator.clipboard && (window as any).ClipboardItem) {
+        try {
+          const pngBlob = await this.imageFileToPng(file);
+          await navigator.clipboard.write([
+            new (window as any).ClipboardItem({ 'image/png': pngBlob })
+          ]);
+          copied = true;
+        } catch {
+          copied = false;
+        }
+      }
+
       window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank');
+      if (copied) {
+        this.swal.success('Bill Copied',
+          'In the WhatsApp chat press Ctrl+V to attach the bill image, then Send');
+      }
     } catch (error: any) {
       this.swal.close();
       const message = error?.error?.message || error?.message || 'Failed to prepare the bill for sharing';
@@ -2237,6 +2276,22 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     } finally {
       this.sharingOwnWhatsApp = false;
     }
+  }
+
+  /**
+   * Convert the bill JPEG to PNG via canvas — the async Clipboard API only
+   * accepts image/png, and the bill is rendered as JPEG on the server.
+   */
+  private async imageFileToPng(file: File): Promise<Blob> {
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('PNG conversion failed')), 'image/png')
+    );
   }
 
   /**

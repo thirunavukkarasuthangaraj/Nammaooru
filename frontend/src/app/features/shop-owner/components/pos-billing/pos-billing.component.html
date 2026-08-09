@@ -483,18 +483,27 @@
             <mat-icon>share</mat-icon>
             Share Bill
           </button>
-          <mat-menu #shareBillMenu="matMenu">
-            <button mat-menu-item (click)="shareBillFromMyWhatsApp()">
-              <mat-icon>person</mat-icon>
-              <span>My WhatsApp (shop's own number)</span>
+          <mat-menu #shareBillMenu="matMenu" class="share-bill-menu" yPosition="above">
+            <button mat-menu-item class="share-bill-option" (click)="shareBillFromMyWhatsApp()">
+              <mat-icon class="share-icon share-icon-own">chat</mat-icon>
+              <span class="share-text">
+                <span class="share-title">My WhatsApp</span>
+                <span class="share-sub">From shop's own number</span>
+              </span>
             </button>
-            <button mat-menu-item (click)="sendBillOnWhatsApp()">
-              <mat-icon>chat</mat-icon>
-              <span>Auto send (NammaOoru number)</span>
+            <button mat-menu-item class="share-bill-option" (click)="sendBillOnWhatsApp()">
+              <mat-icon class="share-icon share-icon-auto">send</mat-icon>
+              <span class="share-text">
+                <span class="share-title">Auto Send</span>
+                <span class="share-sub">Via NammaOoru number</span>
+              </span>
             </button>
-            <button mat-menu-item (click)="sendBillOnEmail()">
-              <mat-icon>email</mat-icon>
-              <span>Email</span>
+            <button mat-menu-item class="share-bill-option" (click)="sendBillOnEmail()">
+              <mat-icon class="share-icon share-icon-email">email</mat-icon>
+              <span class="share-text">
+                <span class="share-title">Email</span>
+                <span class="share-sub">Bill PDF by email</span>
+              </span>
             </button>
           </mat-menu>
           <button mat-icon-button
