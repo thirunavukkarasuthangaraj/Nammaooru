@@ -28,7 +28,7 @@ public class BillFileCleanupService {
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
 
-    @Value("${app.bills.retention-days:10}")
+    @Value("${app.bills.retention-days:7}")
     private int retentionDays;
 
     @Scheduled(cron = "0 0 3 * * *")
