@@ -477,21 +477,26 @@
           <button mat-stroked-button
                   class="whatsapp-bill-btn"
                   *ngIf="lastOrder"
-                  [disabled]="sendingWhatsAppBill"
-                  (click)="sendBillOnWhatsApp()"
-                  matTooltip="Send this bill to the customer on WhatsApp">
-            <mat-icon>chat</mat-icon>
-            Send WhatsApp
+                  [disabled]="sendingWhatsAppBill || sendingEmailBill || sharingOwnWhatsApp"
+                  [matMenuTriggerFor]="shareBillMenu"
+                  matTooltip="Send this bill to the customer">
+            <mat-icon>share</mat-icon>
+            Share Bill
           </button>
-          <button mat-stroked-button
-                  class="email-bill-btn"
-                  *ngIf="lastOrder"
-                  [disabled]="sendingEmailBill"
-                  (click)="sendBillOnEmail()"
-                  matTooltip="Send this bill to the customer by email">
-            <mat-icon>email</mat-icon>
-            Send Email
-          </button>
+          <mat-menu #shareBillMenu="matMenu">
+            <button mat-menu-item (click)="shareBillFromMyWhatsApp()">
+              <mat-icon>person</mat-icon>
+              <span>My WhatsApp (shop's own number)</span>
+            </button>
+            <button mat-menu-item (click)="sendBillOnWhatsApp()">
+              <mat-icon>chat</mat-icon>
+              <span>Auto send (NammaOoru number)</span>
+            </button>
+            <button mat-menu-item (click)="sendBillOnEmail()">
+              <mat-icon>email</mat-icon>
+              <span>Email</span>
+            </button>
+          </mat-menu>
           <button mat-icon-button
                   (click)="openBillSettingsDialog()"
                   class="receipt-settings-btn"

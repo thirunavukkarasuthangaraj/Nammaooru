@@ -419,6 +419,20 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
+   * Generate the bill and get its public links (nothing is sent) — used to share
+   * the bill from the shop owner's own WhatsApp via wa.me.
+   * Returns { imageUrl?, pdfUrl, orderNumber, amount, shopName }.
+   */
+  async getBillShareLinks(orderId: number): Promise<{
+    imageUrl?: string; pdfUrl: string; orderNumber: string; amount: string; shopName: string;
+  }> {
+    const response: any = await this.http.post(
+      `${this.apiUrl}/pos/orders/${orderId}/bill-link`, {}
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+    return response?.data || {};
+  }
+
+  /**
    * Send the bill for an already-synced POS order to the customer via email (as a PDF)
    */
   async sendEmailBill(orderId: number, customerEmail: string, customerName?: string): Promise<void> {

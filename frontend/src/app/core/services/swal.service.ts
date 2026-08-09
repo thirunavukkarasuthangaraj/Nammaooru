@@ -86,6 +86,21 @@ export class SwalService {
     });
   }
 
+  // Multi-line editable preview (e.g. reviewing a WhatsApp message before sharing)
+  promptTextarea(title: string, initialValue: string, confirmButtonText: string = 'Send'): Promise<SweetAlertResult> {
+    return Swal.fire({
+      title: title,
+      input: 'textarea',
+      inputValue: initialValue,
+      inputAttributes: { rows: '8', style: 'height: 180px' },
+      showCancelButton: true,
+      confirmButtonText: confirmButtonText,
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#667eea',
+      cancelButtonColor: '#6b7280'
+    });
+  }
+
   // Delete confirmation
   confirmDelete(itemName?: string): Promise<SweetAlertResult> {
     return Swal.fire({

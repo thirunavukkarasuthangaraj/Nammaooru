@@ -72,6 +72,18 @@ public class PosController {
     }
 
     /**
+     * Generate the bill (image + PDF) and return the public links WITHOUT
+     * sending any message — the shop owner shares them from their own WhatsApp
+     * (wa.me) so the customer receives the bill from the shop's number.
+     */
+    @PostMapping("/orders/{orderId}/bill-link")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getBillShareLinks(@PathVariable Long orderId) {
+        log.info("Generating bill share links for order: {}", orderId);
+        return ResponseUtil.success(posService.getBillShareLinks(orderId), "Bill links generated");
+    }
+
+    /**
      * Send the bill for an already-created POS order to the customer via email (as a PDF).
      */
     @PostMapping("/orders/{orderId}/send-email-bill")

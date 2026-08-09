@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
@@ -187,6 +187,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   lastOrder: any = null;
   sendingWhatsAppBill: boolean = false;
   sendingEmailBill: boolean = false;
+  sharingOwnWhatsApp: boolean = false;
 
   // Sync status
   syncStatus: SyncStatus = {
@@ -211,6 +212,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   // In-progress bill survives page refreshes (PWA auto-update reloads, accidental F5)
   private readonly POS_CART_BACKUP_KEY = 'pos_cart_backup';
   private readonly IMAGE_CACHE_VALIDITY_MS = 60 * 60 * 1000; // 1 hour
+  // Image caching used to start the moment POS opened, and its ~2500 IndexedDB
+  // lookups + downloads competed with the search box — the freeze owners felt.
+  // Now it starts only after this idle delay and pauses while the owner types.
+  private readonly IMAGE_CACHE_START_DELAY_MS = 45 * 1000;
+  private imageCacheTimer: any = null;
+  private lastTypingAt = 0;
 
   // UI state
   isLoading: boolean = true;
@@ -339,7 +346,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     private swal: SwalService,
     private shopContext: ShopContextService,
     private labelTemplateService: LabelTemplateService,
-    private labelPrintService: LabelPrintService
+    private labelPrintService: LabelPrintService,
+    private ngZone: NgZone
   ) {}
 
   /**
@@ -451,6 +459,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.barcodeKeyHandler) {
       document.removeEventListener('keypress', this.barcodeKeyHandler);
       this.barcodeKeyHandler = null;
+    }
+
+    // Cancel a pending image-cache run scheduled for after the idle delay
+    if (this.imageCacheTimer) {
+      clearTimeout(this.imageCacheTimer);
+      this.imageCacheTimer = null;
     }
   }
 
@@ -750,12 +764,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       if (event.key === 'Enter' && buffer.length > 5) {
         event.preventDefault();
         const barcode = buffer.slice(0, -1); // Remove Enter
-        this.handleBarcodeScan(barcode);
+        // Re-enter Angular only for an actual scan (see runOutsideAngular below)
+        this.ngZone.run(() => this.handleBarcodeScan(barcode));
         buffer = '';
       }
     };
 
-    document.addEventListener('keypress', this.barcodeKeyHandler);
+    // Listen outside Angular's zone: this handler fires on EVERY keypress on the
+    // page, and inside the zone each one forced change detection over the whole
+    // POS screen, making typing feel heavy. Scans re-enter the zone above.
+    this.ngZone.runOutsideAngular(() => {
+      document.addEventListener('keypress', this.barcodeKeyHandler!);
+    });
   }
 
   /**
@@ -862,8 +882,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         if (this.products.length > 0) {
           const lastImgCache = parseInt(localStorage.getItem(this.POS_IMAGES_CACHED_KEY) || '0', 10);
           if (Date.now() - lastImgCache > this.IMAGE_CACHE_VALIDITY_MS) {
-            this.cacheProductImagesToIndexedDB(this.products);
-            localStorage.setItem(this.POS_IMAGES_CACHED_KEY, Date.now().toString());
+            this.scheduleImageCaching();
           }
         }
 
@@ -1162,6 +1181,21 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
+   * Start the hourly image-cache scan only after the POS has been open for a
+   * while, outside Angular's zone so none of it triggers change detection.
+   * The "last cached" stamp is written when the run actually starts, so closing
+   * POS before the delay simply retries on the next open.
+   */
+  private scheduleImageCaching(): void {
+    this.ngZone.runOutsideAngular(() => {
+      this.imageCacheTimer = setTimeout(() => {
+        localStorage.setItem(this.POS_IMAGES_CACHED_KEY, Date.now().toString());
+        this.cacheProductImagesToIndexedDB(this.products);
+      }, this.IMAGE_CACHE_START_DELAY_MS);
+    });
+  }
+
+  /**
    * Cache product images to IndexedDB in background for offline use
    * Caches images as blobs, doesn't block UI
    */
@@ -1183,6 +1217,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     let cached = 0;
 
     const cacheBatch = async (startIndex: number) => {
+      // Back off while the owner is typing — caching must never compete with search
+      if (Date.now() - this.lastTypingAt < 2000) {
+        setTimeout(() => cacheBatch(startIndex), 1500);
+        return;
+      }
+
       const batch = imageUrls.slice(startIndex, startIndex + batchSize);
       if (batch.length === 0) {
         console.log(`Image caching complete: ${cached}/${imageUrls.length} cached`);
@@ -1245,6 +1285,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Handle search input
    */
   onSearchChange(): void {
+    this.lastTypingAt = Date.now();
     this.searchSubject.next(this.searchTerm);
   }
 
@@ -2122,6 +2163,79 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.swal.error('Error', message);
     } finally {
       this.sendingWhatsAppBill = false;
+    }
+  }
+
+  /**
+   * Share the last bill from the shop owner's OWN WhatsApp account: fetch the
+   * bill links (image + PDF) from the server, show an editable message preview,
+   * then open wa.me directly in the customer's chat. The owner taps send in
+   * WhatsApp, so the customer receives the bill from the shop's number and can
+   * reply straight to the shop.
+   */
+  async shareBillFromMyWhatsApp(): Promise<void> {
+    if (!this.lastOrder) {
+      this.swal.warning('No Bill Yet', 'Print a bill first before sharing it on WhatsApp');
+      return;
+    }
+    if (!this.lastOrder.id) {
+      this.swal.warning('Not Synced Yet', 'This bill was saved offline and needs to sync before it can be shared');
+      return;
+    }
+
+    // Same phone resolution as sendBillOnWhatsApp: prefer the number typed in
+    // the form now, never the shared walk-in placeholder (90000 + shop id)
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    let phone = [this.customerPhone, this.lastOrder.customerPhone]
+      .find(p => p && !isWalkInPlaceholder(p)) || '';
+    if (!phone) {
+      const { value } = await this.swal.prompt(
+        'Customer Phone Number',
+        'Enter the customer\'s WhatsApp number to share the bill',
+        'tel'
+      );
+      if (!value) return;
+      phone = value;
+    }
+
+    this.sharingOwnWhatsApp = true;
+    this.swal.loading('Preparing bill...');
+
+    try {
+      const links = await this.syncService.getBillShareLinks(this.lastOrder.id);
+      this.swal.close();
+
+      // Image link first: WhatsApp previews the first URL, so the customer sees
+      // the bill as a thumbnail right in the chat. PDF below for download/print.
+      const shopName = this.billSettings.shopName || this.shopName || links.shopName || '';
+      const lines = [
+        `🧾 *${shopName}*`,
+        `Bill No: ${links.orderNumber || this.lastOrder.orderNumber || ''}`,
+        `Amount: ₹${links.amount || ''}`,
+        ''
+      ];
+      if (links.imageUrl) {
+        lines.push(`📷 View bill: ${links.imageUrl}`);
+      }
+      if (links.pdfUrl) {
+        lines.push(`📄 Download PDF: ${links.pdfUrl}`);
+      }
+      lines.push('', 'நன்றி! Thank you for shopping with us 🙏');
+
+      const { value: message, isConfirmed } = await this.swal.promptTextarea(
+        'Preview WhatsApp Message', lines.join('\n'), 'Open WhatsApp'
+      );
+      if (!isConfirmed || !message) return;
+
+      const digits = phone.replace(/\D/g, '');
+      const waNumber = digits.length === 10 ? '91' + digits : digits;
+      window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    } catch (error: any) {
+      this.swal.close();
+      const message = error?.error?.message || error?.message || 'Failed to prepare the bill for sharing';
+      this.swal.error('Error', message);
+    } finally {
+      this.sharingOwnWhatsApp = false;
     }
   }
 

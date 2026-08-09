@@ -319,6 +319,13 @@ public class PosService {
             Files.write(billsDir.resolve(pdfFileName), pdfBytes);
             String pdfUrl = apiBaseUrl + "/uploads/bills/" + pdfFileName;
 
+            // Include the shop's own number in the shop_name template variable so
+            // customers can tap it and chat with the shop directly (bills go out
+            // from the platform WhatsApp number, so replies there don't reach the shop)
+            String ownerPhone = order.getShop().getOwnerPhone();
+            String shopLabel = order.getShop().getName()
+                    + (ownerPhone != null && !ownerPhone.isBlank() ? ", Ph: " + ownerPhone : "");
+
             // Prefer sending the bill as an inline IMAGE — it shows full-size in the
             // chat immediately, unlike a PDF which customers must tap to download.
             boolean sent = false;
@@ -328,7 +335,7 @@ public class PosService {
                 Files.write(billsDir.resolve(imgFileName), jpegBytes);
                 String imgUrl = apiBaseUrl + "/uploads/bills/" + imgFileName;
                 sent = whatsAppNotificationService.sendBillImage(
-                        phone, name, order.getShop().getName(),
+                        phone, name, shopLabel,
                         order.getOrderNumber(), order.getTotalAmount().toPlainString(), imgUrl);
                 if (!sent) {
                     log.warn("Bill image template send failed for {} - falling back to PDF template", order.getOrderNumber());
@@ -340,7 +347,7 @@ public class PosService {
                 sent = whatsAppNotificationService.sendBillDocument(
                         phone,
                         name,
-                        order.getShop().getName(),
+                        shopLabel,
                         order.getOrderNumber(),
                         order.getTotalAmount().toPlainString(),
                         pdfUrl,
@@ -354,6 +361,48 @@ public class PosService {
         } catch (java.io.IOException e) {
             log.error("Failed to store bill PDF for order {}", order.getOrderNumber(), e);
             throw new RuntimeException("Failed to save bill PDF", e);
+        }
+    }
+
+    /**
+     * Generate the bill as BOTH an image (opens instantly in the browser) and a
+     * PDF (for download/print) and return their public URLs WITHOUT sending any
+     * message. Used by the "share from the owner's own WhatsApp" flow: the
+     * frontend opens wa.me with these links so the customer receives the bill
+     * from the shop's own number and can reply to the shop directly.
+     */
+    @Transactional
+    public Map<String, String> getBillShareLinks(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        byte[] pdfBytes = billPdfService.generateBillPdf(order);
+
+        try {
+            String suffix = UUID.randomUUID().toString().substring(0, 8);
+            Path billsDir = Paths.get(uploadDir, "bills");
+            Files.createDirectories(billsDir);
+
+            Map<String, String> links = new HashMap<>();
+            links.put("orderNumber", order.getOrderNumber());
+            links.put("amount", order.getTotalAmount().toPlainString());
+            links.put("shopName", order.getShop().getName());
+
+            String pdfFileName = "bill_" + order.getOrderNumber() + "_" + suffix + ".pdf";
+            Files.write(billsDir.resolve(pdfFileName), pdfBytes);
+            links.put("pdfUrl", apiBaseUrl + "/uploads/bills/" + pdfFileName);
+
+            byte[] jpegBytes = renderBillJpeg(pdfBytes, order.getOrderNumber());
+            if (jpegBytes != null) {
+                String imgFileName = "bill_" + order.getOrderNumber() + "_" + suffix + ".jpg";
+                Files.write(billsDir.resolve(imgFileName), jpegBytes);
+                links.put("imageUrl", apiBaseUrl + "/uploads/bills/" + imgFileName);
+            }
+
+            return links;
+        } catch (java.io.IOException e) {
+            log.error("Failed to store bill for sharing, order {}", order.getOrderNumber(), e);
+            throw new RuntimeException("Failed to save bill for sharing", e);
         }
     }
 
