@@ -2216,11 +2216,6 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         'நன்றி! Thank you for shopping with us'
       ];
 
-      const { value: message, isConfirmed } = await this.swal.promptTextarea(
-        'Preview WhatsApp Message', lines.join('\n'), 'Send Bill'
-      );
-      if (!isConfirmed || !message) return;
-
       const digits = phone.replace(/\D/g, '');
       const waNumber = digits.length === 10 ? '91' + digits : digits;
 
@@ -2242,15 +2237,23 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // fall through to text-only chat below
       }
 
-      // Mobile/tablet: system share sheet sends the real file into WhatsApp
+      // Mobile/tablet ONLY: system share sheet sends the real file into WhatsApp,
+      // with the text as the image CAPTION — one single message. Never on desktop:
+      // the Windows share dialog can't preselect the customer's chat.
       const nav = navigator as any;
-      if (file && nav.canShare && nav.canShare({ files: [file] })) {
-        await nav.share({ files: [file], text: message });
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobileDevice && file && nav.canShare && nav.canShare({ files: [file] })) {
+        const { value: caption, isConfirmed } = await this.swal.promptTextarea(
+          'Preview WhatsApp Message', lines.join('\n'), 'Send Bill'
+        );
+        if (!isConfirmed) return;
+        await nav.share({ files: [file], text: caption || '' });
         return;
       }
 
-      // Desktop: copy the bill image to the clipboard, open the customer's chat,
-      // owner presses Ctrl+V to attach it and hits send
+      // Desktop: ONE message — the bill image itself. Copy it to the clipboard and
+      // open the customer's chat with NO prefilled text (a separate text message
+      // just duplicated what the bill image already shows); owner does Ctrl+V, Send.
       let copied = false;
       if (file && !isPdf && navigator.clipboard && (window as any).ClipboardItem) {
         try {
@@ -2264,11 +2267,19 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       }
 
-      window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank');
       if (copied) {
+        window.open(`https://wa.me/${waNumber}`, '_blank');
         this.swal.success('Bill Copied',
           'In the WhatsApp chat press Ctrl+V to attach the bill image, then Send');
+        return;
       }
+
+      // Fallback (image missing or clipboard unsupported): editable text message
+      const { value: message, isConfirmed } = await this.swal.promptTextarea(
+        'Preview WhatsApp Message', lines.join('\n'), 'Send Bill'
+      );
+      if (!isConfirmed || !message) return;
+      window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank');
     } catch (error: any) {
       this.swal.close();
       const message = error?.error?.message || error?.message || 'Failed to prepare the bill for sharing';
