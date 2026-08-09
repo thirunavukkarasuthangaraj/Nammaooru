@@ -85,6 +85,16 @@ public class AuthService {
         }
 
         if (existingUser != null) {
+            // Customer registration must never touch a shop owner / delivery
+            // partner / admin account — even an unverified one, or its
+            // password and details would be overwritten by the reuse flow below
+            if (existingUser.getRole() != User.UserRole.USER) {
+                throw new RuntimeException(
+                        "This mobile number belongs to a " +
+                        existingUser.getRole().name().toLowerCase().replace('_', ' ') +
+                        " account. Please use the login page instead.");
+            }
+
             // If the existing user never verified OTP (not active), allow re-registration
             boolean isUnverified = !Boolean.TRUE.equals(existingUser.getMobileVerified())
                                    && !Boolean.TRUE.equals(existingUser.getEmailVerified());
