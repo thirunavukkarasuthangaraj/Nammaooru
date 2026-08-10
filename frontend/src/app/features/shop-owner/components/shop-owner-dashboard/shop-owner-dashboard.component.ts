@@ -141,14 +141,18 @@ interface DashboardStats {
                   <div class="trend-track">
                     <div class="trend-fill revenue" [style.width.%]="revenueBarWidth(item.revenue)"></div>
                   </div>
-                  <span class="trend-value">₹{{ formatCurrency(item.revenue) }}</span>
-                  <span class="trend-growth"
-                        *ngIf="item.growthPercentage != null"
-                        [class.up]="item.growthPercentage > 0"
-                        [class.down]="item.growthPercentage < 0">
-                    {{ item.growthPercentage > 0 ? '▲' : (item.growthPercentage < 0 ? '▼' : '') }}
-                    {{ absRound(item.growthPercentage) }}%
-                  </span>
+                  <div class="trend-meta">
+                    <span class="trend-value">₹{{ formatCurrency(item.revenue) }}</span>
+                    <span class="trend-growth"
+                          *ngIf="item.growthPercentage != null; else trendSpacer"
+                          [class.up]="item.growthPercentage > 0"
+                          [class.down]="item.growthPercentage < 0">
+                      <mat-icon *ngIf="item.growthPercentage > 0">arrow_upward</mat-icon>
+                      <mat-icon *ngIf="item.growthPercentage < 0">arrow_downward</mat-icon>
+                      {{ absRound(item.growthPercentage) }}%
+                    </span>
+                    <ng-template #trendSpacer><span class="trend-growth-spacer"></span></ng-template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -165,14 +169,18 @@ interface DashboardStats {
                   <div class="trend-track">
                     <div class="trend-fill orders" [style.width.%]="ordersBarWidth(item.orderCount)"></div>
                   </div>
-                  <span class="trend-value">{{ item.orderCount }} orders</span>
-                  <span class="trend-growth"
-                        *ngIf="item.growthPercentage != null"
-                        [class.up]="item.growthPercentage > 0"
-                        [class.down]="item.growthPercentage < 0">
-                    {{ item.growthPercentage > 0 ? '▲' : (item.growthPercentage < 0 ? '▼' : '') }}
-                    {{ absRound(item.growthPercentage) }}%
-                  </span>
+                  <div class="trend-meta">
+                    <span class="trend-value">{{ item.orderCount }} orders</span>
+                    <span class="trend-growth"
+                          *ngIf="item.growthPercentage != null; else trendSpacer2"
+                          [class.up]="item.growthPercentage > 0"
+                          [class.down]="item.growthPercentage < 0">
+                      <mat-icon *ngIf="item.growthPercentage > 0">arrow_upward</mat-icon>
+                      <mat-icon *ngIf="item.growthPercentage < 0">arrow_downward</mat-icon>
+                      {{ absRound(item.growthPercentage) }}%
+                    </span>
+                    <ng-template #trendSpacer2><span class="trend-growth-spacer"></span></ng-template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -214,46 +222,6 @@ interface DashboardStats {
                 <mat-icon>notifications_active</mat-icon>
                 <span>{{ stats.lowStockProducts + stats.outOfStockProducts }} items need attention</span>
                 <mat-icon class="arrow">chevron_right</mat-icon>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column -->
-          <div class="side-column">
-            <!-- Quick Actions Card -->
-            <div class="card">
-              <div class="card-header">
-                <h2 class="card-title">Quick Actions</h2>
-              </div>
-              <div class="actions-list">
-                <button class="action-btn" routerLink="/shop-owner/pos-billing">
-                  <div class="action-icon green">
-                    <mat-icon>point_of_sale</mat-icon>
-                  </div>
-                  <span class="action-text">POS Billing</span>
-                  <mat-icon class="action-arrow">chevron_right</mat-icon>
-                </button>
-                <button class="action-btn" routerLink="/shop-owner/orders-management">
-                  <div class="action-icon blue">
-                    <mat-icon>receipt_long</mat-icon>
-                  </div>
-                  <span class="action-text">View Orders</span>
-                  <mat-icon class="action-arrow">chevron_right</mat-icon>
-                </button>
-                <button class="action-btn" routerLink="/shop-owner/my-products">
-                  <div class="action-icon purple">
-                    <mat-icon>category</mat-icon>
-                  </div>
-                  <span class="action-text">My Products</span>
-                  <mat-icon class="action-arrow">chevron_right</mat-icon>
-                </button>
-                <button class="action-btn" routerLink="/shop-owner/bulk-edit">
-                  <div class="action-icon orange">
-                    <mat-icon>table_chart</mat-icon>
-                  </div>
-                  <span class="action-text">Bulk Edit</span>
-                  <mat-icon class="action-arrow">chevron_right</mat-icon>
-                </button>
               </div>
             </div>
           </div>
@@ -503,7 +471,7 @@ interface DashboardStats {
     /* Content Grid */
     .content-grid {
       display: grid;
-      grid-template-columns: 1fr 380px;
+      grid-template-columns: 1fr;
       gap: 24px;
     }
 

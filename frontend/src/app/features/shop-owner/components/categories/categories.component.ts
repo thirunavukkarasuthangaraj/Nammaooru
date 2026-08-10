@@ -1379,6 +1379,26 @@ export class CategoriesComponent implements OnInit {
       next: (response: any) => {
         category.name = response.name;
         category.description = response.description || '';
+
+        // A new image was picked - upload it as a second step, then finish
+        if (this.selectedImageFile) {
+          this.categoryService.uploadCategoryImage(category.id, this.selectedImageFile).subscribe({
+            next: (imgResponse: any) => {
+              category.iconUrl = imgResponse.iconUrl || imgResponse.imageUrl || category.iconUrl;
+              this.loading = false;
+              this.closeQuickAdd();
+              this.swal.success('Saved!', 'Category updated successfully.');
+            },
+            error: (error) => {
+              this.loading = false;
+              this.closeQuickAdd();
+              const message = error?.error?.message || error?.message || 'Category saved, but the image failed to upload';
+              this.swal.error('Image Upload Failed', message);
+            }
+          });
+          return;
+        }
+
         this.loading = false;
         this.closeQuickAdd();
         this.swal.success('Saved!', 'Category updated successfully.');
@@ -1504,6 +1524,9 @@ export class CategoriesComponent implements OnInit {
       name: category.name,
       description: category.description || ''
     });
+    // Show the category's current image as the starting preview
+    this.previewImageUrl = category.iconUrl ? this.getCategoryImageUrl(category.iconUrl) : null;
+    this.selectedImageFile = null;
     this.showQuickAdd = true;
   }
 
