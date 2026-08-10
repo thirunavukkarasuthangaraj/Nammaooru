@@ -32,6 +32,9 @@ public class ProductCategoryService {
 
     private final ProductCategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final com.shopmanagement.product.repository.ShopProductRepository shopProductRepository;
+    private final com.shopmanagement.shop.repository.ShopRepository shopRepository;
+    private final com.shopmanagement.repository.UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public Page<ProductCategoryResponse> getCategories(Long parentId, Boolean isActive, String search, Pageable pageable) {
@@ -73,7 +76,30 @@ public class ProductCategoryService {
         }
         
         Page<ProductCategory> categoryPage = categoryRepository.findAll(spec, pageable);
-        return categoryPage.map(productMapper::toResponse);
+        Page<ProductCategoryResponse> responses = categoryPage.map(productMapper::toResponse);
+
+        // Shop owners should see how many of THEIR products are in each category,
+        // not the master-catalog product count
+        if (isShopOwner()) {
+            findCurrentOwnerShopId().ifPresent(shopId -> {
+                java.util.Map<Long, Long> countsByCategory = new java.util.HashMap<>();
+                for (Object[] row : shopProductRepository.countProductsPerCategoryByShopId(shopId)) {
+                    countsByCategory.put((Long) row[0], (Long) row[1]);
+                }
+                responses.forEach(r ->
+                        r.setProductCount(countsByCategory.getOrDefault(r.getId(), 0L)));
+            });
+        }
+
+        return responses;
+    }
+
+    private java.util.Optional<Long> findCurrentOwnerShopId() {
+        String username = getCurrentUsername();
+        return shopRepository.findByCreatedBy(username)
+                .or(() -> userRepository.findByUsername(username)
+                        .flatMap(user -> shopRepository.findByOwnerEmail(user.getEmail())))
+                .map(com.shopmanagement.shop.entity.Shop::getId);
     }
 
     @Transactional(readOnly = true)

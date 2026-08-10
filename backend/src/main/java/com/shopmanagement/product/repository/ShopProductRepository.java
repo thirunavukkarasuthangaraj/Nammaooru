@@ -105,6 +105,12 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
            "ORDER BY COUNT(sp) DESC")
     List<Object[]> getProductCountByCategoryForShop(@Param("shop") Shop shop);
 
+    // Category id -> shop's product count (all statuses, for the owner's categories page)
+    @Query("SELECT sp.masterProduct.category.id, COUNT(sp) FROM ShopProduct sp " +
+           "WHERE sp.shop.id = :shopId " +
+           "GROUP BY sp.masterProduct.category.id")
+    List<Object[]> countProductsPerCategoryByShopId(@Param("shopId") Long shopId);
+
     // Pricing analytics
     @Query("SELECT AVG(sp.price) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.isAvailable = true")
     BigDecimal getAveragePriceForShop(@Param("shop") Shop shop);
