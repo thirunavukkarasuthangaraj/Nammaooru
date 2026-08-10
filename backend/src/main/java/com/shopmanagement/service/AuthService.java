@@ -250,8 +250,10 @@ public class AuthService {
         } else {
             // Normalize email to lowercase for case-insensitive comparison
             String normalizedEmail = loginIdentifier.toLowerCase();
-            // Try to find by email
+            String identifier = loginIdentifier;
+            // Try email first, then username (welcome emails give shop owners a username)
             user = userRepository.findByEmail(normalizedEmail)
+                    .or(() -> userRepository.findByUsername(identifier))
                     .orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
         }
 

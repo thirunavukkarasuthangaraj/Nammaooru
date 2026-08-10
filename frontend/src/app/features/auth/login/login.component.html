@@ -26,15 +26,15 @@
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
         <!-- Email Field -->
         <div class="form-field">
-          <label for="email">Email</label>
+          <label for="email">Email / Mobile / Username</label>
           <div class="input-wrapper">
-            <span class="material-icons-outlined input-icon">mail_outline</span>
+            <span class="material-icons-outlined input-icon">person_outline</span>
             <input
               id="email"
-              type="email"
+              type="text"
               formControlName="email"
-              placeholder="you@example.com"
-              autocomplete="email"
+              placeholder="you@example.com or mobile or username"
+              autocomplete="username"
               [class.error]="hasFieldError('email')">
           </div>
           <span class="error-message" *ngIf="hasFieldError('email')">
