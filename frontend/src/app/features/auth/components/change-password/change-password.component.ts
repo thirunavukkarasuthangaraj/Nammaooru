@@ -83,7 +83,7 @@ export class ChangePasswordComponent implements OnInit {
             duration: 3000,
             panelClass: ['success-snackbar']
           });
-          this.router.navigate(['/dashboard']);
+          this.router.navigate([this.getHomeRouteForRole()]);
         },
         error: (error) => {
           this.loading = false;
@@ -94,6 +94,22 @@ export class ChangePasswordComponent implements OnInit {
           });
         }
       });
+    }
+  }
+
+  /** Landing page depends on who just changed their password */
+  private getHomeRouteForRole(): string {
+    const role = (this.authService.getCurrentUser()?.role || '') as string;
+    switch (role) {
+      case 'SHOP_OWNER':
+        return '/shop-owner';
+      case 'DELIVERY_PARTNER':
+        return '/delivery/partner/orders';
+      case 'ADMIN':
+      case 'SUPER_ADMIN':
+        return '/dashboard';
+      default:
+        return '/dashboard';
     }
   }
 
