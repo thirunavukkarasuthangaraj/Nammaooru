@@ -96,6 +96,9 @@ class VoiceAssistantService {
   GetCartTotalCallback? onGetCartTotal;
   GetCartCountCallback? onGetCartCount;
   GetCartItemsCallback? onGetCartItems;
+  /// Fired when a manual (mic-button) listen ends on its own — timeout,
+  /// silence limit, or STT error — so the UI can leave the recording state.
+  VoidCallback? onManualListenEnded;
 
   // ── Public getters for UI ──
   GeminiVoiceService get geminiVoice => _recorder;
@@ -152,6 +155,8 @@ class VoiceAssistantService {
     _lastAddedProduct = null;
     _sessionEnding = false;
     _setState(AgentState.idle);
+    _sttListening = false;
+    if (_stt.isListening) await _stt.stop();
     if (_recorder.isRecording) await _recorder.stopRecording();
     await _tts.stop();
   }
@@ -159,6 +164,8 @@ class VoiceAssistantService {
   Future<void> pause() async {
     _stopped = true;
     _isAutoListening = false;
+    _sttListening = false;
+    if (_stt.isListening) await _stt.stop();
     if (_recorder.isRecording) await _recorder.stopRecording();
     await _tts.stop();
   }
@@ -187,8 +194,21 @@ class VoiceAssistantService {
   Future<bool> _initStt() async {
     if (_sttInitialized) return true;
     _sttInitialized = await _stt.initialize(
-      onError: (e) => debugPrint('Agent STT error: ${e.errorMsg}'),
-      onStatus: (s) => debugPrint('Agent STT status: $s'),
+      onError: (e) {
+        debugPrint('Agent STT error: ${e.errorMsg}');
+        if (_sttListening) {
+          _sttListening = false;
+          onManualListenEnded?.call();
+        }
+      },
+      onStatus: (s) {
+        debugPrint('Agent STT status: $s');
+        // Manual listen ended by itself (listenFor/pauseFor limit reached)
+        if (_sttListening && (s == 'done' || s == 'notListening')) {
+          _sttListening = false;
+          onManualListenEnded?.call();
+        }
+      },
     );
     return _sttInitialized;
   }
@@ -219,8 +239,10 @@ class VoiceAssistantService {
     if (_stopped) return;
 
     if (_sttListening) {
-      if (_stt.isListening) await _stt.stop();
+      // Clear the flag BEFORE stopping so the status callback doesn't
+      // also fire onManualListenEnded for a user-initiated stop
       _sttListening = false;
+      if (_stt.isListening) await _stt.stop();
       await Future.delayed(const Duration(milliseconds: 300)); // let final result settle
     }
 

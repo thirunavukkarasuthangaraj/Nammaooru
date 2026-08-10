@@ -309,6 +309,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   context,
                   'Delivery address updated',
                 );
+
+                // Reload shops around the newly chosen location
+                _loadFeaturedShops();
               }
             },
           ),
@@ -473,6 +476,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
                       // Reload addresses to update the list
                       await AddressService.instance.getSavedAddresses();
+
+                      // Reload shops around the newly chosen location
+                      _loadFeaturedShops();
                     }
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -1617,9 +1623,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     setState(() => _isLoadingShops = true);
 
     try {
-      // Always try to get location for radius-based filtering
-      double? lat = _userLatitude;
-      double? lng = _userLongitude;
+      // A location the user explicitly picked (map / saved address) wins over GPS
+      double? lat = LocationService.isManualLocation ? LocationService.cachedLatitude : _userLatitude;
+      double? lng = LocationService.isManualLocation ? LocationService.cachedLongitude : _userLongitude;
 
       // If location not yet available, try to get it now
       if (lat == null || lng == null) {

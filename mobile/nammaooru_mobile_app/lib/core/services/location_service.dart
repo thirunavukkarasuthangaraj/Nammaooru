@@ -10,9 +10,14 @@ class LocationService {
 
   final loc.Location _location = loc.Location();
 
-  // Cached position from last successful GPS fetch
+  // Cached position from last successful GPS fetch (or a manually picked location)
   static double? _cachedLatitude;
   static double? _cachedLongitude;
+
+  // True when the user explicitly picked a location (map picker / saved address).
+  // While set, background GPS fetches do NOT overwrite the cached position, so
+  // shop searches keep using the location the user chose.
+  static bool _manualLocation = false;
 
   /// Get cached latitude (set after first successful GPS fetch)
   static double? get cachedLatitude => _cachedLatitude;
@@ -22,6 +27,22 @@ class LocationService {
 
   /// Check if a cached position is available
   static bool get hasCachedPosition => _cachedLatitude != null && _cachedLongitude != null;
+
+  /// True when the cached position came from an explicit user choice
+  static bool get isManualLocation => _manualLocation;
+
+  /// User explicitly chose a delivery location (map picker or saved address).
+  /// All shop searches use it until [clearManualPosition] is called.
+  static void setManualPosition(double latitude, double longitude) {
+    _cachedLatitude = latitude;
+    _cachedLongitude = longitude;
+    _manualLocation = true;
+  }
+
+  /// Go back to live GPS: the next getCurrentPosition() refreshes the cache.
+  static void clearManualPosition() {
+    _manualLocation = false;
+  }
 
   // Use your Google Maps API key from env config
   static const String _googleApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
@@ -214,9 +235,12 @@ class LocationService {
         },
       );
       print('✅ Location obtained: ${position.latitude}, ${position.longitude}');
-      // Cache for instant reuse in other screens
-      _cachedLatitude = position.latitude;
-      _cachedLongitude = position.longitude;
+      // Cache for instant reuse in other screens - unless the user explicitly
+      // picked a location, which must not be silently overwritten by GPS
+      if (!_manualLocation) {
+        _cachedLatitude = position.latitude;
+        _cachedLongitude = position.longitude;
+      }
       return position;
     } catch (e) {
       print('❌ Error getting current position: $e');

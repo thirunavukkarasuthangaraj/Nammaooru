@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/models/address_model.dart';
 import '../../../core/services/address_service.dart';
+import '../../../core/services/location_service.dart';
 import '../screens/address_management_screen.dart';
 import '../screens/google_maps_location_picker_screen.dart';
 
@@ -311,6 +312,11 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
+            // Use the address's coordinates for shop searches when available;
+            // without coordinates the app keeps using GPS as before
+            if (address.latitude != null && address.longitude != null) {
+              LocationService.setManualPosition(address.latitude!, address.longitude!);
+            }
             final locationString = '${address.addressLine1}, ${address.city}';
             widget.onLocationSelected(locationString);
             Navigator.of(context).pop();

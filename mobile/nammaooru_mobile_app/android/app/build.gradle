@@ -42,8 +42,8 @@ android {
         applicationId "com.nammaooru.app"
         // CRITICAL: Override Flutter default (24) to support older Mi/Redmi phones
         minSdkVersion flutter.minSdkVersion
-        // Target Android 15 - Required by Play Store (August 2024+)
-        targetSdkVersion 35
+        // Target Android 16 - Required for Play Store updates from August 2026
+        targetSdkVersion 36
         // Let Flutter manage version from pubspec.yaml
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

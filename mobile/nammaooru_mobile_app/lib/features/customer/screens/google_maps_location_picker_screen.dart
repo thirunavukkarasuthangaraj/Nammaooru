@@ -911,6 +911,9 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     );
 
     if (result != null && result['success'] == true) {
+      // Use the picked point for all shop searches (not just the label)
+      LocationService.setManualPosition(_selectedLatitude!, _selectedLongitude!);
+
       // Address was saved successfully
       if (mounted) {
         Navigator.pop(context, result['fullAddress']);

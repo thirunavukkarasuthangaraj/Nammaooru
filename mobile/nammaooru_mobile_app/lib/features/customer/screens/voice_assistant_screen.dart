@@ -8,7 +8,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/providers/cart_provider.dart';
-import '../../../core/providers/language_provider.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../shared/models/cart_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../services/voice_assistant_service.dart';
@@ -62,10 +62,8 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     // Connect cart callbacks and start session
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _connectCart();
-      _service.startSession().then((_) {
-        // Start auto-listen after greeting finishes
-        if (mounted) _scheduleAutoListen();
-      });
+      // Tap-to-talk only: the mic opens ONLY when the user presses the button
+      _service.startSession();
     });
   }
 
@@ -124,6 +122,14 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
       }
     };
 
+    // STT ended on its own (timeout/silence/error) - leave the recording
+    // state and process whatever was heard, same as tapping stop
+    _service.onManualListenEnded = () {
+      if (!mounted || !_isRecording) return;
+      _stopRecordingUI();
+      _service.stopAndProcess();
+    };
+
     _service.onGetCartTotal = () => cart.subtotal;
     _service.onGetCartCount = () => cart.itemCount;
     _service.onGetCartItems = () => cart.items.map((item) => <String, dynamic>{
@@ -165,8 +171,6 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
       // Stop recording → process
       _stopRecordingUI();
       await _service.stopAndProcess();
-      // Auto-listen after processing
-      _scheduleAutoListen();
     } else {
       // Start recording
       final started = await _service.startManualRecording();
@@ -190,20 +194,6 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     if (mounted) setState(() => _isRecording = false);
   }
 
-  void _scheduleAutoListen() {
-    if (_service.isStopped || _service.isAutoListenExhausted) return;
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted || _service.isStopped) return;
-      if (_service.state == AgentState.listening && !_service.isAutoListenExhausted) {
-        _service.autoListenAndProcess().then((_) {
-          if (mounted && !_service.isStopped && !_service.isAutoListenExhausted) {
-            _scheduleAutoListen();
-          }
-        });
-      }
-    });
-  }
-
   // ── Text input ──
 
   void _onSendText() {
@@ -211,14 +201,14 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     if (text.isEmpty) return;
     _textController.clear();
     _textFocusNode.unfocus();
-    _service.processTextInput(text).then((_) => _scheduleAutoListen());
+    _service.processTextInput(text);
   }
 
   // ── Product card tap ──
 
   void _onProductTap(Map<String, dynamic> product) {
     _stopRecordingUI();
-    _service.tapProduct(product).then((_) => _scheduleAutoListen());
+    _service.tapProduct(product);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -313,10 +303,10 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
       ),
     );
 
-    // Resume voice after sheet is closed
-    if (mounted && !_service.isStopped) {
+    // Resume the session after the sheet closes (pause() marked it stopped);
+    // mic stays off until the user taps the button
+    if (mounted) {
       await _service.resumeSession();
-      _scheduleAutoListen();
     }
   }
 
@@ -663,9 +653,10 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
     switch (state) {
       case AgentState.listening:
-        label = _isRecording ? 'Recording... ${_recordingSeconds}s' : 'Listening...';
+        // Mic is only open while _isRecording (tap-to-talk)
+        label = _isRecording ? 'Recording... ${_recordingSeconds}s - tap to stop' : 'Tap mic to speak';
         icon = Icons.mic;
-        color = _isRecording ? Colors.red : Colors.orange;
+        color = _isRecording ? Colors.red : Colors.grey;
       case AgentState.processing:
         label = 'Thinking...';
         icon = Icons.psychology;

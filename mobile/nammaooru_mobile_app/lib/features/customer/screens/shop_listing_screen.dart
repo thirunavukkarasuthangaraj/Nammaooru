@@ -963,6 +963,11 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
+                      // Distance changed: re-query the server with the new radius
+                      // (the radius is applied server-side, not on the loaded list)
+                      if (LocationService.hasCachedPosition) {
+                        _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
+                      }
                       _filterShops();
                     },
                     style: ElevatedButton.styleFrom(
