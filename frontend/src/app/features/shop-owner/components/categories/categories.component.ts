@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProductCategoryService } from '@core/services/product-category.service';
+import { environment } from '../../../../../environments/environment';
 import { SwalService } from '@core/services/swal.service';
 import { finalize } from 'rxjs/operators';
 
@@ -360,7 +361,7 @@ interface Category {
 
     /* Modern Header */
     .page-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
       padding: 48px 32px;
       color: white;
       display: flex;
@@ -413,7 +414,7 @@ interface Category {
 
     .action-button {
       background: white;
-      color: #667eea;
+      color: #2e7d32;
       font-weight: 600;
       padding: 10px 24px;
       border-radius: 8px;
@@ -458,7 +459,7 @@ interface Category {
     .stat-icon {
       width: 56px;
       height: 56px;
-      background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+      background: linear-gradient(135deg, #2e7d3220 0%, #43a04720 100%);
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -473,7 +474,7 @@ interface Category {
       font-size: 28px;
       width: 28px;
       height: 28px;
-      color: #667eea;
+      color: #2e7d32;
     }
 
     .stat-card.active .stat-icon mat-icon {
@@ -597,7 +598,7 @@ interface Category {
     .category-card:hover {
       transform: translateY(-4px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      border-color: #667eea;
+      border-color: #2e7d32;
     }
 
     .category-card-header {
@@ -950,7 +951,7 @@ interface Category {
       font-size: 20px;
       width: 20px;
       height: 20px;
-      color: #667eea;
+      color: #2e7d32;
     }
 
     .required {
@@ -972,12 +973,12 @@ interface Category {
     }
 
     .upload-placeholder:hover {
-      border-color: #667eea;
+      border-color: #2e7d32;
       background: #f0f4ff;
     }
 
     .upload-placeholder.dragover {
-      border-color: #667eea;
+      border-color: #2e7d32;
       background: #e0e7ff;
       transform: scale(1.02);
     }
@@ -1039,7 +1040,7 @@ interface Category {
     }
 
     .change-image-btn mat-icon {
-      color: #667eea;
+      color: #2e7d32;
     }
 
     .remove-image-btn mat-icon {
@@ -1582,8 +1583,9 @@ export class CategoriesComponent implements OnInit {
       return iconUrl;
     }
 
-    // If it's a relative path from our backend
-    const baseUrl = 'http://localhost:8080';
+    // If it's a relative path from our backend (strip the /api suffix - uploads
+    // are served from the server root, not under /api)
+    const baseUrl = environment.apiUrl.replace(/\/api\/?$/, '');
     if (iconUrl.startsWith('/')) {
       return baseUrl + iconUrl;
     }
