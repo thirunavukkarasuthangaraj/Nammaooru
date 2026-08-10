@@ -160,11 +160,11 @@ interface Category {
 
               <div class="category-stats">
                 <div class="stat-item">
-                  <mat-icon class="stat-icon">inventory</mat-icon>
+                  <mat-icon class="meta-icon">inventory</mat-icon>
                   <span class="stat-text">{{ category.productCount || 0 }} products</span>
                 </div>
                 <div class="stat-item">
-                  <mat-icon class="stat-icon">schedule</mat-icon>
+                  <mat-icon class="meta-icon">schedule</mat-icon>
                   <span class="stat-text">{{ category.createdAt | date:'MMM dd' }}</span>
                 </div>
               </div>
@@ -698,7 +698,7 @@ interface Category {
       color: #666;
     }
 
-    .stat-icon {
+    .meta-icon {
       font-size: 16px !important;
       width: 16px !important;
       height: 16px !important;

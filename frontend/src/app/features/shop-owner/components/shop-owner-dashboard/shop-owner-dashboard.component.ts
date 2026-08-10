@@ -129,57 +129,70 @@ interface DashboardStats {
               </div>
             </div>
 
-            <!-- Revenue Trend (this shop only) -->
-            <div class="card" *ngIf="revenueTrend.length">
-              <div class="card-header">
-                <h2 class="card-title">Revenue Trend</h2>
-                <span class="period-badge">Last 7 Days</span>
-              </div>
-              <div class="trend-chart">
-                <div class="trend-row" *ngFor="let item of revenueTrend">
-                  <span class="trend-label">{{ item.period }}</span>
-                  <div class="trend-track">
-                    <div class="trend-fill revenue" [style.width.%]="revenueBarWidth(item.revenue)"></div>
+            <!-- Revenue + Orders Trend (this shop only) -->
+            <div class="trends-grid" *ngIf="revenueTrend.length || ordersTrend.length">
+              <div class="card trend-card" *ngIf="revenueTrend.length">
+                <div class="trend-card-header">
+                  <div class="trend-card-title-group">
+                    <div class="trend-card-icon revenue"><mat-icon>show_chart</mat-icon></div>
+                    <div>
+                      <h2 class="card-title">Revenue Trend</h2>
+                      <span class="trend-card-sub">Daily revenue performance</span>
+                    </div>
                   </div>
-                  <div class="trend-meta">
-                    <span class="trend-value">₹{{ formatCurrency(item.revenue) }}</span>
-                    <span class="trend-growth"
-                          *ngIf="item.growthPercentage != null; else trendSpacer"
-                          [class.up]="item.growthPercentage > 0"
-                          [class.down]="item.growthPercentage < 0">
-                      <mat-icon *ngIf="item.growthPercentage > 0">arrow_upward</mat-icon>
-                      <mat-icon *ngIf="item.growthPercentage < 0">arrow_downward</mat-icon>
-                      {{ absRound(item.growthPercentage) }}%
-                    </span>
-                    <ng-template #trendSpacer><span class="trend-growth-spacer"></span></ng-template>
+                  <span class="period-badge">Last 7 Days</span>
+                </div>
+                <div class="trend-chart">
+                  <div class="trend-row" *ngFor="let item of revenueTrend">
+                    <div class="trend-date">
+                      <span class="trend-date-num">{{ item.period }}</span>
+                      <span class="trend-date-day">{{ getDayName(item.date) }}</span>
+                    </div>
+                    <div class="trend-track">
+                      <div class="trend-fill revenue" [style.width.%]="revenueBarWidth(item.revenue)"></div>
+                    </div>
+                    <div class="trend-meta">
+                      <span class="trend-value">₹{{ formatCurrency(item.revenue) }}</span>
+                      <span class="trend-growth"
+                            *ngIf="item.growthPercentage != null"
+                            [class.up]="item.growthPercentage > 0"
+                            [class.down]="item.growthPercentage < 0">
+                        {{ absRound(item.growthPercentage) }}%
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Orders Trend (this shop only) -->
-            <div class="card" *ngIf="ordersTrend.length">
-              <div class="card-header">
-                <h2 class="card-title">Orders Trend</h2>
-                <span class="period-badge">Last 7 Days</span>
-              </div>
-              <div class="trend-chart">
-                <div class="trend-row" *ngFor="let item of ordersTrend">
-                  <span class="trend-label">{{ item.period }}</span>
-                  <div class="trend-track">
-                    <div class="trend-fill orders" [style.width.%]="ordersBarWidth(item.orderCount)"></div>
+              <div class="card trend-card" *ngIf="ordersTrend.length">
+                <div class="trend-card-header">
+                  <div class="trend-card-title-group">
+                    <div class="trend-card-icon orders"><mat-icon>receipt_long</mat-icon></div>
+                    <div>
+                      <h2 class="card-title">Orders Trend</h2>
+                      <span class="trend-card-sub">Daily order count</span>
+                    </div>
                   </div>
-                  <div class="trend-meta">
-                    <span class="trend-value">{{ item.orderCount }} orders</span>
-                    <span class="trend-growth"
-                          *ngIf="item.growthPercentage != null; else trendSpacer2"
-                          [class.up]="item.growthPercentage > 0"
-                          [class.down]="item.growthPercentage < 0">
-                      <mat-icon *ngIf="item.growthPercentage > 0">arrow_upward</mat-icon>
-                      <mat-icon *ngIf="item.growthPercentage < 0">arrow_downward</mat-icon>
-                      {{ absRound(item.growthPercentage) }}%
-                    </span>
-                    <ng-template #trendSpacer2><span class="trend-growth-spacer"></span></ng-template>
+                  <span class="period-badge">Last 7 Days</span>
+                </div>
+                <div class="trend-chart">
+                  <div class="trend-row" *ngFor="let item of ordersTrend">
+                    <div class="trend-date">
+                      <span class="trend-date-num">{{ item.period }}</span>
+                      <span class="trend-date-day">{{ getDayName(item.date) }}</span>
+                    </div>
+                    <div class="trend-track">
+                      <div class="trend-fill orders" [style.width.%]="ordersBarWidth(item.orderCount)"></div>
+                    </div>
+                    <div class="trend-meta">
+                      <span class="trend-value">{{ item.orderCount }} orders</span>
+                      <span class="trend-growth"
+                            *ngIf="item.growthPercentage != null"
+                            [class.up]="item.growthPercentage > 0"
+                            [class.down]="item.growthPercentage < 0">
+                        {{ absRound(item.growthPercentage) }}%
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -331,22 +344,78 @@ interface DashboardStats {
     .trend-chart {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
       padding: 4px 0;
+    }
+
+    /* Revenue Trend + Orders Trend side by side, like the admin analytics page */
+    .trends-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .trend-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px 24px 16px;
+    }
+
+    .trend-card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .trend-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .trend-card-icon.revenue { background: #dcfce7; color: #16a34a; }
+    .trend-card-icon.orders { background: #dbeafe; color: #2563eb; }
+
+    .trend-card-icon mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .trend-card-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
     }
 
     .trend-row {
       display: grid;
-      grid-template-columns: 44px 1fr 190px;
+      grid-template-columns: 44px 1fr auto;
       align-items: center;
-      gap: 14px;
-      max-width: 720px;
+      gap: 12px;
+      padding: 8px 24px;
     }
 
-    .trend-label {
+    .trend-date {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+    }
+
+    .trend-date-num {
       font-size: 12px;
-      color: #64748b;
-      font-weight: 500;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .trend-date-day {
+      font-size: 10px;
+      color: #94a3b8;
     }
 
     .trend-track {
@@ -364,51 +433,44 @@ interface DashboardStats {
     }
 
     .trend-fill.revenue {
-      background: linear-gradient(90deg, #22c55e, #16a34a);
+      background: linear-gradient(90deg, #4ade80, #16a34a);
     }
 
     .trend-fill.orders {
       background: linear-gradient(90deg, #60a5fa, #2563eb);
     }
 
-    /* Value + growth badge sit side by side, right-aligned as one unit */
+    /* Value on top, growth pill below - right-aligned as its own column */
     .trend-meta {
       display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      min-width: 90px;
     }
 
     .trend-value {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 700;
       color: #1e293b;
       white-space: nowrap;
     }
 
     .trend-growth {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
       font-size: 11px;
       font-weight: 600;
-      color: #94a3b8;
       white-space: nowrap;
-      min-width: 44px;
+      padding: 2px 8px;
+      border-radius: 10px;
     }
 
-    .trend-growth mat-icon {
-      font-size: 13px;
-      width: 13px;
-      height: 13px;
-    }
+    .trend-growth.up { color: #16a34a; background: #dcfce7; }
+    .trend-growth.down { color: #dc2626; background: #fee2e2; }
 
-    .trend-growth.up { color: #16a34a; }
-    .trend-growth.down { color: #dc2626; }
-
-    .trend-growth-spacer {
-      display: inline-block;
-      min-width: 44px;
+    @media (max-width: 1024px) {
+      .trends-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* Stats Grid - Top Row */
@@ -985,6 +1047,13 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
   absRound(value: number): number {
     return Math.abs(Math.round(value || 0));
+  }
+
+  getDayName(date: string | Date | null | undefined): string {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-US', { weekday: 'short' });
   }
 
   private handleOnline(): void {
