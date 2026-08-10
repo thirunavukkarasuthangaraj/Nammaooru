@@ -313,7 +313,9 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Error saving shop:', error);
-            this.showError('Failed to save shop');
+            // Show the real reason from the backend (e.g. duplicate mobile number)
+            const message = error?.error?.message || error?.message || 'Failed to save shop';
+            this.showError(message);
           }
         });
     } else {
