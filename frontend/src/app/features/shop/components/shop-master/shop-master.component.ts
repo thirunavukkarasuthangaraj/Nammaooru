@@ -50,6 +50,8 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
   shopForm: FormGroup;
   isEditMode = false;
   editingShopId: number | null = null;
+  // True while a create/update request is in flight (blocks double submits)
+  saving = false;
   showForm = false;
   
   // Document upload workflow
@@ -285,9 +287,13 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
   }
 
   onSave() {
+    if (this.saving) {
+      return; // a save is already in flight - ignore double clicks
+    }
     if (this.shopForm.valid) {
+      this.saving = true;
       const shopData = this.shopForm.value;
-      
+
       const request = this.isEditMode && this.editingShopId
         ? this.shopService.updateShop(this.editingShopId, shopData)
         : this.shopService.createShop(shopData);
@@ -295,6 +301,7 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
       request.pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (response: any) => {
+            this.saving = false;
             if (this.isEditMode) {
               this.showSuccess('Shop updated successfully! You can now manage documents.');
               this.showForm = false;
@@ -312,6 +319,7 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
             }
           },
           error: (error) => {
+            this.saving = false;
             console.error('Error saving shop:', error);
             // Show the real reason from the backend (e.g. duplicate mobile number)
             const message = error?.error?.message || error?.message || 'Failed to save shop';
