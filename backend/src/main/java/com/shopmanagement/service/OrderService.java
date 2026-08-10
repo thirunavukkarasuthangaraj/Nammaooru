@@ -389,6 +389,86 @@ public class OrderService {
         return mapToResponse(order);
     }
     
+    /**
+     * Self-delivery shop owner leaves the shop with the order.
+     * READY_FOR_PICKUP -> OUT_FOR_DELIVERY
+     */
+    @Transactional
+    public OrderResponse startSelfDelivery(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        validateSelfDeliveryOrder(order);
+        if (order.getStatus() != Order.OrderStatus.READY_FOR_PICKUP) {
+            throw new RuntimeException("Order must be ready for pickup before starting delivery. Current status: " + order.getStatus());
+        }
+
+        return updateOrderStatus(orderId, Order.OrderStatus.OUT_FOR_DELIVERY);
+    }
+
+    /**
+     * Self-delivery shop owner handed the order to the customer.
+     * OUT_FOR_DELIVERY -> DELIVERED (COD payment marked as collected)
+     */
+    @Transactional
+    public OrderResponse completeSelfDelivery(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        validateSelfDeliveryOrder(order);
+        if (order.getStatus() != Order.OrderStatus.OUT_FOR_DELIVERY) {
+            throw new RuntimeException("Order must be out for delivery before marking as delivered. Current status: " + order.getStatus());
+        }
+
+        if (order.getPaymentMethod() == Order.PaymentMethod.CASH_ON_DELIVERY) {
+            order.setPaymentStatus(Order.PaymentStatus.PAID);
+        }
+
+        return updateOrderStatus(orderId, Order.OrderStatus.DELIVERED);
+    }
+
+    private void validateSelfDeliveryOrder(Order order) {
+        if (!isOwnerOfShop(order)) {
+            throw new RuntimeException("Only the owner of this shop can perform self delivery actions");
+        }
+        if (order.getDeliveryType() != Order.DeliveryType.HOME_DELIVERY) {
+            throw new RuntimeException("Self delivery applies only to home delivery orders");
+        }
+        if (!isSelfDeliveryShop(order)) {
+            throw new RuntimeException("Self delivery is not enabled for this shop");
+        }
+    }
+
+    // The logged-in user must be the owner of the order's shop (admins are also allowed)
+    private boolean isOwnerOfShop(Order order) {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+
+        boolean isAdmin = auth.getAuthorities().stream().anyMatch(a ->
+                a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        if (isAdmin) {
+            return true;
+        }
+
+        boolean isShopOwner = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SHOP_OWNER"));
+        if (!isShopOwner || order.getShop() == null || order.getShop().getOwnerEmail() == null) {
+            return false;
+        }
+
+        String ownerEmail = order.getShop().getOwnerEmail();
+        return userRepository.findByUsername(auth.getName())
+                .map(user -> ownerEmail.equalsIgnoreCase(user.getEmail()))
+                .orElse(ownerEmail.equalsIgnoreCase(auth.getName()));
+    }
+
+    private boolean isSelfDeliveryShop(Order order) {
+        return order.getShop() != null && Boolean.TRUE.equals(order.getShop().getSelfDeliveryEnabled());
+    }
+
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, Order.OrderStatus status) {
         log.info("Updating order status: {} to {}", orderId, status);
@@ -398,8 +478,10 @@ public class OrderService {
 
         // VALIDATION: Shop owners cannot mark HOME_DELIVERY orders as DELIVERED
         // Only delivery partners can mark HOME_DELIVERY orders as DELIVERED (via OTP verification)
+        // Exception: self-delivery shops deliver orders themselves (no delivery partner involved)
         if (status == Order.OrderStatus.DELIVERED &&
-            order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY) {
+            order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY &&
+            !isSelfDeliveryShop(order)) {
             throw new RuntimeException(
                 "HOME_DELIVERY orders cannot be marked as DELIVERED by shop owner. " +
                 "Only delivery partner can mark as delivered after customer OTP verification."
@@ -435,7 +517,12 @@ public class OrderService {
 
         // Auto-assign delivery partner when order is ready for pickup (separate transaction)
         // ONLY for HOME_DELIVERY orders - SELF_PICKUP orders don't need a delivery partner
+        // Self-delivery shops deliver themselves - no driver search or assignment
         if (status == Order.OrderStatus.READY_FOR_PICKUP &&
+            order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY &&
+            isSelfDeliveryShop(order)) {
+            log.info("Order {} belongs to a self-delivery shop - skipping delivery partner assignment", order.getOrderNumber());
+        } else if (status == Order.OrderStatus.READY_FOR_PICKUP &&
             order.getDeliveryType() == Order.DeliveryType.HOME_DELIVERY) {
             // Use a separate thread to avoid transaction rollback issues
             final Order orderCopy = order;

@@ -201,20 +201,35 @@
                           title="Handover">
                     <mat-icon>handshake</mat-icon>
                   </button>
-                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && order.assignedToDeliveryPartner"
+                  <!-- Self-delivery shop: owner delivers, no delivery partner -->
+                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && selfDeliveryShop"
+                          class="btn-action btn-handover"
+                          (click)="startSelfDelivery(order.id)"
+                          title="Start Delivery">
+                    <mat-icon>delivery_dining</mat-icon>
+                  </button>
+                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !selfDeliveryShop && order.assignedToDeliveryPartner"
                           class="btn-action btn-verify"
                           (click)="verifyPickupOTP(order.id)"
                           title="Verify OTP">
                     <mat-icon>pin</mat-icon>
                   </button>
-                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !order.assignedToDeliveryPartner && !isSearchingDriver(order.id)"
+                  <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !selfDeliveryShop && !order.assignedToDeliveryPartner && !isSearchingDriver(order.id)"
                           class="btn-action btn-find-driver"
                           (click)="retryDriverSearch(order.id)"
                           title="Find Driver">
                     <mat-icon>person_search</mat-icon>
                   </button>
-                  <mat-icon *ngIf="isSearchingDriver(order.id)" class="spin searching-icon">sync</mat-icon>
+                  <mat-icon *ngIf="!selfDeliveryShop && isSearchingDriver(order.id)" class="spin searching-icon">sync</mat-icon>
                 </ng-container>
+
+                <!-- Self-delivery: mark delivered after handing over to the customer -->
+                <button *ngIf="order.status === 'OUT_FOR_DELIVERY' && order.deliveryType === 'HOME_DELIVERY' && selfDeliveryShop"
+                        class="btn-action btn-collect"
+                        (click)="completeSelfDelivery(order.id)"
+                        title="Mark Delivered">
+                  <mat-icon>where_to_vote</mat-icon>
+                </button>
 
                 <!-- Return Actions -->
                 <button *ngIf="order.status === 'RETURNED_TO_SHOP'"

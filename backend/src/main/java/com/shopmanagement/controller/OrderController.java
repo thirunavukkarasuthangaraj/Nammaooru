@@ -424,6 +424,30 @@ public class OrderController {
         }
     }
 
+    @PostMapping("/{orderId}/self-delivery/start")
+    public ResponseEntity<ApiResponse<OrderResponse>> startSelfDelivery(@PathVariable Long orderId) {
+        log.info("Shop owner starting self delivery for order: {}", orderId);
+        try {
+            OrderResponse response = orderService.startSelfDelivery(orderId);
+            return ResponseUtil.success(response, "Order is out for delivery");
+        } catch (Exception e) {
+            log.error("Error starting self delivery for order {}: {}", orderId, e.getMessage());
+            return ResponseUtil.error("Failed to start delivery: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{orderId}/self-delivery/complete")
+    public ResponseEntity<ApiResponse<OrderResponse>> completeSelfDelivery(@PathVariable Long orderId) {
+        log.info("Shop owner completing self delivery for order: {}", orderId);
+        try {
+            OrderResponse response = orderService.completeSelfDelivery(orderId);
+            return ResponseUtil.success(response, "Order delivered successfully");
+        } catch (Exception e) {
+            log.error("Error completing self delivery for order {}: {}", orderId, e.getMessage());
+            return ResponseUtil.error("Failed to mark as delivered: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/{orderId}/handover-self-pickup")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> handoverSelfPickup(@PathVariable Long orderId) {

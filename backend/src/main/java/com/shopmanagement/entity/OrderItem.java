@@ -25,8 +25,9 @@ public class OrderItem {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
     
+    // Nullable: POS custom items (typed name + price at the counter) have no catalog product
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shop_product_id", nullable = false)
+    @JoinColumn(name = "shop_product_id")
     private ShopProduct shopProduct;
     
     @Column(nullable = false)

@@ -39,6 +39,7 @@ export interface Shop {
   deliveryTime?: string;
   minimumOrder?: number;
   deliveryFee?: number;
+  selfDeliveryEnabled?: boolean;
   createdBy: string;
   productCount?: number;
   images?: ShopImage[];

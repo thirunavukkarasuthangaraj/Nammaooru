@@ -95,6 +95,10 @@ interface BillSettings {
   upiId: string;
   showUpiQrCode: boolean;
 
+  // Auto send the bill when it is printed (manual share buttons always remain)
+  autoSendWhatsAppOnPrint: boolean;
+  autoSendEmailOnPrint: boolean;
+
   // Custom Fields (user can add their own fields)
   customFields: CustomField[];
 
@@ -163,6 +167,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   taxRate: number = 0; // No tax
   totalMrp: number = 0;  // Total MRP of all items
   totalDiscount: number = 0;  // Total discount (MRP - selling price)
+  billDiscount: number = 0;  // Extra discount the owner gives on the whole bill (₹)
 
   // Payment
   selectedPaymentMethod: string = 'CASH_ON_DELIVERY';
@@ -280,6 +285,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // UPI Payment
     upiId: '',
     showUpiQrCode: false,
+    // Auto send on print
+    autoSendWhatsAppOnPrint: false,
+    autoSendEmailOnPrint: false,
     // Custom Fields
     customFields: [
       { label: '', value: '', enabled: false, position: 'header' },
@@ -1887,6 +1895,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   private resetCart(): void {
     this.cart = [];
+    this.billDiscount = 0;
     this.calculateTotals();
     this.customerName = '';
     this.customerPhone = '';
@@ -1916,9 +1925,19 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Ensure discount is never negative (when price > MRP)
     if (this.totalDiscount < 0) this.totalDiscount = 0;
     this.taxAmount = this.subtotal * this.taxRate;
-    this.totalAmount = this.subtotal + this.taxAmount;
+    // Owner-given bill discount: never negative, never more than the bill itself
+    if (!this.billDiscount || this.billDiscount < 0) this.billDiscount = 0;
+    if (this.billDiscount > this.subtotal + this.taxAmount) {
+      this.billDiscount = this.subtotal + this.taxAmount;
+    }
+    this.totalAmount = this.subtotal + this.taxAmount - this.billDiscount;
 
     this.saveCartBackup();
+  }
+
+  /** Bill discount input changed - re-clamp and recalculate the total */
+  onBillDiscountChange(): void {
+    this.calculateTotals();
   }
 
   /**
@@ -1946,6 +1965,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         customerPhone: this.customerPhone,
         customerEmail: this.customerEmail,
         orderNotes: this.orderNotes,
+        billDiscount: this.billDiscount,
         savedAt: Date.now()
       }));
     } catch (e) {
@@ -1982,6 +2002,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.customerPhone = backup.customerPhone || '';
       this.customerEmail = backup.customerEmail || '';
       this.orderNotes = backup.orderNotes || '';
+      this.billDiscount = backup.billDiscount || 0;
       this.calculateTotals();
 
       this.swal.toast(`Restored unsaved bill (${this.cart.length} item${this.cart.length > 1 ? 's' : ''})`, 'info');
@@ -2048,15 +2069,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // Resolve any negative temp IDs to real server IDs (for offline-created products that have synced)
       const resolvedItems = await this.resolveCartProductIds();
 
-      // Check if any items still have negative IDs (not yet synced)
-      const unsyncedItems = resolvedItems.filter(item => item.shopProductId < 0);
+      // Check if any items still have negative IDs (not yet synced).
+      // Custom items (null ID) are fine - the server bills them without a product.
+      const unsyncedItems = resolvedItems.filter(item => item.shopProductId !== null && item.shopProductId < 0);
       if (unsyncedItems.length > 0 && navigator.onLine) {
         // Try to sync pending product creations first
         console.log('Found unsynced products in cart, attempting sync...');
         await this.syncService.syncPendingProductCreations();
         // Re-resolve after sync
         const reResolvedItems = await this.resolveCartProductIds();
-        const stillUnsynced = reResolvedItems.filter(item => item.shopProductId < 0);
+        const stillUnsynced = reResolvedItems.filter(item => item.shopProductId !== null && item.shopProductId < 0);
         if (stillUnsynced.length > 0) {
           console.warn('Some products still have temp IDs after sync:', stillUnsynced);
         }
@@ -2073,6 +2095,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         notes: this.orderNotes || undefined,
         subtotal: this.subtotal,
         taxAmount: this.taxAmount,
+        discountAmount: this.billDiscount > 0 ? this.billDiscount : undefined,
         totalAmount: this.totalAmount
       };
 
@@ -2101,6 +2124,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Print receipt
         this.printReceipt(result.order);
 
+        // Auto-send the bill (WhatsApp/email) if enabled in bill settings
+        this.autoSendBillAfterPrint();
+
         // Update local stock immediately (no need to reload all products)
         await this.updateLocalStockAfterBill();
 
@@ -2113,6 +2139,50 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // Show the real reason (e.g. insufficient stock) instead of a generic message
       const message = error?.error?.message || error?.message || 'Failed to create bill';
       this.swal.error('Error', message);
+    }
+  }
+
+  /**
+   * Auto-send the bill after printing, when enabled in bill settings.
+   * Fire-and-forget with toasts only - never blocks the billing flow.
+   * Manual WhatsApp/email share buttons keep working independently.
+   */
+  private autoSendBillAfterPrint(): void {
+    const bs = this.billSettings;
+    if (!bs.autoSendWhatsAppOnPrint && !bs.autoSendEmailOnPrint) return;
+
+    if (!this.lastOrder?.id) {
+      this.swal.toast('Bill saved offline - send it manually after it syncs', 'info');
+      return;
+    }
+    const orderId = this.lastOrder.id;
+
+    // Never auto-send to the shared walk-in placeholder number (90000 + shop id)
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    const orderName = this.lastOrder.customerName && !/walk-?in/i.test(this.lastOrder.customerName)
+      ? this.lastOrder.customerName : '';
+    const name = this.customerName || orderName;
+
+    if (bs.autoSendWhatsAppOnPrint) {
+      const phone = [this.customerPhone, this.lastOrder.customerPhone]
+        .find(p => p && !isWalkInPlaceholder(p)) || '';
+      if (phone) {
+        this.syncService.sendWhatsAppBill(orderId, phone, name)
+          .then(() => this.swal.toast('Bill sent on WhatsApp', 'success'))
+          .catch(() => this.swal.toast('WhatsApp auto-send failed - use the Share button', 'warning'));
+      } else {
+        this.swal.toast('Add customer phone to auto-send bill on WhatsApp', 'info');
+      }
+    }
+
+    if (bs.autoSendEmailOnPrint) {
+      if (this.customerEmail) {
+        this.syncService.sendEmailBill(orderId, this.customerEmail, name)
+          .then(() => this.swal.toast('Bill sent by email', 'success'))
+          .catch(() => this.swal.toast('Email auto-send failed - use the Email button', 'warning'));
+      } else {
+        this.swal.toast('Add customer email to auto-send the bill by email', 'info');
+      }
     }
   }
 
@@ -2667,6 +2737,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
           <span style="font-weight: 600;">You Save</span>
           <span style="font-weight: 700;">₹${this.totalDiscount.toFixed(0)}</span>
+        </div>
+        ` : ''}
+
+        ${this.billDiscount > 0 ? `
+        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
+          <span style="font-weight: 600;">Subtotal</span>
+          <span style="font-weight: 600;">₹${this.subtotal.toFixed(0)}</span>
+        </div>
+        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
+          <span style="font-weight: 600;">Discount</span>
+          <span style="font-weight: 700;">- ₹${this.billDiscount.toFixed(0)}</span>
         </div>
         ` : ''}
 
@@ -3547,12 +3628,23 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Resolve cart product IDs - convert negative temp IDs to real server IDs by looking up in cache
    */
-  private async resolveCartProductIds(): Promise<Array<{ shopProductId: number; quantity: number; unitPrice: number; productName: string }>> {
+  private async resolveCartProductIds(): Promise<Array<{ shopProductId: number | null; quantity: number; unitPrice: number; productName: string }>> {
     // Refresh products from cache to get latest IDs after sync
     const cachedProducts = await this.offlineStorage.getProducts();
 
     return this.cart.map(item => {
-      let resolvedId = item.product.id;
+      let resolvedId: number | null = item.product.id;
+
+      // Custom "Quick Add" items have no catalog product - the server bills them
+      // by the typed name and price (null product ID)
+      if (item.product.sku === 'CUSTOM') {
+        return {
+          shopProductId: null,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          productName: item.product.name
+        };
+      }
 
       // If product has negative temp ID, try to find real ID in cache
       if (resolvedId < 0) {

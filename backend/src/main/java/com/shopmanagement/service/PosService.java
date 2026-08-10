@@ -88,8 +88,10 @@ public class PosService {
         Customer customer = getOrCreateWalkInCustomer(request, shop);
 
         // 3. OPTIMIZED: Batch fetch all products at once
+        // Custom items (typed name + price at the counter) have null/negative IDs and no catalog row
         List<Long> productIds = request.getItems().stream()
                 .map(PosOrderItemRequest::getShopProductId)
+                .filter(id -> id != null && id > 0)
                 .toList();
         List<ShopProduct> shopProducts = shopProductRepository.findAllById(productIds);
 
@@ -110,7 +112,31 @@ public class PosService {
         BigDecimal subtotal = BigDecimal.ZERO;
 
         for (PosOrderItemRequest itemRequest : request.getItems()) {
-            ShopProduct shopProduct = productMap.get(itemRequest.getShopProductId());
+            Long requestedProductId = itemRequest.getShopProductId();
+
+            // Custom item: no catalog product, billed with the typed name and price
+            if (requestedProductId == null || requestedProductId <= 0) {
+                if (itemRequest.getUnitPrice() == null) {
+                    throw new RuntimeException("Price is required for custom item");
+                }
+                String customName = itemRequest.getProductName() != null && !itemRequest.getProductName().isBlank()
+                        ? itemRequest.getProductName().trim()
+                        : "Custom Item";
+                BigDecimal customTotal = itemRequest.getUnitPrice()
+                        .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
+
+                orderItems.add(OrderItem.builder()
+                        .productName(customName)
+                        .quantity(itemRequest.getQuantity())
+                        .unitPrice(itemRequest.getUnitPrice())
+                        .totalPrice(customTotal)
+                        .addedByShopOwner(true)
+                        .build());
+                subtotal = subtotal.add(customTotal);
+                continue;
+            }
+
+            ShopProduct shopProduct = productMap.get(requestedProductId);
 
             // Check and prepare stock deduction
             if (shopProduct.getTrackInventory() != null && shopProduct.getTrackInventory()) {

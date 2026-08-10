@@ -310,6 +310,26 @@ export class ShopOwnerOrderService {
     return this.updateOrderStatus(orderId, 'DELIVERED');
   }
 
+  // Self-delivery shop: owner leaves with the order (READY_FOR_PICKUP -> OUT_FOR_DELIVERY)
+  startSelfDelivery(orderId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/orders/${orderId}/self-delivery/start`, {}).pipe(
+      catchError((error) => {
+        console.error('Error starting self delivery:', error);
+        throw error;
+      })
+    );
+  }
+
+  // Self-delivery shop: owner handed the order to the customer (OUT_FOR_DELIVERY -> DELIVERED)
+  completeSelfDelivery(orderId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/orders/${orderId}/self-delivery/complete`, {}).pipe(
+      catchError((error) => {
+        console.error('Error completing self delivery:', error);
+        throw error;
+      })
+    );
+  }
+
   // Handover SELF_PICKUP order to customer
   handoverSelfPickup(orderId: number): Observable<any> {
     return this.http.post<any>(

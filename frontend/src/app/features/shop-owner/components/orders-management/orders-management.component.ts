@@ -112,6 +112,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Daily summary loading state
   isSendingSummary = false;
 
+  // True when this shop delivers orders itself (no delivery partner)
+  selfDeliveryShop = false;
+
   // Unsubscription subject
   private destroy$ = new Subject<void>();
 
@@ -148,6 +151,11 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
     // Simple: Get shop ID from localStorage and load orders
     this.loadOrdersFromCache();
+
+    // Self-delivery shops deliver orders themselves - changes the action buttons shown
+    this.shopContextService.shop$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(shop => this.selfDeliveryShop = shop?.selfDeliveryEnabled === true);
   }
 
   ngOnDestroy(): void {
@@ -966,10 +974,13 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         this.stopProcessing(orderId);
 
         // For HOME_DELIVERY, start polling for driver assignment
-        if (updatedOrder.deliveryType === 'HOME_DELIVERY') {
+        // Self-delivery shops deliver themselves - no driver search
+        if (updatedOrder.deliveryType === 'HOME_DELIVERY' && !this.selfDeliveryShop) {
           this.searchingDriverOrders.add(orderId);
           this.swal.toast('Searching for driver...', 'info');
           this.pollForDriverAssignment(orderId);
+        } else if (updatedOrder.deliveryType === 'HOME_DELIVERY') {
+          this.swal.toast('Order ready - start delivery when you leave the shop', 'success');
         } else {
           this.swal.toast('Order ready for pickup', 'success');
         }
@@ -1069,6 +1080,49 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error marking delivered:', error);
         this.swal.error('Error', 'Failed to mark order as delivered.');
+      }
+    });
+  }
+
+  // Self-delivery: shop owner leaves the shop with the order
+  startSelfDelivery(orderId: number): void {
+    this.startProcessing(orderId);
+    this.orderService.startSelfDelivery(orderId).subscribe({
+      next: () => {
+        this.stopProcessing(orderId);
+        this.swal.toast('Order is out for delivery', 'success');
+        this.refreshSingleOrder(orderId);
+      },
+      error: (error) => {
+        console.error('Error starting self delivery:', error);
+        this.stopProcessing(orderId);
+        this.swal.error('Error', 'Failed to start delivery. Please try again.');
+      }
+    });
+  }
+
+  // Self-delivery: shop owner handed the order to the customer
+  completeSelfDelivery(orderId: number): void {
+    this.swal.confirm(
+      'Mark as Delivered',
+      'Confirm that the order has been handed over to the customer?',
+      'Yes, Delivered',
+      'Cancel'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        this.startProcessing(orderId);
+        this.orderService.completeSelfDelivery(orderId).subscribe({
+          next: () => {
+            this.stopProcessing(orderId);
+            this.swal.success('Order Delivered!', 'The order has been marked as delivered.');
+            this.refreshSingleOrder(orderId);
+          },
+          error: (error) => {
+            console.error('Error completing self delivery:', error);
+            this.stopProcessing(orderId);
+            this.swal.error('Error', 'Failed to mark as delivered. Please try again.');
+          }
+        });
       }
     });
   }

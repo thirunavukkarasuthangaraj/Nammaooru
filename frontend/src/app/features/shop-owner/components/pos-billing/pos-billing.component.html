@@ -409,6 +409,15 @@
             <span>Discount</span>
             <span class="discount-value">- ₹{{ totalDiscount | number:'1.0-0' }}</span>
           </div>
+          <div class="total-row bill-discount-row">
+            <span>Extra Discount (₹)</span>
+            <input type="number"
+                   class="bill-discount-input"
+                   min="0"
+                   [(ngModel)]="billDiscount"
+                   (ngModelChange)="onBillDiscountChange()"
+                   placeholder="0">
+          </div>
           <div class="total-row grand-total">
             <span>TOTAL</span>
             <span>₹{{ totalAmount | number:'1.0-0' }}</span>
@@ -1138,6 +1147,25 @@
             <div class="toggle-item">
               <mat-slide-toggle [(ngModel)]="billSettings.showTamil" color="primary"></mat-slide-toggle>
               <span>Tamil (தமிழ்)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auto Send Section -->
+        <div class="settings-section">
+          <div class="section-title">
+            <mat-icon>send</mat-icon>
+            Auto Send Bill on Print
+          </div>
+          <p class="section-hint">When you print a bill, also send it to the customer automatically. Needs the customer's phone/email on the bill. Manual share buttons always work.</p>
+          <div class="toggle-grid">
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.autoSendWhatsAppOnPrint" color="primary"></mat-slide-toggle>
+              <span>Send on WhatsApp automatically</span>
+            </div>
+            <div class="toggle-item">
+              <mat-slide-toggle [(ngModel)]="billSettings.autoSendEmailOnPrint" color="primary"></mat-slide-toggle>
+              <span>Send by Email automatically</span>
             </div>
           </div>
         </div>

@@ -133,6 +133,11 @@ public class Shop {
     @Column(name = "free_delivery_above", precision = 10, scale = 2)
     private BigDecimal freeDeliveryAbove;
 
+    // Shop owner delivers orders themselves - no delivery partner needed
+    @Builder.Default
+    @Column(name = "self_delivery_enabled")
+    private Boolean selfDeliveryEnabled = false;
+
     @DecimalMin(value = "0.0")
     @DecimalMax(value = "100.0")
     @Builder.Default

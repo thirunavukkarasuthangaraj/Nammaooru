@@ -40,7 +40,8 @@ export interface OfflineOrder {
   offlineOrderId: string;
   shopId: number;
   items: {
-    shopProductId: number;
+    // null for custom items typed at the counter (no catalog product)
+    shopProductId: number | null;
     quantity: number;
     unitPrice: number;
     productName: string;
@@ -52,6 +53,7 @@ export interface OfflineOrder {
   totalAmount: number;
   subtotal: number;
   taxAmount: number;
+  discountAmount?: number;
   createdAt: string;
   synced: boolean;
 }

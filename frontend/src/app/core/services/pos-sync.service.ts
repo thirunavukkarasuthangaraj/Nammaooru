@@ -338,15 +338,18 @@ export class PosSyncService implements OnDestroy {
       totalAmount: orderData.totalAmount,
       subtotal: orderData.subtotal,
       taxAmount: orderData.taxAmount,
+      discountAmount: orderData.discountAmount,
       createdAt: new Date().toISOString(),
       synced: false
     };
 
     await this.offlineStorage.saveOfflineOrder(offlineOrder);
 
-    // Update local stock
+    // Update local stock (custom items have no catalog product / stock)
     for (const item of orderData.items) {
-      await this.offlineStorage.updateLocalStock(item.shopProductId, item.quantity);
+      if (item.shopProductId && item.shopProductId > 0) {
+        await this.offlineStorage.updateLocalStock(item.shopProductId, item.quantity);
+      }
     }
 
     await this.updatePendingCount();
@@ -468,7 +471,9 @@ export class PosSyncService implements OnDestroy {
         // An order can still reference an offline-created product whose creation
         // hasn't synced yet (negative temp ID). Sending it would 404 on the server,
         // so leave it pending and retry on the next sync (after creations sync).
-        const hasUnresolvedTempId = order.items.some(item => item.shopProductId < 0);
+        // Custom items (null ID) are fine - the server bills them without a product.
+        const hasUnresolvedTempId = order.items.some(
+          item => item.shopProductId !== null && item.shopProductId < 0);
         if (hasUnresolvedTempId) {
           console.warn(`Skipping order ${order.offlineOrderId} - still has unsynced product(s), will retry`);
           failed++;
@@ -480,12 +485,14 @@ export class PosSyncService implements OnDestroy {
           items: order.items.map(item => ({
             shopProductId: item.shopProductId,
             quantity: item.quantity,
-            unitPrice: item.unitPrice
+            unitPrice: item.unitPrice,
+            productName: item.productName
           })),
           paymentMethod: order.paymentMethod,
           customerName: order.customerName,
           customerPhone: order.customerPhone,
           notes: order.notes,
+          discountAmount: order.discountAmount,
           offlineOrderId: order.offlineOrderId
         };
 

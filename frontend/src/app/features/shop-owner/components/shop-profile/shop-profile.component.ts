@@ -152,6 +152,13 @@ import * as L from 'leaflet';
                       <mat-icon matSuffix>lock</mat-icon>
                       <mat-hint>Email cannot be changed</mat-hint>
                     </mat-form-field>
+
+                    <div *ngSwitchCase="'toggle'" class="toggle-field">
+                      <mat-slide-toggle [formControlName]="field.control" color="primary">
+                        {{ field.label }}
+                      </mat-slide-toggle>
+                      <p class="toggle-hint" *ngIf="field.hint">{{ field.hint }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -954,7 +961,8 @@ export class ShopProfileComponent implements OnInit {
       longitude: [null],
       deliveryRadius: [5, [Validators.required, Validators.min(1), Validators.max(50)]],
       minOrderAmount: [0],
-      freeDeliveryAbove: [0]
+      freeDeliveryAbove: [0],
+      selfDeliveryEnabled: [{ value: false, disabled: true }]
     });
   }
 
@@ -1076,6 +1084,12 @@ export class ShopProfileComponent implements OnInit {
         control: 'freeDeliveryAbove',
         type: 'number',
         placeholder: 'e.g., 500'
+      },
+      {
+        label: 'Self Delivery (I deliver orders myself)',
+        control: 'selfDeliveryEnabled',
+        type: 'toggle',
+        hint: 'When on, no delivery partner is searched - you deliver orders to customers yourself'
       }
     ];
   }
@@ -1111,7 +1125,12 @@ export class ShopProfileComponent implements OnInit {
   
   toggleEditMode(): void {
     this.isEditMode = !this.isEditMode;
-    if (!this.isEditMode) {
+    // The slide toggle has no readonly attribute, so sync it with edit mode via enable/disable
+    const selfDeliveryControl = this.shopForm.get('selfDeliveryEnabled');
+    if (this.isEditMode) {
+      selfDeliveryControl?.enable();
+    } else {
+      selfDeliveryControl?.disable();
       this.onReset();
     }
   }
@@ -1425,7 +1444,8 @@ export class ShopProfileComponent implements OnInit {
             longitude: shop.longitude || null,
             deliveryRadius: shop.deliveryRadius || 5,
             minOrderAmount: shop.minOrderAmount || 0,
-            freeDeliveryAbove: shop.freeDeliveryAbove || 0
+            freeDeliveryAbove: shop.freeDeliveryAbove || 0,
+            selfDeliveryEnabled: shop.selfDeliveryEnabled === true
           });
           
           // Set email separately since it's disabled
@@ -1545,7 +1565,8 @@ export class ShopProfileComponent implements OnInit {
         longitude: this.shopForm.value.longitude,
         deliveryRadius: this.shopForm.value.deliveryRadius,
         minOrderAmount: this.shopForm.value.minOrderAmount,
-        freeDeliveryAbove: this.shopForm.value.freeDeliveryAbove
+        freeDeliveryAbove: this.shopForm.value.freeDeliveryAbove,
+        selfDeliveryEnabled: this.shopForm.get('selfDeliveryEnabled')?.value === true
       };
       
       this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
@@ -1572,8 +1593,10 @@ export class ShopProfileComponent implements OnInit {
             longitude: response.longitude || null,
             deliveryRadius: response.deliveryRadius || 5,
             minOrderAmount: response.minOrderAmount || 0,
-            freeDeliveryAbove: response.freeDeliveryAbove || 0
+            freeDeliveryAbove: response.freeDeliveryAbove || 0,
+            selfDeliveryEnabled: response.selfDeliveryEnabled === true
           });
+          this.shopForm.get('selfDeliveryEnabled')?.disable();
 
           // Save UPI ID to localStorage for POS Billing
           if (response.upiId) {

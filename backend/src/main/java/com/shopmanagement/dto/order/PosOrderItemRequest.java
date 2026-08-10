@@ -15,15 +15,18 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class PosOrderItemRequest {
 
-    @NotNull(message = "Shop product ID is required")
+    // Null or negative for custom items typed at the counter (no catalog product)
     private Long shopProductId;
 
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;
 
-    // Optional: Override price (for discounts)
+    // Optional: Override price (for discounts). Required for custom items.
     private BigDecimal unitPrice;
+
+    // Item name for custom items (ignored for catalog products)
+    private String productName;
 
     // Optional: Special instructions
     private String notes;

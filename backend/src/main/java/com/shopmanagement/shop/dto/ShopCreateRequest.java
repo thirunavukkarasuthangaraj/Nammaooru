@@ -81,6 +81,8 @@ public class ShopCreateRequest {
     @DecimalMin(value = "0.0", message = "Free delivery threshold cannot be negative")
     private BigDecimal freeDeliveryAbove;
 
+    private Boolean selfDeliveryEnabled;
+
     @DecimalMin(value = "0.0", message = "Commission rate cannot be negative")
     @DecimalMax(value = "100.0", message = "Commission rate cannot exceed 100")
     private BigDecimal commissionRate;
