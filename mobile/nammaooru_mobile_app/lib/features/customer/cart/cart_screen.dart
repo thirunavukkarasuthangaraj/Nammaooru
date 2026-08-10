@@ -63,6 +63,7 @@ class _CartScreenState extends State<CartScreen> {
                     children: [
                       Expanded(
                         child: SingleChildScrollView(
+                          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

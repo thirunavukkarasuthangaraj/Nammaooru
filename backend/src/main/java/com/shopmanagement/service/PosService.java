@@ -529,10 +529,16 @@ public class PosService {
         if (customerPhone != null && !customerPhone.trim().isEmpty()) {
             Customer existing = customerRepository.findFirstByMobileNumberOrderByIdAsc(customerPhone).orElse(null);
             if (existing != null) {
-                // Upgrade a placeholder email to the real one entered at the POS
-                if (customerEmail != null && (existing.getEmail() == null || existing.getEmail().endsWith("@pos.local"))) {
-                    existing.setEmail(customerEmail);
-                    customerRepository.save(existing);
+                // Email typed at the POS is the freshest data - update it,
+                // unless that email already belongs to a different customer
+                if (customerEmail != null && !customerEmail.equalsIgnoreCase(existing.getEmail())) {
+                    if (!customerRepository.existsByEmail(customerEmail)) {
+                        existing.setEmail(customerEmail);
+                        customerRepository.save(existing);
+                    } else {
+                        log.warn("POS: email {} already belongs to another customer - keeping existing email for {}",
+                                customerEmail, customerPhone);
+                    }
                 }
                 return existing;
             }

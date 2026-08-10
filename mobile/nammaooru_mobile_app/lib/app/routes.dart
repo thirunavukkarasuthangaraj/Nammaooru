@@ -36,6 +36,18 @@ import '../features/customer/screens/voice_assistant_screen.dart';
 import 'package:provider/provider.dart';
 import '../shared/providers/feature_config_provider.dart';
 
+/// Closes the keyboard whenever a screen is pushed or popped so a
+/// text field's focus never carries over to the next screen
+class _KeyboardDismissObserver extends NavigatorObserver {
+  void _unfocus() => FocusManager.instance.primaryFocus?.unfocus();
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _unfocus();
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _unfocus();
+}
+
 class AppRouter {
   // Global navigator key for navigation from services
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -44,6 +56,7 @@ class AppRouter {
     navigatorKey: navigatorKey,
     initialLocation: '/',
     redirect: RoleGuard.redirectLogic,
+    observers: [_KeyboardDismissObserver()],
     routes: [
       GoRoute(
         path: '/',

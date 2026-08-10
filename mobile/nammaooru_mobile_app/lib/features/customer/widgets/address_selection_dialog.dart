@@ -294,6 +294,7 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
     return Expanded(
       child: ListView.builder(
         shrinkWrap: true,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         itemCount: _savedAddresses.length,
         itemBuilder: (context, index) {
           final address = _savedAddresses[index];

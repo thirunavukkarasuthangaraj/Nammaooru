@@ -530,6 +530,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildDeliveryAddressStep() {
     return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.all(12),
       child: Form(
         key: _formKey,
@@ -1315,6 +1316,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildPaymentMethodStep() {
     return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1667,6 +1669,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         return SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

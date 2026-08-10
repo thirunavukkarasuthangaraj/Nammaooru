@@ -90,8 +90,14 @@ class _NammaOoruAppState extends State<NammaOoruApp> {
       themeMode: ThemeMode.light,
       routerConfig: AppRouter.router,
       builder: (context, child) {
-        return ConnectivityBanner(
-          child: child ?? const SizedBox.shrink(),
+        // Global keyboard dismiss: tapping anywhere outside a text field
+        // closes the keyboard (cart, checkout, search - all screens)
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: ConnectivityBanner(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       localizationsDelegates: const [

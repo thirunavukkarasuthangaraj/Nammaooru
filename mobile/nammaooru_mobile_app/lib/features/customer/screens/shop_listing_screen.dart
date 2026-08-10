@@ -454,6 +454,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       color: const Color(0xFF4CAF50),
       child: ListView.builder(
         controller: _scrollController,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: _filteredShops.length,
         itemBuilder: (context, index) {
