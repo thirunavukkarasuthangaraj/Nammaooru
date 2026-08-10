@@ -1,5 +1,6 @@
 package com.shopmanagement.product.service;
 
+import com.shopmanagement.entity.User;
 import com.shopmanagement.product.dto.ProductCategoryRequest;
 import com.shopmanagement.product.dto.ProductCategoryResponse;
 import com.shopmanagement.product.entity.ProductCategory;
@@ -9,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -52,6 +55,21 @@ public class ProductCategoryService {
                 cb.like(cb.lower(root.get("description")), searchPattern),
                 cb.like(cb.lower(root.get("slug")), searchPattern)
             ));
+        }
+
+        // Shop owners see global/admin categories and their own, but not other shop owners' categories
+        if (isShopOwner()) {
+            String username = getCurrentUsername();
+            spec = spec.and((root, query, cb) -> {
+                Subquery<String> otherShopOwners = query.subquery(String.class);
+                Root<User> owner = otherShopOwners.from(User.class);
+                otherShopOwners.select(owner.get("username")).where(
+                        cb.equal(owner.get("role"), User.UserRole.SHOP_OWNER),
+                        cb.notEqual(owner.get("username"), username));
+                return cb.or(
+                        cb.isNull(root.get("createdBy")),
+                        cb.not(root.get("createdBy").in(otherShopOwners)));
+            });
         }
         
         Page<ProductCategory> categoryPage = categoryRepository.findAll(spec, pageable);
@@ -146,7 +164,8 @@ public class ProductCategoryService {
         
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
-        
+        assertCanModify(category);
+
         // Validate slug uniqueness (excluding current category)
         String slug = StringUtils.hasText(request.getSlug()) ? 
             request.getSlug() : generateSlug(request.getName());
@@ -186,7 +205,8 @@ public class ProductCategoryService {
         
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
-        
+        assertCanModify(category);
+
         // Check if category has subcategories
         if (categoryRepository.hasSubcategories(id)) {
             throw new RuntimeException("Cannot delete category with subcategories. Please delete subcategories first.");
@@ -230,6 +250,7 @@ public class ProductCategoryService {
 
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+        assertCanModify(category);
 
         category.setIsActive(isActive);
         category.setUpdatedBy(getCurrentUsername());
@@ -250,6 +271,7 @@ public class ProductCategoryService {
 
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+        assertCanModify(category);
 
         category.setIconUrl(imageUrl);
         category.setUpdatedBy(getCurrentUsername());
@@ -264,7 +286,8 @@ public class ProductCategoryService {
         log.info("Reordering {} categories", categoryIds.size());
         
         List<ProductCategory> categories = categoryRepository.findAllById(categoryIds);
-        
+        categories.forEach(this::assertCanModify);
+
         IntStream.range(0, categoryIds.size())
                 .forEach(i -> {
                     Long categoryId = categoryIds.get(i);
@@ -328,5 +351,17 @@ public class ProductCategoryService {
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null ? authentication.getName() : "system";
+    }
+
+    private boolean isShopOwner() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SHOP_OWNER"));
+    }
+
+    private void assertCanModify(ProductCategory category) {
+        if (isShopOwner() && !getCurrentUsername().equals(category.getCreatedBy())) {
+            throw new RuntimeException("You can only modify categories created by you");
+        }
     }
 }

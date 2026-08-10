@@ -92,7 +92,6 @@ public class ProductCategoryController {
     }
 
     @PostMapping
-    // @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')") // Temporarily disabled for testing
     public ResponseEntity<ApiResponse<ProductCategoryResponse>> createCategory(
             @Valid @RequestBody ProductCategoryRequest request) {
         log.info("Creating category: {}", request.getName());
@@ -101,7 +100,6 @@ public class ProductCategoryController {
     }
 
     @PutMapping("/{id}")
-    // @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')") // Temporarily disabled for testing
     public ResponseEntity<ApiResponse<ProductCategoryResponse>> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody ProductCategoryRequest request) {
@@ -111,7 +109,6 @@ public class ProductCategoryController {
     }
 
     @DeleteMapping("/{id}")
-    // @PreAuthorize("hasRole('ADMIN')") // Temporarily disabled for testing
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
         log.info("Deleting category: {}", id);
         categoryService.deleteCategory(id);
@@ -135,7 +132,6 @@ public class ProductCategoryController {
     }
 
     @PatchMapping("/{id}/status")
-    // @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')") // Temporarily disabled for testing
     public ResponseEntity<ApiResponse<ProductCategoryResponse>> updateCategoryStatus(
             @PathVariable Long id,
             @RequestParam Boolean isActive) {
@@ -145,7 +141,6 @@ public class ProductCategoryController {
     }
 
     @PatchMapping("/reorder")
-    // @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')") // Temporarily disabled for testing
     public ResponseEntity<ApiResponse<List<ProductCategoryResponse>>> reorderCategories(
             @RequestBody List<Long> categoryIds) {
         log.info("Reordering categories: {}", categoryIds.size());
