@@ -361,7 +361,8 @@ interface Category {
 
     /* Modern Header */
     .page-header {
-      background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
+      /* Match the sidebar's brand green (#4ade80) instead of an unrelated shade */
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
       padding: 48px 32px;
       color: white;
       display: flex;
@@ -414,7 +415,7 @@ interface Category {
 
     .action-button {
       background: white;
-      color: #2e7d32;
+      color: #16a34a;
       font-weight: 600;
       padding: 10px 24px;
       border-radius: 8px;
@@ -459,7 +460,7 @@ interface Category {
     .stat-icon {
       width: 56px;
       height: 56px;
-      background: linear-gradient(135deg, #2e7d3220 0%, #43a04720 100%);
+      background: linear-gradient(135deg, #4ade8025 0%, #22c55e25 100%);
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -474,7 +475,7 @@ interface Category {
       font-size: 28px;
       width: 28px;
       height: 28px;
-      color: #2e7d32;
+      color: #16a34a;
     }
 
     .stat-card.active .stat-icon mat-icon {
@@ -598,7 +599,7 @@ interface Category {
     .category-card:hover {
       transform: translateY(-4px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      border-color: #2e7d32;
+      border-color: #16a34a;
     }
 
     .category-card-header {
@@ -951,7 +952,7 @@ interface Category {
       font-size: 20px;
       width: 20px;
       height: 20px;
-      color: #2e7d32;
+      color: #16a34a;
     }
 
     .required {
@@ -973,12 +974,12 @@ interface Category {
     }
 
     .upload-placeholder:hover {
-      border-color: #2e7d32;
+      border-color: #16a34a;
       background: #f0f4ff;
     }
 
     .upload-placeholder.dragover {
-      border-color: #2e7d32;
+      border-color: #16a34a;
       background: #e0e7ff;
       transform: scale(1.02);
     }
@@ -1040,7 +1041,7 @@ interface Category {
     }
 
     .change-image-btn mat-icon {
-      color: #2e7d32;
+      color: #16a34a;
     }
 
     .remove-image-btn mat-icon {
