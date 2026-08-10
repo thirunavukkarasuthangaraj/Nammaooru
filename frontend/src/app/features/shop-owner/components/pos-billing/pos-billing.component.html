@@ -485,7 +485,7 @@
           </button>
           <button mat-stroked-button
                   class="whatsapp-bill-btn"
-                  *ngIf="lastOrder"
+                  *ngIf="lastOrder && canShareBill"
                   [disabled]="sendingWhatsAppBill || sendingEmailBill || sharingOwnWhatsApp"
                   [matMenuTriggerFor]="shareBillMenu"
                   matTooltip="Send this bill to the customer">

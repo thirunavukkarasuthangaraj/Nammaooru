@@ -2151,6 +2151,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const bs = this.billSettings;
     if (!bs.autoSendWhatsAppOnPrint && !bs.autoSendEmailOnPrint) return;
 
+    // Anonymous walk-in bill (no customer added) - nothing to send to,
+    // stay silent instead of nagging on every counter sale
+    if (!this.canShareBill) return;
+
     if (!this.lastOrder?.id) {
       this.swal.toast('Bill saved offline - send it manually after it syncs', 'info');
       return;
@@ -2184,6 +2188,20 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         this.swal.toast('Add customer email to auto-send the bill by email', 'info');
       }
     }
+  }
+
+  /**
+   * Share is only possible when the bill has a real customer contact -
+   * a phone number (not the walk-in placeholder) or an email.
+   */
+  get canShareBill(): boolean {
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    const phone = [this.customerPhone, this.lastOrder?.customerPhone]
+      .find(p => p && !isWalkInPlaceholder(p));
+    const isPlaceholderEmail = (e: string) => (e || '').endsWith('@pos.local');
+    const email = [this.customerEmail, this.lastOrder?.customerEmail]
+      .find(e => e && !isPlaceholderEmail(e));
+    return !!(phone || email);
   }
 
   /**
