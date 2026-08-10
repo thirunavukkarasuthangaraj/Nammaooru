@@ -1047,54 +1047,6 @@ interface Category {
       color: #ef4444;
     }
 
-    /* Original Image Upload Styles */
-    .image-upload-label {
-      display: block;
-      font-size: 14px;
-      font-weight: 500;
-      color: #666;
-      margin-bottom: 8px;
-    }
-
-    .image-upload-container {
-      border: 2px dashed #ddd;
-      border-radius: 8px;
-      padding: 16px;
-      text-align: center;
-      position: relative;
-      min-height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .image-preview {
-      position: relative;
-      display: inline-block;
-    }
-
-    .image-preview img {
-      max-width: 150px;
-      max-height: 100px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .remove-image-btn {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background: #f44336;
-      color: white;
-      width: 24px;
-      height: 24px;
-    }
-
-    .remove-image-btn mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-    }
 
     .upload-btn {
       display: flex;
