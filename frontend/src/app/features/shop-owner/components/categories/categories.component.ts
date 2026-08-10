@@ -1278,7 +1278,8 @@ export class CategoriesComponent implements OnInit {
 
   loadCategories(): void {
     this.loading = true;
-    this.categoryService.getCategories()
+    // No paginator on this page - load all root categories (default size is 10)
+    this.categoryService.getCategories(undefined, undefined, undefined, 0, 500)
       .pipe(
         finalize(() => this.loading = false)
       )
