@@ -337,9 +337,10 @@ interface DashboardStats {
 
     .trend-row {
       display: grid;
-      grid-template-columns: 48px 1fr 110px 64px;
+      grid-template-columns: 44px 1fr 190px;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
+      max-width: 720px;
     }
 
     .trend-label {
@@ -351,7 +352,7 @@ interface DashboardStats {
     .trend-track {
       background: #f1f5f9;
       border-radius: 6px;
-      height: 14px;
+      height: 12px;
       overflow: hidden;
     }
 
@@ -359,6 +360,7 @@ interface DashboardStats {
       height: 100%;
       border-radius: 6px;
       transition: width 0.4s ease;
+      min-width: 4px;
     }
 
     .trend-fill.revenue {
@@ -369,24 +371,45 @@ interface DashboardStats {
       background: linear-gradient(90deg, #60a5fa, #2563eb);
     }
 
+    /* Value + growth badge sit side by side, right-aligned as one unit */
+    .trend-meta {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
     .trend-value {
       font-size: 12px;
       font-weight: 600;
       color: #1e293b;
-      text-align: right;
       white-space: nowrap;
     }
 
     .trend-growth {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
       font-size: 11px;
       font-weight: 600;
       color: #94a3b8;
-      text-align: right;
       white-space: nowrap;
+      min-width: 44px;
+    }
+
+    .trend-growth mat-icon {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
     }
 
     .trend-growth.up { color: #16a34a; }
     .trend-growth.down { color: #dc2626; }
+
+    .trend-growth-spacer {
+      display: inline-block;
+      min-width: 44px;
+    }
 
     /* Stats Grid - Top Row */
     .stats-grid {
