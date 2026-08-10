@@ -94,6 +94,17 @@ public class ProductCategoryService {
         return responses;
     }
 
+    /** Shop owner's products whose master product has no category (0 for other roles) */
+    @Transactional(readOnly = true)
+    public long getUncategorizedProductCount() {
+        if (!isShopOwner()) {
+            return 0;
+        }
+        return findCurrentOwnerShopId()
+                .map(shopProductRepository::countUncategorizedByShopId)
+                .orElse(0L);
+    }
+
     private java.util.Optional<Long> findCurrentOwnerShopId() {
         String username = getCurrentUsername();
         return shopRepository.findByCreatedBy(username)

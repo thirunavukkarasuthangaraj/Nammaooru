@@ -88,8 +88,11 @@ interface Category {
             <mat-icon>inventory</mat-icon>
           </div>
           <div class="stat-content">
-            <div class="stat-value">{{ getTotalProducts() }}</div>
+            <div class="stat-value">{{ getTotalProducts() + uncategorizedCount }}</div>
             <div class="stat-label">Products</div>
+            <div class="stat-sublabel" *ngIf="uncategorizedCount > 0">
+              {{ uncategorizedCount }} without category
+            </div>
           </div>
         </div>
       </div>
@@ -489,6 +492,13 @@ interface Category {
       font-size: 14px;
       color: #888;
       font-weight: 500;
+    }
+
+    .stat-sublabel {
+      font-size: 12px;
+      color: #f59e0b;
+      font-weight: 500;
+      margin-top: 2px;
     }
 
     /* Categories Section */
@@ -1240,6 +1250,8 @@ export class CategoriesComponent implements OnInit {
   ];
 
   loading = false;
+  // Shop owner's products that have no category (shown next to the Products stat)
+  uncategorizedCount = 0;
 
   constructor(
     private fb: FormBuilder,
@@ -1258,6 +1270,10 @@ export class CategoriesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.categoryService.getUncategorizedCount().subscribe({
+      next: (count) => this.uncategorizedCount = count,
+      error: () => this.uncategorizedCount = 0
+    });
   }
 
   loadCategories(): void {

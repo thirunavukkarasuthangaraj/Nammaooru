@@ -60,6 +60,13 @@ public class ProductCategoryController {
         return ResponseEntity.ok(ApiResponse.success(categories, "Categories fetched successfully"));
     }
 
+    @GetMapping("/uncategorized-count")
+    public ResponseEntity<ApiResponse<Long>> getUncategorizedProductCount() {
+        return ResponseEntity.ok(ApiResponse.success(
+                categoryService.getUncategorizedProductCount(),
+                "Uncategorized product count fetched successfully"));
+    }
+
     @GetMapping("/tree")
     public ResponseEntity<ApiResponse<List<ProductCategoryResponse>>> getCategoryTree(
             @RequestParam(required = false) Long rootId,

@@ -44,6 +44,12 @@ export class ProductCategoryService {
       .pipe(map(response => response.data));
   }
 
+  /** Shop owner's product count with no category assigned */
+  getUncategorizedCount(): Observable<number> {
+    return this.http.get<ApiResponse<number>>(`${this.API_URL}/uncategorized-count`)
+      .pipe(map(response => response.data || 0));
+  }
+
   getCategoryTree(rootId?: number, activeOnly: boolean = true): Observable<ProductCategory[]> {
     let params = new HttpParams().set('activeOnly', activeOnly.toString());
     

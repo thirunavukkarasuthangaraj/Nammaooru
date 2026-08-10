@@ -111,6 +111,10 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
            "GROUP BY sp.masterProduct.category.id")
     List<Object[]> countProductsPerCategoryByShopId(@Param("shopId") Long shopId);
 
+    @Query("SELECT COUNT(sp) FROM ShopProduct sp " +
+           "WHERE sp.shop.id = :shopId AND sp.masterProduct.category IS NULL")
+    long countUncategorizedByShopId(@Param("shopId") Long shopId);
+
     // Pricing analytics
     @Query("SELECT AVG(sp.price) FROM ShopProduct sp WHERE sp.shop = :shop AND sp.isAvailable = true")
     BigDecimal getAveragePriceForShop(@Param("shop") Shop shop);
