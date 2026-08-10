@@ -110,6 +110,9 @@ public class AnalyticsService {
     public AnalyticsResponse.DashboardMetrics getShopDashboardMetrics(Long shopId, AnalyticsRequest request) {
         log.info("Generating shop dashboard metrics for shop: {} for period: {} to {}", shopId, request.getStartDate(), request.getEndDate());
 
+        // Shop owners can only view their own shop's analytics (admins can view any)
+        assertShopAccessAllowed(shopId);
+
         LocalDateTime startDate = request.getStartDate();
         LocalDateTime endDate = request.getEndDate();
 
@@ -138,8 +141,8 @@ public class AnalyticsService {
                 .conversionRate(0.0)
                 .customerRetentionRate(0.0)
                 .monthlyGrowth(monthlyGrowth)
-                .revenueData(new ArrayList<>())
-                .orderData(new ArrayList<>())
+                .revenueData(getShopRevenueData(shopId, startDate, endDate))
+                .orderData(getShopOrderData(shopId, startDate, endDate))
                 .categoryData(new ArrayList<>())
                 .topShops(new ArrayList<>())
                 .topProducts(new ArrayList<>())
@@ -190,6 +193,100 @@ public class AnalyticsService {
     /**
      * Get daily revenue data from orders table.
      */
+    /** Shop owners may only access their own shop's analytics; admins may access any */
+    private void assertShopAccessAllowed(Long shopId) {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = auth.getAuthorities().stream().anyMatch(a ->
+                a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        if (isAdmin) {
+            return;
+        }
+
+        String username = auth.getName();
+        String ownerEmail = shopRepository.findById(shopId)
+                .map(shop -> shop.getOwnerEmail())
+                .orElseThrow(() -> new RuntimeException("Shop not found: " + shopId));
+
+        boolean allowed = userRepository.findByUsername(username)
+                .map(user -> ownerEmail != null && ownerEmail.equalsIgnoreCase(user.getEmail()))
+                .orElse(ownerEmail != null && ownerEmail.equalsIgnoreCase(username));
+        if (!allowed) {
+            throw new RuntimeException("You can only view analytics for your own shop");
+        }
+    }
+
+    private List<AnalyticsResponse.RevenueData> getShopRevenueData(Long shopId, LocalDateTime startDate, LocalDateTime endDate) {
+        try {
+            List<Object[]> dailyRevenue = orderRepository.getDailyRevenueByShop(shopId, startDate, endDate);
+            List<AnalyticsResponse.RevenueData> result = new ArrayList<>();
+            BigDecimal previousRevenue = null;
+
+            for (Object[] data : dailyRevenue) {
+                LocalDateTime date = toLocalDateTime(data[0]);
+                BigDecimal revenue = toBigDecimal(data[1]);
+
+                Double growth = null;
+                if (previousRevenue != null && previousRevenue.compareTo(BigDecimal.ZERO) > 0) {
+                    growth = revenue.subtract(previousRevenue)
+                            .divide(previousRevenue, 4, RoundingMode.HALF_UP)
+                            .multiply(BigDecimal.valueOf(100))
+                            .doubleValue();
+                }
+
+                result.add(AnalyticsResponse.RevenueData.builder()
+                        .period(date.format(DateTimeFormatter.ofPattern("dd/MM")))
+                        .revenue(revenue)
+                        .previousRevenue(previousRevenue)
+                        .growthPercentage(growth)
+                        .date(date)
+                        .build());
+
+                previousRevenue = revenue;
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("Error getting shop daily revenue data: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    private List<AnalyticsResponse.OrderData> getShopOrderData(Long shopId, LocalDateTime startDate, LocalDateTime endDate) {
+        try {
+            List<Object[]> dailyOrders = orderRepository.getDailyOrderCountByShop(shopId, startDate, endDate);
+            List<AnalyticsResponse.OrderData> result = new ArrayList<>();
+            Long previousCount = null;
+
+            for (Object[] data : dailyOrders) {
+                LocalDateTime date = toLocalDateTime(data[0]);
+                Long count = toLong(data[1]);
+
+                Double growth = null;
+                if (previousCount != null && previousCount > 0) {
+                    growth = ((count - previousCount) * 100.0) / previousCount;
+                }
+
+                result.add(AnalyticsResponse.OrderData.builder()
+                        .period(date.format(DateTimeFormatter.ofPattern("dd/MM")))
+                        .orderCount(count)
+                        .previousOrderCount(previousCount)
+                        .growthPercentage(growth)
+                        .date(date)
+                        .build());
+
+                previousCount = count;
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("Error getting shop daily order data: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
     private List<AnalyticsResponse.RevenueData> getRevenueDataFromOrders(LocalDateTime startDate, LocalDateTime endDate) {
         try {
             List<Object[]> dailyRevenue = orderRepository.getDailyRevenueAll(startDate, endDate);

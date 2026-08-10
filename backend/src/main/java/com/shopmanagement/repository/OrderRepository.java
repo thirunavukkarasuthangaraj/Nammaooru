@@ -225,6 +225,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query(value = "SELECT DATE_TRUNC('day', o.created_at) as day, COUNT(*) as cnt FROM orders o WHERE o.created_at BETWEEN :startDate AND :endDate GROUP BY DATE_TRUNC('day', o.created_at) ORDER BY day", nativeQuery = true)
     List<Object[]> getDailyOrderCountAll(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
+    // Daily revenue for one shop
+    @Query(value = "SELECT DATE_TRUNC('day', o.created_at) as day, COALESCE(SUM(o.total_amount), 0) as revenue FROM orders o WHERE o.shop_id = :shopId AND o.created_at BETWEEN :startDate AND :endDate AND (o.payment_status = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY DATE_TRUNC('day', o.created_at) ORDER BY day", nativeQuery = true)
+    List<Object[]> getDailyRevenueByShop(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Daily order count for one shop
+    @Query(value = "SELECT DATE_TRUNC('day', o.created_at) as day, COUNT(*) as cnt FROM orders o WHERE o.shop_id = :shopId AND o.created_at BETWEEN :startDate AND :endDate GROUP BY DATE_TRUNC('day', o.created_at) ORDER BY day", nativeQuery = true)
+    List<Object[]> getDailyOrderCountByShop(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
     // Monthly revenue across all shops
     @Query(value = "SELECT DATE_TRUNC('month', o.created_at) as month, COALESCE(SUM(o.total_amount), 0) as revenue FROM orders o WHERE o.created_at BETWEEN :startDate AND :endDate AND (o.payment_status = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY DATE_TRUNC('month', o.created_at) ORDER BY month", nativeQuery = true)
     List<Object[]> getMonthlyRevenueAll(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);

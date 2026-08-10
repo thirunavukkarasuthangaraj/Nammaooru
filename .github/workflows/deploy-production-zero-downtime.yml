@@ -12,6 +12,12 @@ on:
       - 'LICENSE'
   workflow_dispatch:
 
+# Never run two production deploys at the same time - overlapping container
+# swaps took the site down on 2026-08-10. Later runs queue and wait.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 env:
   SERVER_HOST: ${{ secrets.HETZNER_HOST }}
   SERVER_USER: ${{ secrets.HETZNER_USER }}

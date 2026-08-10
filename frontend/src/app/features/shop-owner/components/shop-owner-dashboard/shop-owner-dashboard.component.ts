@@ -5,6 +5,7 @@ import { ShopService } from '@core/services/shop.service';
 import { SoundService } from '@core/services/sound.service';
 import { OrderService } from '@core/services/order.service';
 import { OfflineStorageService, CachedDashboardStats } from '@core/services/offline-storage.service';
+import { AnalyticsService } from '@core/services/analytics.service';
 import { User } from '@core/models/auth.model';
 import { Observable, interval, Subscription } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
@@ -123,6 +124,54 @@ interface DashboardStats {
                   </div>
                   <span class="trend neutral">
                     <mat-icon>calendar_today</mat-icon> Monthly
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Revenue Trend (this shop only) -->
+            <div class="card" *ngIf="revenueTrend.length">
+              <div class="card-header">
+                <h2 class="card-title">Revenue Trend</h2>
+                <span class="period-badge">Last 7 Days</span>
+              </div>
+              <div class="trend-chart">
+                <div class="trend-row" *ngFor="let item of revenueTrend">
+                  <span class="trend-label">{{ item.period }}</span>
+                  <div class="trend-track">
+                    <div class="trend-fill revenue" [style.width.%]="revenueBarWidth(item.revenue)"></div>
+                  </div>
+                  <span class="trend-value">₹{{ formatCurrency(item.revenue) }}</span>
+                  <span class="trend-growth"
+                        *ngIf="item.growthPercentage != null"
+                        [class.up]="item.growthPercentage > 0"
+                        [class.down]="item.growthPercentage < 0">
+                    {{ item.growthPercentage > 0 ? '▲' : (item.growthPercentage < 0 ? '▼' : '') }}
+                    {{ absRound(item.growthPercentage) }}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Orders Trend (this shop only) -->
+            <div class="card" *ngIf="ordersTrend.length">
+              <div class="card-header">
+                <h2 class="card-title">Orders Trend</h2>
+                <span class="period-badge">Last 7 Days</span>
+              </div>
+              <div class="trend-chart">
+                <div class="trend-row" *ngFor="let item of ordersTrend">
+                  <span class="trend-label">{{ item.period }}</span>
+                  <div class="trend-track">
+                    <div class="trend-fill orders" [style.width.%]="ordersBarWidth(item.orderCount)"></div>
+                  </div>
+                  <span class="trend-value">{{ item.orderCount }} orders</span>
+                  <span class="trend-growth"
+                        *ngIf="item.growthPercentage != null"
+                        [class.up]="item.growthPercentage > 0"
+                        [class.down]="item.growthPercentage < 0">
+                    {{ item.growthPercentage > 0 ? '▲' : (item.growthPercentage < 0 ? '▼' : '') }}
+                    {{ absRound(item.growthPercentage) }}%
                   </span>
                 </div>
               </div>
@@ -309,6 +358,67 @@ interface DashboardStats {
       justify-content: center;
       padding: 80px;
     }
+
+    /* Daily trend bar charts (shop-scoped) */
+    .trend-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 4px 0;
+    }
+
+    .trend-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 110px 64px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .trend-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .trend-track {
+      background: #f1f5f9;
+      border-radius: 6px;
+      height: 14px;
+      overflow: hidden;
+    }
+
+    .trend-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.4s ease;
+    }
+
+    .trend-fill.revenue {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    .trend-fill.orders {
+      background: linear-gradient(90deg, #60a5fa, #2563eb);
+    }
+
+    .trend-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .trend-growth {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .trend-growth.up { color: #16a34a; }
+    .trend-growth.down { color: #dc2626; }
 
     /* Stats Grid - Top Row */
     .stats-grid {
@@ -795,6 +905,10 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     outOfStockProducts: 0,
   };
 
+  // Daily trends for THIS shop only (loaded via the shop-scoped analytics API)
+  revenueTrend: any[] = [];
+  ordersTrend: any[] = [];
+
   private refreshSubscription?: Subscription;
   private previousOrderCount = 0;
 
@@ -804,6 +918,7 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     private soundService: SoundService,
     private orderService: OrderService,
     private offlineStorage: OfflineStorageService,
+    private analyticsService: AnalyticsService,
     private http: HttpClient,
     private router: Router
   ) {
@@ -839,7 +954,46 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
     this.loadCachedStats();
     this.loadDashboardData();
+    this.loadTrends();
     this.startAutoRefresh();
+  }
+
+  /** Last-7-day revenue/orders bars, scoped to this shop by the backend */
+  private loadTrends(): void {
+    const shopId = localStorage.getItem('current_shop_id');
+    if (!shopId || this.isOffline) return;
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+
+    this.analyticsService.getShopDashboardMetrics(parseInt(shopId, 10), start, end).subscribe({
+      next: (metrics) => {
+        this.revenueTrend = metrics?.revenueData || [];
+        this.ordersTrend = metrics?.orderData || [];
+      },
+      error: (err) => {
+        console.warn('Failed to load shop trends:', err);
+        this.revenueTrend = [];
+        this.ordersTrend = [];
+      }
+    });
+  }
+
+  revenueBarWidth(value: number): number {
+    const max = Math.max(...this.revenueTrend.map(i => Number(i.revenue) || 0), 1);
+    return Math.max(((Number(value) || 0) * 100) / max, 2);
+  }
+
+  ordersBarWidth(value: number): number {
+    const max = Math.max(...this.ordersTrend.map(i => Number(i.orderCount) || 0), 1);
+    return Math.max(((Number(value) || 0) * 100) / max, 2);
+  }
+
+  absRound(value: number): number {
+    return Math.abs(Math.round(value || 0));
   }
 
   private handleOnline(): void {
@@ -1028,6 +1182,7 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
   refreshDashboard(): void {
     this.loadDashboardData();
+    this.loadTrends();
   }
 
   formatCurrency(amount: number): string {
