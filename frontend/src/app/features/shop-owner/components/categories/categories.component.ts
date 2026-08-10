@@ -202,7 +202,7 @@ interface Category {
       <div class="modal-overlay" *ngIf="showQuickAdd" (click)="closeQuickAdd()"></div>
       <mat-card class="quick-add-card" *ngIf="showQuickAdd">
         <mat-card-header>
-          <mat-card-title>Add New Category</mat-card-title>
+          <mat-card-title>{{ editingCategory ? 'Edit Category' : 'Add New Category' }}</mat-card-title>
           <button mat-icon-button (click)="closeQuickAdd()">
             <mat-icon>close</mat-icon>
           </button>
@@ -1252,6 +1252,8 @@ export class CategoriesComponent implements OnInit {
   loading = false;
   // Shop owner's products that have no category (shown next to the Products stat)
   uncategorizedCount = 0;
+  // Category being edited in the modal (null = add mode)
+  editingCategory: Category | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -1340,11 +1342,13 @@ export class CategoriesComponent implements OnInit {
 
 
   openAddDialog(): void {
+    this.editingCategory = null;
     this.showQuickAdd = true;
   }
 
   closeQuickAdd(): void {
     this.showQuickAdd = false;
+    this.editingCategory = null;
     this.quickAddForm.reset({
       icon: 'shopping_basket',
       color: '#10b981'
@@ -1356,13 +1360,34 @@ export class CategoriesComponent implements OnInit {
     if (this.quickAddForm.valid) {
       const formData = this.quickAddForm.value;
 
-      // If there's an image, upload it first
-      if (this.selectedImageFile) {
-        this.uploadCategoryWithImage(formData);
+      if (this.editingCategory) {
+        this.saveCategoryEdit(this.editingCategory, formData);
       } else {
-        this.createCategory(formData);
+        // Create always goes through the API (with or without an image)
+        this.uploadCategoryWithImage(formData);
       }
     }
+  }
+
+  private saveCategoryEdit(category: Category, formData: any): void {
+    this.loading = true;
+    this.categoryService.updateCategory(category.id, {
+      name: formData.name,
+      description: formData.description || ''
+    } as any).subscribe({
+      next: (response: any) => {
+        category.name = response.name;
+        category.description = response.description || '';
+        this.loading = false;
+        this.closeQuickAdd();
+        this.swal.success('Saved!', 'Category updated successfully.');
+      },
+      error: (error) => {
+        this.loading = false;
+        const message = error?.error?.message || error?.message || 'Failed to update category';
+        this.swal.error('Update Failed', message);
+      }
+    });
   }
 
   private uploadCategoryWithImage(categoryData: any): void {
@@ -1400,29 +1425,6 @@ export class CategoriesComponent implements OnInit {
         this.loading = false;
         this.swal.error('Error', 'Failed to create category. Please try again.');
       }
-    });
-  }
-
-  private createCategory(categoryData: any): void {
-    const newCategory: Category = {
-      id: this.categories.length + 1,
-      name: categoryData.name,
-      description: categoryData.description || `Products related to ${categoryData.name}`,
-      productCount: 0,
-      isActive: true,
-      color: categoryData.color,
-      icon: categoryData.icon,
-      createdAt: new Date()
-    };
-
-    this.categories.unshift(newCategory);
-    this.closeQuickAdd();
-
-    this.snackBar.open('Category added successfully!', 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['success-snackbar']
     });
   }
 
@@ -1496,8 +1498,12 @@ export class CategoriesComponent implements OnInit {
   }
 
   editCategory(category: Category): void {
-    console.log('Edit category:', category);
-    // Open edit dialog
+    this.editingCategory = category;
+    this.quickAddForm.patchValue({
+      name: category.name,
+      description: category.description || ''
+    });
+    this.showQuickAdd = true;
   }
 
   viewProducts(category: Category): void {
@@ -1506,22 +1512,25 @@ export class CategoriesComponent implements OnInit {
   }
 
   duplicateCategory(category: Category): void {
-    const duplicated: Category = {
-      ...category,
-      id: this.categories.length + 1,
+    // Create the copy through the API so it survives a refresh
+    this.uploadCategoryWithImage({
       name: `${category.name} (Copy)`,
-      productCount: 0,
-      createdAt: new Date()
-    };
-
-    this.categories.unshift(duplicated);
-    this.snackBar.open('Category duplicated successfully', 'Close', { duration: 3000 });
+      description: category.description || ''
+    });
   }
 
   toggleCategoryStatus(category: Category): void {
-    category.isActive = !category.isActive;
-    const status = category.isActive ? 'activated' : 'deactivated';
-    this.swal.toast(`Category ${status} successfully`, 'success');
+    const newStatus = !category.isActive;
+    this.categoryService.updateCategoryStatus(category.id, newStatus).subscribe({
+      next: () => {
+        category.isActive = newStatus;
+        this.swal.toast(`Category ${newStatus ? 'activated' : 'deactivated'} successfully`, 'success');
+      },
+      error: (error) => {
+        const message = error?.error?.message || error?.message || 'Failed to update category status';
+        this.swal.error('Update Failed', message);
+      }
+    });
   }
 
   deleteCategory(category: Category): void {
@@ -1532,9 +1541,16 @@ export class CategoriesComponent implements OnInit {
 
     this.swal.confirmDelete(category.name).then((result) => {
       if (result.isConfirmed) {
-        const index = this.categories.indexOf(category);
-        this.categories.splice(index, 1);
-        this.swal.success('Deleted!', `Category "${category.name}" has been deleted.`);
+        this.categoryService.deleteCategory(category.id).subscribe({
+          next: () => {
+            this.categories = this.categories.filter(c => c.id !== category.id);
+            this.swal.success('Deleted!', `Category "${category.name}" has been deleted.`);
+          },
+          error: (error) => {
+            const message = error?.error?.message || error?.message || 'Failed to delete category';
+            this.swal.error('Delete Failed', message);
+          }
+        });
       }
     });
   }

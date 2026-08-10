@@ -326,8 +326,10 @@ public class BulkProductImportService {
                     .description(trimmedName)
                     .isActive(true)
                     .sortOrder(0)
-                    .createdBy("BULK_IMPORT")
-                    .updatedBy("BULK_IMPORT")
+                    // Stamp the importing user so the category is scoped to them,
+                    // not leaked to every shop as a pseudo-global "BULK_IMPORT" one
+                    .createdBy(getCurrentUsernameOrBulk())
+                    .updatedBy(getCurrentUsernameOrBulk())
                     .build();
             ProductCategory saved = productCategoryRepository.save(newCategory);
             log.info("Category auto-created with ID: {}", saved.getId());
@@ -356,8 +358,8 @@ public class BulkProductImportService {
                     .description("Uncategorized products")
                     .isActive(true)
                     .sortOrder(999)
-                    .createdBy("BULK_IMPORT")
-                    .updatedBy("BULK_IMPORT")
+                    .createdBy(getCurrentUsernameOrBulk())
+                    .updatedBy(getCurrentUsernameOrBulk())
                     .build();
             ProductCategory saved = productCategoryRepository.save(newCategory);
             log.info("Default 'Uncategorized' category created with ID: {}", saved.getId());
@@ -814,5 +816,14 @@ public class BulkProductImportService {
             }
         }
         return true;
+    }
+
+    /** The importing user's username, or BULK_IMPORT when run without an authenticated context */
+    private String getCurrentUsernameOrBulk() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return (auth != null && auth.getName() != null && !auth.getName().isBlank())
+                ? auth.getName()
+                : "BULK_IMPORT";
     }
 }
