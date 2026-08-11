@@ -75,7 +75,7 @@
         </div>
 
         <!-- Cart Products Section - Show products in cart when not searching -->
-        <div class="products-grid quick-bill-grid" *ngIf="!searchTerm && cart.length > 0 && !isLoading">
+        <div class="products-grid quick-bill-grid" *ngIf="!browseProductsByDefault && !searchTerm && cart.length > 0 && !isLoading">
           <div class="section-header">
             <mat-icon>shopping_cart</mat-icon>
             <span>Products in Cart ({{ cart.length }})</span>

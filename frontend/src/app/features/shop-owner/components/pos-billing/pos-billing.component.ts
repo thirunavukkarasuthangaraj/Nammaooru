@@ -431,6 +431,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       case 'MEDICINE': this.posProfile = 'medical'; break;
       default: this.posProfile = 'general';
     }
+    if (this.products.length > 0) this.filterProducts(this.searchTerm);
   }
 
   ngOnInit(): void {
@@ -1450,7 +1451,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private filterProducts(term: string): void {
     // In scanner mode, show empty list when no search term
     if (!term || term.length < 2) {
-      if (this.posMode === 'scanner') {
+      if (this.browseProductsByDefault) {
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      } else if (this.posMode === 'scanner') {
         this.filteredProducts = [];
       } else {
         this.filteredProducts = this.sortProductsWithCartFirst(this.products);
@@ -1609,7 +1612,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // In Quick Bill mode, clear search to show empty state (user scans next item)
     // In Browse mode, keep showing all products sorted with cart items first
-    if (this.activeTab === 'quick') {
+    if (this.activeTab === 'quick' && !this.browseProductsByDefault) {
       this.searchTerm = '';
       this.filteredProducts = [];
     } else {
