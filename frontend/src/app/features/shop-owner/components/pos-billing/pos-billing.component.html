@@ -426,13 +426,26 @@
             <span class="discount-value">- ₹{{ totalDiscount | number:'1.0-0' }}</span>
           </div>
           <div class="total-row bill-discount-row">
-            <span>Extra Discount (₹)</span>
-            <input type="number"
-                   class="bill-discount-input"
-                   min="0"
-                   [(ngModel)]="billDiscount"
-                   (ngModelChange)="onBillDiscountChange()"
-                   placeholder="0">
+            <span>Extra Discount</span>
+            <div class="bill-discount-control">
+              <div class="discount-type-toggle" aria-label="Discount type">
+                <button type="button" [class.active]="billDiscountMode === 'percentage'"
+                        (click)="setBillDiscountMode('percentage')">%</button>
+                <button type="button" [class.active]="billDiscountMode === 'amount'"
+                        (click)="setBillDiscountMode('amount')">₹</button>
+              </div>
+              <div class="discount-value-input">
+                <input type="number"
+                       class="bill-discount-input"
+                       min="0"
+                       [max]="billDiscountMode === 'percentage' ? 100 : subtotal + taxAmount"
+                       step="0.01"
+                       [(ngModel)]="billDiscountInput"
+                       (ngModelChange)="onBillDiscountChange()"
+                       placeholder="0">
+                <span>{{ billDiscountMode === 'percentage' ? '%' : '₹' }}</span>
+              </div>
+            </div>
           </div>
           <div class="total-row grand-total">
             <span>TOTAL</span>

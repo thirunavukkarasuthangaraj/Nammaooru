@@ -190,6 +190,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   totalMrp: number = 0;  // Total MRP of all items
   totalDiscount: number = 0;  // Total discount (MRP - selling price)
   billDiscount: number = 0;  // Extra discount the owner gives on the whole bill (₹)
+  billDiscountInput: number = 0;
+  billDiscountMode: 'amount' | 'percentage' = 'amount';
 
   // Payment
   selectedPaymentMethod: string = 'CASH_ON_DELIVERY';
@@ -1931,6 +1933,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private resetCart(): void {
     this.cart = [];
     this.billDiscount = 0;
+    this.billDiscountInput = 0;
+    this.billDiscountMode = 'amount';
     this.calculateTotals();
     this.customerName = '';
     this.customerPhone = '';
@@ -1960,18 +1964,32 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Ensure discount is never negative (when price > MRP)
     if (this.totalDiscount < 0) this.totalDiscount = 0;
     this.taxAmount = this.subtotal * this.taxRate;
-    // Owner-given bill discount: never negative, never more than the bill itself
-    if (!this.billDiscount || this.billDiscount < 0) this.billDiscount = 0;
-    if (this.billDiscount > this.subtotal + this.taxAmount) {
-      this.billDiscount = this.subtotal + this.taxAmount;
+    const discountBase = this.subtotal + this.taxAmount;
+    const enteredDiscount = Math.max(0, Number(this.billDiscountInput) || 0);
+    if (this.billDiscountMode === 'percentage') {
+      this.billDiscountInput = Math.min(100, enteredDiscount);
+      this.billDiscount = Math.round(discountBase * this.billDiscountInput) / 100;
+    } else {
+      this.billDiscountInput = Math.min(discountBase, enteredDiscount);
+      this.billDiscount = this.billDiscountInput;
     }
-    this.totalAmount = this.subtotal + this.taxAmount - this.billDiscount;
+    this.totalAmount = discountBase - this.billDiscount;
 
     this.saveCartBackup();
   }
 
   /** Bill discount input changed - re-clamp and recalculate the total */
   onBillDiscountChange(): void {
+    this.calculateTotals();
+  }
+
+  setBillDiscountMode(mode: 'amount' | 'percentage'): void {
+    if (mode === this.billDiscountMode) return;
+    const discountBase = this.subtotal + this.taxAmount;
+    this.billDiscountInput = mode === 'percentage' && discountBase > 0
+      ? Math.round((this.billDiscount / discountBase) * 10000) / 100
+      : this.billDiscount;
+    this.billDiscountMode = mode;
     this.calculateTotals();
   }
 
@@ -2001,6 +2019,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         customerEmail: this.customerEmail,
         orderNotes: this.orderNotes,
         billDiscount: this.billDiscount,
+        billDiscountInput: this.billDiscountInput,
+        billDiscountMode: this.billDiscountMode,
         savedAt: Date.now()
       }));
     } catch (e) {
@@ -2038,6 +2058,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.customerEmail = backup.customerEmail || '';
       this.orderNotes = backup.orderNotes || '';
       this.billDiscount = backup.billDiscount || 0;
+      this.billDiscountMode = backup.billDiscountMode === 'percentage' ? 'percentage' : 'amount';
+      this.billDiscountInput = backup.billDiscountInput ?? this.billDiscount;
       this.calculateTotals();
 
       this.swal.toast(`Restored unsaved bill (${this.cart.length} item${this.cart.length > 1 ? 's' : ''})`, 'info');

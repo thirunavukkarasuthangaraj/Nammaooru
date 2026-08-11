@@ -243,6 +243,17 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
   flex: 1; min-height: 0; align-content: start;
 }
 @media(max-width:760px){.profile-workbench{align-items:flex-start;flex-direction:column}.profile-filters{justify-content:flex-start}}
+
+.bill-discount-control { display: flex; align-items: center; gap: 6px;
+  .discount-type-toggle { display: flex; padding: 2px; border: 1px solid $border; border-radius: 7px; background: white;
+    button { width: 28px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: $text-secondary; font-weight: 700; cursor: pointer; }
+    button.active { background: $accent; color: white; }
+  }
+  .discount-value-input { display: flex; align-items: center; padding: 0 6px; border: 1px solid $border; border-radius: 6px; background: white; color: $success; font-weight: 700;
+    &:focus-within { border-color: $accent; }
+    .bill-discount-input { width: 62px !important; padding: 4px 2px !important; border: 0 !important; background: transparent; outline: none; }
+  }
+}
 .custom-fields-list .custom-field-row{display:flex;align-items:center;gap:6px;padding:6px;background:#f8fafc;border-radius:6px;margin-bottom:6px;.field-label-input,.field-value-input{flex:1;padding:6px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px}.field-label-input{max-width:100px}.field-position-select{padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:10px}}
 .section-order-list .section-order-item{display:flex;align-items:center;gap:6px;padding:8px;background:#f8fafc;border-radius:6px;margin-bottom:4px;.drag-handle{color:#94a3b8}.section-label{flex:1;font-size:12px;color:#475569}.order-buttons{display:flex;gap:2px;.order-btn{width:26px;height:26px;mat-icon{font-size:14px}&:disabled{opacity:.3}}}}
 
