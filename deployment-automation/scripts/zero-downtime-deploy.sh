@@ -119,7 +119,7 @@ fi
 
 # Step 6: Update Nginx to point to new backend's dynamic port
 log_step "Updating Nginx to new backend..."
-NEW_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
+NEW_PORT=$(docker port "$NEW_BACKEND" 8080 | tail -n 1 | awk -F: '{print $NF}')
 log_info "New backend port: $NEW_PORT"
 
 sudo sed -E -i "s|proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;|proxy_pass http://127.0.0.1:$NEW_PORT;|" $NGINX_CONFIG

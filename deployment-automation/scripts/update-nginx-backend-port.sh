@@ -7,12 +7,11 @@ echo "🔄 Ensuring Nginx is pointing to latest backend port..."
 
 NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
 
-# Choose the newest healthy backend. Docker's default list order is not a
-# deployment contract and previously pointed Nginx back to a stale slot.
+# Always target the newest running slot. Falling back to an older healthy slot
+# while the new container is still starting can undo a successful deployment.
 BACKEND_CONTAINER=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | while read -r name; do
     created=$(docker inspect "$name" --format '{{.Created}}')
-    health=$(docker inspect "$name" --format '{{.State.Health.Status}}' 2>/dev/null || true)
-    [ "$health" = "healthy" ] && echo "$created $name"
+    echo "$created $name"
 done | sort -r | head -n 1 | cut -d' ' -f2)
 
 if [ -z "$BACKEND_CONTAINER" ]; then
@@ -20,7 +19,21 @@ if [ -z "$BACKEND_CONTAINER" ]; then
     exit 1
 fi
 
-BACKEND_PORT=$(docker port $BACKEND_CONTAINER 8080 | cut -d':' -f2)
+for attempt in $(seq 1 18); do
+    health=$(docker inspect "$BACKEND_CONTAINER" --format '{{.State.Health.Status}}' 2>/dev/null || true)
+    [ "$health" = "healthy" ] && break
+    echo "Waiting for newest backend to become healthy ($attempt/18)..."
+    sleep 5
+done
+
+if [ "$health" != "healthy" ]; then
+    echo "Newest backend did not become healthy; leaving Nginx unchanged."
+    exit 1
+fi
+
+# docker port can emit both IPv4 and IPv6 mappings. Read exactly one line so
+# the replacement never receives a newline-separated pair of port numbers.
+BACKEND_PORT=$(docker port "$BACKEND_CONTAINER" 8080 | tail -n 1 | awk -F: '{print $NF}')
 
 if [ -z "$BACKEND_PORT" ]; then
     echo "❌ Could not detect backend port!"
