@@ -6,6 +6,11 @@ FROM eclipse-temurin:17-jre-alpine
 # Health checks plus production-grade multilingual receipt shaping.
 RUN apk add --no-cache curl fontconfig font-noto font-noto-extra font-noto-cjk pango-tools
 
+# Pango/Fontconfig cannot discover fonts stored inside the Spring Boot JAR.
+# Install the bundled Tamil face as a real system font for receipt shaping.
+COPY src/main/resources/fonts/NotoSansTamil-Regular.ttf /usr/share/fonts/noto/NotoSansTamil-Regular.ttf
+RUN fc-cache -f
+
 # Create app user for security
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup

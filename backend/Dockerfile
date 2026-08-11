@@ -26,6 +26,9 @@ FROM eclipse-temurin:17-jre-alpine
 # other Indic scripts, Arabic, CJK, Cyrillic and Latin without hard-coded data.
 RUN apk add --no-cache curl fontconfig font-noto font-noto-extra font-noto-cjk pango-tools
 
+COPY --from=build /app/src/main/resources/fonts/NotoSansTamil-Regular.ttf /usr/share/fonts/noto/NotoSansTamil-Regular.ttf
+RUN fc-cache -f
+
 # Create app user for security
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup

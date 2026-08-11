@@ -124,7 +124,7 @@ jobs:
         host: ${{ secrets.HETZNER_HOST }}
         username: ${{ secrets.HETZNER_USER }}
         key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
-        source: "backend/target/app.jar,backend/Dockerfile.prebuilt,backend/.dockerignore,docker-compose.yml"
+        source: "backend/target/app.jar,backend/Dockerfile.prebuilt,backend/.dockerignore,backend/src/main/resources/fonts/NotoSansTamil-Regular.ttf,docker-compose.yml"
         target: "/opt/shop-management/"
         strip_components: 0
         overwrite: true
