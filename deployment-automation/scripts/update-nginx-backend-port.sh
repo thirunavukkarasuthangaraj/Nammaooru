@@ -5,7 +5,9 @@ set -e
 
 echo "🔄 Ensuring Nginx is pointing to latest backend port..."
 
-NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
+# This server loads a regular file from sites-enabled (not a symlink to
+# sites-available), so update the file Nginx actually includes.
+NGINX_CONFIG="/etc/nginx/sites-enabled/api.nammaoorudelivary.in"
 
 # Always target the newest running slot. Falling back to an older healthy slot
 # while the new container is still starting can undo a successful deployment.
@@ -43,7 +45,10 @@ fi
 echo "✅ Found backend on port: $BACKEND_PORT (container: $BACKEND_CONTAINER)"
 
 # Update Nginx configuration
-sudo sed -E -i "s|proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;|proxy_pass http://127.0.0.1:$BACKEND_PORT;|" $NGINX_CONFIG
+# Use a delimiter that is not also the ERE alternation operator. Using `|` as
+# both delimiter and `(localhost|127...)` alternation made sed parse the command
+# incorrectly and left Nginx pointing at a removed container after deployment.
+sudo sed -E -i "s#proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;#proxy_pass http://127.0.0.1:$BACKEND_PORT;#" "$NGINX_CONFIG"
 
 # Test and reload Nginx
 if sudo nginx -t; then

@@ -9,7 +9,7 @@ echo "🚀 Starting Zero Downtime Deployment..."
 # Configuration
 PROJECT_DIR="/opt/shop-management"
 COMPOSE_FILE="docker-compose.yml"
-NGINX_CONFIG="/etc/nginx/sites-available/api.nammaoorudelivary.in"
+NGINX_CONFIG="/etc/nginx/sites-enabled/api.nammaoorudelivary.in"
 API_URL="https://api.nammaoorudelivary.in/api/version"
 
 # Colors
@@ -122,7 +122,7 @@ log_step "Updating Nginx to new backend..."
 NEW_PORT=$(docker port "$NEW_BACKEND" 8080 | tail -n 1 | awk -F: '{print $NF}')
 log_info "New backend port: $NEW_PORT"
 
-sudo sed -E -i "s|proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;|proxy_pass http://127.0.0.1:$NEW_PORT;|" $NGINX_CONFIG
+sudo sed -E -i "s#proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;#proxy_pass http://127.0.0.1:$NEW_PORT;#" "$NGINX_CONFIG"
 
 if sudo nginx -t; then
     sudo systemctl reload nginx
