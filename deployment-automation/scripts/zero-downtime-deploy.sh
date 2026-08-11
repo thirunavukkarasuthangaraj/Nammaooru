@@ -36,7 +36,22 @@ DOCKER_BUILDKIT=1 docker-compose -f $COMPOSE_FILE build backend
 log_info "Backend image built successfully"
 
 # Step 2: Get current backend container
-OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
+# Identify the container Nginx is actually serving, not whichever name Docker
+# happens to list first.
+ACTIVE_PORT=$(sudo grep -oE 'proxy_pass http://localhost:[0-9]+' "$NGINX_CONFIG" | tail -1 | grep -oE '[0-9]+$' || true)
+OLD_BACKEND=""
+if [ -n "$ACTIVE_PORT" ]; then
+    for candidate in $(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}"); do
+        candidate_port=$(docker port "$candidate" 8080 2>/dev/null | tail -1 | cut -d':' -f2)
+        if [ "$candidate_port" = "$ACTIVE_PORT" ]; then
+            OLD_BACKEND="$candidate"
+            break
+        fi
+    done
+fi
+if [ -z "$OLD_BACKEND" ]; then
+    OLD_BACKEND=$(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}" | head -n 1)
+fi
 if [ -n "$OLD_BACKEND" ]; then
     log_info "Current backend container: $OLD_BACKEND"
 else
@@ -44,6 +59,17 @@ else
 fi
 
 # Step 3: Start new backend alongside old one (dynamic port)
+# A previous failed/interrupted rotation can leave a second stale container.
+# Remove every non-active slot first; otherwise --scale=2 --no-recreate simply
+# reuses that old container and falsely reports the new JAR as deployed.
+if [ -n "$OLD_BACKEND" ]; then
+    STALE_BACKENDS=$(docker ps -a --filter "label=com.shop.service=backend" --format "{{.Names}}" | grep -v "^${OLD_BACKEND}$" || true)
+    if [ -n "$STALE_BACKENDS" ]; then
+        log_warn "Removing stale backend slot(s): $STALE_BACKENDS"
+        echo "$STALE_BACKENDS" | xargs -r docker rm -f
+    fi
+fi
+
 log_step "Starting new backend container..."
 docker-compose -f $COMPOSE_FILE up -d --no-deps --scale backend=2 --no-recreate backend
 log_info "New backend container started"
@@ -58,6 +84,11 @@ if [ -z "$NEW_BACKEND" ]; then
 fi
 
 log_info "New backend container: $NEW_BACKEND"
+
+if [ -n "$OLD_BACKEND" ] && [ "$NEW_BACKEND" = "$OLD_BACKEND" ]; then
+    log_error "Deployment did not create a distinct backend container"
+    exit 1
+fi
 
 # Step 5: Wait for new backend to be healthy
 log_step "Waiting for new backend to be healthy..."
