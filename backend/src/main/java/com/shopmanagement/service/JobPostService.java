@@ -190,6 +190,7 @@ public class JobPostService {
         if (!post.getSellerUserId().equals(user.getId())) {
             throw new RuntimeException("Not authorized to delete this post");
         }
+        deletePostImages(post);
         post.setStatus(PostStatus.DELETED);
         jobPostRepository.save(post);
     }
@@ -198,8 +199,19 @@ public class JobPostService {
     public void adminDelete(Long postId) {
         JobPost post = jobPostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Job post not found"));
+        deletePostImages(post);
         post.setStatus(PostStatus.DELETED);
         jobPostRepository.save(post);
+    }
+
+    private void deletePostImages(JobPost post) {
+        if (post.getImageUrls() != null && !post.getImageUrls().isEmpty()) {
+            for (String url : post.getImageUrls().split(",")) {
+                if (!url.trim().isEmpty()) {
+                    fileUploadService.deleteFile(url.trim());
+                }
+            }
+        }
     }
 
     @Transactional
