@@ -63,31 +63,31 @@
         <div class="card-heading"><span class="step">03</span><div><h2>Visible information</h2><p>Keep the receipt useful without making it noisy.</p></div></div>
         <h3>Header</h3>
         <div class="toggle-grid">
-          <label><mat-slide-toggle [(ngModel)]="settings.showShopName"></mat-slide-toggle>Shop name</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showShopAddress"></mat-slide-toggle>Address</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showShopPhone"></mat-slide-toggle>Phone</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showGstNumber"></mat-slide-toggle>GSTIN</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showFssaiInfo"></mat-slide-toggle>FSSAI</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showDateTime"></mat-slide-toggle>Date and time</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showBillNumber"></mat-slide-toggle>Bill number</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showCustomerDetails"></mat-slide-toggle>Customer details</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showShopName" (ngModelChange)="persistDraft()"></mat-slide-toggle>Shop name</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showShopAddress" (ngModelChange)="persistDraft()"></mat-slide-toggle>Address</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showShopPhone" (ngModelChange)="persistDraft()"></mat-slide-toggle>Phone</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showGstNumber" (ngModelChange)="persistDraft()"></mat-slide-toggle>GSTIN</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showFssaiInfo" (ngModelChange)="persistDraft()"></mat-slide-toggle>FSSAI</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showDateTime" (ngModelChange)="persistDraft()"></mat-slide-toggle>Date and time</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showBillNumber" (ngModelChange)="persistDraft()"></mat-slide-toggle>Bill number</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showCustomerDetails" (ngModelChange)="persistDraft()"></mat-slide-toggle>Customer details</label>
         </div>
         <h3>Items</h3>
         <div class="toggle-grid">
-          <label><mat-slide-toggle [(ngModel)]="settings.showItemSku"></mat-slide-toggle>SKU/code</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showItemBarcode"></mat-slide-toggle>Barcode</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showItemMrp"></mat-slide-toggle>MRP</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showSellingPrice"></mat-slide-toggle>Selling price</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showItemDiscount"></mat-slide-toggle>Item discount</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showItemTax"></mat-slide-toggle>Item tax</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemSku" (ngModelChange)="persistDraft()"></mat-slide-toggle>SKU/code</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemBarcode" (ngModelChange)="persistDraft()"></mat-slide-toggle>Barcode</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemMrp" (ngModelChange)="persistDraft()"></mat-slide-toggle>MRP</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showSellingPrice" (ngModelChange)="persistDraft()"></mat-slide-toggle>Selling price</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemDiscount" (ngModelChange)="persistDraft()"></mat-slide-toggle>Item discount</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemTax" (ngModelChange)="persistDraft()"></mat-slide-toggle>Item tax</label>
         </div>
         <h3>Totals and footer</h3>
         <div class="toggle-grid">
-          <label><mat-slide-toggle [(ngModel)]="settings.showSubtotal"></mat-slide-toggle>Subtotal</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showTotalSavings"></mat-slide-toggle>Total savings</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showTaxBreakdown"></mat-slide-toggle>Tax breakdown</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showPaymentMethod"></mat-slide-toggle>Payment method</label>
-          <label><mat-slide-toggle [(ngModel)]="settings.showThankYouMessage"></mat-slide-toggle>Thank-you message</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showSubtotal" (ngModelChange)="persistDraft()"></mat-slide-toggle>Subtotal</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showTotalSavings" (ngModelChange)="persistDraft()"></mat-slide-toggle>Total savings</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showTaxBreakdown" (ngModelChange)="persistDraft()"></mat-slide-toggle>Tax breakdown</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showPaymentMethod" (ngModelChange)="persistDraft()"></mat-slide-toggle>Payment method</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showThankYouMessage" (ngModelChange)="persistDraft()"></mat-slide-toggle>Thank-you message</label>
         </div>
       </section>
 
@@ -95,15 +95,15 @@
         <div>
           <div class="card-heading compact"><span class="step">04</span><div><h2>Language</h2><p>Choose at least one.</p></div></div>
           <div class="toggle-grid one-column">
-            <label><mat-slide-toggle [(ngModel)]="settings.showEnglish"></mat-slide-toggle>English</label>
-            <label><mat-slide-toggle [(ngModel)]="settings.showTamil"></mat-slide-toggle>Tamil (தமிழ்)</label>
+            <label><mat-slide-toggle [(ngModel)]="settings.showEnglish" (ngModelChange)="persistDraft()"></mat-slide-toggle>English</label>
+            <label><mat-slide-toggle [(ngModel)]="settings.showTamil" (ngModelChange)="persistDraft()"></mat-slide-toggle>Tamil (தமிழ்)</label>
           </div>
         </div>
         <div>
           <div class="card-heading compact"><span class="step">05</span><div><h2>Delivery</h2><p>Send after printing.</p></div></div>
           <div class="toggle-grid one-column">
-            <label><mat-slide-toggle [(ngModel)]="settings.autoSendWhatsAppOnPrint"></mat-slide-toggle>Auto-send on WhatsApp</label>
-            <label><mat-slide-toggle [(ngModel)]="settings.autoSendEmailOnPrint"></mat-slide-toggle>Auto-send by email</label>
+            <label><mat-slide-toggle [(ngModel)]="settings.autoSendWhatsAppOnPrint" (ngModelChange)="persistDraft()"></mat-slide-toggle>Auto-send on WhatsApp</label>
+            <label><mat-slide-toggle [(ngModel)]="settings.autoSendEmailOnPrint" (ngModelChange)="persistDraft()"></mat-slide-toggle>Auto-send by email</label>
           </div>
         </div>
       </section>
@@ -113,13 +113,13 @@
         <div class="form-grid">
           <label class="wide">UPI ID<input [(ngModel)]="settings.upiId" placeholder="shopname@ybl"></label>
         </div>
-        <div class="toggle-grid one-column"><label><mat-slide-toggle [(ngModel)]="settings.showUpiQrCode"></mat-slide-toggle>Show UPI QR code</label></div>
+        <div class="toggle-grid one-column"><label><mat-slide-toggle [(ngModel)]="settings.showUpiQrCode" (ngModelChange)="persistDraft()"></mat-slide-toggle>Show UPI QR code</label></div>
       </section>
 
       <section class="settings-card">
         <div class="card-heading"><span class="step">07</span><div><h2>Custom fields</h2><p>Add licence, registration or policy details.</p></div></div>
         <div class="custom-row" *ngFor="let field of settings.customFields; let i=index; trackBy: trackByIndex">
-          <mat-slide-toggle [(ngModel)]="field.enabled"></mat-slide-toggle>
+          <mat-slide-toggle [(ngModel)]="field.enabled" (ngModelChange)="persistDraft()"></mat-slide-toggle>
           <input [(ngModel)]="field.label" placeholder="Label">
           <input [(ngModel)]="field.value" placeholder="Value">
           <select [(ngModel)]="field.position"><option value="header">Header</option><option value="footer">Footer</option></select>

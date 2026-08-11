@@ -2796,7 +2796,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         ${bs.showSubtotal ? `<div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
           <span style="font-weight: 600;">Items: ${this.cart.length} (Qty: ${this.cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
-          <span style="font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
+          <span style="font-weight: 700;">₹${this.subtotal.toFixed(0)}</span>
         </div>` : ''}
 
         ${bs.showTotalSavings && this.totalDiscount > 0 ? `
