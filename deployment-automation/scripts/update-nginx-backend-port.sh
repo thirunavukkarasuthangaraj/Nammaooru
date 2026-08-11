@@ -48,7 +48,10 @@ echo "✅ Found backend on port: $BACKEND_PORT (container: $BACKEND_CONTAINER)"
 # Use a delimiter that is not also the ERE alternation operator. Using `|` as
 # both delimiter and `(localhost|127...)` alternation made sed parse the command
 # incorrectly and left Nginx pointing at a removed container after deployment.
-sudo sed -E -i "s#proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;#proxy_pass http://127.0.0.1:$BACKEND_PORT;#" "$NGINX_CONFIG"
+NGINX_TEMP=$(mktemp)
+sed -E "s#proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;#proxy_pass http://127.0.0.1:$BACKEND_PORT;#" "$NGINX_CONFIG" > "$NGINX_TEMP"
+cat "$NGINX_TEMP" > "$NGINX_CONFIG"
+rm -f "$NGINX_TEMP"
 
 # Test and reload Nginx
 if sudo nginx -t; then
