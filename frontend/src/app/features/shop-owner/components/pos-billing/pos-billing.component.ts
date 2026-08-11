@@ -2496,6 +2496,22 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
+   * Escape HTML special characters so user-entered values (product names,
+   * customer name/phone, shop settings, custom fields) can never inject
+   * markup/script into the receipt - this HTML is passed to document.write(),
+   * not rendered through Angular's DOM sanitizer, so it needs manual escaping.
+   */
+  private escapeHtml(value: any): string {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
    * Generate receipt HTML - supports 58mm, 80mm thermal paper and A4
    * Uses billSettings for customization (async for QR code generation)
    */
@@ -2516,8 +2532,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const items = this.cart.map(item => {
-      const englishName = item.product.name || '';
-      const tamilName = item.product.nameTamil || '';
+      const englishName = this.escapeHtml(item.product.name || '');
+      const tamilName = this.escapeHtml(item.product.nameTamil || '');
       const rate = item.unitPrice || 0;
       const mrp = item.mrp || rate;
       // Build name HTML based on receipt language settings from billSettings
@@ -2550,14 +2566,21 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Get shop name: billSettings first, then order, then localStorage, then component
     const storedShopName = localStorage.getItem('shop_name');
-    const shopName = (bs.shopName && bs.shopName.trim()) ||
+    const shopName = this.escapeHtml((bs.shopName && bs.shopName.trim()) ||
                      (order.shopName && order.shopName.trim()) ||
                      (storedShopName && storedShopName.trim()) ||
                      (this.shopName && this.shopName !== 'My Shop' ? this.shopName : null) ||
-                     'Shop';
-    const shopPhone = bs.shopPhone || '';
-    const customerName = this.customerName || '';
-    const customerPhone = this.customerPhone || '';
+                     'Shop');
+    const shopPhone = this.escapeHtml(bs.shopPhone || '');
+    const customerName = this.escapeHtml(this.customerName || '');
+    const customerPhone = this.escapeHtml(this.customerPhone || '');
+    const shopAddress = this.escapeHtml(bs.shopAddress || '');
+    const gstNumber = this.escapeHtml(bs.gstNumber || '');
+    const fssaiNumber = this.escapeHtml(bs.fssaiNumber || '');
+    const fssaiName = this.escapeHtml(bs.fssaiName || '');
+    const footerNote = this.escapeHtml(bs.footerNote || '');
+    const thankYouMessage = this.escapeHtml(bs.thankYouMessage || '');
+    const upiIdEscaped = this.escapeHtml(bs.upiId || '');
 
     // Format date based on billSettings
     const now = new Date();
@@ -2576,9 +2599,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const formattedTime = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
     // Bill number with prefix
+    const orderRef = this.escapeHtml(order.orderNumber || order.offlineOrderId || '');
     const billNumber = bs.billNumberPrefix
-      ? `${bs.billNumberPrefix}${order.orderNumber || order.offlineOrderId}`
-      : `#${order.orderNumber || order.offlineOrderId}`;
+      ? `${this.escapeHtml(bs.billNumberPrefix)}${orderRef}`
+      : `#${orderRef}`;
 
     console.log('Receipt - shopName sources:', {
       billSettings: bs.shopName,
@@ -2596,7 +2620,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Receipt - ${order.orderNumber || order.offlineOrderId}</title>
+        <title>Receipt - ${orderRef}</title>
         <style>
           @page {
             size: ${paperConfig.pageSize};
@@ -2695,13 +2719,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       </head>
       <body>
         ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
-        ${bs.showShopAddress && bs.shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${bs.shopAddress}</div>` : ''}
-        ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">📞 ${shopPhone}</div>` : ''}
-        ${bs.showGstNumber && bs.gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${bs.gstNumber}</div>` : ''}
-        ${bs.showFssaiInfo && bs.fssaiNumber ? `
+        ${bs.showShopAddress && shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${shopAddress}</div>` : ''}
+        ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">Ph: ${shopPhone}</div>` : ''}
+        ${bs.showGstNumber && gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${gstNumber}</div>` : ''}
+        ${bs.showFssaiInfo && fssaiNumber ? `
           <div class="center fssai-info">
-            FSSAI: ${bs.fssaiNumber}
-            ${bs.fssaiName ? `<br>${bs.fssaiName}` : ''}
+            FSSAI: ${fssaiNumber}
+            ${fssaiName ? `<br>${fssaiName}` : ''}
           </div>
         ` : ''}
         ${this.getCustomFieldsHtml('header', Math.max(footerFontSize, 9))}
@@ -2790,7 +2814,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           <img src="${qrCodeDataUrl}"
                alt="UPI QR Code"
                style="width: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; height: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; margin: 4px 0;">
-          <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #000;">${bs.upiId}</div>
+          <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #000;">${upiIdEscaped}</div>
         </div>
         ` : ''}
 
@@ -2798,15 +2822,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         ${this.getCustomFieldsHtml('footer', footerFontSize)}
 
-        ${bs.footerNote ? `
+        ${footerNote ? `
         <div class="center" style="font-size: ${footerFontSize}px; color: #000; font-weight: 600; margin: 4px 0;">
-          ${bs.footerNote}
+          ${footerNote}
         </div>
         ` : ''}
 
         ${bs.showThankYouMessage ? `
         <div class="center footer-text">
-          ${bs.thankYouMessage || 'Thank you for your order!'}<br>
+          ${thankYouMessage || 'Thank you for your order!'}<br>
           Printed: ${new Date().toLocaleString('en-IN')}
         </div>
         ` : ''}
@@ -2917,7 +2941,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     return fields.map(f => `
       <div style="font-size: ${fontSize}px; text-align: center; margin: 2px 0;">
-        <span style="color: #000;">${f.label}:</span> <span style="font-weight: 600;">${f.value}</span>
+        <span style="color: #000;">${this.escapeHtml(f.label)}:</span> <span style="font-weight: 600;">${this.escapeHtml(f.value)}</span>
       </div>
     `).join('');
   }

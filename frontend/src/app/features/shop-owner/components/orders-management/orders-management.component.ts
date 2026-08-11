@@ -1343,12 +1343,28 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.swal.toast(`Receipt sent to printer`, 'success');
   }
 
+  /**
+   * Escape HTML special characters so order/customer/product values (which
+   * can originate from end-user input via the mobile app) can never inject
+   * markup/script into the receipt - this HTML goes through document.write(),
+   * not Angular's DOM sanitizer, so it needs manual escaping.
+   */
+  private escapeHtml(value: any): string {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   generateSmallPrintContent(order: ShopOwnerOrder): string {
     const itemsHtml = order.items.map(item => {
       const unitPrice = item.price || item.unitPrice || 0;
       const totalPrice = item.total || item.totalPrice || (item.quantity * unitPrice) || 0;
-      const englishName = item.name || item.productName || '';
-      const tamilName = item.productNameTamil || '';
+      const englishName = this.escapeHtml(item.name || item.productName || '');
+      const tamilName = this.escapeHtml(item.productNameTamil || '');
       // Show Tamil name below English name if available
       const nameHtml = tamilName
         ? `${englishName}<br><span style="font-size: 8px; color: #333;">${tamilName}</span>`
@@ -1364,14 +1380,17 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     }).join('');
 
     // Get shop name from order or localStorage
-    const shopName = order.shopName || localStorage.getItem('shop_name') || 'NammaOoru';
+    const shopName = this.escapeHtml(order.shopName || localStorage.getItem('shop_name') || 'NammaOoru');
+    const orderNumber = this.escapeHtml(order.orderNumber || '');
+    const customerName = this.escapeHtml(order.customerName || '');
+    const customerPhoneDisplay = this.escapeHtml(this.displayPhone(order.customerPhone));
 
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Receipt - ${order.orderNumber}</title>
+        <title>Receipt - ${orderNumber}</title>
         <style>
           @page {
             size: 58mm auto;
@@ -1468,7 +1487,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         <div class="divider"></div>
 
         <div class="center">
-          <div class="order-number">#${order.orderNumber}</div>
+          <div class="order-number">#${orderNumber}</div>
         </div>
         <div style="font-size: 9px; text-align: center; margin-bottom: 4px;">
           ${new Date(order.createdAt).toLocaleDateString('en-IN', {timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date(order.createdAt).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute:'2-digit', hour12: true})}
@@ -1476,8 +1495,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
         <div class="divider"></div>
 
         <div style="margin-bottom: 4px;">
-          <div class="customer-name">${order.customerName}</div>
-          <div class="customer-phone">${this.displayPhone(order.customerPhone)}</div>
+          <div class="customer-name">${customerName}</div>
+          <div class="customer-phone">${customerPhoneDisplay}</div>
         </div>
         <div class="divider"></div>
 
