@@ -444,6 +444,14 @@ public class PosService {
             java.awt.image.BufferedImage image =
                     renderer.renderImageWithDPI(0, 300, org.apache.pdfbox.rendering.ImageType.RGB);
 
+            // Thermal PDFs are initially measured on a very tall page. If that
+            // measurement falls back to the safety height, PDFBox faithfully
+            // renders thousands of blank pixels below the receipt and WhatsApp
+            // scales the useful content into an unreadable vertical strip.
+            // Crop only trailing white space; preserve the full receipt width
+            // and a small bottom margin.
+            image = cropTrailingWhiteSpace(image);
+
             // Java's default JPEG quality is heavily compressed, which blurs the
             // small receipt text. Force near-lossless quality explicitly.
             javax.imageio.ImageWriter writer = javax.imageio.ImageIO.getImageWritersByFormatName("jpg").next();
@@ -463,6 +471,42 @@ public class PosService {
             log.warn("Could not render bill {} as image - will send PDF instead: {}", orderNumber, e.getMessage());
             return null;
         }
+    }
+
+    private java.awt.image.BufferedImage cropTrailingWhiteSpace(java.awt.image.BufferedImage image) {
+        int bottom = image.getHeight() - 1;
+        while (bottom > 0 && isBlankImageRow(image, bottom)) {
+            bottom--;
+        }
+
+        int padding = Math.max(16, image.getWidth() / 40);
+        int croppedHeight = Math.min(image.getHeight(), bottom + 1 + padding);
+        if (croppedHeight >= image.getHeight()) return image;
+
+        java.awt.image.BufferedImage cropped = new java.awt.image.BufferedImage(
+                image.getWidth(), croppedHeight, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D graphics = cropped.createGraphics();
+        try {
+            graphics.setColor(java.awt.Color.WHITE);
+            graphics.fillRect(0, 0, cropped.getWidth(), cropped.getHeight());
+            graphics.drawImage(image, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+        return cropped;
+    }
+
+    private boolean isBlankImageRow(java.awt.image.BufferedImage image, int y) {
+        // Sample every second pixel. Receipt text/borders span enough pixels at
+        // 300 DPI that this remains accurate while avoiding a costly full scan.
+        for (int x = 0; x < image.getWidth(); x += 2) {
+            int rgb = image.getRGB(x, y);
+            int red = (rgb >>> 16) & 0xff;
+            int green = (rgb >>> 8) & 0xff;
+            int blue = rgb & 0xff;
+            if (red < 248 || green < 248 || blue < 248) return false;
+        }
+        return true;
     }
 
     /**
