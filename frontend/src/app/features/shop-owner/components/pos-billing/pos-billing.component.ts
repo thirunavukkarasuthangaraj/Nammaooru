@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
@@ -51,6 +52,7 @@ interface BillSettings {
   billNumberPrefix: string;
   showBillNumber: boolean;
   paperWidth: '58mm' | '80mm' | 'A4';
+  templateStyle: 'classic' | 'minimal' | 'bold';
 
   // Font Sizes (in pixels)
   headerFontSize: number;  // default: 16
@@ -250,6 +252,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     billNumberPrefix: '',
     showBillNumber: true,
     paperWidth: '80mm',
+    templateStyle: 'classic',
     // Font Sizes
     headerFontSize: 16,
     bodyFontSize: 12,
@@ -355,7 +358,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     private shopContext: ShopContextService,
     private labelTemplateService: LabelTemplateService,
     private labelPrintService: LabelPrintService,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private router: Router
   ) {}
 
   /**
@@ -620,21 +624,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Open bill settings dialog
    */
   openBillSettingsDialog(): void {
-    // Pre-fill shop info from context if not already set
-    if (!this.billSettings.shopName) {
-      this.billSettings.shopName = this.shopName || '';
-    }
-    // Pre-fill from shop context if available
-    const currentShop = this.shopContext.getCurrentShop();
-    if (currentShop) {
-      if (!this.billSettings.shopName) {
-        this.billSettings.shopName = currentShop.name || currentShop.businessName || '';
-      }
-      if (!this.billSettings.shopPhone && (currentShop as any).phone) {
-        this.billSettings.shopPhone = (currentShop as any).phone || '';
-      }
-    }
-    this.showBillSettingsDialog = true;
+    this.router.navigate(['/shop-owner/bill-settings']);
   }
 
   /**
@@ -2715,9 +2705,22 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             justify-content: space-between;
             align-items: center;
           }
+          body.template-minimal {
+            font-family: Arial, sans-serif;
+          }
+          body.template-minimal .divider,
+          body.template-minimal .divider-solid { opacity: 0.45; }
+          body.template-minimal .grand-total-box { background: #f1f3f2 !important; }
+          body.template-bold {
+            border-top: 8px solid #159b5b;
+            font-family: Arial, sans-serif;
+          }
+          body.template-bold .shop-name,
+          body.template-bold .grand-total-value { color: #087443; }
+          body.template-bold .grand-total-box { background: #d8f5e5 !important; border: 1px solid #8bd3aa; }
         </style>
       </head>
-      <body>
+      <body class="template-${bs.templateStyle || 'classic'}">
         ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
         ${bs.showShopAddress && shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${shopAddress}</div>` : ''}
         ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">Ph: ${shopPhone}</div>` : ''}
@@ -2793,9 +2796,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         </div>
         ` : ''}
 
-        <div class="flex-row" style="border-top: 1px solid #000; padding-top: 6px; margin-top: 4px;">
+        <div class="flex-row grand-total-box" style="border-top: 1px solid #000; padding: 6px 4px 0; margin-top: 4px;">
           <span style="font-size: ${headerFontSize}px; font-weight: 700;">TOTAL</span>
-          <span style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
+          <span class="grand-total-value" style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
 
         ${bs.showPaymentMethod ? `

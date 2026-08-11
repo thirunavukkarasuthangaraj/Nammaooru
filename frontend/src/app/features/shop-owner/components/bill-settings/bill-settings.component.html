@@ -1,0 +1,173 @@
+<div class="bill-studio">
+  <header class="studio-header">
+    <div>
+      <button class="back-link" type="button" (click)="back()"><mat-icon>arrow_back</mat-icon> POS Billing</button>
+      <p class="eyebrow">Receipt design studio</p>
+      <h1>Make every bill unmistakably yours.</h1>
+      <p class="intro">Choose the paper, decide what customers see, and check the result before you print.</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="reset()">Reset</button>
+      <button mat-raised-button type="button" class="save-button" (click)="save()"><mat-icon>save</mat-icon> Save design</button>
+    </div>
+  </header>
+
+  <section class="template-strip" aria-label="Bill templates">
+    <button *ngFor="let template of templates" type="button" class="template-card"
+            [class.selected]="settings.templateStyle === template.value" (click)="selectTemplate(template.value)">
+      <span class="template-icon"><mat-icon>{{ template.icon }}</mat-icon></span>
+      <span><strong>{{ template.name }}</strong><small>{{ template.note }}</small></span>
+      <mat-icon class="selected-mark">check_circle</mat-icon>
+    </button>
+  </section>
+
+  <div class="studio-workspace">
+    <main class="controls-column">
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">01</span><div><h2>Shop identity</h2><p>The details printed at the top of every bill.</p></div></div>
+        <div class="form-grid">
+          <label class="wide">Shop name<input [(ngModel)]="settings.shopName" placeholder="Your shop name"></label>
+          <label class="wide">Address<input [(ngModel)]="settings.shopAddress" placeholder="Street, area and city"></label>
+          <label>Phone<input [(ngModel)]="settings.shopPhone" placeholder="9876543210"></label>
+          <label>GSTIN<input [(ngModel)]="settings.gstNumber" placeholder="33XXXXX1234X1ZX"></label>
+          <label>FSSAI number<input [(ngModel)]="settings.fssaiNumber" placeholder="14-digit licence"></label>
+          <label>Licence holder<input [(ngModel)]="settings.fssaiName" placeholder="Name on licence"></label>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">02</span><div><h2>Print setup</h2><p>Format, typography and bill numbering.</p></div></div>
+        <div class="form-grid">
+          <label>Date format<select [(ngModel)]="settings.dateFormat"><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></label>
+          <label>Bill prefix<input [(ngModel)]="settings.billNumberPrefix" placeholder="INV-"></label>
+          <label>Paper<select [(ngModel)]="settings.paperWidth"><option value="58mm">58 mm thermal</option><option value="80mm">80 mm thermal</option><option value="A4">A4 full page</option></select></label>
+          <label>Divider<select [(ngModel)]="settings.separatorStyle"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="none">None</option></select></label>
+        </div>
+        <div class="slider-grid">
+          <label>Header <strong>{{ settings.headerFontSize }} px</strong><input type="range" [(ngModel)]="settings.headerFontSize" min="12" max="24"></label>
+          <label>Body <strong>{{ settings.bodyFontSize }} px</strong><input type="range" [(ngModel)]="settings.bodyFontSize" min="8" max="16"></label>
+          <label>Footer <strong>{{ settings.footerFontSize }} px</strong><input type="range" [(ngModel)]="settings.footerFontSize" min="6" max="14"></label>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">03</span><div><h2>Visible information</h2><p>Keep the receipt useful without making it noisy.</p></div></div>
+        <h3>Header</h3>
+        <div class="toggle-grid">
+          <label><mat-slide-toggle [(ngModel)]="settings.showShopName"></mat-slide-toggle>Shop name</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showShopAddress"></mat-slide-toggle>Address</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showShopPhone"></mat-slide-toggle>Phone</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showGstNumber"></mat-slide-toggle>GSTIN</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showFssaiInfo"></mat-slide-toggle>FSSAI</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showDateTime"></mat-slide-toggle>Date and time</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showBillNumber"></mat-slide-toggle>Bill number</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showCustomerDetails"></mat-slide-toggle>Customer details</label>
+        </div>
+        <h3>Items</h3>
+        <div class="toggle-grid">
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemSku"></mat-slide-toggle>SKU/code</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemBarcode"></mat-slide-toggle>Barcode</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemMrp"></mat-slide-toggle>MRP</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemDiscount"></mat-slide-toggle>Item discount</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showItemTax"></mat-slide-toggle>Item tax</label>
+        </div>
+        <h3>Totals and footer</h3>
+        <div class="toggle-grid">
+          <label><mat-slide-toggle [(ngModel)]="settings.showSubtotal"></mat-slide-toggle>Subtotal</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showTotalSavings"></mat-slide-toggle>Total savings</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showTaxBreakdown"></mat-slide-toggle>Tax breakdown</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showPaymentMethod"></mat-slide-toggle>Payment method</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showThankYouMessage"></mat-slide-toggle>Thank-you message</label>
+        </div>
+      </section>
+
+      <section class="settings-card two-up">
+        <div>
+          <div class="card-heading compact"><span class="step">04</span><div><h2>Language</h2><p>Choose at least one.</p></div></div>
+          <div class="toggle-grid one-column">
+            <label><mat-slide-toggle [(ngModel)]="settings.showEnglish"></mat-slide-toggle>English</label>
+            <label><mat-slide-toggle [(ngModel)]="settings.showTamil"></mat-slide-toggle>Tamil (தமிழ்)</label>
+          </div>
+        </div>
+        <div>
+          <div class="card-heading compact"><span class="step">05</span><div><h2>Delivery</h2><p>Send after printing.</p></div></div>
+          <div class="toggle-grid one-column">
+            <label><mat-slide-toggle [(ngModel)]="settings.autoSendWhatsAppOnPrint"></mat-slide-toggle>Auto-send on WhatsApp</label>
+            <label><mat-slide-toggle [(ngModel)]="settings.autoSendEmailOnPrint"></mat-slide-toggle>Auto-send by email</label>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">06</span><div><h2>UPI payment</h2><p>Add a scannable payment option to the receipt.</p></div></div>
+        <div class="form-grid">
+          <label class="wide">UPI ID<input [(ngModel)]="settings.upiId" placeholder="shopname@ybl"></label>
+        </div>
+        <div class="toggle-grid one-column"><label><mat-slide-toggle [(ngModel)]="settings.showUpiQrCode"></mat-slide-toggle>Show UPI QR code</label></div>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">07</span><div><h2>Custom fields</h2><p>Add licence, registration or policy details.</p></div></div>
+        <div class="custom-row" *ngFor="let field of settings.customFields; let i=index; trackBy: trackByIndex">
+          <mat-slide-toggle [(ngModel)]="field.enabled"></mat-slide-toggle>
+          <input [(ngModel)]="field.label" placeholder="Label">
+          <input [(ngModel)]="field.value" placeholder="Value">
+          <select [(ngModel)]="field.position"><option value="header">Header</option><option value="footer">Footer</option></select>
+          <button mat-icon-button type="button" (click)="removeCustomField(i)" aria-label="Remove field"><mat-icon>delete_outline</mat-icon></button>
+        </div>
+        <button mat-stroked-button type="button" (click)="addCustomField()" [disabled]="settings.customFields.length >= 6"><mat-icon>add</mat-icon>Add field</button>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">08</span><div><h2>Receipt order</h2><p>Move sections into the order customers should read them.</p></div></div>
+        <div class="order-list">
+          <div *ngFor="let section of settings.sectionOrder; let i=index">
+            <span>{{ sectionLabel(section) }}</span>
+            <span><button mat-icon-button (click)="moveSection(i,-1)" [disabled]="i===0"><mat-icon>arrow_upward</mat-icon></button><button mat-icon-button (click)="moveSection(i,1)" [disabled]="i===settings.sectionOrder.length-1"><mat-icon>arrow_downward</mat-icon></button></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-heading"><span class="step">09</span><div><h2>Closing message</h2><p>End the bill with a useful, human note.</p></div></div>
+        <div class="form-grid">
+          <label class="wide">Thank-you message<input [(ngModel)]="settings.thankYouMessage"></label>
+          <label class="wide">Footer note<input [(ngModel)]="settings.footerNote" placeholder="No exchange after 7 days"></label>
+        </div>
+      </section>
+    </main>
+
+    <aside class="preview-column">
+      <div class="preview-heading"><div><span>Live preview</span><strong>{{ settings.paperWidth }}</strong></div><mat-icon>visibility</mat-icon></div>
+      <div class="paper-stage">
+        <article class="receipt-preview" [class.paper-58]="settings.paperWidth==='58mm'" [class.paper-a4]="settings.paperWidth==='A4'"
+                 [class.template-minimal]="settings.templateStyle==='minimal'" [class.template-bold]="settings.templateStyle==='bold'"
+                 [style.font-size.px]="settings.bodyFontSize">
+          <header *ngIf="settings.showShopName || settings.showShopAddress || settings.showShopPhone">
+            <h2 *ngIf="settings.showShopName" [style.font-size.px]="settings.headerFontSize">{{ settings.shopName || 'Your Shop' }}</h2>
+            <p *ngIf="settings.showShopAddress">{{ settings.shopAddress || 'Shop address, area and city' }}</p>
+            <p *ngIf="settings.showShopPhone && settings.shopPhone">Ph: {{ settings.shopPhone }}</p>
+            <p *ngIf="settings.showGstNumber && settings.gstNumber">GSTIN: {{ settings.gstNumber }}</p>
+            <p *ngIf="settings.showFssaiInfo && settings.fssaiNumber">FSSAI: {{ settings.fssaiNumber }}</p>
+          </header>
+          <div class="receipt-rule" [class]="'receipt-rule ' + settings.separatorStyle"></div>
+          <div class="bill-meta"><span *ngIf="settings.showBillNumber">{{ settings.billNumberPrefix || '#' }}1042</span><span *ngIf="settings.showDateTime">11/08/2026 · 05:25 PM</span></div>
+          <div class="customer" *ngIf="settings.showCustomerDetails"><small>BILLED TO</small><strong>Walk-in customer</strong></div>
+          <table><thead><tr><th>ITEM</th><th *ngIf="settings.showItemMrp">MRP</th><th>QTY</th><th>AMT</th></tr></thead>
+            <tbody><tr><td>Premium Rice<br><small *ngIf="settings.showTamil">பிரீமியம் அரிசி</small></td><td *ngIf="settings.showItemMrp">65.00</td><td>2</td><td>120.00</td></tr><tr><td>Fresh Milk</td><td *ngIf="settings.showItemMrp">32.00</td><td>1</td><td>30.00</td></tr></tbody></table>
+          <div class="receipt-rule solid"></div>
+          <div class="money-row" *ngIf="settings.showSubtotal"><span>Subtotal</span><span>₹150.00</span></div>
+          <div class="money-row saving" *ngIf="settings.showTotalSavings"><span>You save</span><span>₹12.00</span></div>
+          <div class="grand-total"><span>TOTAL</span><strong>₹150.00</strong></div>
+          <p class="payment" *ngIf="settings.showPaymentMethod">Paid by: CASH</p>
+          <div class="qr-placeholder" *ngIf="settings.showUpiQrCode"><mat-icon>qr_code_2</mat-icon><span>Scan to pay</span></div>
+          <ng-container *ngFor="let field of settings.customFields"><p class="custom-preview" *ngIf="field.enabled && field.label">{{ field.label }}: {{ field.value }}</p></ng-container>
+          <footer [style.font-size.px]="settings.footerFontSize"><strong *ngIf="settings.showThankYouMessage">{{ settings.thankYouMessage }}</strong><span *ngIf="settings.footerNote">{{ settings.footerNote }}</span><small>Powered by NammaOoru</small></footer>
+        </article>
+      </div>
+      <p class="preview-note"><mat-icon>info</mat-icon>Preview shows spacing and visibility. Printer margins can vary by device.</p>
+    </aside>
+  </div>
+
+  <div class="mobile-save"><button mat-raised-button class="save-button" (click)="save()"><mat-icon>save</mat-icon>Save bill design</button></div>
+</div>

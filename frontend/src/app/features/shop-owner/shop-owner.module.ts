@@ -64,6 +64,7 @@ import { PosBillingComponent } from './components/pos-billing/pos-billing.compon
 import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 import { CategoryCreateDialogComponent } from './components/category-create-dialog/category-create-dialog.component';
 import { LabelDatesDialogComponent } from './components/label-dates-dialog/label-dates-dialog.component';
+import { BillSettingsComponent } from './components/bill-settings/bill-settings.component';
 
 @NgModule({
   declarations: [
@@ -98,7 +99,8 @@ import { LabelDatesDialogComponent } from './components/label-dates-dialog/label
     PosBillingComponent,
     BulkEditComponent,
     CategoryCreateDialogComponent,
-    LabelDatesDialogComponent
+    LabelDatesDialogComponent,
+    BillSettingsComponent
   ],
   imports: [
     CommonModule,
