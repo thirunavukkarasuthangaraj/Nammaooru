@@ -136,6 +136,7 @@ jobs:
         username: ${{ secrets.HETZNER_USER }}
         key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
         command_timeout: 15m
+        script_stop: true
         script: |
           echo "════════════════════════════════════════════════════════════"
           echo "   🚀 ZERO DOWNTIME BACKEND DEPLOYMENT"
@@ -170,8 +171,15 @@ jobs:
         host: ${{ secrets.HETZNER_HOST }}
         username: ${{ secrets.HETZNER_USER }}
         key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+        script_stop: true
         script: |
           echo "Verifying backend health..."
+
+          # Idempotently repair the public route before checking it. Docker's
+          # dynamic backend port changes on every blue/green deployment.
+          cd /opt/shop-management
+          chmod +x deployment-automation/scripts/update-nginx-backend-port.sh
+          ./deployment-automation/scripts/update-nginx-backend-port.sh
 
           # Quick health check - 6 retries (1 minute total)
           RETRY_COUNT=0
