@@ -72,10 +72,11 @@ services:
       # Microservice feature flag
       - MICROSERVICE_USER_ENABLED=${MICROSERVICE_USER_ENABLED:-false}
       - MICROSERVICE_USER_URL=${MICROSERVICE_USER_URL:-http://46.225.224.191:8081}
-    # Expose internal port - Docker assigns random host port
-    # Deploy script detects port dynamically and updates Nginx
+    # Expose internal port on localhost only - Docker assigns random host port,
+    # bound to 127.0.0.1 so it's never reachable from outside the server directly.
+    # Deploy script detects port dynamically and updates Nginx.
     ports:
-      - "8080"
+      - "127.0.0.1::8080"
     volumes:
       # Mount host directory for persistent file storage (production)
       - /mnt/HC_Volume_104749884:/app/uploads
