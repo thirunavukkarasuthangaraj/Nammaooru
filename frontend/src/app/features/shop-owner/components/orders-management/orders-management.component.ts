@@ -2571,8 +2571,23 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   // Delivery type helpers
+  //
+  // WALK_IN as an orderType just means "sold at the in-store counter" (POS
+  // billing), not "we don't know who this customer is" - the shop owner can
+  // still type in a real name/phone at the counter and that becomes a
+  // tracked Customer record. Only the shared anonymous placeholder customer
+  // (phone 90000 + shop id, name "Walk-in Customer") is a true walk-in;
+  // anyone else billed at the counter is shown as "In-Store" instead.
+  private isAnonymousWalkIn(order: ShopOwnerOrder): boolean {
+    if ((order as any).orderType !== 'WALK_IN') return false;
+    const phone = order.customerPhone || '';
+    const isPlaceholderPhone = /^90000\d{5}$/.test(phone);
+    const isPlaceholderName = (order.customerName || '').trim().toLowerCase() === 'walk-in customer';
+    return isPlaceholderPhone || isPlaceholderName;
+  }
+
   getDeliveryTypeClass(order: ShopOwnerOrder): string {
-    if ((order as any).orderType === 'WALK_IN') return 'type-walkin';
+    if ((order as any).orderType === 'WALK_IN') return this.isAnonymousWalkIn(order) ? 'type-walkin' : 'type-instore';
     if (order.deliveryType === 'SELF_PICKUP') return 'type-pickup';
     return 'type-delivery';
   }
@@ -2584,7 +2599,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   getDeliveryTypeLabel(order: ShopOwnerOrder): string {
-    if ((order as any).orderType === 'WALK_IN') return 'Walk-in';
+    if ((order as any).orderType === 'WALK_IN') return this.isAnonymousWalkIn(order) ? 'Walk-in' : 'In-Store';
     if (order.deliveryType === 'SELF_PICKUP') return 'Self Pickup';
     return 'Delivery';
   }

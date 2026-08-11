@@ -461,6 +461,11 @@ $white: #ffffff;
     color: #9C27B0;
   }
 
+  &.type-instore {
+    background: rgba(#22c55e, 0.1);
+    color: #16a34a;
+  }
+
   &.type-pickup {
     background: rgba($accent-color, 0.1);
     color: $accent-color;
