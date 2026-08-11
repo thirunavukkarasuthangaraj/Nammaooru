@@ -3,8 +3,8 @@
 # The full multi-stage build (Maven inside Docker) lives in ./Dockerfile for local use.
 FROM eclipse-temurin:17-jre-alpine
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Health checks plus production-grade multilingual receipt shaping.
+RUN apk add --no-cache curl fontconfig font-noto font-noto-extra font-noto-cjk pango-tools
 
 # Create app user for security
 RUN addgroup -g 1001 -S appgroup && \
