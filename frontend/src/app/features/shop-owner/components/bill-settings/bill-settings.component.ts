@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: BillSettings = {
   headerFontSize: 16, bodyFontSize: 12, footerFontSize: 10,
   showShopName: true, showShopPhone: true, showShopAddress: false, showGstNumber: false, showFssaiInfo: false,
   showDateTime: true, showCustomerDetails: true, showThankYouMessage: true,
-  showItemSku: false, showItemBarcode: false, showItemMrp: true, showSellingPrice: true, showItemDiscount: true, showItemTax: false,
+  showItemSku: false, showItemBarcode: false, showItemMrp: true, showSellingPrice: true, showItemDiscount: false, showItemTax: false,
   showSubtotal: true, showTotalSavings: true, showTaxBreakdown: false, showPaymentMethod: true,
   showEnglish: true, showTamil: true, thankYouMessage: 'Thank you for your order!', footerNote: '',
   separatorStyle: 'dashed', upiId: '', showUpiQrCode: false,

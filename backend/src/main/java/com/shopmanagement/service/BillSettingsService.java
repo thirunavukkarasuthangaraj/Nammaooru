@@ -101,9 +101,9 @@ public class BillSettingsService {
         m.put("paperWidth", "80mm"); m.put("templateStyle", "classic"); m.put("accentColor", "#43d77d");
         m.put("headerFontSize", 16); m.put("bodyFontSize", 12); m.put("footerFontSize", 10);
         for (String key : List.of("showShopName","showShopPhone","showDateTime","showCustomerDetails","showThankYouMessage",
-                "showItemMrp","showSellingPrice","showItemDiscount","showSubtotal","showTotalSavings","showPaymentMethod","showEnglish","showTamil")) m.put(key, true);
+                "showItemMrp","showSellingPrice","showSubtotal","showTotalSavings","showPaymentMethod","showEnglish","showTamil")) m.put(key, true);
         for (String key : List.of("showShopAddress","showGstNumber","showFssaiInfo","showItemSku","showItemBarcode","showItemTax",
-                "showTaxBreakdown","showUpiQrCode","autoSendWhatsAppOnPrint","autoSendEmailOnPrint")) m.put(key, false);
+                "showItemDiscount","showTaxBreakdown","showUpiQrCode","autoSendWhatsAppOnPrint","autoSendEmailOnPrint")) m.put(key, false);
         m.put("thankYouMessage", "Thank you for your order!"); m.put("footerNote", ""); m.put("separatorStyle", "dashed");
         m.put("upiId", shop == null ? "" : shop.getUpiId()); m.put("customFields", List.of());
         m.put("sectionOrder", List.of("header","billInfo","items","summary","payment","qrCode","footer"));

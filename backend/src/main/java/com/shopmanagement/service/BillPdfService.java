@@ -181,7 +181,14 @@ public class BillPdfService {
             BaseFont tamil = tamilBaseFont();
             Color accent = colour(settings);
             Color accentLight = blend(accent, Color.WHITE, 0.86f);
-            boolean colouredHeader = "bold".equals(str(settings, "templateStyle", "classic"));
+            String template = str(settings, "templateStyle", "classic");
+            boolean colouredHeader = "classic".equals(template) || "bold".equals(template)
+                    || "compact".equals(template) || "invoice".equals(template);
+            Color headerBackground = switch (template) {
+                case "invoice" -> new Color(23, 59, 94);
+                case "bold" -> blend(accent, new Color(22, 55, 42), 0.28f);
+                default -> colouredHeader ? accent : Color.WHITE;
+            };
             Color headerText = colouredHeader ? Color.WHITE : DARK_TEXT;
             Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, num(settings, "headerFontSize", 16), headerText);
             Font headerSubFont = FontFactory.getFont(FontFactory.HELVETICA, Math.max(7, num(settings, "bodyFontSize", 12) - 3), colouredHeader ? Color.WHITE : MUTED_TEXT);
@@ -204,8 +211,8 @@ public class BillPdfService {
             PdfPTable header = new PdfPTable(1);
             header.setWidthPercentage(100);
             PdfPCell headerCell = new PdfPCell();
-            headerCell.setBackgroundColor(colouredHeader ? accent : Color.WHITE);
-            headerCell.setBorder("bordered".equals(str(settings, "templateStyle", "classic")) ? Rectangle.BOX : Rectangle.NO_BORDER);
+            headerCell.setBackgroundColor(headerBackground);
+            headerCell.setBorder("bordered".equals(template) ? Rectangle.BOX : Rectangle.NO_BORDER);
             headerCell.setBorderColor(accent);
             headerCell.setPaddingTop(12f);
             headerCell.setPaddingBottom(12f);

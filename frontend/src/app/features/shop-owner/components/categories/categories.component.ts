@@ -1105,74 +1105,7 @@ export class CategoriesComponent implements OnInit {
   selectedImageFile: File | null = null;
   isDragging: boolean = false;
 
-  categories: Category[] = [
-    {
-      id: 1,
-      name: 'Groceries',
-      description: 'Essential food items and cooking ingredients',
-      productCount: 45,
-      isActive: true,
-      color: '#10b981',
-      icon: 'shopping_basket',
-      iconUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop',
-      createdAt: new Date('2024-01-15')
-    },
-    {
-      id: 2,
-      name: 'Vegetables',
-      description: 'Fresh vegetables and leafy greens',
-      productCount: 32,
-      isActive: true,
-      color: '#22c55e',
-      icon: 'eco',
-      iconUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=200&fit=crop',
-      createdAt: new Date('2024-01-16')
-    },
-    {
-      id: 3,
-      name: 'Fruits',
-      description: 'Fresh seasonal fruits',
-      productCount: 28,
-      isActive: true,
-      color: '#f59e0b',
-      icon: 'apple',
-      iconUrl: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=200&h=200&fit=crop',
-      createdAt: new Date('2024-01-17')
-    },
-    {
-      id: 4,
-      name: 'Dairy Products',
-      description: 'Milk, cheese, yogurt and dairy items',
-      productCount: 15,
-      isActive: true,
-      color: '#3b82f6',
-      icon: 'local_drink',
-      iconUrl: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&h=200&fit=crop',
-      createdAt: new Date('2024-01-18')
-    },
-    {
-      id: 5,
-      name: 'Bakery Items',
-      description: 'Fresh bread, cakes and baked goods',
-      productCount: 12,
-      isActive: true,
-      color: '#8b5cf6',
-      icon: 'cake',
-      iconUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop',
-      createdAt: new Date('2024-01-19')
-    },
-    {
-      id: 6,
-      name: 'Personal Care',
-      description: 'Health and hygiene products',
-      productCount: 8,
-      isActive: false,
-      color: '#ec4899',
-      icon: 'face',
-      iconUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200&h=200&fit=crop',
-      createdAt: new Date('2024-01-20')
-    }
-  ];
+  categories: Category[] = [];
 
   showQuickAdd = false;
   quickAddForm: FormGroup;
@@ -1257,8 +1190,8 @@ export class CategoriesComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error loading categories:', error);
-          this.snackBar.open('Failed to load categories. Showing sample data.', 'Close', { duration: 3000 });
-          // Keep mock data on error
+          this.snackBar.open('Failed to load categories.', 'Close', { duration: 3000 });
+          this.categories = [];
         }
       });
   }
