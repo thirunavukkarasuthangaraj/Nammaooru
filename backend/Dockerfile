@@ -21,8 +21,10 @@ RUN mvn clean package -DskipTests
 # Runtime stage
 FROM eclipse-temurin:17-jre-alpine
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install health-check tooling and Unicode fonts used by the receipt shaper.
+# The receipt renderer selects faces by glyph coverage, so names can mix Tamil,
+# other Indic scripts, Arabic, CJK, Cyrillic and Latin without hard-coded data.
+RUN apk add --no-cache curl fontconfig font-noto font-noto-extra font-noto-cjk pango-tools
 
 # Create app user for security
 RUN addgroup -g 1001 -S appgroup && \

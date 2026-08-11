@@ -114,6 +114,7 @@ public class BillPdfService {
 
     private static volatile BaseFont TAMIL_BASE_FONT;
     private static volatile java.awt.Font TAMIL_AWT_FONT;
+    private static volatile java.awt.Font[] RECEIPT_FALLBACK_FONTS;
 
     /**
      * Loads (once) a Unicode font covering both Latin and Tamil glyphs.
@@ -157,6 +158,82 @@ public class BillPdfService {
             }
         }
         return font.deriveFont(size);
+    }
+
+    /**
+     * Fonts available to the raster text shaper, ordered from the bundled Tamil
+     * face through the runtime's Noto/system faces. The Docker image installs
+     * the Noto families, so this supports other Indic scripts, Arabic, CJK and
+     * Cyrillic without product- or language-specific branches.
+     */
+    private java.awt.Font[] receiptFallbackFonts() throws Exception {
+        java.awt.Font[] fonts = RECEIPT_FALLBACK_FONTS;
+        if (fonts == null) {
+            synchronized (BillPdfService.class) {
+                fonts = RECEIPT_FALLBACK_FONTS;
+                if (fonts == null) {
+                    java.util.List<java.awt.Font> available = new java.util.ArrayList<>();
+                    available.add(tamilAwtFont(12f));
+                    available.add(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN, 12));
+                    available.addAll(java.util.Arrays.asList(
+                            java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts()));
+                    fonts = available.toArray(java.awt.Font[]::new);
+                    RECEIPT_FALLBACK_FONTS = fonts;
+                }
+            }
+        }
+        return fonts;
+    }
+
+    private java.awt.Font receiptFontFor(int codePoint, float size,
+                                         java.awt.Font latinFont) throws Exception {
+        if (codePoint < 0x80 && latinFont.canDisplay(codePoint)) return latinFont;
+        for (java.awt.Font candidate : receiptFallbackFonts()) {
+            if (candidate.canDisplay(codePoint)) return candidate.deriveFont(size);
+        }
+        return latinFont;
+    }
+
+    /** Render with Pango/HarfBuzz when available in the production container. */
+    private Image renderItemNameWithPango(String text, float fontPixels,
+                                          float maxWidthPixels,
+                                          float targetWidthPoints) throws Exception {
+        java.nio.file.Path executable = java.nio.file.Path.of("/usr/bin/pango-view");
+        if (!java.nio.file.Files.isExecutable(executable)) return null;
+
+        java.nio.file.Path output = java.nio.file.Files.createTempFile("receipt-text-", ".png");
+        try {
+            Process process = new ProcessBuilder(
+                    executable.toString(),
+                    "--no-display",
+                    "--pixels",
+                    "--font=Noto Sans " + Math.round(fontPixels),
+                    "--width=" + Math.max(1, Math.round(maxWidthPixels)),
+                    "--wrap=word-char",
+                    "--margin=0",
+                    "--background=transparent",
+                    "--output=" + output,
+                    "--text=" + text)
+                    .redirectErrorStream(true)
+                    .start();
+            boolean completed = process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+            if (!completed) {
+                process.destroyForcibly();
+                throw new java.io.IOException("Pango receipt rendering timed out");
+            }
+            if (process.exitValue() != 0 || java.nio.file.Files.size(output) == 0) {
+                String error = new String(process.getInputStream().readAllBytes(),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                throw new java.io.IOException("Pango receipt rendering failed: " + error);
+            }
+            java.awt.image.BufferedImage rendered = javax.imageio.ImageIO.read(output.toFile());
+            if (rendered == null) throw new java.io.IOException("Pango returned an invalid image");
+            Image image = Image.getInstance(java.nio.file.Files.readAllBytes(output));
+            image.scaleToFit(targetWidthPoints, rendered.getHeight() / 3f + 2f);
+            return image;
+        } finally {
+            java.nio.file.Files.deleteIfExists(output);
+        }
     }
 
     /** True for characters in the Tamil Unicode block (U+0B80-U+0BFF). */
@@ -520,34 +597,62 @@ public class BillPdfService {
     }
 
     /**
-     * OpenPDF can embed Tamil glyphs but does not perform Indic shaping. Render
-     * mixed English/Tamil product names with Java2D TextLayout (which shapes
-     * vowel signs and joined forms), then place that lossless image in the PDF.
+     * OpenPDF does not perform complex-script shaping. Render every product name
+     * with Java2D TextLayout and Unicode font fallback, then place the lossless
+     * result in the PDF. This handles mixed scripts and bidirectional text before
+     * PDFBox converts the receipt to the WhatsApp JPG.
      */
     private void addItemNameCell(PdfPTable table, String text, Font latinPdfFont,
                                  Font tamilPdfFont, float targetWidthPoints) throws Exception {
-        if (text == null || text.chars().noneMatch(c -> isTamil((char) c))) {
-            addCellMixed(table, text, latinPdfFont, tamilPdfFont, Element.ALIGN_LEFT);
-            return;
-        }
+        // Product names can arrive from imports/keyboards in canonically-decomposed
+        // form (for example a Tamil vowel sign represented by multiple code points).
+        // Normalize before measuring and shaping so those marks stay attached to
+        // their base consonant in the PDF and in the JPG rendered from that PDF.
+        text = text == null ? null : java.text.Normalizer.normalize(
+                text, java.text.Normalizer.Form.NFC);
+        if (text == null || text.isBlank()) text = "Item";
 
         final float scale = 3f;
         final float fontPixels = Math.max(24f, latinPdfFont.getSize() * scale);
         final float maxWidthPixels = targetWidthPoints * scale;
         java.awt.Font latinFont = new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN,
                 Math.round(fontPixels));
-        java.awt.Font tamilFont = tamilAwtFont(fontPixels);
+
+        // Pango uses HarfBuzz and FriBidi, providing reliable complex-script
+        // shaping and directionality. Java2D below remains a local/dev fallback.
+        Image pangoImage = null;
+        try {
+            pangoImage = renderItemNameWithPango(
+                    text, fontPixels, maxWidthPixels, targetWidthPoints);
+        } catch (Exception e) {
+            log.warn("Pango receipt shaping failed; using Java2D fallback: {}", e.getMessage());
+        }
+        if (pangoImage != null) {
+            PdfPCell cell = new PdfPCell(pangoImage, false);
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+            cell.setPaddingTop(2f);
+            cell.setPaddingBottom(2f);
+            table.addCell(cell);
+            return;
+        }
 
         java.text.AttributedString attributed = new java.text.AttributedString(text);
         attributed.addAttribute(java.awt.font.TextAttribute.FONT, latinFont);
-        int runStart = -1;
-        for (int i = 0; i <= text.length(); i++) {
-            boolean tamil = i < text.length() && isTamil(text.charAt(i));
-            if (tamil && runStart < 0) runStart = i;
-            if (!tamil && runStart >= 0) {
-                attributed.addAttribute(java.awt.font.TextAttribute.FONT, tamilFont, runStart, i);
-                runStart = -1;
+        int runStart = 0;
+        java.awt.Font runFont = null;
+        for (int offset = 0; offset < text.length();) {
+            int codePoint = text.codePointAt(offset);
+            java.awt.Font font = receiptFontFor(codePoint, fontPixels, latinFont);
+            if (runFont != null && !runFont.getFontName().equals(font.getFontName())) {
+                attributed.addAttribute(java.awt.font.TextAttribute.FONT, runFont, runStart, offset);
+                runStart = offset;
             }
+            runFont = font;
+            offset += Character.charCount(codePoint);
+        }
+        if (runFont != null) {
+            attributed.addAttribute(java.awt.font.TextAttribute.FONT, runFont, runStart, text.length());
         }
 
         java.awt.font.FontRenderContext context = new java.awt.font.FontRenderContext(null, true, true);
