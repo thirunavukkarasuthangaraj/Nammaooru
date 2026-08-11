@@ -2435,6 +2435,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Print receipt (async for QR code generation)
    */
   async printReceipt(order: any): Promise<void> {
+    // Bill settings are edited on a separate route. Always reload the latest
+    // saved values immediately before building the printable receipt.
+    this.loadBillSettings();
     const paperConfig = this.getPaperConfig(this.billSettings.paperWidth || '80mm');
     const receiptWindow = window.open('', '_blank', `width=${paperConfig.windowWidth},height=600`);
     if (!receiptWindow) return;
@@ -2621,6 +2624,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             margin: 1mm;
           }
           @media print {
+            html, body { width: 100%; overflow: hidden; }
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
@@ -2628,14 +2632,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             .no-print { display: none !important; }
           }
           body {
+            box-sizing: border-box;
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
             font-size: ${bodyFontSize}px;
             width: ${paperConfig.bodyWidth};
             max-width: ${paperConfig.maxWidth};
             margin: 0 auto;
-            padding: 8px;
-            line-height: 1.3;
+            padding: ${bs.paperWidth === '58mm' ? '2mm' : bs.paperWidth === 'A4' ? '10mm' : '3mm'};
+            line-height: 1.25;
+            overflow-wrap: anywhere;
           }
+          *, *::before, *::after { box-sizing: border-box; }
           .center { text-align: center; }
           .divider {
             ${separatorStyle}
@@ -2663,9 +2670,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             margin-bottom: 2px;
           }
           .order-number {
-            font-size: ${Math.max(bodyFontSize, 12)}px;
-            font-weight: 700;
+            font-size: ${Math.max(bodyFontSize - 1, 9)}px;
+            font-weight: 600;
             margin: 4px 0;
+            overflow-wrap: anywhere;
           }
           .customer-name {
             font-size: ${bodyFontSize}px;
@@ -2676,20 +2684,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             color: #000;
           }
           .item-header th {
-            font-size: ${Math.max(bodyFontSize - 2, 10)}px;
-            padding: 4px 0;
+            font-size: ${Math.max(bodyFontSize - 3, 8)}px;
+            padding: 3px 1px;
             border-bottom: 1px solid #000;
             text-transform: uppercase;
-            font-weight: 700;
+            font-weight: 600;
           }
           .payment-badge {
             font-size: ${Math.max(bodyFontSize - 2, 10)}px;
-            font-weight: 700;
-            padding: 4px 8px;
-            background: #f0f0f0;
-            border-radius: 3px;
+            font-weight: 600;
+            padding: 2px 0;
             display: inline-block;
-            margin: 4px 0;
+            margin: 2px 0;
           }
           .footer-text {
             font-size: ${footerFontSize}px;
@@ -2762,7 +2768,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             <tr class="item-header">
               <th style="text-align: left;">ITEM</th>
               ${bs.showItemMrp ? '<th style="text-align: right;">MRP</th>' : ''}
-              ${bs.showSellingPrice ? '<th style="text-align: right;">SELL</th>' : ''}
+              ${bs.showSellingPrice ? '<th style="text-align: right;">RATE</th>' : ''}
               ${bs.showItemDiscount ? '<th style="text-align: right;">DISC</th>' : ''}
               <th style="text-align: center;">QTY</th>
               <th style="text-align: right;">AMT</th>
@@ -2774,12 +2780,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         </table>
         <div class="divider-solid"></div>
 
-        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
+        ${bs.showSubtotal ? `<div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
           <span style="font-weight: 600;">Items: ${this.cart.length} (Qty: ${this.cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
           <span style="font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
-        </div>
+        </div>` : ''}
 
-        ${this.totalDiscount > 0 ? `
+        ${bs.showTotalSavings && this.totalDiscount > 0 ? `
         <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
           <span style="font-weight: 600;">MRP Total</span>
           <span style="font-weight: 600;">₹${this.totalMrp.toFixed(0)}</span>
@@ -2790,7 +2796,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         </div>
         ` : ''}
 
-        ${this.billDiscount > 0 ? `
+        ${bs.showTotalSavings && this.billDiscount > 0 ? `
         <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
           <span style="font-weight: 600;">Subtotal</span>
           <span style="font-weight: 600;">₹${this.subtotal.toFixed(0)}</span>
@@ -2801,7 +2807,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         </div>
         ` : ''}
 
-        <div class="flex-row grand-total-box" style="border-top: 1px solid #000; padding: 6px 4px 0; margin-top: 4px;">
+        <div class="flex-row grand-total-box" style="border-top: 1px solid #000; padding: 5px 4px; margin-top: 3px;">
           <span style="font-size: ${headerFontSize}px; font-weight: 700;">TOTAL</span>
           <span class="grand-total-value" style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
@@ -2810,18 +2816,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         <div class="divider"></div>
         <div class="center">
           <span class="payment-badge">
-            ${this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? '💵 CASH' : this.selectedPaymentMethod === 'UPI' ? '📱 UPI' : '💳 CARD'}
+            ${this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? 'CASH' : this.selectedPaymentMethod === 'UPI' ? 'UPI' : 'CARD'}
           </span>
         </div>
         ` : ''}
 
         ${bs.showUpiQrCode && bs.upiId && qrCodeDataUrl ? `
-        <div class="divider"></div>
-        <div class="center" style="padding: 8px 0;">
-          <div style="font-size: ${footerFontSize}px; margin-bottom: 4px; font-weight: 600;">Scan to Pay</div>
+        <div class="center" style="padding: 3px 0; page-break-inside: avoid;">
           <img src="${qrCodeDataUrl}"
                alt="UPI QR Code"
-               style="width: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; height: ${bs.paperWidth === '58mm' ? '100px' : '140px'}; margin: 4px 0;">
+               style="display:block; width: ${bs.paperWidth === '58mm' ? '72px' : bs.paperWidth === 'A4' ? '108px' : '88px'}; height: ${bs.paperWidth === '58mm' ? '72px' : bs.paperWidth === 'A4' ? '108px' : '88px'}; margin: 2px auto;">
           <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #000;">${upiIdEscaped}</div>
         </div>
         ` : ''}

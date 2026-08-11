@@ -163,7 +163,7 @@
           <div class="receipt-rule" [class]="'receipt-rule ' + settings.separatorStyle"></div>
           <div class="bill-meta"><span *ngIf="settings.showBillNumber">{{ settings.billNumberPrefix || '#' }}1042</span><span *ngIf="settings.showDateTime">11/08/2026 · 05:25 PM</span></div>
           <div class="customer" *ngIf="settings.showCustomerDetails"><small>BILLED TO</small><strong>Walk-in customer</strong></div>
-          <table><thead><tr><th>ITEM</th><th *ngIf="settings.showItemMrp">MRP</th><th *ngIf="settings.showSellingPrice">SELL</th><th *ngIf="settings.showItemDiscount">DISC</th><th>QTY</th><th>AMT</th></tr></thead>
+          <table><thead><tr><th>ITEM</th><th *ngIf="settings.showItemMrp">MRP</th><th *ngIf="settings.showSellingPrice">RATE</th><th *ngIf="settings.showItemDiscount">DISC</th><th>QTY</th><th>AMT</th></tr></thead>
             <tbody><tr><td>Premium Rice<br><small *ngIf="settings.showTamil">பிரீமியம் அரிசி</small></td><td *ngIf="settings.showItemMrp">65</td><td *ngIf="settings.showSellingPrice">60</td><td *ngIf="settings.showItemDiscount">5</td><td>2</td><td>120</td></tr><tr><td>Fresh Milk</td><td *ngIf="settings.showItemMrp">32</td><td *ngIf="settings.showSellingPrice">30</td><td *ngIf="settings.showItemDiscount">2</td><td>1</td><td>30</td></tr></tbody></table>
           <div class="receipt-rule solid"></div>
           <div class="money-row" *ngIf="settings.showSubtotal"><span>Subtotal</span><span>₹150.00</span></div>
