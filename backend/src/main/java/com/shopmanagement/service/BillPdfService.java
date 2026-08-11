@@ -113,6 +113,7 @@ public class BillPdfService {
     }
 
     private static volatile BaseFont TAMIL_BASE_FONT;
+    private static volatile java.awt.Font TAMIL_AWT_FONT;
 
     /**
      * Loads (once) a Unicode font covering both Latin and Tamil glyphs.
@@ -140,6 +141,22 @@ public class BillPdfService {
             }
         }
         return font;
+    }
+
+    private java.awt.Font tamilAwtFont(float size) throws Exception {
+        java.awt.Font font = TAMIL_AWT_FONT;
+        if (font == null) {
+            synchronized (BillPdfService.class) {
+                font = TAMIL_AWT_FONT;
+                if (font == null) {
+                    try (java.io.InputStream input = new ClassPathResource("fonts/NotoSansTamil-Regular.ttf").getInputStream()) {
+                        font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, input);
+                    }
+                    TAMIL_AWT_FONT = font;
+                }
+            }
+        }
+        return font.deriveFont(size);
     }
 
     /** True for characters in the Tamil Unicode block (U+0B80-U+0BFF). */
@@ -300,9 +317,15 @@ public class BillPdfService {
                 mrpTotal = mrpTotal.add(lineMrp);
                 totalQty += item.getQuantity();
 
-                String itemName = bool(settings,"showEnglish",true) ? item.getProductName() : "";
-                if (bool(settings,"showTamil",true) && item.getProductNameTamil() != null) itemName = joinNonBlank(itemName, item.getProductNameTamil());
-                addCellMixed(table, itemName, normalFont, normalFontTamil, Element.ALIGN_LEFT);
+                boolean showEnglish = bool(settings, "showEnglish", true);
+                boolean showTamil = bool(settings, "showTamil", true);
+                String itemName = showEnglish ? item.getProductName() : "";
+                if (showTamil && item.getProductNameTamil() != null) itemName = joinNonBlank(itemName, item.getProductNameTamil());
+                if (itemName == null || itemName.isBlank()) itemName = "Item";
+                float widthSum = 0f;
+                for (float width : widths) widthSum += width;
+                float itemColumnWidth = Math.max(45f, pageWidth(settings) * widths[0] / widthSum - 5f);
+                addItemNameCell(table, itemName, normalFont, normalFontTamil, itemColumnWidth);
                 for (String column : columns.subList(1, columns.size())) {
                     String value = switch (column) {
                         case "SKU" -> item.getProductSku() == null ? "" : item.getProductSku();
@@ -491,6 +514,79 @@ public class BillPdfService {
         PdfPCell cell = new PdfPCell(para);
         cell.setBorder(Rectangle.NO_BORDER);
         cell.setHorizontalAlignment(align);
+        cell.setPaddingTop(2f);
+        cell.setPaddingBottom(2f);
+        table.addCell(cell);
+    }
+
+    /**
+     * OpenPDF can embed Tamil glyphs but does not perform Indic shaping. Render
+     * mixed English/Tamil product names with Java2D TextLayout (which shapes
+     * vowel signs and joined forms), then place that lossless image in the PDF.
+     */
+    private void addItemNameCell(PdfPTable table, String text, Font latinPdfFont,
+                                 Font tamilPdfFont, float targetWidthPoints) throws Exception {
+        if (text == null || text.chars().noneMatch(c -> isTamil((char) c))) {
+            addCellMixed(table, text, latinPdfFont, tamilPdfFont, Element.ALIGN_LEFT);
+            return;
+        }
+
+        final float scale = 3f;
+        final float fontPixels = Math.max(24f, latinPdfFont.getSize() * scale);
+        final float maxWidthPixels = targetWidthPoints * scale;
+        java.awt.Font latinFont = new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN,
+                Math.round(fontPixels));
+        java.awt.Font tamilFont = tamilAwtFont(fontPixels);
+
+        java.text.AttributedString attributed = new java.text.AttributedString(text);
+        attributed.addAttribute(java.awt.font.TextAttribute.FONT, latinFont);
+        int runStart = -1;
+        for (int i = 0; i <= text.length(); i++) {
+            boolean tamil = i < text.length() && isTamil(text.charAt(i));
+            if (tamil && runStart < 0) runStart = i;
+            if (!tamil && runStart >= 0) {
+                attributed.addAttribute(java.awt.font.TextAttribute.FONT, tamilFont, runStart, i);
+                runStart = -1;
+            }
+        }
+
+        java.awt.font.FontRenderContext context = new java.awt.font.FontRenderContext(null, true, true);
+        java.awt.font.LineBreakMeasurer measurer = new java.awt.font.LineBreakMeasurer(
+                attributed.getIterator(), context);
+        java.util.List<java.awt.font.TextLayout> layouts = new java.util.ArrayList<>();
+        float height = 0f;
+        while (measurer.getPosition() < text.length()) {
+            java.awt.font.TextLayout layout = measurer.nextLayout(maxWidthPixels);
+            layouts.add(layout);
+            height += layout.getAscent() + layout.getDescent() + layout.getLeading();
+        }
+
+        int imageWidth = Math.max(1, (int) Math.ceil(maxWidthPixels));
+        int imageHeight = Math.max(1, (int) Math.ceil(height + 4f));
+        java.awt.image.BufferedImage rendered = new java.awt.image.BufferedImage(
+                imageWidth, imageHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D graphics = rendered.createGraphics();
+        try {
+            graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            graphics.setColor(java.awt.Color.BLACK);
+            float y = 0f;
+            for (java.awt.font.TextLayout layout : layouts) {
+                y += layout.getAscent();
+                layout.draw(graphics, 0f, y);
+                y += layout.getDescent() + layout.getLeading();
+            }
+        } finally {
+            graphics.dispose();
+        }
+
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(rendered, "PNG", png);
+        Image nameImage = Image.getInstance(png.toByteArray());
+        nameImage.scaleToFit(targetWidthPoints, imageHeight / scale + 2f);
+        PdfPCell cell = new PdfPCell(nameImage, false);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_LEFT);
         cell.setPaddingTop(2f);
         cell.setPaddingBottom(2f);
         table.addCell(cell);
