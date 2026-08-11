@@ -38,7 +38,7 @@ log_info "Backend image built successfully"
 # Step 2: Get current backend container
 # Identify the container Nginx is actually serving, not whichever name Docker
 # happens to list first.
-ACTIVE_PORT=$(sudo grep -oE 'proxy_pass http://localhost:[0-9]+' "$NGINX_CONFIG" | tail -1 | grep -oE '[0-9]+$' || true)
+ACTIVE_PORT=$(sudo grep -oE 'proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+' "$NGINX_CONFIG" | tail -1 | grep -oE '[0-9]+$' || true)
 OLD_BACKEND=""
 if [ -n "$ACTIVE_PORT" ]; then
     for candidate in $(docker ps --filter "label=com.shop.service=backend" --format "{{.Names}}"); do
@@ -122,7 +122,7 @@ log_step "Updating Nginx to new backend..."
 NEW_PORT=$(docker port $NEW_BACKEND 8080 | cut -d':' -f2)
 log_info "New backend port: $NEW_PORT"
 
-sudo sed -i "s|proxy_pass http://localhost:[0-9]*;|proxy_pass http://localhost:$NEW_PORT;|" $NGINX_CONFIG
+sudo sed -E -i "s|proxy_pass http://(localhost|127\.0\.0\.1):[0-9]+;|proxy_pass http://127.0.0.1:$NEW_PORT;|" $NGINX_CONFIG
 
 if sudo nginx -t; then
     sudo systemctl reload nginx
