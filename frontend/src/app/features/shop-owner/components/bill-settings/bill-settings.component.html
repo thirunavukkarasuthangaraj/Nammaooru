@@ -151,8 +151,9 @@
       <div class="preview-heading"><div><span>Live preview</span><strong>{{ settings.paperWidth }}</strong></div><mat-icon>visibility</mat-icon></div>
       <div class="paper-stage" #paperStage>
         <article class="receipt-preview" [class.paper-58]="settings.paperWidth==='58mm'" [class.paper-a4]="settings.paperWidth==='A4'"
-                 [class.template-minimal]="settings.templateStyle==='minimal'" [class.template-bold]="settings.templateStyle==='bold'"
-                 [style.font-size.px]="settings.bodyFontSize" [style.--receipt-accent]="settings.accentColor">
+                 [ngClass]="'template-' + settings.templateStyle"
+                 [style.font-size.px]="settings.bodyFontSize" [style.--receipt-accent]="settings.accentColor"
+                 [style.--divider-style]="settings.separatorStyle">
           <header *ngIf="settings.showShopName || settings.showShopAddress || settings.showShopPhone">
             <h2 *ngIf="settings.showShopName" [style.font-size.px]="settings.headerFontSize">{{ settings.shopName || 'Your Shop' }}</h2>
             <p *ngIf="settings.showShopAddress">{{ settings.shopAddress || 'Shop address, area and city' }}</p>
@@ -165,7 +166,7 @@
           <div class="customer" *ngIf="settings.showCustomerDetails"><small>BILLED TO</small><strong>Walk-in customer</strong></div>
           <table><thead><tr><th>ITEM</th><th *ngIf="settings.showItemMrp">MRP</th><th *ngIf="settings.showSellingPrice">RATE</th><th *ngIf="settings.showItemDiscount">DISC</th><th>QTY</th><th>AMT</th></tr></thead>
             <tbody><tr><td>Premium Rice<br><small *ngIf="settings.showTamil">பிரீமியம் அரிசி</small></td><td *ngIf="settings.showItemMrp">65</td><td *ngIf="settings.showSellingPrice">60</td><td *ngIf="settings.showItemDiscount">5</td><td>2</td><td>120</td></tr><tr><td>Fresh Milk</td><td *ngIf="settings.showItemMrp">32</td><td *ngIf="settings.showSellingPrice">30</td><td *ngIf="settings.showItemDiscount">2</td><td>1</td><td>30</td></tr></tbody></table>
-          <div class="receipt-rule solid"></div>
+          <div class="receipt-rule" [class]="'receipt-rule ' + settings.separatorStyle"></div>
           <div class="money-row" *ngIf="settings.showSubtotal"><span>Subtotal</span><span>₹150.00</span></div>
           <div class="money-row saving" *ngIf="settings.showTotalSavings"><span>You save</span><span>₹12.00</span></div>
           <div class="grand-total"><span>TOTAL</span><strong>₹150.00</strong></div>
@@ -175,7 +176,7 @@
             <span>{{ settings.upiId || 'Add your UPI ID' }}</span>
           </div>
           <ng-container *ngFor="let field of settings.customFields"><p class="custom-preview" *ngIf="field.enabled && field.label">{{ field.label }}: {{ field.value }}</p></ng-container>
-          <footer [style.font-size.px]="settings.footerFontSize"><strong *ngIf="settings.showThankYouMessage">{{ settings.thankYouMessage }}</strong><span *ngIf="settings.footerNote">{{ settings.footerNote }}</span><small>Powered by NammaOoru</small></footer>
+          <footer [style.font-size.px]="settings.footerFontSize"><strong *ngIf="settings.showThankYouMessage">{{ settings.thankYouMessage }}</strong><span *ngIf="settings.footerNote">{{ settings.footerNote }}</span><small><a href="https://nammaoorudelivary.in" target="_blank" rel="noopener">Powered by Namma Ooru Connect</a></small></footer>
         </article>
       </div>
       <p class="preview-note"><mat-icon>info</mat-icon>Preview shows spacing and visibility. Printer margins can vary by device.</p>

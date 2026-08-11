@@ -52,7 +52,7 @@ interface BillSettings {
   billNumberPrefix: string;
   showBillNumber: boolean;
   paperWidth: '58mm' | '80mm' | 'A4';
-  templateStyle: 'classic' | 'minimal' | 'bold';
+  templateStyle: 'classic' | 'minimal' | 'bold' | 'compact' | 'invoice' | 'bordered';
 
   // Font Sizes (in pixels)
   headerFontSize: number;  // default: 16
@@ -2611,6 +2611,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Get separator style
     const separatorStyle = this.getSeparatorStyle(bs.separatorStyle || 'dashed');
+    const dividerBorder = bs.separatorStyle === 'none' ? 'none' : `1px ${bs.separatorStyle || 'dashed'} #000`;
 
     return `
       <!DOCTYPE html>
@@ -2686,7 +2687,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           .item-header th {
             font-size: ${Math.max(bodyFontSize - 3, 8)}px;
             padding: 3px 1px;
-            border-bottom: 1px solid #000;
+            border-bottom: ${dividerBorder};
             text-transform: uppercase;
             font-weight: 600;
           }
@@ -2728,6 +2729,19 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           body.template-bold .shop-name,
           body.template-bold .grand-total-value { color: #087443; }
           body.template-bold .grand-total-box { background: #d8f5e5 !important; border: 1px solid #8bd3aa; }
+          body.template-compact { line-height: 1.08; }
+          body.template-compact .divider, body.template-compact .divider-solid { margin: 3px 0 !important; }
+          body.template-compact td { padding-top: 1px !important; padding-bottom: 1px !important; }
+          body.template-compact .grand-total-box { padding: 3px 4px !important; }
+          body.template-invoice { font-family: Arial, sans-serif; border-top: 4px double #159b5b; }
+          body.template-invoice .shop-name, body.template-invoice .center.shop-phone { text-align: left; }
+          body.template-invoice .divider { border-top-style: solid !important; }
+          body.template-invoice .grand-total-box { background: #fff !important; border-top: 2px double #000 !important; border-bottom: 2px double #000; }
+          body.template-bordered { border: 2px solid #159b5b; font-family: Arial, sans-serif; }
+          body.template-bordered .shop-name { color: #087443; }
+          body.template-bordered tbody tr { border-bottom: 1px dotted #aaa; }
+          body.template-bordered .grand-total-box { background: #159b5b !important; color: #fff; }
+          body.template-bordered .grand-total-value { color: #fff; }
         </style>
       </head>
       <body class="template-${bs.templateStyle || 'classic'}">
@@ -2778,7 +2792,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             ${items}
           </tbody>
         </table>
-        <div class="divider-solid"></div>
+        <div class="divider"></div>
 
         ${bs.showSubtotal ? `<div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
           <span style="font-weight: 600;">Items: ${this.cart.length} (Qty: ${this.cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
@@ -2807,7 +2821,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         </div>
         ` : ''}
 
-        <div class="flex-row grand-total-box" style="border-top: 1px solid #000; padding: 5px 4px; margin-top: 3px;">
+        <div class="flex-row grand-total-box" style="border-top: ${dividerBorder}; padding: 5px 4px; margin-top: 3px;">
           <span style="font-size: ${headerFontSize}px; font-weight: 700;">TOTAL</span>
           <span class="grand-total-value" style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
         </div>
@@ -2846,6 +2860,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           Printed: ${new Date().toLocaleString('en-IN')}
         </div>
         ` : ''}
+
+        <div class="center" style="font-size: ${Math.max(footerFontSize - 1, 7)}px; margin-top: 4px;">
+          <a href="https://nammaoorudelivary.in" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">Powered by Namma Ooru Connect</a>
+        </div>
 
         <!-- Print Button (hidden during print) -->
         <div class="no-print" style="margin-top: 15px; text-align: center;">

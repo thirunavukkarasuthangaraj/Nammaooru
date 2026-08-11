@@ -14,7 +14,7 @@ interface BillSettings {
   identityVisibilityVersion: number;
   shopName: string; shopPhone: string; shopAddress: string; gstNumber: string; fssaiNumber: string; fssaiName: string;
   dateFormat: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD'; billNumberPrefix: string; showBillNumber: boolean;
-  paperWidth: '58mm' | '80mm' | 'A4'; templateStyle: 'classic' | 'minimal' | 'bold'; accentColor: string; headerFontSize: number; bodyFontSize: number; footerFontSize: number;
+  paperWidth: '58mm' | '80mm' | 'A4'; templateStyle: 'classic' | 'minimal' | 'bold' | 'compact' | 'invoice' | 'bordered'; accentColor: string; headerFontSize: number; bodyFontSize: number; footerFontSize: number;
   showShopName: boolean; showShopPhone: boolean; showShopAddress: boolean; showGstNumber: boolean; showFssaiInfo: boolean;
   showDateTime: boolean; showCustomerDetails: boolean; showThankYouMessage: boolean;
   showItemSku: boolean; showItemBarcode: boolean; showItemMrp: boolean; showSellingPrice: boolean; showItemDiscount: boolean; showItemTax: boolean;
@@ -55,7 +55,10 @@ export class BillSettingsComponent implements OnInit {
   readonly templates = [
     { value: 'classic', name: 'Market Classic', note: 'Familiar, detailed and practical', icon: 'receipt_long' },
     { value: 'minimal', name: 'Clean Counter', note: 'Quiet, fast-scanning layout', icon: 'density_small' },
-    { value: 'bold', name: 'NammaOoru Bold', note: 'Strong green total and shop identity', icon: 'storefront' }
+    { value: 'bold', name: 'NammaOoru Bold', note: 'Strong total and shop identity', icon: 'storefront' },
+    { value: 'compact', name: 'Compact Thermal', note: 'Saves paper on busy counters', icon: 'compress' },
+    { value: 'invoice', name: 'GST Professional', note: 'Structured business receipt', icon: 'request_quote' },
+    { value: 'bordered', name: 'Border Receipt', note: 'Clear framed sections and total', icon: 'border_outer' }
   ] as const;
   readonly accentColors = ['#43d77d', '#1687d9', '#7c4dff', '#ef6c00', '#d81b60', '#263238'];
 
@@ -93,7 +96,7 @@ export class BillSettingsComponent implements OnInit {
     localStorage.setItem('pos_receipt_language', JSON.stringify({ english: this.settings.showEnglish, tamil: this.settings.showTamil }));
   }
 
-  selectTemplate(value: 'classic' | 'minimal' | 'bold'): void { this.settings.templateStyle = value; this.persistDraft(); }
+  selectTemplate(value: BillSettings['templateStyle']): void { this.settings.templateStyle = value; this.persistDraft(); }
   showPreviewTop(): void {
     requestAnimationFrame(() => this.paperStage?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' }));
   }
