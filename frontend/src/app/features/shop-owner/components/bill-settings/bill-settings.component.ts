@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
@@ -11,12 +11,13 @@ interface CustomField {
 }
 
 interface BillSettings {
+  identityVisibilityVersion: number;
   shopName: string; shopPhone: string; shopAddress: string; gstNumber: string; fssaiNumber: string; fssaiName: string;
   dateFormat: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD'; billNumberPrefix: string; showBillNumber: boolean;
-  paperWidth: '58mm' | '80mm' | 'A4'; templateStyle: 'classic' | 'minimal' | 'bold'; headerFontSize: number; bodyFontSize: number; footerFontSize: number;
+  paperWidth: '58mm' | '80mm' | 'A4'; templateStyle: 'classic' | 'minimal' | 'bold'; accentColor: string; headerFontSize: number; bodyFontSize: number; footerFontSize: number;
   showShopName: boolean; showShopPhone: boolean; showShopAddress: boolean; showGstNumber: boolean; showFssaiInfo: boolean;
   showDateTime: boolean; showCustomerDetails: boolean; showThankYouMessage: boolean;
-  showItemSku: boolean; showItemBarcode: boolean; showItemMrp: boolean; showItemDiscount: boolean; showItemTax: boolean;
+  showItemSku: boolean; showItemBarcode: boolean; showItemMrp: boolean; showSellingPrice: boolean; showItemDiscount: boolean; showItemTax: boolean;
   showSubtotal: boolean; showTotalSavings: boolean; showTaxBreakdown: boolean; showPaymentMethod: boolean;
   showEnglish: boolean; showTamil: boolean; thankYouMessage: string; footerNote: string;
   separatorStyle: 'solid' | 'dashed' | 'dotted' | 'none'; upiId: string; showUpiQrCode: boolean;
@@ -25,12 +26,13 @@ interface BillSettings {
 }
 
 const DEFAULT_SETTINGS: BillSettings = {
+  identityVisibilityVersion: 1,
   shopName: '', shopPhone: '', shopAddress: '', gstNumber: '', fssaiNumber: '', fssaiName: '',
-  dateFormat: 'DD/MM/YYYY', billNumberPrefix: '', showBillNumber: true, paperWidth: '80mm', templateStyle: 'classic',
+  dateFormat: 'DD/MM/YYYY', billNumberPrefix: '', showBillNumber: true, paperWidth: '80mm', templateStyle: 'classic', accentColor: '#43d77d',
   headerFontSize: 16, bodyFontSize: 12, footerFontSize: 10,
   showShopName: true, showShopPhone: true, showShopAddress: false, showGstNumber: false, showFssaiInfo: false,
   showDateTime: true, showCustomerDetails: true, showThankYouMessage: true,
-  showItemSku: false, showItemBarcode: false, showItemMrp: true, showItemDiscount: true, showItemTax: false,
+  showItemSku: false, showItemBarcode: false, showItemMrp: true, showSellingPrice: true, showItemDiscount: true, showItemTax: false,
   showSubtotal: true, showTotalSavings: true, showTaxBreakdown: false, showPaymentMethod: true,
   showEnglish: true, showTamil: true, thankYouMessage: 'Thank you for your order!', footerNote: '',
   separatorStyle: 'dashed', upiId: '', showUpiQrCode: false,
@@ -48,12 +50,14 @@ const DEFAULT_SETTINGS: BillSettings = {
   styleUrls: ['./bill-settings.component.scss']
 })
 export class BillSettingsComponent implements OnInit {
+  @ViewChild('paperStage') paperStage?: ElementRef<HTMLElement>;
   settings: BillSettings = this.cloneDefaults();
   readonly templates = [
     { value: 'classic', name: 'Market Classic', note: 'Familiar, detailed and practical', icon: 'receipt_long' },
     { value: 'minimal', name: 'Clean Counter', note: 'Quiet, fast-scanning layout', icon: 'density_small' },
     { value: 'bold', name: 'NammaOoru Bold', note: 'Strong green total and shop identity', icon: 'storefront' }
   ] as const;
+  readonly accentColors = ['#43d77d', '#1687d9', '#7c4dff', '#ef6c00', '#d81b60', '#263238'];
 
   constructor(
     private router: Router,
@@ -64,22 +68,54 @@ export class BillSettingsComponent implements OnInit {
   ngOnInit(): void {
     const saved = localStorage.getItem('pos_bill_settings');
     if (saved) {
-      try { this.settings = { ...this.cloneDefaults(), ...JSON.parse(saved) }; } catch { /* retain defaults */ }
+      try {
+        const parsed = JSON.parse(saved);
+        this.settings = { ...this.cloneDefaults(), ...parsed };
+        if (parsed.identityVisibilityVersion !== 1) {
+          if (this.settings.shopAddress?.trim()) this.settings.showShopAddress = true;
+          if (this.settings.shopPhone?.trim()) this.settings.showShopPhone = true;
+          if (this.settings.gstNumber?.trim()) this.settings.showGstNumber = true;
+          if (this.settings.fssaiNumber?.trim() || this.settings.fssaiName?.trim()) this.settings.showFssaiInfo = true;
+          this.settings.identityVisibilityVersion = 1;
+          this.persistDraft();
+        }
+      } catch { /* retain defaults */ }
     }
     const shop = this.shopContext.getCurrentShop();
     if (shop && !this.settings.shopName) this.settings.shopName = shop.name || shop.businessName || '';
     if (shop && !this.settings.shopPhone) this.settings.shopPhone = (shop as any).phone || '';
   }
 
-  selectTemplate(value: 'classic' | 'minimal' | 'bold'): void { this.settings.templateStyle = value; }
-  addCustomField(): void {
-    if (this.settings.customFields.length < 6) this.settings.customFields.push({ label: '', value: '', enabled: true, position: 'footer' });
+  @HostListener('input')
+  @HostListener('change')
+  persistDraft(): void {
+    localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
+    localStorage.setItem('pos_receipt_language', JSON.stringify({ english: this.settings.showEnglish, tamil: this.settings.showTamil }));
   }
-  removeCustomField(index: number): void { this.settings.customFields.splice(index, 1); }
+
+  selectTemplate(value: 'classic' | 'minimal' | 'bold'): void { this.settings.templateStyle = value; this.persistDraft(); }
+  showPreviewTop(): void {
+    requestAnimationFrame(() => this.paperStage?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+  identityChanged(field: 'address' | 'phone' | 'gst' | 'fssai', value: string): void {
+    if (value && value.trim()) {
+      if (field === 'address') this.settings.showShopAddress = true;
+      if (field === 'phone') this.settings.showShopPhone = true;
+      if (field === 'gst') this.settings.showGstNumber = true;
+      if (field === 'fssai') this.settings.showFssaiInfo = true;
+    }
+    this.persistDraft();
+    this.showPreviewTop();
+  }
+  addCustomField(): void {
+    if (this.settings.customFields.length < 6) { this.settings.customFields.push({ label: '', value: '', enabled: true, position: 'footer' }); this.persistDraft(); }
+  }
+  removeCustomField(index: number): void { this.settings.customFields.splice(index, 1); this.persistDraft(); }
   moveSection(index: number, direction: -1 | 1): void {
     const target = index + direction;
     if (target < 0 || target >= this.settings.sectionOrder.length) return;
     [this.settings.sectionOrder[index], this.settings.sectionOrder[target]] = [this.settings.sectionOrder[target], this.settings.sectionOrder[index]];
+    this.persistDraft();
   }
   sectionLabel(section: string): string {
     return ({ header: 'Shop header', billInfo: 'Bill information', items: 'Items', summary: 'Totals', payment: 'Payment', qrCode: 'UPI QR', footer: 'Footer' } as any)[section] || section;
@@ -88,11 +124,10 @@ export class BillSettingsComponent implements OnInit {
     if (!this.settings.showEnglish && !this.settings.showTamil) {
       this.swal.warning('Choose a language', 'Keep English or Tamil enabled for the receipt.'); return;
     }
-    localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
-    localStorage.setItem('pos_receipt_language', JSON.stringify({ english: this.settings.showEnglish, tamil: this.settings.showTamil }));
+    this.persistDraft();
     this.swal.success('Saved', 'Bill design settings saved');
   }
-  reset(): void { this.settings = this.cloneDefaults(); }
+  reset(): void { this.settings = this.cloneDefaults(); this.persistDraft(); }
   back(): void { this.router.navigate(['/shop-owner/pos-billing']); }
   trackByIndex(index: number): number { return index; }
   private cloneDefaults(): BillSettings { return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }

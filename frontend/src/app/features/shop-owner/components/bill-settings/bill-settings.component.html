@@ -2,9 +2,9 @@
   <header class="studio-header">
     <div>
       <button class="back-link" type="button" (click)="back()"><mat-icon>arrow_back</mat-icon> POS Billing</button>
-      <p class="eyebrow">Receipt design studio</p>
-      <h1>Make every bill unmistakably yours.</h1>
-      <p class="intro">Choose the paper, decide what customers see, and check the result before you print.</p>
+      <p class="eyebrow">Billing</p>
+      <h1>Bill Settings</h1>
+      <p class="intro">Choose a template, configure printed details and preview the receipt.</p>
     </div>
     <div class="header-actions">
       <button mat-stroked-button type="button" (click)="reset()">Reset</button>
@@ -26,12 +26,12 @@
       <section class="settings-card">
         <div class="card-heading"><span class="step">01</span><div><h2>Shop identity</h2><p>The details printed at the top of every bill.</p></div></div>
         <div class="form-grid">
-          <label class="wide">Shop name<input [(ngModel)]="settings.shopName" placeholder="Your shop name"></label>
-          <label class="wide">Address<input [(ngModel)]="settings.shopAddress" placeholder="Street, area and city"></label>
-          <label>Phone<input [(ngModel)]="settings.shopPhone" placeholder="9876543210"></label>
-          <label>GSTIN<input [(ngModel)]="settings.gstNumber" placeholder="33XXXXX1234X1ZX"></label>
-          <label>FSSAI number<input [(ngModel)]="settings.fssaiNumber" placeholder="14-digit licence"></label>
-          <label>Licence holder<input [(ngModel)]="settings.fssaiName" placeholder="Name on licence"></label>
+          <label class="wide">Shop name<input [(ngModel)]="settings.shopName" (ngModelChange)="showPreviewTop()" placeholder="Your shop name"></label>
+          <label class="wide">Address<input [(ngModel)]="settings.shopAddress" (ngModelChange)="identityChanged('address', $event)" placeholder="Street, area and city"></label>
+          <label>Phone<input [(ngModel)]="settings.shopPhone" (ngModelChange)="identityChanged('phone', $event)" placeholder="9876543210"></label>
+          <label>GSTIN<input [(ngModel)]="settings.gstNumber" (ngModelChange)="identityChanged('gst', $event)" placeholder="33XXXXX1234X1ZX"></label>
+          <label>FSSAI number<input [(ngModel)]="settings.fssaiNumber" (ngModelChange)="identityChanged('fssai', $event)" placeholder="14-digit licence"></label>
+          <label>Licence holder<input [(ngModel)]="settings.fssaiName" (ngModelChange)="identityChanged('fssai', $event)" placeholder="Name on licence"></label>
         </div>
       </section>
 
@@ -47,6 +47,15 @@
           <label>Header <strong>{{ settings.headerFontSize }} px</strong><input type="range" [(ngModel)]="settings.headerFontSize" min="12" max="24"></label>
           <label>Body <strong>{{ settings.bodyFontSize }} px</strong><input type="range" [(ngModel)]="settings.bodyFontSize" min="8" max="16"></label>
           <label>Footer <strong>{{ settings.footerFontSize }} px</strong><input type="range" [(ngModel)]="settings.footerFontSize" min="6" max="14"></label>
+        </div>
+        <div class="colour-setting">
+          <div><strong>Bill colour</strong><small>Used for highlights in the selected template.</small></div>
+          <div class="colour-options" aria-label="Bill colour">
+            <button *ngFor="let colour of accentColors" type="button" class="colour-swatch"
+                    [style.background]="colour" [class.selected]="settings.accentColor === colour"
+                    (click)="settings.accentColor = colour; persistDraft()" [attr.aria-label]="'Use colour ' + colour"></button>
+            <label class="custom-colour" title="Choose custom colour"><mat-icon>palette</mat-icon><input type="color" [(ngModel)]="settings.accentColor"></label>
+          </div>
         </div>
       </section>
 
@@ -68,6 +77,7 @@
           <label><mat-slide-toggle [(ngModel)]="settings.showItemSku"></mat-slide-toggle>SKU/code</label>
           <label><mat-slide-toggle [(ngModel)]="settings.showItemBarcode"></mat-slide-toggle>Barcode</label>
           <label><mat-slide-toggle [(ngModel)]="settings.showItemMrp"></mat-slide-toggle>MRP</label>
+          <label><mat-slide-toggle [(ngModel)]="settings.showSellingPrice"></mat-slide-toggle>Selling price</label>
           <label><mat-slide-toggle [(ngModel)]="settings.showItemDiscount"></mat-slide-toggle>Item discount</label>
           <label><mat-slide-toggle [(ngModel)]="settings.showItemTax"></mat-slide-toggle>Item tax</label>
         </div>
@@ -139,10 +149,10 @@
 
     <aside class="preview-column">
       <div class="preview-heading"><div><span>Live preview</span><strong>{{ settings.paperWidth }}</strong></div><mat-icon>visibility</mat-icon></div>
-      <div class="paper-stage">
+      <div class="paper-stage" #paperStage>
         <article class="receipt-preview" [class.paper-58]="settings.paperWidth==='58mm'" [class.paper-a4]="settings.paperWidth==='A4'"
                  [class.template-minimal]="settings.templateStyle==='minimal'" [class.template-bold]="settings.templateStyle==='bold'"
-                 [style.font-size.px]="settings.bodyFontSize">
+                 [style.font-size.px]="settings.bodyFontSize" [style.--receipt-accent]="settings.accentColor">
           <header *ngIf="settings.showShopName || settings.showShopAddress || settings.showShopPhone">
             <h2 *ngIf="settings.showShopName" [style.font-size.px]="settings.headerFontSize">{{ settings.shopName || 'Your Shop' }}</h2>
             <p *ngIf="settings.showShopAddress">{{ settings.shopAddress || 'Shop address, area and city' }}</p>
@@ -153,14 +163,17 @@
           <div class="receipt-rule" [class]="'receipt-rule ' + settings.separatorStyle"></div>
           <div class="bill-meta"><span *ngIf="settings.showBillNumber">{{ settings.billNumberPrefix || '#' }}1042</span><span *ngIf="settings.showDateTime">11/08/2026 · 05:25 PM</span></div>
           <div class="customer" *ngIf="settings.showCustomerDetails"><small>BILLED TO</small><strong>Walk-in customer</strong></div>
-          <table><thead><tr><th>ITEM</th><th *ngIf="settings.showItemMrp">MRP</th><th>QTY</th><th>AMT</th></tr></thead>
-            <tbody><tr><td>Premium Rice<br><small *ngIf="settings.showTamil">பிரீமியம் அரிசி</small></td><td *ngIf="settings.showItemMrp">65.00</td><td>2</td><td>120.00</td></tr><tr><td>Fresh Milk</td><td *ngIf="settings.showItemMrp">32.00</td><td>1</td><td>30.00</td></tr></tbody></table>
+          <table><thead><tr><th>ITEM</th><th *ngIf="settings.showItemMrp">MRP</th><th *ngIf="settings.showSellingPrice">SELL</th><th *ngIf="settings.showItemDiscount">DISC</th><th>QTY</th><th>AMT</th></tr></thead>
+            <tbody><tr><td>Premium Rice<br><small *ngIf="settings.showTamil">பிரீமியம் அரிசி</small></td><td *ngIf="settings.showItemMrp">65</td><td *ngIf="settings.showSellingPrice">60</td><td *ngIf="settings.showItemDiscount">5</td><td>2</td><td>120</td></tr><tr><td>Fresh Milk</td><td *ngIf="settings.showItemMrp">32</td><td *ngIf="settings.showSellingPrice">30</td><td *ngIf="settings.showItemDiscount">2</td><td>1</td><td>30</td></tr></tbody></table>
           <div class="receipt-rule solid"></div>
           <div class="money-row" *ngIf="settings.showSubtotal"><span>Subtotal</span><span>₹150.00</span></div>
           <div class="money-row saving" *ngIf="settings.showTotalSavings"><span>You save</span><span>₹12.00</span></div>
           <div class="grand-total"><span>TOTAL</span><strong>₹150.00</strong></div>
           <p class="payment" *ngIf="settings.showPaymentMethod">Paid by: CASH</p>
-          <div class="qr-placeholder" *ngIf="settings.showUpiQrCode"><mat-icon>qr_code_2</mat-icon><span>Scan to pay</span></div>
+          <div class="qr-placeholder" *ngIf="settings.showUpiQrCode">
+            <mat-icon>qr_code_2</mat-icon>
+            <span>{{ settings.upiId || 'Add your UPI ID' }}</span>
+          </div>
           <ng-container *ngFor="let field of settings.customFields"><p class="custom-preview" *ngIf="field.enabled && field.label">{{ field.label }}: {{ field.value }}</p></ng-container>
           <footer [style.font-size.px]="settings.footerFontSize"><strong *ngIf="settings.showThankYouMessage">{{ settings.thankYouMessage }}</strong><span *ngIf="settings.footerNote">{{ settings.footerNote }}</span><small>Powered by NammaOoru</small></footer>
         </article>

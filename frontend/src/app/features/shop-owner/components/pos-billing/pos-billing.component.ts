@@ -73,6 +73,7 @@ interface BillSettings {
   showItemSku: boolean;
   showItemBarcode: boolean;
   showItemMrp: boolean;
+  showSellingPrice: boolean;
   showItemDiscount: boolean;
   showItemTax: boolean;
 
@@ -270,6 +271,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     showItemSku: false,
     showItemBarcode: false,
     showItemMrp: true,
+    showSellingPrice: true,
     showItemDiscount: true,
     showItemTax: false,
     // Show/Hide - Summary
@@ -2517,7 +2519,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Generate QR code (works offline)
     let qrCodeDataUrl = '';
     if (bs.showUpiQrCode && bs.upiId) {
-      const qrSize = bs.paperWidth === '58mm' ? 100 : 140;
+      const qrSize = bs.paperWidth === '58mm' ? 80 : (bs.paperWidth === 'A4' ? 120 : 100);
       qrCodeDataUrl = await this.generateUpiQrCode(qrSize, this.totalAmount);
     }
 
@@ -2526,6 +2528,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       const tamilName = this.escapeHtml(item.product.nameTamil || '');
       const rate = item.unitPrice || 0;
       const mrp = item.mrp || rate;
+      const discount = Math.max(mrp - rate, 0);
       // Build name HTML based on receipt language settings from billSettings
       let nameHtml = '';
       if (bs.showEnglish && bs.showTamil && tamilName && tamilName.trim() !== englishName.trim()) {
@@ -2544,8 +2547,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return `
       <tr>
         <td style="font-size: ${bodyFontSize}px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
-        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${mrp}</td>
-        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rate}</td>
+        ${bs.showItemMrp ? `<td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${mrp}</td>` : ''}
+        ${bs.showSellingPrice ? `<td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rate}</td>` : ''}
+        ${bs.showItemDiscount ? `<td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${discount}</td>` : ''}
         <td style="font-size: ${bodyFontSize}px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
         <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
       </tr>
@@ -2757,8 +2761,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           <thead>
             <tr class="item-header">
               <th style="text-align: left;">ITEM</th>
-              <th style="text-align: right;">MRP</th>
-              <th style="text-align: right;">RATE</th>
+              ${bs.showItemMrp ? '<th style="text-align: right;">MRP</th>' : ''}
+              ${bs.showSellingPrice ? '<th style="text-align: right;">SELL</th>' : ''}
+              ${bs.showItemDiscount ? '<th style="text-align: right;">DISC</th>' : ''}
               <th style="text-align: center;">QTY</th>
               <th style="text-align: right;">AMT</th>
             </tr>
