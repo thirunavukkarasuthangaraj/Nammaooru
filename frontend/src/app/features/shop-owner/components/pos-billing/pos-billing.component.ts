@@ -31,6 +31,18 @@ interface CartItem {
   discount: number;  // Discount per item (mrp - unitPrice)
 }
 
+type PosProfile = 'grocery' | 'fashion' | 'medical' | 'general';
+
+interface PosProfileConfig {
+  label: string;
+  icon: string;
+  searchPlaceholder: string;
+  emptyTitle: string;
+  emptyHint: string;
+  quickFilters: string[];
+  browseFirst: boolean;
+}
+
 interface CustomField {
   label: string;
   value: string;
@@ -125,6 +137,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   shopId: number = 0;
   shopName: string = '';
   shopUpiId: string = '';
+  posProfile: PosProfile = 'general';
+  readonly posProfiles: Record<PosProfile, PosProfileConfig> = {
+    grocery: { label: 'Quick Bill', icon: 'qr_code_scanner', searchPlaceholder: 'Search or scan barcode...', emptyTitle: 'Scan or search to add products', emptyHint: 'Search by name, SKU, or scan a barcode', quickFilters: [], browseFirst: false },
+    fashion: { label: 'Fashion counter', icon: 'checkroom', searchPlaceholder: 'Search style, size, colour, SKU or barcode...', emptyTitle: 'Browse the collection', emptyHint: 'Choose the right style and variant before adding it', quickFilters: ['Saree', 'Shirt', 'Pant', 'Women', 'Men', 'Kids'], browseFirst: true },
+    medical: { label: 'Pharmacy counter', icon: 'medication', searchPlaceholder: 'Search medicine, generic name, brand or barcode...', emptyTitle: 'Find a medicine', emptyHint: 'Check the correct product, pack and stock before billing', quickFilters: ['Tablet', 'Capsule', 'Syrup', 'Cream', 'Injection'], browseFirst: true },
+    general: { label: 'Quick Bill', icon: 'point_of_sale', searchPlaceholder: 'Search product, SKU or barcode...', emptyTitle: 'Search to add products', emptyHint: 'Find a product by name, SKU or barcode', quickFilters: [], browseFirst: false }
+  };
 
   // Products
   products: CachedProduct[] = [];
@@ -395,6 +414,25 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.updateDisplayedProducts();
   }
 
+  get posProfileConfig(): PosProfileConfig { return this.posProfiles[this.posProfile]; }
+  get browseProductsByDefault(): boolean { return this.posProfileConfig.browseFirst; }
+
+  applyProfileFilter(filter: string): void {
+    this.searchTerm = filter;
+    this.onSearchChange();
+    requestAnimationFrame(() => this.searchInput?.nativeElement.focus());
+  }
+
+  private setPosProfile(businessType?: string): void {
+    switch ((businessType || '').toUpperCase()) {
+      case 'GROCERY': this.posProfile = 'grocery'; break;
+      case 'FASHION': this.posProfile = 'fashion'; break;
+      case 'PHARMACY':
+      case 'MEDICINE': this.posProfile = 'medical'; break;
+      default: this.posProfile = 'general';
+    }
+  }
+
   ngOnInit(): void {
     this.loadShopInfo();
     this.loadLanguagePreference();
@@ -491,6 +529,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       .pipe(takeUntil(this.destroy$))
       .subscribe(shop => {
         if (shop) {
+          this.setPosProfile(shop.businessType);
           this.shopId = shop.id;
           this.shopName = shop.name || shop.businessName || 'My Shop';
           this.shopUpiId = shop.upiId || '';
@@ -506,6 +545,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Also try immediate value from context
     const currentShop = this.shopContext.getCurrentShop();
     if (currentShop) {
+      this.setPosProfile(currentShop.businessType);
       this.shopId = currentShop.id;
       this.shopName = currentShop.name || currentShop.businessName || 'My Shop';
       this.shopUpiId = currentShop.upiId || '';

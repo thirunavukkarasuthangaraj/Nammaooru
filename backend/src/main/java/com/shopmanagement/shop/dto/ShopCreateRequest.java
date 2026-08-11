@@ -41,7 +41,7 @@ public class ShopCreateRequest {
     private String businessName;
 
     @NotNull(message = "Business type is required")
-    @Pattern(regexp = "GROCERY|PHARMACY|RESTAURANT|GENERAL", message = "Business type must be GROCERY, PHARMACY, RESTAURANT, or GENERAL")
+    @Pattern(regexp = "GROCERY|FASHION|PHARMACY|RESTAURANT|GENERAL", message = "Business type must be GROCERY, FASHION, PHARMACY, RESTAURANT, or GENERAL")
     private String businessType;
 
     @NotBlank(message = "Address is required")

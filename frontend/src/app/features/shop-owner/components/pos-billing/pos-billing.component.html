@@ -1,4 +1,4 @@
-<div class="pos-billing-container">
+<div class="pos-billing-container" [ngClass]="'profile-' + posProfile">
   <div class="pos-content">
     <!-- Left Panel: Tabs for Quick Bill / Browse -->
     <div class="products-panel">
@@ -6,8 +6,8 @@
       <div class="pos-tabs-row">
         <div class="pos-tabs">
           <button class="tab-btn active">
-            <mat-icon>bolt</mat-icon>
-            <span>Quick Bill</span>
+            <mat-icon>{{ posProfileConfig.icon }}</mat-icon>
+            <span>{{ posProfileConfig.label }}</span>
           </button>
           <!-- New Bill Button - Prominent at top -->
           <button class="new-bill-top-btn" (click)="startNewBill()" title="Start a new bill">
@@ -42,7 +42,7 @@
                  [(ngModel)]="searchTerm"
                  (input)="onSearchChange()"
                  (keyup.enter)="onQuickSearchEnter()"
-                 placeholder="Search or scan barcode..."
+                 [placeholder]="posProfileConfig.searchPlaceholder"
                  class="quick-search-input"
                  autofocus>
           <mat-icon class="barcode-icon">qr_code_scanner</mat-icon>
@@ -51,11 +51,27 @@
           </button>
         </div>
 
+        <div class="profile-workbench" *ngIf="posProfile !== 'grocery'">
+          <div class="workbench-copy">
+            <span class="workbench-icon"><mat-icon>{{ posProfileConfig.icon }}</mat-icon></span>
+            <div>
+              <strong>{{ posProfileConfig.emptyTitle }}</strong>
+              <span>{{ posProfileConfig.emptyHint }}</span>
+            </div>
+          </div>
+          <div class="profile-filters" *ngIf="posProfileConfig.quickFilters.length">
+            <button type="button" *ngFor="let filter of posProfileConfig.quickFilters"
+                    (click)="applyProfileFilter(filter)" [class.active]="searchTerm === filter">
+              {{ filter }}
+            </button>
+          </div>
+        </div>
+
         <!-- Empty State - Show when no search/scan AND no cart items -->
-        <div class="quick-bill-empty" *ngIf="!searchTerm && cart.length === 0 && !isLoading">
-          <mat-icon>qr_code_scanner</mat-icon>
-          <h3>Scan or Search to Add Products</h3>
-          <p>Search by name, SKU, or scan barcode to find products</p>
+        <div class="quick-bill-empty" *ngIf="!browseProductsByDefault && !searchTerm && cart.length === 0 && !isLoading">
+          <mat-icon>{{ posProfileConfig.icon }}</mat-icon>
+          <h3>{{ posProfileConfig.emptyTitle }}</h3>
+          <p>{{ posProfileConfig.emptyHint }}</p>
         </div>
 
         <!-- Cart Products Section - Show products in cart when not searching -->
@@ -122,7 +138,7 @@
         </div>
 
         <!-- Search Results - Show when searching -->
-        <div class="products-grid quick-bill-grid" *ngIf="searchTerm && !isLoading">
+        <div class="products-grid quick-bill-grid profile-product-grid" *ngIf="(searchTerm || browseProductsByDefault) && !isLoading">
           <div *ngFor="let product of displayedProducts; trackBy: trackByProductId"
                class="product-card billing-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
@@ -194,7 +210,7 @@
           <!-- No Results -->
           <div *ngIf="filteredProducts.length === 0" class="empty-products">
             <mat-icon>search_off</mat-icon>
-            <p>No products found for "{{ searchTerm }}"</p>
+            <p>{{ searchTerm ? 'No products found for "' + searchTerm + '"' : 'No products available yet' }}</p>
           </div>
         </div>
 

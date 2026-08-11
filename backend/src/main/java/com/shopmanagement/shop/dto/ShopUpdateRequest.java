@@ -36,7 +36,7 @@ public class ShopUpdateRequest {
     @Size(max = 255, message = "Business name cannot exceed 255 characters")
     private String businessName;
 
-    @Pattern(regexp = "GROCERY|PHARMACY|RESTAURANT|GENERAL", message = "Business type must be GROCERY, PHARMACY, RESTAURANT, or GENERAL")
+    @Pattern(regexp = "GROCERY|FASHION|PHARMACY|RESTAURANT|GENERAL", message = "Business type must be GROCERY, FASHION, PHARMACY, RESTAURANT, or GENERAL")
     private String businessType;
 
     @Size(max = 500, message = "Address cannot exceed 500 characters")

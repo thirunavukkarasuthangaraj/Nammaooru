@@ -34,6 +34,7 @@ import { ShopService } from '../../../../core/services/shop.service';
                 <mat-label>Business Type</mat-label>
                 <mat-select formControlName="businessType">
                   <mat-option value="GROCERY">Grocery</mat-option>
+                  <mat-option value="FASHION">Fashion / Clothing</mat-option>
                   <mat-option value="PHARMACY">Pharmacy</mat-option>
                   <mat-option value="RESTAURANT">Restaurant</mat-option>
                   <mat-option value="GENERAL">General</mat-option>

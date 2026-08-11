@@ -140,6 +140,7 @@ export interface ShopFilterParams {
 
 export enum BusinessType {
   GROCERY = 'GROCERY',
+  FASHION = 'FASHION',
   PHARMACY = 'PHARMACY',
   RESTAURANT = 'RESTAURANT',
   GENERAL = 'GENERAL'
