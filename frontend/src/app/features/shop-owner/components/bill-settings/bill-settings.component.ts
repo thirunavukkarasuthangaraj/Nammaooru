@@ -2,6 +2,8 @@ import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular
 import { Router } from '@angular/router';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
 
 interface CustomField {
   label: string;
@@ -52,6 +54,9 @@ const DEFAULT_SETTINGS: BillSettings = {
 export class BillSettingsComponent implements OnInit {
   @ViewChild('paperStage') paperStage?: ElementRef<HTMLElement>;
   settings: BillSettings = this.cloneDefaults();
+  private shopId?: number;
+  private serverLoaded = false;
+  private saveTimer?: ReturnType<typeof setTimeout>;
   readonly templates = [
     { value: 'classic', name: 'Market Classic', note: 'Familiar, detailed and practical', icon: 'receipt_long' },
     { value: 'minimal', name: 'Clean Counter', note: 'Quiet, fast-scanning layout', icon: 'density_small' },
@@ -65,7 +70,8 @@ export class BillSettingsComponent implements OnInit {
   constructor(
     private router: Router,
     private swal: SwalService,
-    private shopContext: ShopContextService
+    private shopContext: ShopContextService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -87,6 +93,10 @@ export class BillSettingsComponent implements OnInit {
     const shop = this.shopContext.getCurrentShop();
     if (shop && !this.settings.shopName) this.settings.shopName = shop.name || shop.businessName || '';
     if (shop && !this.settings.shopPhone) this.settings.shopPhone = (shop as any).phone || '';
+    if (shop?.id) this.loadServerSettings(shop.id);
+    else this.shopContext.shop$.subscribe(current => {
+      if (current?.id && !this.serverLoaded) this.loadServerSettings(current.id);
+    });
   }
 
   @HostListener('input')
@@ -94,6 +104,10 @@ export class BillSettingsComponent implements OnInit {
   persistDraft(): void {
     localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
     localStorage.setItem('pos_receipt_language', JSON.stringify({ english: this.settings.showEnglish, tamil: this.settings.showTamil }));
+    if (this.serverLoaded && this.shopId) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = setTimeout(() => this.saveToServer(false), 700);
+    }
   }
 
   selectTemplate(value: BillSettings['templateStyle']): void { this.settings.templateStyle = value; this.persistDraft(); }
@@ -128,10 +142,44 @@ export class BillSettingsComponent implements OnInit {
       this.swal.warning('Choose a language', 'Keep English or Tamil enabled for the receipt.'); return;
     }
     this.persistDraft();
-    this.swal.success('Saved', 'Bill design settings saved');
+    this.saveToServer(true);
   }
   reset(): void { this.settings = this.cloneDefaults(); this.persistDraft(); }
   back(): void { this.router.navigate(['/shop-owner/pos-billing']); }
   trackByIndex(index: number): number { return index; }
   private cloneDefaults(): BillSettings { return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
+
+  private loadServerSettings(shopId: number): void {
+    this.shopId = shopId;
+    this.http.get<any>(`${environment.apiUrl}/pos/shops/${shopId}/bill-settings`).subscribe({
+      next: response => {
+        const data = response?.data || response;
+        this.settings = { ...this.cloneDefaults(), ...(data || {}) };
+        this.serverLoaded = true;
+        localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
+      },
+      error: error => {
+        console.warn('Using locally cached bill settings until the server is available', error);
+        this.serverLoaded = true;
+      }
+    });
+  }
+
+  private saveToServer(showConfirmation: boolean): void {
+    if (!this.shopId) {
+      if (showConfirmation) this.swal.warning('Not saved to server', 'Shop information is still loading. Please try again.');
+      return;
+    }
+    this.http.put<any>(`${environment.apiUrl}/pos/shops/${this.shopId}/bill-settings`, this.settings).subscribe({
+      next: response => {
+        const data = response?.data || response;
+        if (data) this.settings = { ...this.cloneDefaults(), ...data };
+        localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
+        if (showConfirmation) this.swal.success('Saved', 'This design will be used for print, WhatsApp and email bills.');
+      },
+      error: () => {
+        if (showConfirmation) this.swal.error('Could not save', 'The design is cached on this device, but was not saved to the server.');
+      }
+    });
+  }
 }

@@ -62,6 +62,10 @@ public class ProductCategory {
     @Column(name = "updated_by")
     private String updatedBy;
 
+    /** Null means a platform/global category; otherwise this category belongs to one shop. */
+    @Column(name = "owner_shop_id")
+    private Long ownerShopId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

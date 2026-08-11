@@ -5,6 +5,7 @@ import com.shopmanagement.dto.order.OrderResponse;
 import com.shopmanagement.dto.order.PosOrderRequest;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.service.PosService;
+import com.shopmanagement.service.BillSettingsService;
 import com.shopmanagement.common.util.ResponseUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,20 @@ import java.util.stream.Collectors;
 public class PosController {
 
     private final PosService posService;
+    private final BillSettingsService billSettingsService;
+
+    @GetMapping("/shops/{shopId}/bill-settings")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBillSettings(@PathVariable Long shopId) {
+        return ResponseUtil.success(billSettingsService.getForCurrentUser(shopId), "Bill settings loaded");
+    }
+
+    @PutMapping("/shops/{shopId}/bill-settings")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> saveBillSettings(
+            @PathVariable Long shopId, @RequestBody Map<String, Object> settings) {
+        return ResponseUtil.success(billSettingsService.saveForCurrentUser(shopId, settings), "Bill settings saved");
+    }
 
     /**
      * Create a POS order for walk-in customer

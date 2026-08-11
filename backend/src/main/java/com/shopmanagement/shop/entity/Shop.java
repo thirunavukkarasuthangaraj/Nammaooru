@@ -166,6 +166,10 @@ public class Shop {
     @Column(name = "upi_id")
     private String upiId;
 
+    /** Server-backed receipt designer configuration shared by print, WhatsApp and email. */
+    @Column(name = "bill_settings_json", columnDefinition = "TEXT")
+    private String billSettingsJson;
+
     // Status and Flags
     @Enumerated(EnumType.STRING)
     @Builder.Default

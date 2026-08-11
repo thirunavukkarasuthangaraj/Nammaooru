@@ -60,18 +60,22 @@ public class ProductCategoryService {
             ));
         }
 
-        // Shop owners see global/admin categories and their own, but not other shop owners' categories
+        // Shop owners see platform/global categories and categories owned by their shop only.
         if (isShopOwner()) {
-            String username = getCurrentUsername();
+            Long currentShopId = findCurrentOwnerShopId().orElse(-1L);
             spec = spec.and((root, query, cb) -> {
-                Subquery<String> otherShopOwners = query.subquery(String.class);
-                Root<User> owner = otherShopOwners.from(User.class);
-                otherShopOwners.select(owner.get("username")).where(
-                        cb.equal(owner.get("role"), User.UserRole.SHOP_OWNER),
-                        cb.notEqual(owner.get("username"), username));
+                Subquery<Long> usedByCurrentShop = query.subquery(Long.class);
+                Root<com.shopmanagement.product.entity.ShopProduct> product = usedByCurrentShop
+                        .from(com.shopmanagement.product.entity.ShopProduct.class);
+                usedByCurrentShop.select(product.get("masterProduct").get("category").get("id"))
+                        .where(cb.equal(product.get("shop").get("id"), currentShopId));
                 return cb.or(
-                        cb.isNull(root.get("createdBy")),
-                        cb.not(root.get("createdBy").in(otherShopOwners)));
+                        cb.equal(root.get("ownerShopId"), currentShopId),
+                        root.get("id").in(usedByCurrentShop),
+                        cb.and(cb.isNull(root.get("ownerShopId")), cb.or(
+                                cb.isNull(root.get("createdBy")),
+                                cb.equal(root.get("createdBy"), "admin"),
+                                cb.equal(root.get("createdBy"), "superadmin"))));
             });
         }
         
@@ -188,6 +192,7 @@ public class ProductCategoryService {
                 .iconUrl(request.getIconUrl())
                 .createdBy(getCurrentUsername())
                 .updatedBy(getCurrentUsername())
+                .ownerShopId(isShopOwner() ? findCurrentOwnerShopId().orElse(null) : null)
                 .build();
         
         ProductCategory savedCategory = categoryRepository.save(category);

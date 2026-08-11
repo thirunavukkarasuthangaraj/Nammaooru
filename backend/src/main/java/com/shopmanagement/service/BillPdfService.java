@@ -4,16 +4,22 @@ import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.BaseFont;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderItem;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +30,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Renders a POS order as a branded PDF bill: green shop header,
@@ -32,7 +41,9 @@ import java.time.format.DateTimeFormatter;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class BillPdfService {
+    private final BillSettingsService billSettingsService;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a");
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
@@ -60,18 +71,19 @@ public class BillPdfService {
         // short bills don't carry a big blank area below the footer (which
         // pushed the header off-screen on WhatsApp mobile) and long bills
         // never silently overflow onto a second page that never gets sent.
-        float contentHeight = measureContentHeight(order);
-        return renderBill(order, Math.min(contentHeight + BOTTOM_PADDING, MAX_PAGE_HEIGHT));
+        Map<String, Object> settings = billSettingsService.settingsFor(order.getShop());
+        float contentHeight = measureContentHeight(order, settings);
+        return renderBill(order, settings, Math.min(contentHeight + BOTTOM_PADDING, MAX_PAGE_HEIGHT));
     }
 
-    private float measureContentHeight(Order order) {
-        Rectangle pageSize = new Rectangle(PAGE_WIDTH, MAX_PAGE_HEIGHT);
+    private float measureContentHeight(Order order, Map<String, Object> settings) {
+        Rectangle pageSize = new Rectangle(pageWidth(settings), MAX_PAGE_HEIGHT);
         Document document = new Document(pageSize, 0f, 0f, 0f, 0f);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             PdfWriter writer = PdfWriter.getInstance(document, out);
             document.open();
-            buildContent(document, order);
+            buildContent(document, order, settings);
             float bottomY = writer.getVerticalPosition(true);
             return MAX_PAGE_HEIGHT - bottomY;
         } catch (Exception e) {
@@ -83,14 +95,14 @@ public class BillPdfService {
         }
     }
 
-    private byte[] renderBill(Order order, float pageHeight) {
-        Rectangle pageSize = new Rectangle(PAGE_WIDTH, pageHeight);
+    private byte[] renderBill(Order order, Map<String, Object> settings, float pageHeight) {
+        Rectangle pageSize = new Rectangle(pageWidth(settings), pageHeight);
         Document document = new Document(pageSize, 0f, 0f, 0f, 0f);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             PdfWriter.getInstance(document, out);
             document.open();
-            buildContent(document, order);
+            buildContent(document, order, settings);
         } catch (Exception e) {
             log.error("Failed to generate bill PDF for order {}", order.getOrderNumber(), e);
             throw new RuntimeException("Failed to generate bill PDF", e);
@@ -165,22 +177,26 @@ public class BillPdfService {
         return phrase;
     }
 
-    private void buildContent(Document document, Order order) throws Exception {
+    private void buildContent(Document document, Order order, Map<String, Object> settings) throws Exception {
             BaseFont tamil = tamilBaseFont();
-            Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, Color.WHITE);
-            Font headerSubFont = FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(209, 250, 229));
+            Color accent = colour(settings);
+            Color accentLight = blend(accent, Color.WHITE, 0.86f);
+            boolean colouredHeader = "bold".equals(str(settings, "templateStyle", "classic"));
+            Color headerText = colouredHeader ? Color.WHITE : DARK_TEXT;
+            Font shopFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, num(settings, "headerFontSize", 16), headerText);
+            Font headerSubFont = FontFactory.getFont(FontFactory.HELVETICA, Math.max(7, num(settings, "bodyFontSize", 12) - 3), colouredHeader ? Color.WHITE : MUTED_TEXT);
             Font labelFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
-            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 8, DARK_TEXT);
-            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, DARK_TEXT);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, Math.max(7, num(settings, "bodyFontSize", 12) - 3), DARK_TEXT);
+            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, Math.max(7, num(settings, "bodyFontSize", 12) - 3), DARK_TEXT);
             Font tableHeadFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7, MUTED_TEXT);
-            Font saveFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BRAND_GREEN);
-            Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, BRAND_GREEN);
-            Font footerFont = FontFactory.getFont(FontFactory.HELVETICA, 7, MUTED_TEXT);
-            Font thanksFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, BRAND_GREEN);
+            Font saveFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, accent);
+            Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, accent);
+            Font footerFont = FontFactory.getFont(FontFactory.HELVETICA, Math.max(6, num(settings, "footerFontSize", 10) - 3), MUTED_TEXT);
+            Font thanksFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, accent);
 
             // Tamil-capable counterparts, only for fields that can contain Tamil text
-            Font shopFontTamil = new Font(tamil, 13, Font.BOLD, Color.WHITE);
-            Font headerSubFontTamil = new Font(tamil, 7, Font.NORMAL, new Color(209, 250, 229));
+            Font shopFontTamil = new Font(tamil, num(settings, "headerFontSize", 16), Font.BOLD, headerText);
+            Font headerSubFontTamil = new Font(tamil, 7, Font.NORMAL, colouredHeader ? Color.WHITE : MUTED_TEXT);
             Font normalFontTamil = new Font(tamil, 8, Font.NORMAL, DARK_TEXT);
             Font boldFontTamil = new Font(tamil, 8, Font.BOLD, DARK_TEXT);
 
@@ -188,30 +204,37 @@ public class BillPdfService {
             PdfPTable header = new PdfPTable(1);
             header.setWidthPercentage(100);
             PdfPCell headerCell = new PdfPCell();
-            headerCell.setBackgroundColor(BRAND_GREEN);
-            headerCell.setBorder(Rectangle.NO_BORDER);
+            headerCell.setBackgroundColor(colouredHeader ? accent : Color.WHITE);
+            headerCell.setBorder("bordered".equals(str(settings, "templateStyle", "classic")) ? Rectangle.BOX : Rectangle.NO_BORDER);
+            headerCell.setBorderColor(accent);
             headerCell.setPaddingTop(12f);
             headerCell.setPaddingBottom(12f);
             headerCell.setPaddingLeft(12f);
             headerCell.setPaddingRight(12f);
 
-            Paragraph shopName = new Paragraph();
-            shopName.add(mixedPhrase(order.getShop().getName(), shopFont, shopFontTamil));
-            shopName.setAlignment(Element.ALIGN_CENTER);
-            headerCell.addElement(shopName);
+            if (bool(settings, "showShopName", true)) {
+                Paragraph shopName = new Paragraph();
+                shopName.add(mixedPhrase(str(settings, "shopName", order.getShop().getName()), shopFont, shopFontTamil));
+                shopName.setAlignment(Element.ALIGN_CENTER); headerCell.addElement(shopName);
+            }
 
-            String shopLine = joinNonBlank(order.getShop().getAddressLine1(), order.getShop().getCity());
-            if (!shopLine.isEmpty()) {
+            String shopLine = str(settings, "shopAddress", joinNonBlank(order.getShop().getAddressLine1(), order.getShop().getCity()));
+            if (bool(settings, "showShopAddress", false) && !shopLine.isEmpty()) {
                 Paragraph addr = new Paragraph();
                 addr.add(mixedPhrase(shopLine, headerSubFont, headerSubFontTamil));
                 addr.setAlignment(Element.ALIGN_CENTER);
                 headerCell.addElement(addr);
             }
-            if (order.getShop().getOwnerPhone() != null && !order.getShop().getOwnerPhone().isBlank()) {
-                Paragraph phone = new Paragraph("Ph: " + order.getShop().getOwnerPhone(), headerSubFont);
+            String configuredPhone = str(settings, "shopPhone", order.getShop().getOwnerPhone());
+            if (bool(settings, "showShopPhone", true) && !configuredPhone.isBlank()) {
+                Paragraph phone = new Paragraph("Ph: " + configuredPhone, headerSubFont);
                 phone.setAlignment(Element.ALIGN_CENTER);
                 headerCell.addElement(phone);
             }
+            if (bool(settings, "showGstNumber", false) && !str(settings, "gstNumber", "").isBlank())
+                headerCell.addElement(centered("GSTIN: " + str(settings, "gstNumber", ""), headerSubFont));
+            if (bool(settings, "showFssaiInfo", false) && !str(settings, "fssaiNumber", "").isBlank())
+                headerCell.addElement(centered("FSSAI: " + str(settings, "fssaiNumber", ""), headerSubFont));
             header.addCell(headerCell);
             document.add(header);
 
@@ -227,15 +250,15 @@ public class BillPdfService {
             // Bill meta: number + date, customer
             PdfPTable meta = new PdfPTable(new float[]{1f, 1f});
             meta.setWidthPercentage(100);
-            addCell(meta, "Bill No", labelFont, Element.ALIGN_LEFT);
-            addCell(meta, "Date", labelFont, Element.ALIGN_RIGHT);
-            addCell(meta, "#" + order.getOrderNumber(), boldFont, Element.ALIGN_LEFT);
-            addCell(meta, formatIst(order.getCreatedAt()), normalFont, Element.ALIGN_RIGHT);
+            addCell(meta, bool(settings,"showBillNumber",true) ? "Bill No" : "", labelFont, Element.ALIGN_LEFT);
+            addCell(meta, bool(settings,"showDateTime",true) ? "Date" : "", labelFont, Element.ALIGN_RIGHT);
+            addCell(meta, bool(settings,"showBillNumber",true) ? str(settings,"billNumberPrefix","") + order.getOrderNumber() : "", boldFont, Element.ALIGN_LEFT);
+            addCell(meta, bool(settings,"showDateTime",true) ? formatDate(order.getCreatedAt(), settings) : "", normalFont, Element.ALIGN_RIGHT);
             bodyCell.addElement(meta);
 
             String customerName = displayCustomerName(order);
             String customerPhone = order.getCustomer() != null ? order.getCustomer().getMobileNumber() : null;
-            if (customerName != null || customerPhone != null) {
+            if (bool(settings, "showCustomerDetails", true) && (customerName != null || customerPhone != null)) {
                 bodyCell.addElement(spacer(4f));
                 Paragraph custLabel = new Paragraph("Billed To", labelFont);
                 bodyCell.addElement(custLabel);
@@ -249,13 +272,18 @@ public class BillPdfService {
             bodyCell.addElement(rule());
 
             // ===== Items table =====
-            PdfPTable table = new PdfPTable(new float[]{4f, 1.4f, 1.4f, 1f, 1.6f});
+            List<String> columns = new ArrayList<>(List.of("ITEM"));
+            if (bool(settings,"showItemSku",false)) columns.add("SKU");
+            if (bool(settings,"showItemBarcode",false)) columns.add("CODE");
+            if (bool(settings,"showItemMrp",true)) columns.add("MRP");
+            if (bool(settings,"showSellingPrice",true)) columns.add("RATE");
+            if (bool(settings,"showItemDiscount",true)) columns.add("DISC");
+            columns.add("QTY"); columns.add("AMT");
+            float[] widths = new float[columns.size()]; widths[0] = 4f;
+            for (int x = 1; x < widths.length; x++) widths[x] = columns.get(x).equals("QTY") ? 1f : 1.4f;
+            PdfPTable table = new PdfPTable(widths);
             table.setWidthPercentage(100);
-            addHeadCell(table, "ITEM", tableHeadFont, Element.ALIGN_LEFT);
-            addHeadCell(table, "MRP", tableHeadFont, Element.ALIGN_RIGHT);
-            addHeadCell(table, "RATE", tableHeadFont, Element.ALIGN_RIGHT);
-            addHeadCell(table, "QTY", tableHeadFont, Element.ALIGN_RIGHT);
-            addHeadCell(table, "AMT", tableHeadFont, Element.ALIGN_RIGHT);
+            for (String column : columns) addHeadCell(table, column, tableHeadFont, column.equals("ITEM") ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
 
             BigDecimal mrpTotal = BigDecimal.ZERO;
             int totalQty = 0;
@@ -265,11 +293,19 @@ public class BillPdfService {
                 mrpTotal = mrpTotal.add(lineMrp);
                 totalQty += item.getQuantity();
 
-                addCellMixed(table, item.getProductName(), normalFont, normalFontTamil, Element.ALIGN_LEFT);
-                addCell(table, stripZeros(mrp), normalFont, Element.ALIGN_RIGHT);
-                addCell(table, stripZeros(item.getUnitPrice()), normalFont, Element.ALIGN_RIGHT);
-                addCell(table, String.valueOf(item.getQuantity()), normalFont, Element.ALIGN_RIGHT);
-                addCell(table, stripZeros(item.getTotalPrice()), boldFont, Element.ALIGN_RIGHT);
+                String itemName = bool(settings,"showEnglish",true) ? item.getProductName() : "";
+                if (bool(settings,"showTamil",true) && item.getProductNameTamil() != null) itemName = joinNonBlank(itemName, item.getProductNameTamil());
+                addCellMixed(table, itemName, normalFont, normalFontTamil, Element.ALIGN_LEFT);
+                for (String column : columns.subList(1, columns.size())) {
+                    String value = switch (column) {
+                        case "SKU" -> item.getProductSku() == null ? "" : item.getProductSku();
+                        case "CODE" -> itemBarcode(item);
+                        case "MRP" -> stripZeros(mrp); case "RATE" -> stripZeros(item.getUnitPrice());
+                        case "DISC" -> stripZeros(mrp.subtract(item.getUnitPrice()).max(BigDecimal.ZERO));
+                        case "QTY" -> String.valueOf(item.getQuantity()); default -> stripZeros(item.getTotalPrice());
+                    };
+                    addCell(table, value, column.equals("AMT") ? boldFont : normalFont, Element.ALIGN_RIGHT);
+                }
             }
             bodyCell.addElement(table);
 
@@ -279,21 +315,23 @@ public class BillPdfService {
             // ===== Totals =====
             PdfPTable totals = new PdfPTable(new float[]{3f, 2f});
             totals.setWidthPercentage(100);
-            addCell(totals, "Items: " + order.getOrderItems().size() + " (Qty: " + totalQty + ")", normalFont, Element.ALIGN_LEFT);
-            addCell(totals, "Rs. " + stripZeros(order.getSubtotal()), normalFont, Element.ALIGN_RIGHT);
+            if (bool(settings,"showSubtotal",true)) {
+                addCell(totals, "Items: " + order.getOrderItems().size() + " (Qty: " + totalQty + ")", normalFont, Element.ALIGN_LEFT);
+                addCell(totals, "Rs. " + stripZeros(order.getSubtotal()), normalFont, Element.ALIGN_RIGHT);
+            }
 
             BigDecimal savings = mrpTotal.subtract(order.getSubtotal());
-            if (savings.signum() > 0) {
+            if (bool(settings,"showTotalSavings",true) && savings.signum() > 0) {
                 addCell(totals, "MRP Total", labelFont, Element.ALIGN_LEFT);
                 addCell(totals, "Rs. " + stripZeros(mrpTotal), labelFont, Element.ALIGN_RIGHT);
                 addCell(totals, "You Save", saveFont, Element.ALIGN_LEFT);
                 addCell(totals, "Rs. " + stripZeros(savings), saveFont, Element.ALIGN_RIGHT);
             }
-            if (order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0) {
+            if (bool(settings,"showItemDiscount",true) && order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0) {
                 addCell(totals, "Discount", normalFont, Element.ALIGN_LEFT);
                 addCell(totals, "- Rs. " + stripZeros(order.getDiscountAmount()), normalFont, Element.ALIGN_RIGHT);
             }
-            if (order.getTaxAmount() != null && order.getTaxAmount().signum() > 0) {
+            if (bool(settings,"showTaxBreakdown",false) && order.getTaxAmount() != null && order.getTaxAmount().signum() > 0) {
                 addCell(totals, "Tax", normalFont, Element.ALIGN_LEFT);
                 addCell(totals, "Rs. " + stripZeros(order.getTaxAmount()), normalFont, Element.ALIGN_RIGHT);
             }
@@ -305,20 +343,20 @@ public class BillPdfService {
             PdfPTable grand = new PdfPTable(new float[]{1f, 1f});
             grand.setWidthPercentage(100);
             PdfPCell totalLabel = new PdfPCell(new Phrase("TOTAL", totalFont));
-            totalLabel.setBackgroundColor(LIGHT_GREEN);
+            totalLabel.setBackgroundColor(accentLight);
             totalLabel.setBorder(Rectangle.NO_BORDER);
             totalLabel.setPadding(8f);
             totalLabel.setHorizontalAlignment(Element.ALIGN_LEFT);
             grand.addCell(totalLabel);
             PdfPCell totalValue = new PdfPCell(new Phrase("Rs. " + stripZeros(order.getTotalAmount()), totalFont));
-            totalValue.setBackgroundColor(LIGHT_GREEN);
+            totalValue.setBackgroundColor(accentLight);
             totalValue.setBorder(Rectangle.NO_BORDER);
             totalValue.setPadding(8f);
             totalValue.setHorizontalAlignment(Element.ALIGN_RIGHT);
             grand.addCell(totalValue);
             bodyCell.addElement(grand);
 
-            if (order.getPaymentMethod() != null) {
+            if (bool(settings,"showPaymentMethod",true) && order.getPaymentMethod() != null) {
                 bodyCell.addElement(spacer(4f));
                 Paragraph pay = new Paragraph("Paid by: " + order.getPaymentMethod().name().replace("_", " "),
                         boldFont);
@@ -326,16 +364,32 @@ public class BillPdfService {
                 bodyCell.addElement(pay);
             }
 
+            String upiId = str(settings, "upiId", order.getShop().getUpiId());
+            if (bool(settings, "showUpiQrCode", false) && !upiId.isBlank()) {
+                bodyCell.addElement(spacer(6f));
+                String upiUri = "upi://pay?pa=" + upiId + "&pn="
+                        + java.net.URLEncoder.encode(str(settings, "shopName", order.getShop().getName()), java.nio.charset.StandardCharsets.UTF_8)
+                        + "&am=" + stripZeros(order.getTotalAmount()) + "&cu=INR";
+                BitMatrix matrix = new QRCodeWriter().encode(upiUri, BarcodeFormat.QR_CODE, 160, 160);
+                ByteArrayOutputStream qrBytes = new ByteArrayOutputStream();
+                MatrixToImageWriter.writeToStream(matrix, "PNG", qrBytes);
+                Image qrImage = Image.getInstance(qrBytes.toByteArray());
+                qrImage.scaleAbsolute(62f, 62f); qrImage.setAlignment(Element.ALIGN_CENTER);
+                bodyCell.addElement(qrImage);
+                bodyCell.addElement(centered(upiId, footerFont));
+            }
+
             bodyCell.addElement(spacer(8f));
-            Paragraph thanks = new Paragraph("Thank you for shopping with us!", thanksFont);
-            thanks.setAlignment(Element.ALIGN_CENTER);
-            bodyCell.addElement(thanks);
+            if (bool(settings,"showThankYouMessage",true))
+                bodyCell.addElement(centered(str(settings,"thankYouMessage","Thank you for your order!"), thanksFont));
+
+            if (!str(settings,"footerNote","").isBlank()) bodyCell.addElement(centered(str(settings,"footerNote",""), footerFont));
 
             Paragraph printed = new Paragraph("Printed: " + formatIst(order.getCreatedAt()), footerFont);
             printed.setAlignment(Element.ALIGN_CENTER);
             bodyCell.addElement(printed);
 
-            Paragraph powered = new Paragraph("Powered by NammaOoru", footerFont);
+            Paragraph powered = new Paragraph("Powered by Namma Ooru Connect", footerFont);
             powered.setAlignment(Element.ALIGN_CENTER);
             bodyCell.addElement(powered);
 
@@ -445,5 +499,64 @@ public class BillPdfService {
         cell.setPaddingLeft(2f);
         cell.setPaddingRight(2f);
         table.addCell(cell);
+    }
+
+    private boolean bool(Map<String, Object> settings, String key, boolean fallback) {
+        Object value = settings.get(key);
+        return value instanceof Boolean b ? b : value == null ? fallback : Boolean.parseBoolean(value.toString());
+    }
+
+    private int num(Map<String, Object> settings, String key, int fallback) {
+        Object value = settings.get(key);
+        if (value instanceof Number n) return n.intValue();
+        try { return value == null ? fallback : Integer.parseInt(value.toString()); }
+        catch (NumberFormatException ignored) { return fallback; }
+    }
+
+    private String str(Map<String, Object> settings, String key, String fallback) {
+        Object value = settings.get(key);
+        return value == null ? (fallback == null ? "" : fallback) : value.toString();
+    }
+
+    private float pageWidth(Map<String, Object> settings) {
+        return switch (str(settings, "paperWidth", "80mm")) {
+            case "58mm" -> 164f;
+            case "A4" -> 595f;
+            default -> PAGE_WIDTH;
+        };
+    }
+
+    private Color colour(Map<String, Object> settings) {
+        try { return Color.decode(str(settings, "accentColor", "#16825d")); }
+        catch (NumberFormatException ignored) { return BRAND_GREEN; }
+    }
+
+    private Color blend(Color a, Color b, float amountOfB) {
+        float x = Math.max(0, Math.min(1, amountOfB));
+        return new Color(Math.round(a.getRed() * (1-x) + b.getRed() * x),
+                Math.round(a.getGreen() * (1-x) + b.getGreen() * x),
+                Math.round(a.getBlue() * (1-x) + b.getBlue() * x));
+    }
+
+    private Paragraph centered(String text, Font font) {
+        Paragraph paragraph = new Paragraph(text, font);
+        paragraph.setAlignment(Element.ALIGN_CENTER);
+        return paragraph;
+    }
+
+    private String formatDate(LocalDateTime serverTime, Map<String, Object> settings) {
+        String pattern = switch (str(settings, "dateFormat", "DD/MM/YYYY")) {
+            case "MM/DD/YYYY" -> "MM/dd/yyyy hh:mm a";
+            case "YYYY-MM-DD" -> "yyyy-MM-dd hh:mm a";
+            default -> "dd/MM/yyyy hh:mm a";
+        };
+        return serverTime.atZone(ZoneOffset.UTC).withZoneSameInstant(IST).format(DateTimeFormatter.ofPattern(pattern));
+    }
+
+    private String itemBarcode(OrderItem item) {
+        try {
+            return item.getShopProduct() == null || item.getShopProduct().getBarcode1() == null
+                    ? "" : item.getShopProduct().getBarcode1();
+        } catch (Exception ignored) { return ""; }
     }
 }
