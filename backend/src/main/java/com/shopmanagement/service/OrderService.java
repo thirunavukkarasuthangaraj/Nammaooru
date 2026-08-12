@@ -622,12 +622,16 @@ public class OrderService {
         try {
             log.info("🔔 Starting push notification process for order: {}", order.getOrderNumber());
 
-            if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+            if (order.getCustomer() != null && (order.getCustomer().getEmail() != null || order.getCustomer().getMobileNumber() != null)) {
                 String customerEmail = order.getCustomer().getEmail();
-                log.info("📧 Customer email from order: {}", customerEmail);
+                String customerMobile = order.getCustomer().getMobileNumber();
+                log.info("📧 Customer email from order: {}, mobile: {}", customerEmail, customerMobile);
 
-                // Find user by customer's email
-                User customerUser = userRepository.findByEmail(customerEmail).orElse(null);
+                // Match by email OR mobile: the customer record's email can drift from the
+                // login account's email (typo, guest-checkout email), but the phone number
+                // is the more reliable link — without this fallback, a mismatched email
+                // silently drops the notification even when a valid FCM token exists.
+                User customerUser = userRepository.findByEmailOrMobileNumber(customerEmail, customerMobile).orElse(null);
                 if (customerUser != null) {
                     Long userId = customerUser.getId();
                     String username = customerUser.getUsername();
@@ -1169,11 +1173,14 @@ public class OrderService {
         
         // Send push notification to customer
         try {
-            if (acceptedOrder.getCustomer() != null && acceptedOrder.getCustomer().getEmail() != null) {
-                // Find user by customer's email
-                User customerUser = userRepository.findByEmail(acceptedOrder.getCustomer().getEmail()).orElse(null);
+            if (acceptedOrder.getCustomer() != null && (acceptedOrder.getCustomer().getEmail() != null || acceptedOrder.getCustomer().getMobileNumber() != null)) {
+                // Match by email OR mobile — see comment in createOrderStatusNotification's
+                // FCM lookup for why the email-only match silently drops notifications.
+                User customerUser = userRepository.findByEmailOrMobileNumber(
+                        acceptedOrder.getCustomer().getEmail(), acceptedOrder.getCustomer().getMobileNumber()).orElse(null);
                 if (customerUser == null) {
-                    log.warn("No user found for customer email: {}", acceptedOrder.getCustomer().getEmail());
+                    log.warn("No user found for customer email: {} or mobile: {}",
+                            acceptedOrder.getCustomer().getEmail(), acceptedOrder.getCustomer().getMobileNumber());
                     return mapToResponse(acceptedOrder);
                 }
                 Long userId = customerUser.getId();
