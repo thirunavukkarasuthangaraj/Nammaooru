@@ -467,17 +467,18 @@ class VoiceAssistantService {
         {'product_id': product['id']?.toString() ?? '', 'product_name': name, 'quantity': 1},
         {'success': true, 'product': name, 'price': price, 'cartTotal': cartTotal},
       );
+      // Short confirmation only — repeating "what else do you want?" after
+      // every add was annoying users; the customer speaks when ready.
       _gemini.injectModelMessage(
-        '$name$weightLabel சேர்த்தாச்சு!$totalStr வேற என்ன வேணும்? | '
-        '$name$weightLabel added!$totalStr What else?',
+        '$name$weightLabel சேர்த்தாச்சு!$totalStr | $name$weightLabel added!$totalStr',
       );
 
       _addBot(
-        '$name$weightLabel ₹$price சேர்த்தாச்சு!$totalStr வேற என்ன வேணும்?',
-        sub: '$name$weightLabel Rs.$price added!$totalStr What else?',
+        '$name$weightLabel ₹$price சேர்த்தாச்சு!$totalStr',
+        sub: '$name$weightLabel Rs.$price added!$totalStr',
         addedProduct: product,
       );
-      await _speak('$name சேர்த்தாச்சு! வேற என்ன வேணும்?');
+      await _speak('$name சேர்த்தாச்சு!');
     } else {
       _addBot('$name stock இல்லை!', sub: '$name out of stock!');
       await _speak('$name stock இல்லை, வேற சொல்லுங்க');
@@ -521,7 +522,7 @@ CONVERSATION FLOW:
 - Customer says product name → call search_products(query) using the CORRECTED name (apply STT rules below)
 - Results returned → list numbered: "1. Name 1kg ₹50, 2. Name 500g ₹25. எது? | Which?"
 - Customer says "1" / "ஒன்று" / "first" → call add_to_cart with that product_id
-- After adding → confirm + ask "வேற என்ன? | What else?"
+- After adding → confirm briefly: "சேர்த்தாச்சு! | Added!" — do NOT ask "what else / வேற என்ன" after every add; the customer will speak when ready. Only ask a question when you genuinely need an answer (e.g. which option).
 - "done" / "போதும்" / "bye" / "enough" → call end_session
 - "remove X" / "X நீக்கு" → call remove_from_cart
 - "cart" / "கார்ட்" / "what's in cart" → call get_cart
@@ -548,7 +549,7 @@ CONTEXT:
 - "yes"/"ஆமா"/"சரி" = proceed with last suggestion
 - "no"/"வேண்டாம்"/"இல்லை" = ask what else
 - "rice and dal" = search each separately, one at a time
-- If customer asked for multiple items, after adding the first one, search for the next one BEFORE asking "what else"
+- If customer asked for multiple items, after adding the first one, search for the next one immediately
 
 TONE: Warm Tamil shopkeeper. Casual: "வேணும்", "சொல்லுங்க", "போட்டாச்சு", "சேர்த்தாச்சு".''';
   }
