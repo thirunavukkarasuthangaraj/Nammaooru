@@ -1,5 +1,7 @@
 <div class="pay-and-use-page">
   <mat-card class="pay-card">
+    <div class="card-accent"></div>
+
     <div class="lock-icon">
       <mat-icon>lock_clock</mat-icon>
     </div>
@@ -13,10 +15,33 @@
     <ng-container *ngIf="!loading && status as s">
       <p class="shop-name">{{ s.shopName }}</p>
 
+      <div class="usage-info" *ngIf="s.paymentRequired">
+        <div class="usage-row">
+          <span class="u-label"><mat-icon>storefront</mat-icon> Shop joined</span>
+          <span class="u-value">{{ s.joinedAt ? (s.joinedAt | date:'d MMM y') : '-' }}</span>
+        </div>
+        <div class="usage-row expired" *ngIf="s.validUntil">
+          <span class="u-label"><mat-icon>event_busy</mat-icon> Free access ended</span>
+          <span class="u-value">{{ s.validUntil | date:'d MMM y' }}</span>
+        </div>
+        <div class="usage-row">
+          <span class="u-label"><mat-icon>today</mat-icon> Today</span>
+          <span class="u-value">{{ today | date:'d MMM y' }}</span>
+        </div>
+        <p class="usage-summary">
+          You've been using the app since
+          {{ s.joinedAt ? (s.joinedAt | date:'d MMM y') : 'joining' }}.
+          To continue, pay for the next {{ s.durationDays }} {{ s.durationDays === 1 ? 'day' : 'days' }}.
+        </p>
+      </div>
+
       <div class="due-block" *ngIf="s.paymentRequired">
         <p class="due-label">Amount due</p>
         <p class="due-amount">&#8377;{{ s.amount }}</p>
-        <p class="due-note">Grants {{ s.durationDays }} days of access after payment.</p>
+        <p class="due-note">
+          <mat-icon>event_available</mat-icon>
+          {{ s.durationDays }} {{ s.durationDays === 1 ? 'day' : 'days' }} of access from payment
+        </p>
       </div>
 
       <p class="no-price" *ngIf="!s.paymentRequired">
@@ -36,9 +61,17 @@
         {{ paying ? 'Processing...' : 'Pay Now' }}
       </button>
 
+      <p class="secure-note" *ngIf="s.paymentRequired && !s.testMode">
+        <mat-icon>verified_user</mat-icon>
+        Secure payment via Razorpay &middot; UPI, cards &amp; netbanking
+      </p>
+
       <span class="test-mode-note" *ngIf="s.testMode">Test mode - no real charge will be made.</span>
 
-      <button mat-button class="logout-btn" (click)="logout()">Logout</button>
+      <button mat-button class="logout-btn" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </button>
     </ng-container>
   </mat-card>
 </div>

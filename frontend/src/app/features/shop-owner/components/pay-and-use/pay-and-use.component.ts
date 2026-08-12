@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,6 +23,7 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
   loading = true;
   paying = false;
   isOnline = navigator.onLine;
+  today = new Date();
 
   private onlineHandler = () => { this.isOnline = true; };
   private offlineHandler = () => { this.isOnline = false; };
@@ -31,7 +32,8 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
     private paymentCollectService: PaymentCollectService,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -85,11 +87,13 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
             name: 'NammaOoru',
             description: `Shop usage payment${this.status ? ' - ' + this.status.shopName : ''}`,
             order_id: order.testMode ? undefined : order.orderId,
-            handler: (response: any) => {
+            // Razorpay callbacks fire outside Angular's zone; without ngZone.run the
+            // UI never updates (e.g. the button stays stuck on "Processing...").
+            handler: (response: any) => this.ngZone.run(() => {
               this.verify(order.orderId, response.razorpay_payment_id, response.razorpay_signature, order.testMode);
-            },
+            }),
             modal: {
-              ondismiss: () => { this.paying = false; }
+              ondismiss: () => this.ngZone.run(() => { this.paying = false; })
             },
             theme: { color: '#2e7d32' }
           };

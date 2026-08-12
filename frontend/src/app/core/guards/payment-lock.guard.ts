@@ -25,9 +25,18 @@ export class PaymentLockGuard implements CanActivate {
 
     return this.paymentCollectService.getStatus().pipe(
       map(status => status.paid ? true : this.router.parseUrl('/pay-and-use')),
-      // Fail open on transient errors so a status-check hiccup doesn't lock out a paid shop owner;
-      // the backend ShopPaymentGateFilter still enforces the lock server-side either way.
-      catchError(() => of(true))
+      // Offline: fall back to the last server verdict so a shop that was already
+      // locked stays locked without a connection. Online hiccups still fail open —
+      // the backend ShopPaymentGateFilter enforces the lock server-side regardless.
+      catchError(() => {
+        if (!navigator.onLine) {
+          const cached = this.paymentCollectService.getCachedStatus();
+          if (cached && cached.paymentRequired && !cached.paid) {
+            return of(this.router.parseUrl('/pay-and-use'));
+          }
+        }
+        return of(true);
+      })
     );
   }
 }

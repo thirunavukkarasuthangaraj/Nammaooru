@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, catchError, throwError } from 'rxjs';
+import { Observable, map, catchError, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
 
@@ -18,6 +18,7 @@ export interface ShopPaymentRow {
 export interface ShopPaymentStatus {
   shopId: number;
   shopName: string;
+  joinedAt: string | null;
   amount: number;
   currency: string;
   durationDays: number;
@@ -94,11 +95,30 @@ export class PaymentCollectService {
 
   // ---- Shop owner ----
 
+  private static readonly STATUS_CACHE_KEY = 'pay_use_last_status';
+
   getStatus(): Observable<ShopPaymentStatus> {
     return this.http.get<ApiResponse<ShopPaymentStatus>>(`${this.shopOwnerUrl}/status`).pipe(
       map(response => this.unwrap(response)),
+      // Cache the verdict so the lock still holds when the device is offline
+      tap(status => {
+        try {
+          localStorage.setItem(PaymentCollectService.STATUS_CACHE_KEY, JSON.stringify({
+            shopId: status.shopId, paid: status.paid, paymentRequired: status.paymentRequired, cachedAt: Date.now()
+          }));
+        } catch { /* storage full/unavailable — lock still enforced server-side */ }
+      }),
       catchError(error => throwError(() => error))
     );
+  }
+
+  /** Last server verdict, for offline lock decisions. Null when never cached. */
+  getCachedStatus(): { shopId: number; paid: boolean; paymentRequired: boolean } | null {
+    try {
+      return JSON.parse(localStorage.getItem(PaymentCollectService.STATUS_CACHE_KEY) || 'null');
+    } catch {
+      return null;
+    }
   }
 
   createOrder(): Observable<PaymentOrder> {

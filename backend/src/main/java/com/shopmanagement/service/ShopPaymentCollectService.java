@@ -197,10 +197,12 @@ public class ShopPaymentCollectService {
         ShopPaymentCollection latestPaid = shopPaymentCollectionRepository
                 .findFirstByShopIdAndStatusOrderByValidUntilDesc(shopId, ShopPaymentCollection.CollectionStatus.PAID)
                 .orElse(null);
+        LocalDateTime joinedAt = shopRepository.findById(shopId).map(Shop::getCreatedAt).orElse(null);
 
         Map<String, Object> status = new HashMap<>();
         status.put("shopId", shopId);
         status.put("shopName", shopName);
+        status.put("joinedAt", joinedAt);
         status.put("amount", amount);
         status.put("currency", currency);
         status.put("durationDays", getDurationDays());
