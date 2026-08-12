@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -23,4 +24,7 @@ public interface ShopPaymentCollectionRepository extends JpaRepository<ShopPayme
             Long shopId, ShopPaymentCollection.CollectionStatus status);
 
     Page<ShopPaymentCollection> findByShopIdOrderByCreatedAtDesc(Long shopId, Pageable pageable);
+
+    List<ShopPaymentCollection> findByStatusAndRazorpayOrderIdStartingWith(
+            ShopPaymentCollection.CollectionStatus status, String orderIdPrefix);
 }

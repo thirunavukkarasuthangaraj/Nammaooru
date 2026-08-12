@@ -67,6 +67,19 @@ public class ShopPaymentCollectService {
             throw new RuntimeException("Duration must be at least 1 day");
         }
         settingService.saveSetting(DURATION_SETTING_KEY, String.valueOf(days), "Days of access granted per pay-and-use payment");
+
+        // Re-anchor free windows (never-paid shops) to join date + the new duration so a
+        // shorter duration takes effect immediately. Real paid periods keep what was bought.
+        List<ShopPaymentCollection> freeWindows = shopPaymentCollectionRepository
+                .findByStatusAndRazorpayOrderIdStartingWith(ShopPaymentCollection.CollectionStatus.PAID, "grace_");
+        for (ShopPaymentCollection window : freeWindows) {
+            shopRepository.findById(window.getShopId()).ifPresent(shop -> {
+                LocalDateTime joined = shop.getCreatedAt() != null ? shop.getCreatedAt() : window.getCreatedAt();
+                window.setValidUntil(joined.plusDays(days));
+                shopPaymentCollectionRepository.save(window);
+            });
+        }
+        recomputeAllBlockedFlags();
     }
 
     @Transactional(readOnly = true)
@@ -121,10 +134,15 @@ public class ShopPaymentCollectService {
         price.setUpdatedBy(adminUserId);
         ShopPaymentPrice saved = shopPaymentPriceRepository.save(price);
 
-        // A shop that has never paid before gets one free grace window equal to the billing
-        // duration instead of being instantly locked out / delisted the moment a price is set.
+        // Business rule: the payment clock starts at the shop's JOIN date, not when the
+        // price is set. The free window = join date + one billing duration, so a shop
+        // older than one period owes immediately the moment a price is set.
         if (amount > 0 && !shopPaymentCollectionRepository.existsByShopIdAndStatus(shopId, ShopPaymentCollection.CollectionStatus.PAID)) {
             LocalDateTime now = LocalDateTime.now();
+            LocalDateTime joined = shopRepository.findById(shopId)
+                    .map(Shop::getCreatedAt)
+                    .orElse(null);
+            if (joined == null) joined = now;
             ShopPaymentCollection grace = ShopPaymentCollection.builder()
                     .shopId(shopId)
                     .amount(0)
@@ -132,10 +150,10 @@ public class ShopPaymentCollectService {
                     .razorpayOrderId("grace_" + shopId + "_" + now.toEpochSecond(java.time.ZoneOffset.UTC))
                     .status(ShopPaymentCollection.CollectionStatus.PAID)
                     .paidAt(now)
-                    .validUntil(now.plusDays(getDurationDays()))
+                    .validUntil(joined.plusDays(getDurationDays()))
                     .build();
             shopPaymentCollectionRepository.save(grace);
-            log.info("Granted grace window for shop {} until {}", shopId, grace.getValidUntil());
+            log.info("Free window for shop {} runs from join date {} until {}", shopId, joined, grace.getValidUntil());
         }
 
         recomputeBlockedFlag(shopId);
