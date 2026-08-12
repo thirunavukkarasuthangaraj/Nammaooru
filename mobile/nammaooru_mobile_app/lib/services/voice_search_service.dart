@@ -9,11 +9,15 @@ import '../core/config/env_config.dart';
 class VoiceSearchService {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
+  bool _initialized = false;
   String _lastWords = '';
   String? _lastError;
 
-  /// Check if speech recognition is available
+  /// Check if speech recognition is available.
+  /// Initializes the engine once and reuses it — re-initializing on every
+  /// tap adds ~1s latency and can re-trigger the system listening prompt.
   Future<bool> initialize() async {
+    if (_initialized && _speech.isAvailable) return true;
     try {
       bool available = await _speech.initialize(
         onStatus: (status) {
@@ -29,6 +33,7 @@ class VoiceSearchService {
         _lastError = 'Speech recognition not available on this device';
       }
 
+      _initialized = available;
       return available;
     } catch (e) {
       _lastError = 'Error initializing speech: $e';
@@ -55,6 +60,7 @@ class VoiceSearchService {
       _lastConfidence = 0;
       _isListening = true;
       _lastError = null;
+      bool gotFinalResult = false;
 
       final locale = localeId ?? 'ta-IN';
       debugPrint('VoiceSearch: Starting with $locale locale...');
@@ -63,6 +69,7 @@ class VoiceSearchService {
         onResult: (result) {
           _lastWords = result.recognizedWords;
           _lastConfidence = result.confidence;
+          if (result.finalResult) gotFinalResult = true;
           debugPrint('VoiceSearch: Recognized: $_lastWords (confidence: ${result.confidence})');
         },
         localeId: locale,
@@ -71,14 +78,17 @@ class VoiceSearchService {
           cancelOnError: false,
           partialResults: true,
         ),
-        pauseFor: pauseFor ?? const Duration(seconds: 5),
-        listenFor: listenFor ?? const Duration(seconds: 30),
+        // Short windows keep the mic snappy: stop ~2s after the user goes
+        // quiet instead of hanging on for 5s / 30s like before.
+        pauseFor: pauseFor ?? const Duration(seconds: 2),
+        listenFor: listenFor ?? const Duration(seconds: 12),
       );
 
-      // Wait for speech to complete naturally
+      // Wait for speech to complete naturally; exit as soon as the engine
+      // delivers a final result instead of blindly waiting out the timer.
       int waited = 0;
-      while (_speech.isListening && waited < 60) {
-        await Future.delayed(const Duration(milliseconds: 500));
+      while (_speech.isListening && !gotFinalResult && waited < 75) {
+        await Future.delayed(const Duration(milliseconds: 200));
         waited++;
       }
 
@@ -103,25 +113,22 @@ class VoiceSearchService {
     }
   }
 
-  /// Listen in Tamil, then fall back to English-India if:
-  ///   - the result is empty, OR
-  ///   - confidence is below [minConfidence] (default 0.3)
-  /// This handles villagers who actually speak English/Tanglish naturally —
-  /// ta-IN locale would otherwise produce garbled output.
+  /// Single Tamil (ta-IN) listening session.
+  ///
+  /// Previously this re-listened in en-IN whenever confidence was low, which
+  /// made the mic "ask again" right after the user spoke — terrible UX. Any
+  /// non-empty result is now accepted as-is: the backend Gemini AI search is
+  /// specifically built to correct garbled Tamil/Tanglish STT text, so a
+  /// low-confidence transcript is still useful. Empty result → the caller
+  /// shows "try again"; the user decides when to speak, not the app.
   Future<String?> listenSmart({double minConfidence = 0.3}) async {
-    final tamil = await listen(localeId: 'ta-IN');
-    if (tamil != null && tamil.trim().isNotEmpty && _lastConfidence >= minConfidence) {
-      debugPrint('VoiceSearch: ta-IN result accepted (conf: $_lastConfidence)');
-      return tamil;
+    final text = await listen(localeId: 'ta-IN');
+    if (text == null || text.trim().isEmpty) {
+      debugPrint('VoiceSearch: no speech captured');
+      return null;
     }
-    debugPrint('VoiceSearch: ta-IN result rejected (text: "$tamil", conf: $_lastConfidence), '
-        'trying en-IN...');
-    final english = await listen(localeId: 'en-IN');
-    if (english != null && english.trim().isNotEmpty) {
-      return english;
-    }
-    // Last resort: return whatever Tamil gave us (even if low confidence)
-    return tamil;
+    debugPrint('VoiceSearch: result accepted (conf: $_lastConfidence)');
+    return text;
   }
 
   double get lastConfidence => _lastConfidence;
