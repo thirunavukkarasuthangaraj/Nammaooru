@@ -180,6 +180,12 @@ public class Shop {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    // Recomputed on payment success and by a daily scheduled job (ShopPaymentCollectService).
+    // True when the shop owner owes the current period's pay-and-use amount.
+    @Builder.Default
+    @Column(name = "payment_blocked", nullable = false)
+    private Boolean paymentBlocked = false;
+
     @Builder.Default
     @Column(name = "is_verified")
     private Boolean isVerified = false;

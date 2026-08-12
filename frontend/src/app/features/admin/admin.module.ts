@@ -65,6 +65,7 @@ import { JobReportedComponent } from './components/job-reported/job-reported.com
 import { ContactViewsComponent } from './components/contact-views/contact-views.component';
 import { LocalShopsManagementComponent } from './components/local-shops-management/local-shops-management.component';
 import { LocalShopsReportedComponent } from './components/local-shops-reported/local-shops-reported.component';
+import { PaymentCollectManagementComponent } from './components/payment-collect-management/payment-collect-management.component';
 import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
@@ -107,7 +108,8 @@ import { MatTabsModule } from '@angular/material/tabs';
     JobReportedComponent,
     ContactViewsComponent,
     LocalShopsManagementComponent,
-    LocalShopsReportedComponent
+    LocalShopsReportedComponent,
+    PaymentCollectManagementComponent
   ],
   imports: [
     CommonModule,
@@ -294,6 +296,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'shops',
         loadChildren: () => import('../shop/shop.module').then(m => m.ShopModule)
+      },
+      {
+        path: 'payment-collect',
+        component: PaymentCollectManagementComponent
       }
     ])
   ]

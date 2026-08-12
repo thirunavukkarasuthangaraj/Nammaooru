@@ -127,6 +127,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Revenue Overview', icon: 'payments', route: '/finance/revenue', badge: null },
         { title: 'Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
+        { title: 'Payment Collect', icon: 'request_quote', route: '/admin/payment-collect', badge: null },
         { title: 'Financial Reports', icon: 'assessment', route: '/finance/reports', badge: null }
       ]
     },
@@ -366,6 +367,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Marketing',
       items: [
         { title: 'Promo Codes', icon: 'sell', route: '/shop-owner/promo-codes', badge: null }
+      ]
+    },
+    {
+      category: 'Payments',
+      items: [
+        { title: 'Payment Collect', icon: 'request_quote', route: '/pay-and-use', badge: null }
       ]
     }
   ];

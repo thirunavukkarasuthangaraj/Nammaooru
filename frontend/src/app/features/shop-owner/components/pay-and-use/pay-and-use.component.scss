@@ -1,0 +1,103 @@
+.pay-and-use-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #f5f6f8;
+}
+
+.pay-card {
+  max-width: 420px;
+  width: 100%;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.lock-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #f57c00;
+  }
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.shop-name {
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 20px;
+}
+
+.due-block {
+  margin-bottom: 20px;
+}
+
+.due-label {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+}
+
+.due-amount {
+  margin: 4px 0;
+  font-size: 36px;
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.due-note {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.no-price {
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 20px;
+}
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  background: #fdecea;
+  color: #c62828;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.pay-btn {
+  width: 100%;
+  padding: 8px 0;
+  font-size: 15px;
+}
+
+.test-mode-note {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.logout-btn {
+  margin-top: 16px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.loading-row {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}

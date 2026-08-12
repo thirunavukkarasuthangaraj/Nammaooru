@@ -3,6 +3,7 @@ import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 @Injectable()
@@ -10,7 +11,8 @@ export class ErrorInterceptor implements HttpInterceptor {
 
   constructor(
     private snackBar: MatSnackBar,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {}
 
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
@@ -64,6 +66,12 @@ export class ErrorInterceptor implements HttpInterceptor {
             break;
           case 404:
             errorMessage = 'Resource not found';
+            break;
+          case 402:
+            errorMessage = 'Payment required to continue using the app';
+            if (!this.router.url.startsWith('/pay-and-use')) {
+              this.router.navigate(['/pay-and-use']);
+            }
             break;
           case 500:
             errorMessage = 'Server error. Please try again later';

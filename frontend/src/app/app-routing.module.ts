@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 import { RoleGuard } from './core/guards/role.guard';
+import { PaymentLockGuard } from './core/guards/payment-lock.guard';
 import { UserRole } from './core/models/auth.model';
 import { UnauthorizedComponent } from './shared/components/unauthorized/unauthorized.component';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
@@ -99,6 +100,12 @@ const routes: Routes = [
       {
         path: 'shop-owner',
         loadChildren: () => import('./features/shop-owner/shop-owner.module').then(m => m.ShopOwnerModule),
+        canActivate: [RoleGuard, PaymentLockGuard],
+        data: { roles: [UserRole.SUPER_ADMIN, UserRole.SHOP_OWNER, UserRole.ADMIN] }
+      },
+      {
+        path: 'pay-and-use',
+        loadComponent: () => import('./features/shop-owner/components/pay-and-use/pay-and-use.component').then(m => m.PayAndUseComponent),
         canActivate: [RoleGuard],
         data: { roles: [UserRole.SUPER_ADMIN, UserRole.SHOP_OWNER, UserRole.ADMIN] }
       },

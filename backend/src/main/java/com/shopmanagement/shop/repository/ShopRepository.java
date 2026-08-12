@@ -42,7 +42,7 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
     Page<Shop> searchShops(@Param("searchTerm") String searchTerm, Pageable pageable);
 
     @Query(value = "SELECT * FROM shops s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL " +
-           "AND s.is_active = true AND s.status = 'APPROVED' " +
+           "AND s.is_active = true AND s.status = 'APPROVED' AND s.payment_blocked = false " +
            "AND (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) < :radiusInKm " +
            "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) ASC",
            nativeQuery = true)
@@ -50,10 +50,10 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
                                    @Param("lng") double longitude,
                                    @Param("radiusInKm") double radiusInKm);
 
-    @Query("SELECT s FROM Shop s WHERE s.isActive = true AND s.status = 'APPROVED' ORDER BY s.rating DESC")
+    @Query("SELECT s FROM Shop s WHERE s.isActive = true AND s.status = 'APPROVED' AND s.paymentBlocked = false ORDER BY s.rating DESC")
     List<Shop> findTopRatedShops(Pageable pageable);
 
-    @Query("SELECT s FROM Shop s WHERE s.isFeatured = true AND s.isActive = true AND s.status = 'APPROVED'")
+    @Query("SELECT s FROM Shop s WHERE s.isFeatured = true AND s.isActive = true AND s.status = 'APPROVED' AND s.paymentBlocked = false")
     List<Shop> findFeaturedShops();
 
     @Query("SELECT COUNT(s) FROM Shop s WHERE s.status = :status")

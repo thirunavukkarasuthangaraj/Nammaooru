@@ -22,6 +22,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -75,7 +76,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, @Lazy JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, @Lazy JwtAuthenticationFilter jwtAuthenticationFilter,
+                                            @Lazy ShopPaymentGateFilter shopPaymentGateFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -153,11 +155,15 @@ public class SecurityConfig {
                         .requestMatchers("/api/mobile/delivery-partner/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/delivery/partners/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/assignments/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER", "DELIVERY_PARTNER")
+                        .requestMatchers("/api/shop-owner-payments/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SHOP_OWNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Anchored to a well-known filter class (not JwtAuthenticationFilter itself) because
+                // Spring Security's order registry can't resolve "after" a custom filter class as an anchor.
+                .addFilterAfter(shopPaymentGateFilter, BasicAuthenticationFilter.class);
 
         return http.build();
     }

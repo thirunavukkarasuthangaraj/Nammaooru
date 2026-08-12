@@ -8,6 +8,7 @@ import com.shopmanagement.product.repository.ProductCategoryRepository;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.shop.dto.ShopResponse;
 import com.shopmanagement.shop.service.ShopService;
+import com.shopmanagement.service.ShopPaymentCollectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,7 @@ public class CustomerShopController {
     private final ShopService shopService;
     private final ShopProductService shopProductService;
     private final ProductCategoryRepository categoryRepository;
+    private final ShopPaymentCollectService shopPaymentCollectService;
 
     @GetMapping("/shops")
     public ResponseEntity<ApiResponse<Page<ShopResponse>>> getAllShops(
@@ -55,7 +57,12 @@ public class CustomerShopController {
     @GetMapping("/shops/{shopId}")
     public ResponseEntity<ApiResponse<ShopResponse>> getShopById(@PathVariable Long shopId) {
         log.info("Customer fetching shop details for ID: {}", shopId);
-        
+
+        if (!shopPaymentCollectService.isCurrentlyPaid(shopId)) {
+            return ResponseEntity.status(404)
+                    .body(ApiResponse.error("SHOP_NOT_FOUND", "Shop not found"));
+        }
+
         ShopResponse shop = shopService.getShopById(shopId);
         return ResponseEntity.ok(ApiResponse.success(shop, "Shop details fetched successfully"));
     }

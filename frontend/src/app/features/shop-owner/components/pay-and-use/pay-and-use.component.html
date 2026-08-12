@@ -1,0 +1,44 @@
+<div class="pay-and-use-page">
+  <mat-card class="pay-card">
+    <div class="lock-icon">
+      <mat-icon>lock_clock</mat-icon>
+    </div>
+
+    <h1>Pay &amp; Use</h1>
+
+    <div class="loading-row" *ngIf="loading">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+
+    <ng-container *ngIf="!loading && status as s">
+      <p class="shop-name">{{ s.shopName }}</p>
+
+      <div class="due-block" *ngIf="s.paymentRequired">
+        <p class="due-label">Amount due</p>
+        <p class="due-amount">&#8377;{{ s.amount }}</p>
+        <p class="due-note">Grants {{ s.durationDays }} days of access after payment.</p>
+      </div>
+
+      <p class="no-price" *ngIf="!s.paymentRequired">
+        No payment amount has been set for your shop yet. Please contact the admin.
+      </p>
+
+      <div class="offline-banner" *ngIf="!isOnline">
+        <mat-icon>wifi_off</mat-icon>
+        <span>You're offline. Please connect to the internet to pay.</span>
+      </div>
+
+      <button mat-raised-button color="primary" class="pay-btn"
+              *ngIf="s.paymentRequired"
+              [disabled]="paying || !isOnline"
+              (click)="pay()">
+        <mat-icon>payment</mat-icon>
+        {{ paying ? 'Processing...' : 'Pay Now' }}
+      </button>
+
+      <span class="test-mode-note" *ngIf="s.testMode">Test mode - no real charge will be made.</span>
+
+      <button mat-button class="logout-btn" (click)="logout()">Logout</button>
+    </ng-container>
+  </mat-card>
+</div>

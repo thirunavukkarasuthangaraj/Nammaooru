@@ -335,7 +335,8 @@ public class ShopService {
         Specification<Shop> spec = Specification.where(
             (root, query, cb) -> cb.and(
                 cb.equal(root.get("status"), Shop.ShopStatus.APPROVED),
-                cb.equal(root.get("isActive"), true)
+                cb.equal(root.get("isActive"), true),
+                cb.equal(root.get("paymentBlocked"), false)
             )
         );
 
