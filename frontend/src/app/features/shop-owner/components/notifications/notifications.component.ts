@@ -511,8 +511,8 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         }
       });
 
-    // Auto-refresh notifications every 30 seconds
-    interval(30000)
+    // Slow fallback refresh — Firebase push above reloads instantly on new messages
+    interval(300000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.loadNotifications();

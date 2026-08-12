@@ -563,8 +563,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         }
       });
 
-    // Auto-refresh notifications every 60 seconds
-    interval(60000)
+    // Slow fallback refresh — push (WebSocket/FCM) delivers updates in real time
+    interval(300000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.loadNotifications();

@@ -7,7 +7,9 @@ import { OrderService } from '@core/services/order.service';
 import { OfflineStorageService, CachedDashboardStats } from '@core/services/offline-storage.service';
 import { AnalyticsService } from '@core/services/analytics.service';
 import { User } from '@core/models/auth.model';
-import { Observable, interval, Subscription } from 'rxjs';
+import { Observable, interval, Subscription, Subject } from 'rxjs';
+import { takeUntil, distinctUntilChanged } from 'rxjs/operators';
+import { WebSocketService } from '@core/services/websocket.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 
@@ -964,6 +966,7 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
 
   private refreshSubscription?: Subscription;
   private previousOrderCount = 0;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private authService: AuthService,
@@ -973,7 +976,8 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     private offlineStorage: OfflineStorageService,
     private analyticsService: AnalyticsService,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private webSocketService: WebSocketService
   ) {
     this.currentUser$ = this.authService.currentUser$;
   }
@@ -1009,6 +1013,28 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     this.loadDashboardData();
     this.loadTrends();
     this.startAutoRefresh();
+    this.subscribeToRealtimeUpdates();
+  }
+
+  /**
+   * WebSocket is the primary update signal (new orders / status changes);
+   * the interval poll below is only a slow safety net.
+   */
+  private subscribeToRealtimeUpdates(): void {
+    const shopId = localStorage.getItem('current_shop_id');
+    if (!shopId) return;
+
+    this.webSocketService.subscribeToShopOrders(parseInt(shopId, 10))
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadDashboardData());
+
+    const token = localStorage.getItem('auth_token');
+    this.webSocketService.connect(token || undefined)
+      .pipe(takeUntil(this.destroy$), distinctUntilChanged())
+      .subscribe(connected => {
+        // Refresh on every (re)connect to catch events missed while offline
+        if (connected) this.loadDashboardData();
+      });
   }
 
   /** Last-7-day revenue/orders bars, scoped to this shop by the backend */
@@ -1151,6 +1177,8 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
     if (this.refreshSubscription) {
       this.refreshSubscription.unsubscribe();
     }
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadDashboardData(): void {
@@ -1255,7 +1283,8 @@ export class ShopOwnerDashboardComponent implements OnInit, OnDestroy {
   }
 
   private startAutoRefresh(): void {
-    this.refreshSubscription = interval(30000).subscribe(() => {
+    // Slow fallback poll only — real-time updates arrive via WebSocket
+    this.refreshSubscription = interval(180000).subscribe(() => {
       this.loadDashboardData();
     });
   }

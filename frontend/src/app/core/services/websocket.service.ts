@@ -10,103 +10,130 @@ export interface WebSocketMessage {
   timestamp: Date;
 }
 
+/**
+ * App-wide shared STOMP/SockJS connection.
+ *
+ * Design notes:
+ * - connect() is idempotent: the first caller activates the client, later
+ *   callers just get the connection-status stream. Components must NOT call
+ *   disconnect() on destroy — the connection is shared for the app lifetime.
+ * - Topic subscriptions are tracked per destination and automatically
+ *   re-established after every reconnect (stompjs does not do this itself),
+ *   so a network blip no longer silently kills real-time updates.
+ * - connectionStatus$ emits true on every (re)connect; components can use it
+ *   to refresh data and catch up on events missed while offline.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class WebSocketService {
   private stompClient: Client | null = null;
   private connectionStatus$ = new BehaviorSubject<boolean>(false);
-  private subscriptions: Map<string, StompSubscription> = new Map();
-  private messageSubjects: Map<string, Subject<any>> = new Map();
+  private stompSubscriptions: Map<string, StompSubscription> = new Map();
+  private topicSubjects: Map<string, Subject<any>> = new Map();
+  private topicRefCounts: Map<string, number> = new Map();
 
   private reconnectInterval = 5000; // 5 seconds
-  private maxReconnectAttempts = 10;
 
   constructor() {}
 
   /**
-   * Connect to WebSocket server using STOMP over SockJS
+   * Connect to WebSocket server using STOMP over SockJS.
+   * Idempotent — safe to call from multiple components.
+   * Returns the connection-status stream (emits on connect/disconnect/reconnect).
    */
   connect(token?: string): Observable<boolean> {
-    return new Observable(observer => {
-      try {
-        // Build WebSocket URL using SockJS
-        const wsUrl = `${environment.apiUrl.replace('/api', '')}/ws`;
-        console.log('📡 Connecting to WebSocket via SockJS:', wsUrl);
+    if (!this.stompClient) {
+      const wsUrl = `${environment.apiUrl.replace('/api', '')}/ws`;
+      console.log('📡 Connecting to WebSocket via SockJS:', wsUrl);
 
-        // Create STOMP client with SockJS
-        this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(wsUrl),
-          reconnectDelay: this.reconnectInterval,
-          heartbeatIncoming: 4000,
-          heartbeatOutgoing: 4000,
-          debug: (str) => {
-            console.log('STOMP:', str);
-          },
-          onConnect: (frame) => {
-            console.log('✅ WebSocket Connected via STOMP');
-            this.connectionStatus$.next(true);
-            observer.next(true);
-            observer.complete();
-          },
-          onStompError: (frame) => {
-            console.error('❌ STOMP error:', frame.headers['message']);
-            console.error('Details:', frame.body);
-            this.connectionStatus$.next(false);
-            observer.error(new Error(frame.headers['message']));
-          },
-          onDisconnect: () => {
-            console.log('WebSocket disconnected');
-            this.connectionStatus$.next(false);
-          },
-          onWebSocketClose: () => {
-            console.log('WebSocket connection closed');
-            this.connectionStatus$.next(false);
-          }
-        });
-
-        // Activate the client
-        this.stompClient.activate();
-
-      } catch (error) {
-        console.error('❌ Error creating WebSocket connection:', error);
-        observer.error(error);
-      }
-    });
-  }
-
-  /**
-   * Subscribe to a specific topic
-   */
-  subscribe(destination: string): Observable<any> {
-    return new Observable(observer => {
-      if (!this.stompClient || !this.stompClient.connected) {
-        console.warn('WebSocket not connected, cannot subscribe to:', destination);
-        return;
-      }
-
-      console.log('📬 Subscribing to:', destination);
-
-      const subscription = this.stompClient.subscribe(destination, (message: IMessage) => {
-        try {
-          const body = JSON.parse(message.body);
-          console.log('📩 Received message on', destination, ':', body);
-          observer.next(body);
-        } catch (error) {
-          console.error('Error parsing message:', error);
-          observer.next(message.body);
+      this.stompClient = new Client({
+        webSocketFactory: () => new SockJS(wsUrl),
+        reconnectDelay: this.reconnectInterval,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+        onConnect: () => {
+          console.log('✅ WebSocket Connected via STOMP');
+          // Old STOMP subscriptions died with the previous socket —
+          // re-establish every tracked topic on this fresh connection.
+          this.stompSubscriptions.clear();
+          this.topicSubjects.forEach((_, destination) => this.stompSubscribe(destination));
+          this.connectionStatus$.next(true);
+        },
+        onStompError: (frame) => {
+          console.error('❌ STOMP error:', frame.headers['message']);
+          console.error('Details:', frame.body);
+          this.connectionStatus$.next(false);
+        },
+        onDisconnect: () => {
+          console.log('WebSocket disconnected');
+          this.connectionStatus$.next(false);
+        },
+        onWebSocketClose: () => {
+          console.log('WebSocket connection closed');
+          this.connectionStatus$.next(false);
         }
       });
 
-      this.subscriptions.set(destination, subscription);
+      this.stompClient.activate();
+    }
 
-      // Return unsubscribe function
+    return this.connectionStatus$.asObservable();
+  }
+
+  /**
+   * Subscribe to a specific topic. Survives reconnects; if called before the
+   * connection is up, delivery starts as soon as it connects.
+   */
+  subscribe(destination: string): Observable<any> {
+    return new Observable(observer => {
+      let subject = this.topicSubjects.get(destination);
+      if (!subject) {
+        subject = new Subject<any>();
+        this.topicSubjects.set(destination, subject);
+      }
+      this.topicRefCounts.set(destination, (this.topicRefCounts.get(destination) || 0) + 1);
+      this.stompSubscribe(destination);
+
+      const sub = subject.subscribe(observer);
+
       return () => {
-        console.log('Unsubscribing from:', destination);
-        subscription.unsubscribe();
-        this.subscriptions.delete(destination);
+        sub.unsubscribe();
+        const remaining = (this.topicRefCounts.get(destination) || 1) - 1;
+        if (remaining <= 0) {
+          console.log('Unsubscribing from:', destination);
+          this.topicRefCounts.delete(destination);
+          this.topicSubjects.delete(destination);
+          const stompSub = this.stompSubscriptions.get(destination);
+          this.stompSubscriptions.delete(destination);
+          if (stompSub && this.stompClient?.connected) {
+            try { stompSub.unsubscribe(); } catch { /* socket already gone */ }
+          }
+        } else {
+          this.topicRefCounts.set(destination, remaining);
+        }
       };
     });
+  }
+
+  /** Create the STOMP-level subscription if connected and not already subscribed. */
+  private stompSubscribe(destination: string): void {
+    if (!this.stompClient?.connected || this.stompSubscriptions.has(destination)) {
+      return;
+    }
+    const subject = this.topicSubjects.get(destination);
+    if (!subject) return;
+
+    console.log('📬 Subscribing to:', destination);
+    const subscription = this.stompClient.subscribe(destination, (message: IMessage) => {
+      try {
+        subject.next(JSON.parse(message.body));
+      } catch (error) {
+        console.error('Error parsing message:', error);
+        subject.next(message.body);
+      }
+    });
+    this.stompSubscriptions.set(destination, subscription);
   }
 
   /**
@@ -131,23 +158,23 @@ export class WebSocketService {
   }
 
   /**
-   * Disconnect from WebSocket
+   * Tear down the shared connection. App-level use only (e.g. logout) —
+   * component ngOnDestroy must NOT call this, other screens share the socket.
    */
   disconnect(): void {
     if (this.stompClient) {
-      // Unsubscribe from all subscriptions
-      this.subscriptions.forEach((sub, dest) => {
+      this.stompSubscriptions.forEach((sub, dest) => {
         console.log('Unsubscribing from:', dest);
-        sub.unsubscribe();
+        try { sub.unsubscribe(); } catch { /* socket already gone */ }
       });
-      this.subscriptions.clear();
+      this.stompSubscriptions.clear();
 
-      // Deactivate the client
       this.stompClient.deactivate();
       this.stompClient = null;
     }
     this.connectionStatus$.next(false);
-    this.messageSubjects.clear();
+    this.topicSubjects.clear();
+    this.topicRefCounts.clear();
   }
 
   // Delivery-specific subscription methods for compatibility

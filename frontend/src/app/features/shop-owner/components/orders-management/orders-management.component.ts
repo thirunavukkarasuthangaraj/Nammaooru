@@ -159,11 +159,10 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Clean up subscriptions
+    // Clean up subscriptions (topic unsubscribe happens via takeUntil teardown).
+    // Do NOT disconnect the WebSocket here — the connection is shared app-wide.
     this.destroy$.next();
     this.destroy$.complete();
-    // Disconnect WebSocket
-    this.webSocketService.disconnect();
   }
 
   loadOrdersFromCache(): void {
@@ -217,15 +216,20 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
     console.log('📡 Connecting to WebSocket for shop:', this.shopId);
 
-    // Connect to WebSocket
+    // Subscribe once — the service re-establishes the topic across reconnects.
+    this.subscribeToShopOrders();
+
+    // Connect (idempotent, shared app-wide). On every (re)connect, reload
+    // orders to catch up on anything missed while the socket was down.
     const token = localStorage.getItem('auth_token');
     this.webSocketService.connect(token || undefined).pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
+      distinctUntilChanged()
     ).subscribe({
       next: (connected) => {
         if (connected) {
-          console.log('✅ WebSocket connected, subscribing to shop orders');
-          this.subscribeToShopOrders();
+          console.log('✅ WebSocket connected - refreshing orders');
+          this.loadOrders();
         }
       },
       error: (error) => {
