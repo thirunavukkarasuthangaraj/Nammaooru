@@ -380,6 +380,9 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     );
   }
 
+  // Simple no-data state. Orders is a bottom-nav root tab, so the old
+  // "Start Shopping" button's Navigator.pop() had nothing to pop and froze
+  // the app — no navigation from here.
   Widget _buildEmptyOrdersWidget() {
     return Center(
       child: Column(
@@ -393,36 +396,14 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
           ),
           const SizedBox(height: 12),
           const Text(
-            'No orders yet',
+            'No data found',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Your order history will appear here',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.shopping_cart, size: 16),
-            label: const Text('Start Shopping', style: TextStyle(fontSize: 12)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
           ),
         ],
       ),

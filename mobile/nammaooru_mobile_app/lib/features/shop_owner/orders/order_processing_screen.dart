@@ -8,6 +8,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/models/order_model.dart';
 import '../../../services/order_api_service.dart';
+import '../../../core/services/shop_service.dart';
 
 class OrderProcessingScreen extends StatefulWidget {
   const OrderProcessingScreen({super.key});
@@ -24,7 +25,10 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
   List<OrderModel> _orders = [];
   bool _isLoading = false;
   final OrderApiService _orderApiService = OrderApiService();
-  final String _shopId = "SHA686F7D3"; // Shop ID for Thirunavukkarasu shop
+  final ShopService _shopService = ShopService();
+  // Resolved from /shops/my-shop for the logged-in owner — never hardcode:
+  // a fixed ID shows another shop's (usually empty) order list.
+  String? _shopId;
 
   @override
   void initState() {
@@ -41,10 +45,19 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
 
   Future<void> _loadOrders() async {
     setState(() => _isLoading = true);
-    
+
     try {
+      // Resolve the logged-in owner's shop ID once, then reuse it
+      if (_shopId == null || _shopId!.isEmpty) {
+        final shop = await _shopService.getMyShop();
+        _shopId = shop.shopId;
+        if (_shopId == null || _shopId!.isEmpty) {
+          throw Exception('No shop linked to this account');
+        }
+      }
+
       final response = await _orderApiService.getShopOrders(
-        shopId: _shopId,
+        shopId: _shopId!,
         page: 0,
         size: 100, // Load more orders for shop owner view
         sortBy: 'createdAt',
