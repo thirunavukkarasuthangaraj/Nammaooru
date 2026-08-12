@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -104,6 +105,7 @@ import { BillSettingsComponent } from './components/bill-settings/bill-settings.
   ],
   imports: [
     CommonModule,
+    ScrollingModule,
     ReactiveFormsModule,
     FormsModule,
     SharedModule,

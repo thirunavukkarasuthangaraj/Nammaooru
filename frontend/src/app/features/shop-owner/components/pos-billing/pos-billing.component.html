@@ -154,10 +154,9 @@
           </div>
         </div>
 
-        <!-- Search Results - Show when searching -->
-        <div class="products-grid quick-bill-grid profile-product-grid" [class.list-view]="viewMode === 'list'" *ngIf="(searchTerm || browseProductsByDefault) && !isLoading">
-          <div *ngFor="let product of (viewMode === 'list' ? listViewProducts : displayedProducts); trackBy: trackByProductId"
-               class="product-card billing-card"
+        <!-- Shared row/card template for the search results (card grid + virtual list) -->
+        <ng-template #posProductRow let-product>
+          <div class="product-card billing-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)">
             <!-- Quick Edit Button -->
@@ -240,20 +239,41 @@
               </button>
             </div>
           </div>
+        </ng-template>
 
-          <!-- Load More (card view only — list view renders the full filtered catalog) -->
-          <div *ngIf="hasMoreProducts && viewMode === 'card'" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
+        <!-- Card view: windowed grid with Load more -->
+        <div class="products-grid quick-bill-grid profile-product-grid"
+             *ngIf="viewMode === 'card' && (searchTerm || browseProductsByDefault) && !isLoading">
+          <ng-container *ngFor="let product of displayedProducts; trackBy: trackByProductId">
+            <ng-container *ngTemplateOutlet="posProductRow; context: { $implicit: product }"></ng-container>
+          </ng-container>
+
+          <div *ngIf="hasMoreProducts" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
             <button mat-stroked-button color="primary" (click)="loadMoreProducts()">
               Load more ({{ remainingProductsCount }} more)
             </button>
           </div>
 
-          <!-- No Results -->
           <div *ngIf="filteredProducts.length === 0" class="empty-products">
             <mat-icon>search_off</mat-icon>
             <p>{{ searchTerm ? 'No products found for "' + searchTerm + '"' : 'No products available yet' }}</p>
           </div>
         </div>
+
+        <!-- List view: virtual scroll — only the visible rows exist in the DOM,
+             so the full catalog stays instant to filter and scroll -->
+        <cdk-virtual-scroll-viewport class="products-grid quick-bill-grid profile-product-grid list-view list-viewport"
+                                     [itemSize]="62" [minBufferPx]="400" [maxBufferPx]="800"
+                                     *ngIf="viewMode === 'list' && (searchTerm || browseProductsByDefault) && !isLoading">
+          <ng-container *cdkVirtualFor="let product of listViewProducts; trackBy: trackByProductId">
+            <ng-container *ngTemplateOutlet="posProductRow; context: { $implicit: product }"></ng-container>
+          </ng-container>
+
+          <div *ngIf="filteredProducts.length === 0" class="empty-products">
+            <mat-icon>search_off</mat-icon>
+            <p>{{ searchTerm ? 'No products found for "' + searchTerm + '"' : 'No products available yet' }}</p>
+          </div>
+        </cdk-virtual-scroll-viewport>
 
         <!-- Loading State -->
         <div *ngIf="isLoading" class="loading-state">
