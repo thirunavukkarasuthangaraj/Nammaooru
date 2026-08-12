@@ -627,11 +627,17 @@ public class OrderService {
                 String customerMobile = order.getCustomer().getMobileNumber();
                 log.info("📧 Customer email from order: {}, mobile: {}", customerEmail, customerMobile);
 
-                // Match by email OR mobile: the customer record's email can drift from the
-                // login account's email (typo, guest-checkout email), but the phone number
-                // is the more reliable link — without this fallback, a mismatched email
-                // silently drops the notification even when a valid FCM token exists.
-                User customerUser = userRepository.findByEmailOrMobileNumber(customerEmail, customerMobile).orElse(null);
+                // Match by mobile first, then email: the customer record's email can drift
+                // from the login account's email (typo, guest-checkout email, or even
+                // coincidentally matching an unrelated account's email in test data), so a
+                // combined OR query can return multiple rows and blow up with
+                // NonUniqueResultException. Two sequential single-field lookups avoid that.
+                User customerUser = customerMobile != null
+                        ? userRepository.findByMobileNumber(customerMobile).orElse(null)
+                        : null;
+                if (customerUser == null && customerEmail != null) {
+                    customerUser = userRepository.findByEmail(customerEmail).orElse(null);
+                }
                 if (customerUser != null) {
                     Long userId = customerUser.getId();
                     String username = customerUser.getUsername();
@@ -1174,10 +1180,16 @@ public class OrderService {
         // Send push notification to customer
         try {
             if (acceptedOrder.getCustomer() != null && (acceptedOrder.getCustomer().getEmail() != null || acceptedOrder.getCustomer().getMobileNumber() != null)) {
-                // Match by email OR mobile — see comment in createOrderStatusNotification's
-                // FCM lookup for why the email-only match silently drops notifications.
-                User customerUser = userRepository.findByEmailOrMobileNumber(
-                        acceptedOrder.getCustomer().getEmail(), acceptedOrder.getCustomer().getMobileNumber()).orElse(null);
+                // Match by mobile first, then email — see comment in
+                // createOrderStatusNotification's FCM lookup for why a combined OR query
+                // can return multiple rows (NonUniqueResultException) instead of one.
+                String acceptedCustomerMobile = acceptedOrder.getCustomer().getMobileNumber();
+                User customerUser = acceptedCustomerMobile != null
+                        ? userRepository.findByMobileNumber(acceptedCustomerMobile).orElse(null)
+                        : null;
+                if (customerUser == null && acceptedOrder.getCustomer().getEmail() != null) {
+                    customerUser = userRepository.findByEmail(acceptedOrder.getCustomer().getEmail()).orElse(null);
+                }
                 if (customerUser == null) {
                     log.warn("No user found for customer email: {} or mobile: {}",
                             acceptedOrder.getCustomer().getEmail(), acceptedOrder.getCustomer().getMobileNumber());
