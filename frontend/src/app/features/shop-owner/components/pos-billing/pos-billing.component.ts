@@ -5,6 +5,7 @@ import { Subject } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService, CachedProduct, OfflineEdit } from '../../../../core/services/offline-storage.service';
+import { PosProductCacheService } from '../../../../core/services/pos-product-cache.service';
 import { PosSyncService, SyncStatus } from '../../../../core/services/pos-sync.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -388,7 +389,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     private labelTemplateService: LabelTemplateService,
     private labelPrintService: LabelPrintService,
     private ngZone: NgZone,
-    private router: Router
+    private router: Router,
+    private posProductCache: PosProductCacheService
   ) {}
 
   /**
@@ -402,6 +404,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   set filteredProducts(list: CachedProduct[]) {
     this._filteredProducts = list;
     this.displayLimit = this.DISPLAY_PAGE_SIZE;
+    this.listViewCacheDirty = true;
     this.updateDisplayedProducts();
   }
 
@@ -427,16 +430,28 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * catalog (no pagination cap, unlike card view's displayedProducts window)
    * with any product already in the cart moved to the top and highlighted.
    * Card view is untouched — it keeps using displayedProducts as before.
+   *
+   * Cached and rebuilt only when the cart or filter changes: a getter that
+   * allocates a fresh array made every change-detection cycle re-diff ~2000
+   * rows and turned scrolling to jank on large catalogs.
    */
+  private listViewCacheDirty = true;
+  private listViewCache: CachedProduct[] = [];
+
   get listViewProducts(): CachedProduct[] {
-    if (this.cart.length === 0) return this._filteredProducts;
-    const cartIds = new Set(this.cart.map(item => item.product.id));
-    const inCart: CachedProduct[] = [];
-    const rest: CachedProduct[] = [];
-    for (const p of this._filteredProducts) {
-      (cartIds.has(p.id) ? inCart : rest).push(p);
+    if (!this.listViewCacheDirty) return this.listViewCache;
+    if (this.cart.length === 0) {
+      this.listViewCache = this._filteredProducts;
+    } else {
+      const inCart: CachedProduct[] = [];
+      const rest: CachedProduct[] = [];
+      for (const p of this._filteredProducts) {
+        (this.cartIndex.has(p.id) ? inCart : rest).push(p);
+      }
+      this.listViewCache = [...inCart, ...rest];
     }
-    return [...inCart, ...rest];
+    this.listViewCacheDirty = false;
+    return this.listViewCache;
   }
 
   get posProfileConfig(): PosProfileConfig { return this.posProfiles[this.posProfile]; }
@@ -817,7 +832,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.searchSubject
       .pipe(
         takeUntil(this.destroy$),
-        debounceTime(300)
+        // In-memory filter; rendering is cheap now (cached list + content-visibility),
+        // so a short debounce keeps results feeling immediate while typing.
+        debounceTime(150)
       )
       .subscribe(term => {
         this.filterProducts(term);
@@ -877,6 +894,24 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   async loadProducts(): Promise<void> {
     this.isLoading = true;
     console.log('Loading products for POS...');
+
+    // Instant re-entry: reuse the in-memory catalog kept by PosProductCacheService
+    // from the previous visit instead of re-reading IndexedDB. In-place edits
+    // (stock, price) share the same array, so nothing is lost across navigation.
+    const warmProducts = this.shopId ? this.posProductCache.getFor(this.shopId) : null;
+    if (warmProducts && warmProducts.length > 0) {
+      this.products = warmProducts;
+      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+      this.isLoading = false;
+      console.log(`POS: reusing ${this.products.length} products from memory`);
+      if (navigator.onLine) {
+        const lastSyncTime = parseInt(localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY) || '0', 10);
+        if (Date.now() - lastSyncTime > this.CACHE_VALIDITY_MS) {
+          this.syncProductsInBackground();
+        }
+      }
+      return;
+    }
 
     try {
       // Try to load from local cache first (instant) with timeout
@@ -968,6 +1003,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         }
 
         this.isLoading = false;
+        if (this.shopId) this.posProductCache.set(this.shopId, this.products);
 
         // Cache product images to IndexedDB for offline use.
         // Throttled: re-scanning ~2500 images on every POS open is wasteful, so only
@@ -1059,6 +1095,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
       const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
       this.isLoading = false;
+      if (this.shopId) this.posProductCache.set(this.shopId, this.products);
       console.log(`Loaded ${this.products.length} active products across ${page} page(s) (${allProducts.length} total)`);
 
       // Save ALL products (including inactive) to IndexedDB for offline use
@@ -1209,6 +1246,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
       this.products = Array.from(byId.values());
       this.filterProducts(this.searchTerm);
+      if (this.shopId) this.posProductCache.set(this.shopId, this.products);
 
       console.log(`Delta sync: merged ${changed.length} changed product(s)`);
     } catch (error) {
@@ -1266,6 +1304,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         this.products = activeProducts;
         this.filteredProducts = this.sortProductsWithCartFirst(this.products);
       }
+      if (this.shopId) this.posProductCache.set(this.shopId, this.products);
 
       console.log(`Background sync complete: ${activeProducts.length} active products (${allProducts.length} total) across ${page} page(s)`);
     } catch (error) {
@@ -2118,6 +2157,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Rebuild O(1) lookups used by template bindings (every cart mutation ends here)
     this.cartIndex = new Map(this.cart.map(item => [item.product.id, item]));
     this.cartProducts = this.cart.map(item => item.product);
+    this.listViewCacheDirty = true;
 
     this.subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
     this.totalMrp = this.cart.reduce((sum, item) => sum + (item.mrp * item.quantity), 0);
