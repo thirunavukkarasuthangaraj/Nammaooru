@@ -18,6 +18,13 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    # Flyway was never actually wired in before (no flyway-core dependency) - schema was
+    # managed ad-hoc via ddl-auto=update instead. Baseline marks "up to V86 already applied"
+    # so Flyway does NOT try to replay V1-V86 against the existing production schema; it only
+    # runs migrations added after this point. Bump this only if you intentionally want Flyway
+    # to skip re-baselining past a newer already-applied version.
+    baseline-version: 86
+    baseline-description: "Baseline - schema already existed via ddl-auto before Flyway was wired in"
     locations: classpath:db/migration,classpath:db/migration/2025,classpath:db/migration/2026
     # Add new year folders as needed
 
