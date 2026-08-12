@@ -252,6 +252,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   isLoading: boolean = true;
   showCustomerModal: boolean = false;
 
+  // Product browse display preferences (persisted per browser)
+  viewMode: 'card' | 'list' = 'card';
+  showImages: boolean = true;
+  private readonly POS_VIEW_MODE_KEY = 'pos-billing-view-mode';
+  private readonly POS_SHOW_IMAGES_KEY = 'pos-billing-show-images';
+
   // Language toggle
   showTamil: boolean = false;
 
@@ -416,6 +422,23 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.updateDisplayedProducts();
   }
 
+  /**
+   * Products to render in the browse grid, list-view only: the full filtered
+   * catalog (no pagination cap, unlike card view's displayedProducts window)
+   * with any product already in the cart moved to the top and highlighted.
+   * Card view is untouched — it keeps using displayedProducts as before.
+   */
+  get listViewProducts(): CachedProduct[] {
+    if (this.cart.length === 0) return this._filteredProducts;
+    const cartIds = new Set(this.cart.map(item => item.product.id));
+    const inCart: CachedProduct[] = [];
+    const rest: CachedProduct[] = [];
+    for (const p of this._filteredProducts) {
+      (cartIds.has(p.id) ? inCart : rest).push(p);
+    }
+    return [...inCart, ...rest];
+  }
+
   get posProfileConfig(): PosProfileConfig { return this.posProfiles[this.posProfile]; }
   get browseProductsByDefault(): boolean { return this.posProfileConfig.browseFirst; }
 
@@ -438,6 +461,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     this.loadShopInfo();
+    this.loadViewPreferences();
     this.loadLanguagePreference();
     this.loadReceiptLanguageSettings();
     this.loadBillSettings();
@@ -584,6 +608,32 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private loadLanguagePreference(): void {
     const saved = localStorage.getItem('pos_language');
     this.showTamil = saved === 'tamil';
+  }
+
+  /**
+   * Load product-browse view preferences (card/list, show/hide images) from localStorage
+   */
+  private loadViewPreferences(): void {
+    const savedMode = localStorage.getItem(this.POS_VIEW_MODE_KEY);
+    this.viewMode = savedMode === 'list' ? 'list' : 'card';
+    const savedImages = localStorage.getItem(this.POS_SHOW_IMAGES_KEY);
+    this.showImages = savedImages !== 'false';
+  }
+
+  /**
+   * Switch between card and list layout for the product browse grid, persisted per browser.
+   */
+  setViewMode(mode: 'card' | 'list'): void {
+    this.viewMode = mode;
+    localStorage.setItem(this.POS_VIEW_MODE_KEY, mode);
+  }
+
+  /**
+   * Toggle showing product images in the browse grid, persisted per browser.
+   */
+  toggleShowImages(): void {
+    this.showImages = !this.showImages;
+    localStorage.setItem(this.POS_SHOW_IMAGES_KEY, String(this.showImages));
   }
 
   /**

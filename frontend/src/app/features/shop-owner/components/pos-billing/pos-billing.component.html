@@ -17,6 +17,17 @@
         </div>
         <!-- Controls: Language, Status, Sync -->
         <div class="pos-controls">
+          <mat-button-toggle-group class="view-mode-toggle" [value]="viewMode" (change)="setViewMode($event.value)" aria-label="Product view mode">
+            <mat-button-toggle value="card" title="Card view">
+              <mat-icon>grid_view</mat-icon>
+            </mat-button-toggle>
+            <mat-button-toggle value="list" title="List view">
+              <mat-icon>view_list</mat-icon>
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+          <button mat-icon-button type="button" (click)="toggleShowImages()" [title]="showImages ? 'Hide product images' : 'Show product images'">
+            <mat-icon class="images-toggle">{{ showImages ? 'image' : 'hide_image' }}</mat-icon>
+          </button>
           <div class="language-toggle">
             <span class="lang-label" [class.active]="!showTamil">EN</span>
             <mat-slide-toggle [checked]="showTamil" (change)="toggleLanguage()" color="primary"></mat-slide-toggle>
@@ -46,7 +57,9 @@
                  class="quick-search-input"
                  autofocus>
           <mat-icon class="barcode-icon">qr_code_scanner</mat-icon>
-          <button *ngIf="searchTerm" mat-icon-button class="clear-btn" (click)="searchTerm = ''; onSearchChange()">
+          <button *ngIf="searchTerm" type="button" mat-icon-button class="clear-btn"
+                  title="Clear search" aria-label="Clear search"
+                  (click)="searchTerm = ''; onSearchChange(); searchInput.focus()">
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -75,7 +88,7 @@
         </div>
 
         <!-- Cart Products Section - Show products in cart when not searching -->
-        <div class="products-grid quick-bill-grid" *ngIf="!browseProductsByDefault && !searchTerm && cart.length > 0 && !isLoading">
+        <div class="products-grid quick-bill-grid" [class.list-view]="viewMode === 'list'" *ngIf="!browseProductsByDefault && !searchTerm && cart.length > 0 && !isLoading">
           <div class="section-header">
             <mat-icon>shopping_cart</mat-icon>
             <span>Products in Cart ({{ cart.length }})</span>
@@ -91,12 +104,15 @@
               <span>{{ getCartQuantity(product) }}</span>
             </div>
             <div class="product-image" (click)="addToCart(product)">
-              <img *ngIf="product.imageBase64 || product.image"
+              <img *ngIf="showImages && (product.imageBase64 || product.image)"
                    loading="lazy"
                    [appOfflineImg]="product.imageBase64 || product.image"
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
+              <div class="no-image-icon" *ngIf="!showImages">
+                <mat-icon>{{ posProfileConfig.icon }}</mat-icon>
+              </div>
                           </div>
             <div class="product-info">
               <div class="product-name">{{ getProductName(product) }}</div>
@@ -138,8 +154,8 @@
         </div>
 
         <!-- Search Results - Show when searching -->
-        <div class="products-grid quick-bill-grid profile-product-grid" *ngIf="(searchTerm || browseProductsByDefault) && !isLoading">
-          <div *ngFor="let product of displayedProducts; trackBy: trackByProductId"
+        <div class="products-grid quick-bill-grid profile-product-grid" [class.list-view]="viewMode === 'list'" *ngIf="(searchTerm || browseProductsByDefault) && !isLoading">
+          <div *ngFor="let product of (viewMode === 'list' ? listViewProducts : displayedProducts); trackBy: trackByProductId"
                class="product-card billing-card"
                [class.out-of-stock]="product.trackInventory && product.stock <= 0"
                [class.in-cart]="isInCart(product)">
@@ -152,12 +168,15 @@
               <span>{{ getCartQuantity(product) }}</span>
             </div>
             <div class="product-image" (click)="addToCart(product)">
-              <img *ngIf="product.imageBase64 || product.image"
+              <img *ngIf="showImages && (product.imageBase64 || product.image)"
                    loading="lazy"
                    [appOfflineImg]="product.imageBase64 || product.image"
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
+              <div class="no-image-icon" *ngIf="!showImages">
+                <mat-icon>{{ posProfileConfig.icon }}</mat-icon>
+              </div>
                           </div>
             <div class="product-info">
               <div class="product-name">{{ getProductName(product) }}</div>
@@ -200,8 +219,8 @@
             </div>
           </div>
 
-          <!-- Load More (only a window of results is rendered to keep the page fast) -->
-          <div *ngIf="hasMoreProducts" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
+          <!-- Load More (card view only — list view renders the full filtered catalog) -->
+          <div *ngIf="hasMoreProducts && viewMode === 'card'" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
             <button mat-stroked-button color="primary" (click)="loadMoreProducts()">
               Load more ({{ remainingProductsCount }} more)
             </button>
@@ -286,8 +305,8 @@
             </div>
           </div>
 
-          <!-- Load More (only a window of results is rendered to keep the page fast) -->
-          <div *ngIf="hasMoreProducts" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
+          <!-- Load More (card view only — list view renders the full filtered catalog) -->
+          <div *ngIf="hasMoreProducts && viewMode === 'card'" class="load-more-row" style="grid-column: 1 / -1; text-align: center; padding: 12px;">
             <button mat-stroked-button color="primary" (click)="loadMoreProducts()">
               Load more ({{ remainingProductsCount }} more)
             </button>

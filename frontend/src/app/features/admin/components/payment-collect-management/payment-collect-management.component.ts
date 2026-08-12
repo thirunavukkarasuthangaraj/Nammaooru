@@ -16,6 +16,10 @@ export class PaymentCollectManagementComponent implements OnInit {
   durationLoading = false;
   durationSaving = false;
 
+  durationValue = 1;
+  durationUnit: 'days' | 'months' | 'years' = 'months';
+  private readonly UNIT_DAYS: { [key: string]: number } = { days: 1, months: 30, years: 365 };
+
   editAmounts: { [shopId: number]: number } = {};
 
   constructor(
@@ -43,11 +47,46 @@ export class PaymentCollectManagementComponent implements OnInit {
     });
   }
 
+  get totalShops(): number {
+    return this.shops.length;
+  }
+
+  get activeCount(): number {
+    return this.shops.filter(s => !s.paymentBlocked).length;
+  }
+
+  get dueCount(): number {
+    return this.shops.filter(s => s.paymentBlocked).length;
+  }
+
+  get monthlyRevenue(): number {
+    return this.shops.filter(s => s.amount > 0).reduce((sum, s) => sum + s.amount, 0);
+  }
+
+  isDirty(shop: ShopPaymentRow): boolean {
+    return this.editAmounts[shop.shopId] !== shop.amount;
+  }
+
+  statusLabel(shop: ShopPaymentRow): string {
+    if (shop.amount <= 0) return 'No price set';
+    return shop.paymentBlocked ? 'Payment due' : 'Active';
+  }
+
+  statusClass(shop: ShopPaymentRow): string {
+    if (shop.amount <= 0) return 'neutral';
+    return shop.paymentBlocked ? 'blocked' : 'active';
+  }
+
+  initial(name: string): string {
+    return name?.charAt(0)?.toUpperCase() || '?';
+  }
+
   loadDuration(): void {
     this.durationLoading = true;
     this.paymentCollectService.getDuration().subscribe({
       next: days => {
         this.durationDays = days;
+        this.setUnitFromDays(days);
         this.durationLoading = false;
       },
       error: () => {
@@ -56,7 +95,26 @@ export class PaymentCollectManagementComponent implements OnInit {
     });
   }
 
+  /** Picks the largest whole unit that reconstructs the stored day count, so "365" shows as "1 year" not "365 days". */
+  private setUnitFromDays(days: number): void {
+    if (days % this.UNIT_DAYS['years'] === 0) {
+      this.durationUnit = 'years';
+      this.durationValue = days / this.UNIT_DAYS['years'];
+    } else if (days % this.UNIT_DAYS['months'] === 0) {
+      this.durationUnit = 'months';
+      this.durationValue = days / this.UNIT_DAYS['months'];
+    } else {
+      this.durationUnit = 'days';
+      this.durationValue = days;
+    }
+  }
+
+  onDurationInputChange(): void {
+    this.durationDays = Math.max(1, Math.round(this.durationValue * this.UNIT_DAYS[this.durationUnit]));
+  }
+
   saveDuration(): void {
+    this.onDurationInputChange();
     if (this.durationDays < 1) {
       this.snackBar.open('Duration must be at least 1 day', 'Close', { duration: 3000 });
       return;
@@ -65,7 +123,7 @@ export class PaymentCollectManagementComponent implements OnInit {
     this.paymentCollectService.setDuration(this.durationDays).subscribe({
       next: () => {
         this.durationSaving = false;
-        this.snackBar.open('Billing duration updated', 'Close', { duration: 3000 });
+        this.snackBar.open(`Billing duration updated to ${this.durationDays} days`, 'Close', { duration: 3000 });
       },
       error: err => {
         this.durationSaving = false;

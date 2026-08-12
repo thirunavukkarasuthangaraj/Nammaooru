@@ -3,14 +3,6 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
 
 .pos-billing-container { display: flex; flex-direction: column; height: calc(100vh - 75px); max-height: calc(100vh - 75px); background: $light-bg; overflow: hidden; }
 
-.pos-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: white; border-bottom: 1px solid $border;
-  .header-left { display: flex; align-items: center; gap: 12px; h1 { margin: 0; font-size: 16px; font-weight: 600; color: $primary; } .shop-name { font-size: 12px; color: $text-secondary; padding-right: 8px; border-right: 1px solid $border; } }
-  .header-right { display: flex; align-items: center; gap: 8px; }
-  .cart-header-inline { display: flex; align-items: center; gap: 8px; padding: 6px 16px; background: linear-gradient(135deg, $accent, darken($accent, 10%)); border-radius: 8px; color: white; font-weight: 600; font-size: 14px; mat-icon { font-size: 20px; width: 20px; height: 20px; } .clear-cart-btn { width: 24px; height: 24px; line-height: 24px; mat-icon { font-size: 16px; width: 16px; height: 16px; color: rgba(255,255,255,0.8); } } }
-  .language-toggle { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; background: white; border: 1px solid $border; .lang-label { font-size: 13px; font-weight: 500; color: $text-secondary; &.active { color: $accent; font-weight: 600; } } }
-  .sync-status { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: #e8f5e9; color: $success; font-size: 13px; font-weight: 500; &.offline { background: #ffebee; color: $danger; } &.syncing { background: #fff3e0; color: $warning; } mat-icon { font-size: 18px; width: 18px; height: 18px; } }
-  .pending-badge { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 20px; background: $warning; color: white; font-size: 12px; font-weight: 600; cursor: pointer; mat-icon { font-size: 16px; width: 16px; height: 16px; } }
-}
 
 .pos-content { display: flex; flex: 1; overflow: hidden; }
 
@@ -34,30 +26,6 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
   }
   .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; &[hidden] { display: none !important; } }
   .quick-search-bar { display: flex; align-items: center; background: white; border: 2px solid $border; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; &:focus-within { border-color: $accent; } .search-icon { color: $accent; font-size: 24px; width: 24px; height: 24px; margin-right: 12px; } .quick-search-input { flex: 1; border: none; outline: none; font-size: 16px; background: transparent; } .barcode-icon { color: $text-secondary; font-size: 20px; width: 20px; height: 20px; margin-left: 8px; opacity: 0.5; } .clear-btn { margin-left: 8px; width: 28px; height: 28px; mat-icon { font-size: 18px; width: 18px; height: 18px; } } }
-  .search-results-dropdown { background: white; border: 1px solid $border; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-bottom: 16px; max-height: 320px; overflow-y: auto;
-    .search-result-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid $light-bg; &:last-child { border-bottom: none; } &:hover { background: #e3f2fd; }
-      .result-image { width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: $light-bg; flex-shrink: 0; img { width: 100%; height: 100%; object-fit: cover; } .result-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: $text-secondary; } }
-      .result-info { flex: 1; min-width: 0; .result-name { font-size: 14px; font-weight: 600; color: $text-primary; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .result-sku { font-size: 12px; color: $text-secondary; } }
-      .result-price { font-size: 16px; font-weight: 700; color: $accent; padding: 0 8px; }
-      .result-stock { font-size: 12px; color: $success; min-width: 70px; text-align: right; .low-stock { color: $warning; } }
-      .add-icon { color: $text-secondary; font-size: 24px; width: 24px; height: 24px; }
-    }
-  }
-  .no-search-results { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; background: #fff3e0; border-radius: 8px; color: $warning; font-size: 14px; margin-bottom: 16px; mat-icon { font-size: 20px; width: 20px; height: 20px; } }
-  .selected-items-section { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; border: 1px solid $border; overflow: hidden;
-    .section-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-bottom: 1px solid $border; h3 { margin: 0; font-size: 15px; font-weight: 600; color: $primary; display: flex; align-items: center; gap: 8px; mat-icon { color: $accent; font-size: 20px; width: 20px; height: 20px; } } }
-    .selected-items-list { flex: 1; overflow-y: auto; padding: 12px;
-      .selected-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: $light-bg; border-radius: 10px; margin-bottom: 10px; border: 1px solid $border; position: relative; &:last-child { margin-bottom: 0; }
-        .item-image { width: 56px; height: 56px; border-radius: 8px; overflow: hidden; background: white; flex-shrink: 0; border: 1px solid $border; img { width: 100%; height: 100%; object-fit: cover; } .item-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: $text-secondary; } }
-        .item-details { flex: 1; min-width: 0; .item-name { font-size: 14px; font-weight: 600; color: $text-primary; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .item-price-info { display: flex; align-items: center; gap: 8px; .item-mrp { font-size: 12px; color: $text-secondary; text-decoration: line-through; } .item-unit-price { font-size: 14px; font-weight: 600; color: $accent; } } }
-        .item-quantity-controls { display: flex; align-items: center; gap: 8px; button { width: 32px; height: 32px; min-width: 32px; background: white; border: 1px solid $border; mat-icon { font-size: 18px; width: 18px; height: 18px; color: $primary; } } .qty-display { font-size: 16px; font-weight: 700; color: $primary; min-width: 30px; text-align: center; } }
-        .item-total { text-align: right; min-width: 80px; .total-amount { display: block; font-size: 16px; font-weight: 700; color: $primary; } .item-savings { display: block; font-size: 11px; color: $success; font-weight: 500; } }
-        .remove-item-btn { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; min-width: 24px; padding: 0; background: rgba($danger, 0.1); border-radius: 50%; mat-icon { font-size: 14px; width: 14px; height: 14px; color: $danger; } }
-      }
-    }
-    .empty-selected-items { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; color: $text-secondary; text-align: center; mat-icon { font-size: 64px; width: 64px; height: 64px; margin-bottom: 16px; color: $accent; opacity: 0.3; } p { margin: 0 0 8px; font-size: 16px; font-weight: 500; color: $text-primary; } span { font-size: 13px; } }
-  }
-  .scanner-mode-hint { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; color: $text-secondary; text-align: center; mat-icon { font-size: 64px; width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; } p { margin: 0; font-size: 16px; } }
   .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 12px; overflow-y: auto; padding-right: 8px; &::-webkit-scrollbar { width: 6px; } &::-webkit-scrollbar-thumb { background: $border; border-radius: 3px; } }
   .product-card { background: white; border: 1px solid $border; border-radius: 6px; padding: 8px; cursor: pointer; position: relative; &:hover { border-color: $accent; } &.out-of-stock { opacity: 0.5; cursor: not-allowed; } &.in-cart { border: 2px solid $success; background: #e8f5e9; }
     .remove-from-cart-btn { position: absolute; top: -8px; left: -8px; background: $danger; color: white; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; mat-icon { font-size: 14px; width: 14px; height: 14px; } }
@@ -72,6 +40,7 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
     &.billing-card { cursor: default; .product-image { cursor: pointer; } }
   }
   .quick-bill-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; .section-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba($accent, 0.1); border-radius: 6px; margin-bottom: 4px; color: $primary; font-weight: 500; font-size: 13px; mat-icon { font-size: 18px; width: 18px; height: 18px; color: $accent; } } }
+  .products-grid.list-view { grid-template-columns: 1fr; .product-card { display: flex; align-items: center; gap: 10px; padding: 6px 8px; .product-image { width: 36px; height: 36px; margin-bottom: 0; } .product-info { flex: 1; min-width: 0; } .billing-controls { border-top: none; } &.in-cart { border-left: 4px solid $success; } } }
   .quick-bill-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; mat-icon { font-size: 60px; width: 60px; height: 80px; color: $accent; opacity: 0.3; margin-bottom: 24px; } h3 { margin: 0 0 8px; font-size: 20px; font-weight: 600; color: $text-primary; } p { margin: 0; font-size: 14px; color: $text-secondary; } }
   .empty-products, .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; color: $text-secondary; mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5; } p { margin: 0; font-size: 16px; } }
 }
