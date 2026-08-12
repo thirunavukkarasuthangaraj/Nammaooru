@@ -35,6 +35,7 @@ public class ShopPaymentCollectService {
     private final RazorpayClient razorpayClient;
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
+    private final ShopPaymentInvoiceService shopPaymentInvoiceService;
 
     private static final String DURATION_SETTING_KEY = "shop_payment_collect.duration_days";
 
@@ -44,13 +45,15 @@ public class ShopPaymentCollectService {
                                       ShopPaymentCollectionRepository shopPaymentCollectionRepository,
                                       @Autowired(required = false) RazorpayClient razorpayClient,
                                       RazorpayConfig razorpayConfig,
-                                      SettingService settingService) {
+                                      SettingService settingService,
+                                      ShopPaymentInvoiceService shopPaymentInvoiceService) {
         this.shopRepository = shopRepository;
         this.shopPaymentPriceRepository = shopPaymentPriceRepository;
         this.shopPaymentCollectionRepository = shopPaymentCollectionRepository;
         this.razorpayClient = razorpayClient;
         this.razorpayConfig = razorpayConfig;
         this.settingService = settingService;
+        this.shopPaymentInvoiceService = shopPaymentInvoiceService;
     }
 
     private boolean isTestMode() {
@@ -322,6 +325,12 @@ public class ShopPaymentCollectService {
         recomputeBlockedFlag(collection.getShopId());
         log.info("Shop payment verified: shopId={}, orderId={}, validUntil={}, testMode={}",
                 collection.getShopId(), razorpayOrderId, saved.getValidUntil(), isTestMode());
+
+        // Receipt to the owner via email + WhatsApp (async; a send failure never fails the payment)
+        if (saved.getAmount() != null && saved.getAmount() > 0) {
+            shopRepository.findById(saved.getShopId())
+                    .ifPresent(shop -> shopPaymentInvoiceService.sendPaymentReceipt(shop, saved));
+        }
         return saved;
     }
 }

@@ -25,6 +25,9 @@ spring:
     # to skip re-baselining past a newer already-applied version.
     baseline-version: 86
     baseline-description: "Baseline - schema already existed via ddl-auto before Flyway was wired in"
+    # Two legacy timestamp-versioned migrations (V20240109, V20251007111822) sit above any
+    # sequential Vnn number, so every new Vnn is "out of order" from Flyway's perspective.
+    out-of-order: true
     locations: classpath:db/migration,classpath:db/migration/2025,classpath:db/migration/2026
     # Add new year folders as needed
 
