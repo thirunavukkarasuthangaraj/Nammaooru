@@ -554,6 +554,23 @@ $white: #ffffff;
   font-weight: 500;
 }
 
+// A bare icon square doesn't read as clickable — table action buttons are
+// text-only, matching the "Details" button's clean look.
+.btn-accept.btn-labeled,
+.btn-reject.btn-labeled,
+.btn-action.btn-labeled {
+  width: auto;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-weight: 600;
+
+  span {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
 .btn-accept {
   width: 30px;
   height: 30px;
@@ -603,22 +620,6 @@ $white: #ffffff;
   &:hover {
     background: $primary-color;
     color: $white;
-  }
-
-  // A bare icon square doesn't read as clickable — these two are the shop
-  // owner's next required action, so give them a visible text label too.
-  &.btn-labeled {
-    width: auto;
-    height: 32px;
-    padding: 0 10px 0 8px;
-    gap: 4px;
-    border-radius: 6px;
-    font-weight: 600;
-
-    span {
-      font-size: 12px;
-      white-space: nowrap;
-    }
   }
 
   &.btn-prepare {

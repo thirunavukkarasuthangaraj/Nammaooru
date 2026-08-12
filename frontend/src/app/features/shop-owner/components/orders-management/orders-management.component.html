@@ -169,11 +169,11 @@
               <div class="action-buttons">
                 <!-- Pending Actions -->
                 <ng-container *ngIf="order.status === 'PENDING'">
-                  <button class="btn-accept" (click)="acceptOrder(order)" title="Accept Order">
-                    <mat-icon>check</mat-icon>
+                  <button class="btn-accept btn-labeled" (click)="acceptOrder(order)" title="Accept Order">
+                    <span>Accept</span>
                   </button>
-                  <button class="btn-reject" (click)="rejectOrder(order)" title="Reject Order">
-                    <mat-icon>close</mat-icon>
+                  <button class="btn-reject btn-labeled" (click)="rejectOrder(order)" title="Reject Order">
+                    <span>Reject</span>
                   </button>
                 </ng-container>
 
@@ -182,7 +182,6 @@
                         class="btn-action btn-prepare btn-labeled"
                         (click)="startPreparing(order.id)"
                         title="Start Preparing">
-                  <mat-icon>restaurant</mat-icon>
                   <span>Prepare</span>
                 </button>
 
@@ -191,59 +190,58 @@
                         class="btn-action btn-ready btn-labeled"
                         (click)="markReady(order.id)"
                         title="Mark Ready">
-                  <mat-icon>done</mat-icon>
                   <span>Ready</span>
                 </button>
 
                 <!-- Ready for Pickup Actions -->
                 <ng-container *ngIf="order.status === 'READY_FOR_PICKUP'">
                   <button *ngIf="order.deliveryType === 'SELF_PICKUP'"
-                          class="btn-action btn-handover"
+                          class="btn-action btn-handover btn-labeled"
                           (click)="handoverSelfPickup(order.id)"
                           title="Handover">
-                    <mat-icon>handshake</mat-icon>
+                    <span>Handover</span>
                   </button>
                   <!-- Self-delivery shop: owner delivers, no delivery partner -->
                   <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && selfDeliveryShop"
-                          class="btn-action btn-handover"
+                          class="btn-action btn-handover btn-labeled"
                           (click)="startSelfDelivery(order.id)"
                           title="Start Delivery">
-                    <mat-icon>delivery_dining</mat-icon>
+                    <span>Deliver</span>
                   </button>
                   <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !selfDeliveryShop && order.assignedToDeliveryPartner"
-                          class="btn-action btn-verify"
+                          class="btn-action btn-verify btn-labeled"
                           (click)="verifyPickupOTP(order.id)"
                           title="Verify OTP">
-                    <mat-icon>pin</mat-icon>
+                    <span>OTP</span>
                   </button>
                   <button *ngIf="order.deliveryType === 'HOME_DELIVERY' && !selfDeliveryShop && !order.assignedToDeliveryPartner && !isSearchingDriver(order.id)"
-                          class="btn-action btn-find-driver"
+                          class="btn-action btn-find-driver btn-labeled"
                           (click)="retryDriverSearch(order.id)"
                           title="Find Driver">
-                    <mat-icon>person_search</mat-icon>
+                    <span>Find Driver</span>
                   </button>
                   <mat-icon *ngIf="!selfDeliveryShop && isSearchingDriver(order.id)" class="spin searching-icon">sync</mat-icon>
                 </ng-container>
 
                 <!-- Self-delivery: mark delivered after handing over to the customer -->
                 <button *ngIf="order.status === 'OUT_FOR_DELIVERY' && order.deliveryType === 'HOME_DELIVERY' && selfDeliveryShop"
-                        class="btn-action btn-collect"
+                        class="btn-action btn-collect btn-labeled"
                         (click)="completeSelfDelivery(order.id)"
                         title="Mark Delivered">
-                  <mat-icon>where_to_vote</mat-icon>
+                  <span>Delivered</span>
                 </button>
 
                 <!-- Return Actions -->
                 <button *ngIf="order.status === 'RETURNED_TO_SHOP'"
-                        class="btn-action btn-collect"
+                        class="btn-action btn-collect btn-labeled"
                         (click)="confirmReturnReceipt(order.id)"
                         title="Collect Products">
-                  <mat-icon>inventory</mat-icon>
+                  <span>Collect</span>
                 </button>
 
                 <!-- Print Button -->
-                <button class="btn-action btn-print" (click)="printOrderSmall(order.id)" title="Print Receipt">
-                  <mat-icon>print</mat-icon>
+                <button class="btn-action btn-print btn-labeled" (click)="printOrderSmall(order.id)" title="Print Receipt">
+                  <span>Print</span>
                 </button>
 
                 <!-- View Details -->
