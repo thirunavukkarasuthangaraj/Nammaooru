@@ -1826,3 +1826,46 @@ html, body {
     }
   }
 }
+
+/* POS search actions live here to avoid inflating the component style budget. */
+.quick-search-bar .clear-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  cursor: pointer;
+
+  &:hover { background: #fee2e2; color: #dc2626; }
+  &:focus-visible { outline: 2px solid #3498db; outline-offset: 2px; }
+  mat-icon { margin: 0 !important; font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
+}
+
+/* Let the POS empty result occupy the full grid instead of one product card. */
+.profile-product-grid > .empty-products {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  min-height: 240px;
+  box-sizing: border-box;
+  text-align: center;
+
+  p {
+    width: 100%;
+    max-width: 520px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Material icons are ligature text ("close", "translate"); any inherited
+   text-transform breaks the glyph substitution and renders raw letters.
+   Immunize icons app-wide so no container style can ever corrupt them. */
+mat-icon, .material-icons {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}

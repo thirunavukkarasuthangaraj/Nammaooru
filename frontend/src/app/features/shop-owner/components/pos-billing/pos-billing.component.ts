@@ -1761,6 +1761,117 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
+   * Inline list-view edit: persist a single field (sell price, MRP or stock)
+   * straight from the row inputs. Server first, offline queue on network
+   * failure, then optimistic local update — same contract as updateProductStock.
+   */
+  async saveInlineField(product: CachedProduct, field: 'price' | 'mrp' | 'stock', event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const value = parseFloat(input.value);
+    const currentMrp = product.originalPrice || product.price;
+
+    const revert = () => {
+      input.value = String(field === 'price' ? product.price : field === 'mrp' ? currentMrp : product.stock);
+    };
+
+    if (isNaN(value) || value < 0) {
+      this.swal.error('Invalid Value', 'Enter a valid number');
+      revert();
+      return;
+    }
+    if (field === 'price' && value <= 0) {
+      this.swal.error('Invalid Price', 'Price must be greater than 0');
+      revert();
+      return;
+    }
+    if (field === 'price' && currentMrp > 0 && value > currentMrp) {
+      this.swal.error('Invalid Price', `Selling price cannot be above MRP (₹${currentMrp})`);
+      revert();
+      return;
+    }
+    if (field === 'mrp' && value < product.price) {
+      this.swal.error('Invalid MRP', `MRP cannot be less than selling price (₹${product.price})`);
+      revert();
+      return;
+    }
+
+    const newValue = field === 'stock' ? Math.round(value) : value;
+    const apiField = field === 'price' ? 'price' : field === 'mrp' ? 'originalPrice' : 'stockQuantity';
+    const changes: any = { [apiField]: newValue };
+    const previousValues: any = {
+      price: product.price,
+      originalPrice: product.originalPrice,
+      stockQuantity: product.stock
+    };
+
+    try {
+      const isOfflineProduct = product.id < 0;
+      if (navigator.onLine && !isOfflineProduct) {
+        try {
+          const response: any = await this.http.patch<any>(
+            `${this.apiUrl}/shop-products/${product.id}/quick-update`,
+            changes
+          ).toPromise();
+          if (response?.statusCode && response.statusCode !== '0000') {
+            this.swal.error('Error', response.message || 'Failed to save');
+            revert();
+            return;
+          }
+        } catch (apiError: any) {
+          const isNetworkError = !apiError?.status || apiError.status === 0;
+          if (!isNetworkError) {
+            this.swal.error('Error', apiError?.error?.message || apiError?.message || 'Failed to save');
+            revert();
+            return;
+          }
+          await this.queueInlineOfflineEdit(product, changes, previousValues);
+        }
+      } else {
+        await this.queueInlineOfflineEdit(product, changes, previousValues);
+      }
+
+      // Optimistic local update everywhere POS reads this field from
+      const localField = field === 'price' ? 'price' : field === 'mrp' ? 'originalPrice' : 'stock';
+      const apply = (p: CachedProduct) => { (p as any)[localField] = newValue; };
+      apply(product);
+      const idx = this.products.findIndex(p => p.id === product.id);
+      if (idx !== -1) apply(this.products[idx]);
+      const fidx = this.filteredProducts.findIndex(p => p.id === product.id);
+      if (fidx !== -1) apply(this.filteredProducts[fidx]);
+      const cartItem = this.cartIndex.get(product.id);
+      if (cartItem) apply(cartItem.product);
+      // A saved sell price replaces any temporary billing price for the row
+      if (field === 'price') this.tempPrices.delete(product.id);
+      await this.offlineStorage.updateLocalProduct(product.id, { [localField]: newValue } as any)
+        .catch(err => console.warn('Failed to update cache:', err));
+      localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
+
+      const label = field === 'price' ? 'Price' : field === 'mrp' ? 'MRP' : 'Stock';
+      this.swal.toast(`${label} updated: ${product.name}`, 'success');
+    } catch (error) {
+      console.error('Inline edit failed:', error);
+      this.swal.error('Error', 'Failed to save change');
+      revert();
+    }
+  }
+
+  private async queueInlineOfflineEdit(product: CachedProduct, changes: any, previousValues: any): Promise<void> {
+    const offlineEdit: OfflineEdit = {
+      editId: this.offlineStorage.generateOfflineEditId(),
+      productId: product.id,
+      shopId: this.shopId,
+      changes,
+      previousValues,
+      createdAt: new Date().toISOString(),
+      synced: false
+    };
+    await this.offlineStorage.saveOfflineEdit(offlineEdit);
+    if (product.id < 0) {
+      await this.offlineStorage.applyEditToProductCreation(product.id, changes);
+    }
+  }
+
+  /**
    * Check if product is in cart
    */
   isInCart(product: CachedProduct): boolean {

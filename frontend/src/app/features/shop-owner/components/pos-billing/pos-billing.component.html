@@ -53,7 +53,8 @@
                  [(ngModel)]="searchTerm"
                  (input)="onSearchChange()"
                  (keyup.enter)="onQuickSearchEnter()"
-                 [placeholder]="posProfileConfig.searchPlaceholder"
+                 [disabled]="isLoading"
+                 [placeholder]="isLoading ? 'Loading products...' : posProfileConfig.searchPlaceholder"
                  class="quick-search-input"
                  autofocus>
           <mat-icon class="barcode-icon">qr_code_scanner</mat-icon>
@@ -110,7 +111,7 @@
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
-              <div class="no-image-icon" *ngIf="!showImages">
+              <div class="no-image-icon" *ngIf="!showImages || !(product.imageBase64 || product.image)">
                 <mat-icon>inventory_2</mat-icon>
               </div>
                           </div>
@@ -174,7 +175,7 @@
                    [fallback]="'assets/images/product-placeholder.svg'"
                    [alt]="product.name"
                    (error)="onImageError($event)">
-              <div class="no-image-icon" *ngIf="!showImages">
+              <div class="no-image-icon" *ngIf="!showImages || !(product.imageBase64 || product.image)">
                 <mat-icon>inventory_2</mat-icon>
               </div>
                           </div>
@@ -185,17 +186,38 @@
                 <span class="tag" *ngFor="let tag of product.tags.slice(0, 1)">{{ tag }}</span>
               </div>
             </div>
-            <!-- Editable Price & Quantity Section (for billing only, not saved) -->
+            <!-- Card view: price/qty are for the bill only. List view: MRP, price and
+                 stock edits are saved to the product (server or offline queue). -->
             <div class="billing-controls">
-              <div class="price-edit">
+              <div class="price-edit mrp-edit" *ngIf="viewMode === 'list'" title="MRP — saved on change">
+                <span class="price-label">MRP</span>
+                <input type="number"
+                       class="price-input"
+                       [value]="product.originalPrice || product.price"
+                       (change)="saveInlineField(product, 'mrp', $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="0.01">
+              </div>
+              <div class="price-edit" [title]="viewMode === 'list' ? 'Selling price — saved on change' : ''">
                 <span class="price-label">₹</span>
                 <input type="number"
                        class="price-input"
                        [value]="getTempPrice(product)"
-                       (change)="setTempPrice(product, $event)"
+                       (change)="viewMode === 'list' ? saveInlineField(product, 'price', $event) : setTempPrice(product, $event)"
                        (click)="$event.stopPropagation()"
                        min="0"
                        step="0.01">
+              </div>
+              <div class="price-edit stock-edit" *ngIf="viewMode === 'list'" title="Stock — saved on change">
+                <span class="price-label">Stk</span>
+                <input type="number"
+                       class="price-input"
+                       [value]="product.stock"
+                       (change)="saveInlineField(product, 'stock', $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="1">
               </div>
               <div class="qty-controls">
                 <button class="qty-btn minus" (click)="decrementTempQty(product); $event.stopPropagation()">
