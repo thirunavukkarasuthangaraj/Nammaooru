@@ -85,6 +85,14 @@ class FirebaseNotificationService {
 
     // Handle messages when app is opened from terminated state
     _handleInitialMessage();
+
+    // Firebase can rotate a device's token at any time in the background (not just
+    // on login). Without this listener the backend keeps the stale token forever
+    // and pushes silently fail with NotRegistered once Firebase invalidates it.
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      debugPrint('🔄 FCM token refreshed: $newToken');
+      _sendTokenToBackend(newToken);
+    });
   }
 
   /// Handle messages when app is in foreground

@@ -117,24 +117,34 @@ public class EmailService {
 
     @Async
     public void sendHtmlEmail(String to, String subject, String templateName, Map<String, Object> variables) {
+        sendHtmlEmail(to, subject, templateName, variables, null, null);
+    }
+
+    /** Same as {@link #sendHtmlEmail(String, String, String, Map)} but with an optional PDF attachment. */
+    @Async
+    public void sendHtmlEmail(String to, String subject, String templateName, Map<String, Object> variables,
+                               byte[] pdfBytes, String pdfFileName) {
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-            
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, pdfBytes != null, "UTF-8");
+
             // Set email properties
             helper.setFrom(emailProperties.getFrom(), emailProperties.getFromName());
             helper.setTo(to);
             helper.setSubject(subject);
-            
+
             // Process template
             Context context = new Context();
             if (variables != null) {
                 variables.forEach(context::setVariable);
             }
-            
+
             String htmlContent = templateEngine.process(templateName, context);
             helper.setText(htmlContent, true);
-            
+            if (pdfBytes != null) {
+                helper.addAttachment(pdfFileName, new org.springframework.core.io.ByteArrayResource(pdfBytes));
+            }
+
             mailSender.send(mimeMessage);
             log.info("HTML email sent successfully to: {} using template: {}", to, templateName);
         } catch (MessagingException e) {
@@ -602,16 +612,22 @@ public class EmailService {
     }
 
     public void sendInvoiceEmail(String to, String customerName, String orderNumber, Map<String, Object> invoiceData) {
+        sendInvoiceEmail(to, customerName, orderNumber, invoiceData, null);
+    }
+
+    /** Same as {@link #sendInvoiceEmail(String, String, String, Map)} but attaches the bill PDF when provided. */
+    public void sendInvoiceEmail(String to, String customerName, String orderNumber, Map<String, Object> invoiceData,
+                                  byte[] pdfBytes) {
         try {
             // Add common email variables
             invoiceData.put("customerName", customerName);
             invoiceData.put("orderNumber", orderNumber);
             invoiceData.put("supportEmail", emailProperties.getFrom());
             invoiceData.put("companyName", "NammaOoru");
-            
+
             String subject = "Order Invoice #" + orderNumber + " - NammaOoru";
-            sendHtmlEmail(to, subject, "order-invoice", invoiceData);
-            log.info("Invoice email sent to: {} for order: {}", to, orderNumber);
+            sendHtmlEmail(to, subject, "order-invoice", invoiceData, pdfBytes, "Invoice_" + orderNumber + ".pdf");
+            log.info("Invoice email sent to: {} for order: {} (pdf attached: {})", to, orderNumber, pdfBytes != null);
         } catch (Exception e) {
             log.error("Failed to send invoice email to: {} for order: {}", to, orderNumber, e);
             throw new RuntimeException("Failed to send invoice email", e);

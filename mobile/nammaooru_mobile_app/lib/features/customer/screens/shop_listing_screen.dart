@@ -40,7 +40,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   bool _isLocationBased = false;
   String _sortBy = 'name';
   bool _openNowOnly = false;
-  double _maxDistance = 10.0;
+  // Fetch across the supported service area; the backend additionally checks
+  // every shop's own deliveryRadius before returning it.
+  static const double _serviceAreaSearchRadiusKm = 50.0;
   double _minRating = 0.0;
 
   @override
@@ -64,6 +66,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       // Use cached location from dashboard/login if available (instant, no GPS wait)
       if (LocationService.hasCachedPosition) {
         await _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
+        // The customer may have moved since login. Keep the fast cached result,
+        // but refresh it with the phone's current position in the background.
+        _fetchLocationAndRefresh();
       } else {
         // No cached location — load without location first, then try GPS in background
         await _loadShopsWithoutLocation();
@@ -85,7 +90,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     final response = await _shopApi.getNearbyShops(
       latitude: latitude,
       longitude: longitude,
-      radius: _maxDistance,
+      radius: _serviceAreaSearchRadiusKm,
     );
 
     if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
@@ -270,7 +275,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                   const Icon(Icons.location_on, size: 16, color: Color(0xFF4CAF50)),
                   const SizedBox(width: 6),
                   Text(
-                    'Showing shops within ${_maxDistance.toInt()} km',
+                    'Showing shops that deliver to your location',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF2E7D32),
@@ -964,8 +969,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      // Distance changed: re-query the server with the new radius
-                      // (the radius is applied server-side, not on the loaded list)
+                      // Re-query because availability is evaluated server-side
+                      // against each shop's configured delivery radius.
                       if (LocationService.hasCachedPosition) {
                         _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
                       }

@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -26,9 +29,16 @@ public class InvoiceService {
     private final OrderRepository orderRepository;
     private final EmailService emailService;
     private final WhatsAppNotificationService whatsAppNotificationService;
+    private final BillPdfService billPdfService;
 
     @Value("${app.frontend.url:https://nammaooru.com}")
     private String frontendUrl;
+
+    @Value("${app.upload.dir:./uploads}")
+    private String uploadDir;
+
+    @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
+    private String apiBaseUrl;
 
     @Transactional(readOnly = true)
     public Map<String, Object> generateInvoiceData(Long orderId) {
@@ -121,11 +131,19 @@ public class InvoiceService {
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
 
+            byte[] pdfBytes = null;
+            try {
+                pdfBytes = billPdfService.generateBillPdf(order);
+            } catch (Exception e) {
+                log.error("Failed to generate invoice PDF for order: {} — sending email without attachment", orderId, e);
+            }
+
             emailService.sendInvoiceEmail(
                 order.getCustomer().getEmail(),
                 order.getCustomer().getFullName(),
                 order.getOrderNumber(),
-                invoiceData
+                invoiceData,
+                pdfBytes
             );
 
             log.info("Invoice email sent successfully for order: {}", orderId);
@@ -152,22 +170,23 @@ public class InvoiceService {
                 return;
             }
 
-            // Generate invoice URL for the customer to view
-            String invoiceUrl = frontendUrl + "/invoice/" + order.getOrderNumber();
+            // Reuse the approved bill_receipt document template (the "invoice" template
+            // referenced here previously was never created in MSG91/Meta and always failed).
+            byte[] pdfBytes = billPdfService.generateBillPdf(order);
+            Path billsDir = Paths.get(uploadDir, "bills");
+            Files.createDirectories(billsDir);
+            String fileName = "invoice_" + order.getOrderNumber() + ".pdf";
+            Files.write(billsDir.resolve(fileName), pdfBytes);
+            String pdfUrl = apiBaseUrl + "/uploads/bills/" + fileName;
 
-            // Prepare template data for WhatsApp message
-            Map<String, Object> templateData = new HashMap<>();
-            templateData.put("param1", order.getCustomer().getFullName()); // Customer name
-            templateData.put("param2", order.getOrderNumber()); // Order number
-            templateData.put("param3", String.format("₹%.2f", order.getTotalAmount())); // Total amount
-            templateData.put("param4", order.getShop().getName()); // Shop name
-            templateData.put("param5", invoiceUrl); // Invoice link
-
-            // Send WhatsApp message using 'invoice' template
-            boolean sent = whatsAppNotificationService.sendMarketingMessage(
+            boolean sent = whatsAppNotificationService.sendBillDocument(
                     customerMobile,
-                    "invoice", // Template name - needs to be created in MSG91
-                    templateData
+                    order.getCustomer().getFullName(),
+                    order.getShop().getName(),
+                    order.getOrderNumber(),
+                    String.format("%.2f", order.getTotalAmount()),
+                    pdfUrl,
+                    fileName
             );
 
             if (sent) {
