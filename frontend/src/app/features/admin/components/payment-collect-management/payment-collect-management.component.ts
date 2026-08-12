@@ -67,6 +67,11 @@ export class PaymentCollectManagementComponent implements OnInit {
     return this.editAmounts[shop.shopId] !== shop.amount;
   }
 
+  isValidAmount(shop: ShopPaymentRow): boolean {
+    const amount = this.editAmounts[shop.shopId];
+    return amount != null && !isNaN(amount) && amount >= 0;
+  }
+
   statusLabel(shop: ShopPaymentRow): string {
     if (shop.amount <= 0) return 'No price set';
     return shop.paymentBlocked ? 'Payment due' : 'Active';
@@ -114,6 +119,10 @@ export class PaymentCollectManagementComponent implements OnInit {
   }
 
   saveDuration(): void {
+    if (this.durationValue == null || isNaN(this.durationValue) || this.durationValue < 1) {
+      this.snackBar.open('Enter a duration of at least 1', 'Close', { duration: 3000 });
+      return;
+    }
     this.onDurationInputChange();
     if (this.durationDays < 1) {
       this.snackBar.open('Duration must be at least 1 day', 'Close', { duration: 3000 });
