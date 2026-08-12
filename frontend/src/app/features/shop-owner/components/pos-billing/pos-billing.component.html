@@ -124,6 +124,16 @@
             </div>
             <!-- Cart Quantity Controls - directly control cart quantity -->
             <div class="billing-controls">
+              <div class="price-edit mrp-edit" *ngIf="viewMode === 'list'" title="MRP — saved on change">
+                <span class="price-label">MRP</span>
+                <input type="number"
+                       class="price-input"
+                       [value]="product.originalPrice || product.price"
+                       (change)="saveInlineField(product, 'mrp', $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="0.01">
+              </div>
               <div class="price-edit" [class.price-above-mrp]="isPriceAboveMrp(product)">
                 <span class="price-label">₹</span>
                 <input type="number"
@@ -134,6 +144,16 @@
                        min="0"
                        step="0.01"
                        [title]="isPriceAboveMrp(product) ? 'Price exceeds MRP (₹' + getCartItemMrp(product) + ')' : ''">
+              </div>
+              <div class="price-edit stock-edit" *ngIf="viewMode === 'list'" title="Stock — saved on change">
+                <span class="price-label">Stk</span>
+                <input type="number"
+                       class="price-input"
+                       [value]="product.stock"
+                       (change)="saveInlineField(product, 'stock', $event)"
+                       (click)="$event.stopPropagation()"
+                       min="0"
+                       step="1">
               </div>
               <div class="qty-controls">
                 <button class="qty-btn minus" (click)="updateCartQuantityByProduct(product, -1); $event.stopPropagation()">

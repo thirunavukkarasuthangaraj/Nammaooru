@@ -434,7 +434,9 @@ public class BillPdfService {
                 addCell(totals, "You Save", saveFont, Element.ALIGN_LEFT);
                 addCell(totals, "Rs. " + stripZeros(savings), saveFont, Element.ALIGN_RIGHT);
             }
-            if (bool(settings,"showItemDiscount",true) && order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0) {
+            // Not gated on a display toggle: a discount that changed the total must be
+            // visible on the bill, or the customer sees an unexplained jump in TOTAL.
+            if (order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0) {
                 addCell(totals, "Discount", normalFont, Element.ALIGN_LEFT);
                 addCell(totals, "- Rs. " + stripZeros(order.getDiscountAmount()), normalFont, Element.ALIGN_RIGHT);
             }

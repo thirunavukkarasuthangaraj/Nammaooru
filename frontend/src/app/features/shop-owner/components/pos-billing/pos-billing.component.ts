@@ -2250,10 +2250,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
       if (backup.shopId && this.shopId && backup.shopId !== this.shopId) return;
 
-      this.cart = backup.cart.map((item: CartItem) => {
-        const fullProduct = this.products.find(p => p.id === item.product.id);
-        return fullProduct ? { ...item, product: fullProduct } : item;
-      });
+      this.cart = backup.cart
+        .map((item: CartItem) => {
+          const fullProduct = this.products.find(p => p.id === item.product?.id);
+          return fullProduct ? { ...item, product: fullProduct } : item;
+        })
+        // A snapshot without a usable name/price renders as a broken empty row
+        // (seen when the catalog changed since backup) — drop it instead.
+        .filter((item: CartItem) => !!item.product?.name && item.product.price != null);
+      if (this.cart.length === 0) {
+        localStorage.removeItem(this.POS_CART_BACKUP_KEY);
+        return;
+      }
       this.customerName = backup.customerName || '';
       this.customerPhone = backup.customerPhone || '';
       this.customerEmail = backup.customerEmail || '';
