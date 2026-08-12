@@ -162,6 +162,97 @@
   }
 }
 
+.whatsapp-card {
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
+
+.whatsapp-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.whatsapp-icon {
+  background: #e8f5e9 !important;
+  mat-icon { color: #2e7d32 !important; }
+}
+
+.whatsapp-fields {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.whatsapp-rate-field {
+  width: 170px;
+
+  &.gst-field {
+    width: 90px;
+  }
+}
+
+.usage-summary-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  font-size: 13px;
+  color: #555;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #78909c;
+  }
+
+  .usage-total {
+    font-weight: 600;
+    color: #2e7d32;
+
+    mat-icon { color: #2e7d32; }
+  }
+}
+
+.usage-cell {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+  font-size: 12px;
+
+  .usage-count {
+    color: #555;
+  }
+
+  .usage-cost {
+    font-weight: 600;
+    color: #ef6c00;
+  }
+}
+
+.rate-override-field {
+  width: 90px;
+
+  ::ng-deep .mat-mdc-form-field-infix {
+    min-height: 32px;
+    font-size: 12px;
+  }
+}
+
 .table-container {
   overflow-x: auto;
   background: white;

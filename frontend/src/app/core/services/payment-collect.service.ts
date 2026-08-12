@@ -11,6 +11,9 @@ export interface ShopPaymentRow {
   ownerPhone: string;
   amount: number;
   durationDays: number | null;
+  whatsappRatePaise: number | null;
+  unbilledMessages: number;
+  usageAmountPaise: number;
   currency: string;
   paymentBlocked: boolean;
   validUntil: string | null;
@@ -21,6 +24,12 @@ export interface ShopPaymentStatus {
   shopName: string;
   joinedAt: string | null;
   amount: number;
+  billMsgCount: number;
+  marketingMsgCount: number;
+  usageAmountPaise: number;
+  gstPercent: number;
+  gstAmountPaise: number;
+  totalAmountPaise: number;
   currency: string;
   durationDays: number;
   paid: boolean;
@@ -28,6 +37,19 @@ export interface ShopPaymentStatus {
   validUntil: string | null;
   keyId: string;
   testMode: boolean;
+}
+
+export interface BillingConfig {
+  durationDays: number;
+  billRatePaise: number;
+  marketingRatePaise: number;
+  gstPercent: number;
+}
+
+export interface UsageSummary {
+  unbilledBillMessages: number;
+  unbilledMarketingMessages: number;
+  unbilledUsagePaise: number;
 }
 
 export interface PaymentOrder {
@@ -73,8 +95,29 @@ export class PaymentCollectService {
     );
   }
 
-  setPrice(shopId: number, amount: number, durationDays: number | null): Observable<void> {
-    return this.http.put<ApiResponse<void>>(`${this.superAdminUrl}/${shopId}`, { amount, durationDays }).pipe(
+  setPrice(shopId: number, amount: number, durationDays: number | null, whatsappRatePaise: number | null): Observable<void> {
+    return this.http.put<ApiResponse<void>>(`${this.superAdminUrl}/${shopId}`, { amount, durationDays, whatsappRatePaise }).pipe(
+      map(response => this.unwrap(response)),
+      catchError(error => throwError(() => error))
+    );
+  }
+
+  getBillingConfig(): Observable<BillingConfig> {
+    return this.http.get<ApiResponse<BillingConfig>>(`${this.superAdminUrl}/config`).pipe(
+      map(response => this.unwrap(response)),
+      catchError(error => throwError(() => error))
+    );
+  }
+
+  updateBillingConfig(billRatePaise: number, marketingRatePaise: number, gstPercent: number): Observable<BillingConfig> {
+    return this.http.put<ApiResponse<BillingConfig>>(`${this.superAdminUrl}/config`, { billRatePaise, marketingRatePaise, gstPercent }).pipe(
+      map(response => this.unwrap(response)),
+      catchError(error => throwError(() => error))
+    );
+  }
+
+  getUsageSummary(): Observable<UsageSummary> {
+    return this.http.get<ApiResponse<UsageSummary>>(`${this.superAdminUrl}/usage-summary`).pipe(
       map(response => this.unwrap(response)),
       catchError(error => throwError(() => error))
     );

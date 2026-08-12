@@ -49,6 +49,7 @@ public class PosService {
     private final CustomerRepository customerRepository;
     private final BillPdfService billPdfService;
     private final WhatsAppNotificationService whatsAppNotificationService;
+    private final ShopWhatsAppUsageService shopWhatsAppUsageService;
     private final EmailService emailService;
     private final PlatformTransactionManager transactionManager;
 
@@ -384,6 +385,8 @@ public class PosService {
             if (!sent) {
                 throw new RuntimeException("WhatsApp send failed. Possible reasons: bill_receipt template not yet approved, access token expired, or recipient not allowed (test numbers can only message registered recipients). Check backend logs for the exact WhatsApp API error.");
             }
+            // Successful send: log it against the shop for usage-based billing
+            shopWhatsAppUsageService.record(order.getShop().getId(), ShopWhatsAppUsageService.TYPE_BILL);
         } catch (java.io.IOException e) {
             log.error("Failed to store bill PDF for order {}", order.getOrderNumber(), e);
             throw new RuntimeException("Failed to save bill PDF", e);
@@ -790,6 +793,7 @@ public class PosService {
                     customer.getMobileNumber(), name, shop.getName(), offerText.trim(), imageUrl);
             if (ok) {
                 sent++;
+                shopWhatsAppUsageService.record(shop.getId(), ShopWhatsAppUsageService.TYPE_MARKETING);
             } else {
                 failures.add(Map.of("customerId", customerId, "reason", "WhatsApp send failed"));
             }

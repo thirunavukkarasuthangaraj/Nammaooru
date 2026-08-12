@@ -84,6 +84,19 @@ h1 {
   &.expired .u-label mat-icon { color: #c62828; }
 }
 
+.bill-breakdown {
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+.bill-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  padding: 3px 0;
+}
+
 .usage-summary {
   margin: 2px 0 8px;
   font-size: 12px;

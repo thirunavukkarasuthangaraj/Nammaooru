@@ -55,7 +55,7 @@ public class ShopPaymentInvoiceService {
         String invoiceNo = "PAY-" + payment.getId();
         try {
             byte[] pdfBytes = buildReceiptPdf(shop, payment, invoiceNo);
-            String amount = String.valueOf(payment.getAmount());
+            String amount = formatRupees(totalPaise(payment));
 
             // Email (owner email can be blank for some shops)
             String email = shop.getOwnerEmail();
@@ -117,9 +117,19 @@ public class ShopPaymentInvoiceService {
         addRow(table, "Paid on", payment.getPaidAt() != null ? payment.getPaidAt().format(DATE_FMT) : "-", label, value);
         addRow(table, "Payment ID", payment.getRazorpayPaymentId(), label, value);
         addRow(table, "Access valid until", payment.getValidUntil() != null ? payment.getValidUntil().format(DATE_FMT) : "-", label, value);
+        addRow(table, "Platform fee", "Rs. " + payment.getAmount(), label, value);
+        int usagePaise = payment.getUsageAmount() != null ? payment.getUsageAmount() : 0;
+        int usageCount = payment.getUsageCount() != null ? payment.getUsageCount() : 0;
+        if (usageCount > 0) {
+            addRow(table, "WhatsApp messages (" + usageCount + ")", "Rs. " + formatRupees(usagePaise), label, value);
+        }
+        int gstPaise = payment.getGstAmount() != null ? payment.getGstAmount() : 0;
+        if (gstPaise > 0) {
+            addRow(table, "GST", "Rs. " + formatRupees(gstPaise), label, value);
+        }
         document.add(table);
 
-        Paragraph amount = new Paragraph("Amount Paid: Rs. " + payment.getAmount(), big);
+        Paragraph amount = new Paragraph("Total Paid: Rs. " + formatRupees(totalPaise(payment)), big);
         amount.setAlignment(Element.ALIGN_CENTER);
         amount.setSpacingBefore(16f);
         amount.setSpacingAfter(10f);
@@ -131,6 +141,16 @@ public class ShopPaymentInvoiceService {
 
         document.close();
         return out.toByteArray();
+    }
+
+    private long totalPaise(ShopPaymentCollection payment) {
+        return payment.getAmount() * 100L
+                + (payment.getUsageAmount() != null ? payment.getUsageAmount() : 0)
+                + (payment.getGstAmount() != null ? payment.getGstAmount() : 0);
+    }
+
+    private String formatRupees(long paise) {
+        return paise % 100 == 0 ? String.valueOf(paise / 100) : String.format("%d.%02d", paise / 100, paise % 100);
     }
 
     private void addRow(PdfPTable table, String labelText, String valueText, Font labelFont, Font valueFont) {

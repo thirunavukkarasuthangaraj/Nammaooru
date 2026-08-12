@@ -53,12 +53,15 @@ public class SuperAdminPaymentCollectController {
             if (amount < 0) {
                 return ResponseUtil.badRequest("amount must be zero or positive");
             }
-            // Optional per-shop duration override in days; null/absent = global setting
+            // Optional per-shop overrides; null/absent = global setting
             Integer durationDays = request.get("durationDays") != null
                     ? ((Number) request.get("durationDays")).intValue()
                     : null;
+            Integer whatsappRatePaise = request.get("whatsappRatePaise") != null
+                    ? ((Number) request.get("whatsappRatePaise")).intValue()
+                    : null;
             Long adminUserId = getCurrentUser().getId();
-            ShopPaymentPrice saved = shopPaymentCollectService.setPrice(shopId, amount, durationDays, adminUserId);
+            ShopPaymentPrice saved = shopPaymentCollectService.setPrice(shopId, amount, durationDays, whatsappRatePaise, adminUserId);
             return ResponseUtil.success(saved, "Price updated");
         } catch (Exception e) {
             log.error("Error setting shop payment price", e);
@@ -87,6 +90,40 @@ public class SuperAdminPaymentCollectController {
             return ResponseUtil.success(Map.of("durationDays", shopPaymentCollectService.getDurationDays()));
         } catch (Exception e) {
             log.error("Error fetching duration setting", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBillingConfig() {
+        try {
+            return ResponseUtil.success(shopPaymentCollectService.getBillingConfig(), "Billing config retrieved");
+        } catch (Exception e) {
+            log.error("Error fetching billing config", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/config")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateBillingConfig(@RequestBody Map<String, Object> request) {
+        try {
+            Integer billRate = request.get("billRatePaise") != null ? ((Number) request.get("billRatePaise")).intValue() : null;
+            Integer marketingRate = request.get("marketingRatePaise") != null ? ((Number) request.get("marketingRatePaise")).intValue() : null;
+            Integer gstPercent = request.get("gstPercent") != null ? ((Number) request.get("gstPercent")).intValue() : null;
+            shopPaymentCollectService.updateBillingConfig(billRate, marketingRate, gstPercent);
+            return ResponseUtil.success(shopPaymentCollectService.getBillingConfig(), "Billing config updated");
+        } catch (Exception e) {
+            log.error("Error updating billing config", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/usage-summary")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUsageSummary() {
+        try {
+            return ResponseUtil.success(shopPaymentCollectService.getUsageSummary(), "Usage summary retrieved");
+        } catch (Exception e) {
+            log.error("Error fetching usage summary", e);
             return ResponseUtil.error(e.getMessage());
         }
     }

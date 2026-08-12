@@ -44,8 +44,27 @@ public class ShopPaymentCollection {
     @Builder.Default
     private CollectionStatus status = CollectionStatus.CREATED;
 
+    // WhatsApp usage charged with this payment (count + paise); amount stays platform fee in rupees
+    @Column(name = "usage_count", nullable = false)
+    @Builder.Default
+    private Integer usageCount = 0;
+
+    @Column(name = "usage_amount", nullable = false)
+    @Builder.Default
+    private Integer usageAmount = 0;
+
+    @Column(name = "gst_amount", nullable = false)
+    @Builder.Default
+    private Integer gstAmount = 0;
+
     @Column(name = "valid_until")
     private LocalDateTime validUntil;
+
+    // Exact instant the usage count/charge on this invoice was computed at order-creation time.
+    // verifyPayment settles messages up to this same instant so a message sent mid-checkout
+    // can never be both charged on this invoice AND left unsettled for the next one (or vice versa).
+    @Column(name = "usage_cutoff")
+    private LocalDateTime usageCutoff;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

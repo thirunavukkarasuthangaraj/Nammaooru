@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { PaymentCollectService, ShopPaymentRow } from '../../../../core/services/payment-collect.service';
+import { PaymentCollectService, ShopPaymentRow, UsageSummary } from '../../../../core/services/payment-collect.service';
 
 @Component({
   selector: 'app-payment-collect-management',
@@ -22,6 +22,15 @@ export class PaymentCollectManagementComponent implements OnInit {
 
   editAmounts: { [shopId: number]: number } = {};
   editDurations: { [shopId: number]: number | null } = {};
+  editWhatsappRates: { [shopId: number]: number | null } = {};
+
+  // WhatsApp usage billing config (paise/percent), superadmin-editable
+  billRatePaise = 45;
+  marketingRatePaise = 100;
+  gstPercent = 18;
+  billingConfigLoading = false;
+  billingConfigSaving = false;
+  usageSummary: UsageSummary | null = null;
 
   // Per-shop duration choices; null = follow the global billing duration
   readonly durationOptions: { value: number | null; label: string }[] = [
@@ -40,6 +49,8 @@ export class PaymentCollectManagementComponent implements OnInit {
   ngOnInit(): void {
     this.loadShops();
     this.loadDuration();
+    this.loadBillingConfig();
+    this.loadUsageSummary();
   }
 
   loadShops(): void {
@@ -50,6 +61,7 @@ export class PaymentCollectManagementComponent implements OnInit {
         this.shops.forEach(s => {
           this.editAmounts[s.shopId] = s.amount;
           this.editDurations[s.shopId] = s.durationDays ?? null;
+          this.editWhatsappRates[s.shopId] = s.whatsappRatePaise ?? null;
         });
         this.loading = false;
       },
@@ -78,7 +90,12 @@ export class PaymentCollectManagementComponent implements OnInit {
 
   isDirty(shop: ShopPaymentRow): boolean {
     return this.editAmounts[shop.shopId] !== shop.amount
-      || (this.editDurations[shop.shopId] ?? null) !== (shop.durationDays ?? null);
+      || (this.editDurations[shop.shopId] ?? null) !== (shop.durationDays ?? null)
+      || (this.editWhatsappRates[shop.shopId] ?? null) !== (shop.whatsappRatePaise ?? null);
+  }
+
+  formatPaise(paise: number): string {
+    return (paise / 100).toFixed(2);
   }
 
   isValidAmount(shop: ShopPaymentRow): boolean {
@@ -163,17 +180,58 @@ export class PaymentCollectManagementComponent implements OnInit {
     }
     this.savingShopId = shop.shopId;
     const durationDays = this.editDurations[shop.shopId] ?? null;
-    this.paymentCollectService.setPrice(shop.shopId, amount, durationDays).subscribe({
+    const whatsappRatePaise = this.editWhatsappRates[shop.shopId] ?? null;
+    this.paymentCollectService.setPrice(shop.shopId, amount, durationDays, whatsappRatePaise).subscribe({
       next: () => {
         this.savingShopId = null;
         shop.amount = amount;
         shop.durationDays = durationDays;
+        shop.whatsappRatePaise = whatsappRatePaise;
         this.snackBar.open(`Price updated for ${shop.shopName}`, 'Close', { duration: 3000 });
         this.loadShops();
       },
       error: err => {
         this.savingShopId = null;
         this.snackBar.open(err.message || 'Failed to update price', 'Close', { duration: 4000 });
+      }
+    });
+  }
+
+  loadBillingConfig(): void {
+    this.billingConfigLoading = true;
+    this.paymentCollectService.getBillingConfig().subscribe({
+      next: config => {
+        this.billRatePaise = config.billRatePaise;
+        this.marketingRatePaise = config.marketingRatePaise;
+        this.gstPercent = config.gstPercent;
+        this.billingConfigLoading = false;
+      },
+      error: () => { this.billingConfigLoading = false; }
+    });
+  }
+
+  loadUsageSummary(): void {
+    this.paymentCollectService.getUsageSummary().subscribe({
+      next: summary => { this.usageSummary = summary; },
+      error: () => { /* non-critical dashboard stat */ }
+    });
+  }
+
+  saveBillingConfig(): void {
+    if ([this.billRatePaise, this.marketingRatePaise, this.gstPercent].some(v => v == null || isNaN(v) || v < 0)) {
+      this.snackBar.open('Enter valid, non-negative values', 'Close', { duration: 3000 });
+      return;
+    }
+    this.billingConfigSaving = true;
+    this.paymentCollectService.updateBillingConfig(this.billRatePaise, this.marketingRatePaise, this.gstPercent).subscribe({
+      next: () => {
+        this.billingConfigSaving = false;
+        this.snackBar.open('WhatsApp usage pricing updated', 'Close', { duration: 3000 });
+        this.loadShops();
+      },
+      error: err => {
+        this.billingConfigSaving = false;
+        this.snackBar.open(err.message || 'Failed to update pricing', 'Close', { duration: 4000 });
       }
     });
   }

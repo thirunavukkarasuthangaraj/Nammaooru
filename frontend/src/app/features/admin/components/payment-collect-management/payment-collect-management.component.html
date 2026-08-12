@@ -64,6 +64,41 @@
     </div>
   </div>
 
+  <div class="whatsapp-card">
+    <div class="whatsapp-header">
+      <div class="duration-icon whatsapp-icon"><mat-icon>chat</mat-icon></div>
+      <div class="duration-body">
+        <p class="duration-label">WhatsApp Usage Pricing</p>
+        <p class="duration-hint">What shops pay per message sent on their behalf (bill receipts, marketing offers)</p>
+      </div>
+    </div>
+    <div class="whatsapp-fields">
+      <mat-form-field appearance="outline" class="whatsapp-rate-field">
+        <mat-label>Bill message (paise)</mat-label>
+        <input matInput type="number" min="0" [(ngModel)]="billRatePaise" [disabled]="billingConfigLoading">
+        <mat-hint>&#8377;{{ formatPaise(billRatePaise) }} / message</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="whatsapp-rate-field">
+        <mat-label>Marketing message (paise)</mat-label>
+        <input matInput type="number" min="0" [(ngModel)]="marketingRatePaise" [disabled]="billingConfigLoading">
+        <mat-hint>&#8377;{{ formatPaise(marketingRatePaise) }} / message</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="whatsapp-rate-field gst-field">
+        <mat-label>GST (%)</mat-label>
+        <input matInput type="number" min="0" max="100" [(ngModel)]="gstPercent" [disabled]="billingConfigLoading">
+      </mat-form-field>
+      <button mat-raised-button color="primary" [disabled]="billingConfigSaving" (click)="saveBillingConfig()">
+        <mat-icon>save</mat-icon>
+        {{ billingConfigSaving ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+    <div class="usage-summary-row" *ngIf="usageSummary">
+      <span><mat-icon>receipt_long</mat-icon> {{ usageSummary.unbilledBillMessages }} unbilled bill messages</span>
+      <span><mat-icon>campaign</mat-icon> {{ usageSummary.unbilledMarketingMessages }} unbilled marketing messages</span>
+      <span class="usage-total"><mat-icon>account_balance_wallet</mat-icon> &#8377;{{ formatPaise(usageSummary.unbilledUsagePaise) }} to be collected next cycle</span>
+    </div>
+  </div>
+
   <div class="loading-container" *ngIf="loading">
     <mat-spinner diameter="32"></mat-spinner>
     <p>Loading shops...</p>
@@ -104,6 +139,19 @@
         </td>
       </ng-container>
 
+      <ng-container matColumnDef="usage">
+        <th mat-header-cell *matHeaderCellDef>WhatsApp Usage</th>
+        <td mat-cell *matCellDef="let shop">
+          <div class="usage-cell" [matTooltip]="'Rate: ' + (shop.whatsappRatePaise ? formatPaise(shop.whatsappRatePaise) : formatPaise(billRatePaise)) + ' / msg'">
+            <span class="usage-count">{{ shop.unbilledMessages }} msgs</span>
+            <span class="usage-cost" *ngIf="shop.usageAmountPaise > 0">&#8377;{{ formatPaise(shop.usageAmountPaise) }}</span>
+          </div>
+          <mat-form-field appearance="outline" class="rate-override-field">
+            <input matInput type="number" min="0" placeholder="Default" [(ngModel)]="editWhatsappRates[shop.shopId]">
+          </mat-form-field>
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="status">
         <th mat-header-cell *matHeaderCellDef>Status</th>
         <td mat-cell *matCellDef="let shop">
@@ -131,8 +179,8 @@
         </td>
       </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="['shopName', 'amount', 'duration', 'status', 'validUntil', 'actions']"></tr>
-      <tr mat-row *matRowDef="let row; columns: ['shopName', 'amount', 'duration', 'status', 'validUntil', 'actions'];"></tr>
+      <tr mat-header-row *matHeaderRowDef="['shopName', 'amount', 'duration', 'usage', 'status', 'validUntil', 'actions']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['shopName', 'amount', 'duration', 'usage', 'status', 'validUntil', 'actions'];"></tr>
     </table>
 
     <div class="empty-state" *ngIf="shops.length === 0">

@@ -30,6 +30,10 @@ public class ShopPaymentPrice {
     @Column(name = "duration_days")
     private Integer durationDays;
 
+    // Per-message WhatsApp charge in paise; NULL = global shop_payment_collect.whatsapp_rate_paise
+    @Column(name = "whatsapp_rate_paise")
+    private Integer whatsappRatePaise;
+
     @Column(nullable = false, length = 10)
     @Builder.Default
     private String currency = "INR";

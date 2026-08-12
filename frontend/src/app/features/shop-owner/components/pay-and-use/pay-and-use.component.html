@@ -36,8 +36,25 @@
       </div>
 
       <div class="due-block" *ngIf="s.paymentRequired">
+        <div class="bill-breakdown" *ngIf="s.billMsgCount || s.marketingMsgCount || s.gstAmountPaise">
+          <div class="bill-row">
+            <span>Platform fee</span>
+            <span>&#8377;{{ s.amount }}</span>
+          </div>
+          <div class="bill-row" *ngIf="s.billMsgCount || s.marketingMsgCount">
+            <span>
+              WhatsApp messages
+              ({{ s.billMsgCount }} bill{{ s.marketingMsgCount ? ', ' + s.marketingMsgCount + ' marketing' : '' }})
+            </span>
+            <span>&#8377;{{ (s.usageAmountPaise / 100) | number:'1.2-2' }}</span>
+          </div>
+          <div class="bill-row" *ngIf="s.gstAmountPaise">
+            <span>GST ({{ s.gstPercent }}%)</span>
+            <span>&#8377;{{ (s.gstAmountPaise / 100) | number:'1.2-2' }}</span>
+          </div>
+        </div>
         <p class="due-label">Amount due</p>
-        <p class="due-amount">&#8377;{{ s.amount }}</p>
+        <p class="due-amount">&#8377;{{ (s.totalAmountPaise / 100) | number:'1.2-2' }}</p>
         <p class="due-note">
           <mat-icon>event_available</mat-icon>
           {{ s.durationDays }} {{ s.durationDays === 1 ? 'day' : 'days' }} of access from payment
