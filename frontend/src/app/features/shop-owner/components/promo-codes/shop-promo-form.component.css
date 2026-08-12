@@ -1,5 +1,12 @@
 .dialog-container {
   min-width: 550px;
+  /* Scope the field focus/hover outline to this dialog's orange theme
+     instead of the app-wide purple accent (--primary-500: #667eea) */
+  --mdc-outlined-text-field-focus-outline-color: #c2410c;
+  --mdc-outlined-text-field-hover-outline-color: #ff6b35;
+  --mdc-outlined-text-field-caret-color: #c2410c;
+  --mdc-outlined-text-field-focus-label-text-color: #c2410c;
+  --mat-select-focused-arrow-color: #c2410c;
 }
 
 .dialog-header {
@@ -8,7 +15,7 @@
   align-items: center;
   padding: 16px 24px;
   border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #ff8c5a 100%);
   color: white;
   margin: -24px -24px 0 -24px;
 }
@@ -19,10 +26,17 @@
   align-items: center;
   gap: 8px;
   font-size: 1.25rem;
+  color: white;
 }
 
-.dialog-header button {
+.dialog-header h2 mat-icon {
   color: white;
+}
+
+.dialog-header button,
+.dialog-header button .mat-icon,
+.dialog-header button.mat-mdc-icon-button {
+  color: white !important;
 }
 
 .dialog-content {

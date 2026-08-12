@@ -51,7 +51,7 @@ jobs:
       with:
         name: backend-jar
         path: backend/target/app.jar
-        retention-days: 3
+        retention-days: 1
 
   # Step 1b: Build frontend (runs in parallel with backend build - independent)
   build-frontend:
@@ -87,7 +87,7 @@ jobs:
       with:
         name: frontend-dist
         path: frontend/dist/deploy.tar.gz
-        retention-days: 3
+        retention-days: 1
 
   # Step 2: Deploy Backend with Zero Downtime (prebuilt JAR — no Maven on server)
   # Only waits on build-backend, not build-frontend, so it starts as soon as

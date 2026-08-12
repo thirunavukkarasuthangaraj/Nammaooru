@@ -605,6 +605,22 @@ $white: #ffffff;
     color: $white;
   }
 
+  // A bare icon square doesn't read as clickable — these two are the shop
+  // owner's next required action, so give them a visible text label too.
+  &.btn-labeled {
+    width: auto;
+    height: 32px;
+    padding: 0 10px 0 8px;
+    gap: 4px;
+    border-radius: 6px;
+    font-weight: 600;
+
+    span {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+  }
+
   &.btn-prepare {
     background: rgba($warning-color, 0.1);
     color: $warning-color;

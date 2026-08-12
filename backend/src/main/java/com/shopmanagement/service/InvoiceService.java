@@ -170,8 +170,10 @@ public class InvoiceService {
                 return;
             }
 
-            // Reuse the approved bill_receipt document template (the "invoice" template
-            // referenced here previously was never created in MSG91/Meta and always failed).
+            // Reuse the approved bill_receipt template (the "invoice" template referenced
+            // here previously was never created in MSG91/Meta and always failed) — and the
+            // same inline-image-first pattern as the POS bill send, so a delivered order's
+            // WhatsApp bill looks identical to the one sent from POS billing.
             byte[] pdfBytes = billPdfService.generateBillPdf(order);
             Path billsDir = Paths.get(uploadDir, "bills");
             Files.createDirectories(billsDir);
@@ -179,15 +181,27 @@ public class InvoiceService {
             Files.write(billsDir.resolve(fileName), pdfBytes);
             String pdfUrl = apiBaseUrl + "/uploads/bills/" + fileName;
 
-            boolean sent = whatsAppNotificationService.sendBillDocument(
-                    customerMobile,
-                    order.getCustomer().getFullName(),
-                    order.getShop().getName(),
-                    order.getOrderNumber(),
-                    String.format("%.2f", order.getTotalAmount()),
-                    pdfUrl,
-                    fileName
-            );
+            String customerName = order.getCustomer().getFullName();
+            String shopName = order.getShop().getName();
+            String amount = String.format("%.2f", order.getTotalAmount());
+
+            boolean sent = false;
+            byte[] jpegBytes = billPdfService.renderBillJpeg(pdfBytes, order.getOrderNumber());
+            if (jpegBytes != null) {
+                String imgFileName = "invoice_" + order.getOrderNumber() + ".jpg";
+                Files.write(billsDir.resolve(imgFileName), jpegBytes);
+                String imgUrl = apiBaseUrl + "/uploads/bills/" + imgFileName;
+                sent = whatsAppNotificationService.sendBillImage(
+                        customerMobile, customerName, shopName, order.getOrderNumber(), amount, imgUrl);
+                if (!sent) {
+                    log.warn("Bill image template send failed for {} - falling back to PDF template", order.getOrderNumber());
+                }
+            }
+
+            if (!sent) {
+                sent = whatsAppNotificationService.sendBillDocument(
+                        customerMobile, customerName, shopName, order.getOrderNumber(), amount, pdfUrl, fileName);
+            }
 
             if (sent) {
                 log.info("WhatsApp invoice sent successfully for order: {}", orderId);

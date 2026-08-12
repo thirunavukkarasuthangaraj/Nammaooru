@@ -179,18 +179,20 @@
 
                 <!-- Confirmed Actions -->
                 <button *ngIf="order.status === 'CONFIRMED'"
-                        class="btn-action btn-prepare"
+                        class="btn-action btn-prepare btn-labeled"
                         (click)="startPreparing(order.id)"
                         title="Start Preparing">
                   <mat-icon>restaurant</mat-icon>
+                  <span>Prepare</span>
                 </button>
 
                 <!-- Preparing Actions -->
                 <button *ngIf="order.status === 'PREPARING'"
-                        class="btn-action btn-ready"
+                        class="btn-action btn-ready btn-labeled"
                         (click)="markReady(order.id)"
                         title="Mark Ready">
                   <mat-icon>done</mat-icon>
+                  <span>Ready</span>
                 </button>
 
                 <!-- Ready for Pickup Actions -->
