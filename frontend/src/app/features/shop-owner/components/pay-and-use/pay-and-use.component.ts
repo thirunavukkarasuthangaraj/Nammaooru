@@ -8,6 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { PaymentCollectService, ShopPaymentStatus } from '../../../../core/services/payment-collect.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { PwaInstallService } from '../../../../core/services/pwa-install.service';
 
 declare const Razorpay: any;
 
@@ -59,6 +60,13 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
       },
       error: err => {
         this.loading = false;
+        // Offline: show the last known status so the owner still sees what's due
+        // and the "connect to the internet to pay" banner instead of a blank card.
+        const cached = this.paymentCollectService.getCachedStatus();
+        if (!navigator.onLine && cached) {
+          this.status = cached;
+          return;
+        }
         this.snackBar.open(err.message || 'Failed to load payment status', 'Close', { duration: 4000 });
       }
     });
@@ -70,10 +78,14 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
       return;
     }
     this.paying = true;
+    // Hold app auto-update reloads for the whole checkout - a reload here could
+    // take the money without ever running the verify step.
+    PwaInstallService.beginCriticalFlow();
 
     this.paymentCollectService.loadRazorpayScript().then(loaded => {
       if (!loaded) {
         this.paying = false;
+        PwaInstallService.endCriticalFlow();
         this.snackBar.open('Could not load payment gateway. Check your internet connection and try again.', 'Close', { duration: 5000 });
         return;
       }
@@ -93,7 +105,7 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
               this.verify(order.orderId, response.razorpay_payment_id, response.razorpay_signature, order.testMode);
             }),
             modal: {
-              ondismiss: () => this.ngZone.run(() => { this.paying = false; })
+              ondismiss: () => this.ngZone.run(() => { this.paying = false; PwaInstallService.endCriticalFlow(); })
             },
             theme: { color: '#2e7d32' }
           };
@@ -109,6 +121,7 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
         },
         error: err => {
           this.paying = false;
+          PwaInstallService.endCriticalFlow();
           this.snackBar.open(err.message || 'Failed to start payment', 'Close', { duration: 4000 });
         }
       });
@@ -123,11 +136,13 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.paying = false;
+        PwaInstallService.endCriticalFlow();
         this.snackBar.open('Payment successful. You can now use the app.', 'Close', { duration: 4000 });
         this.router.navigate(['/shop-owner/dashboard']);
       },
       error: err => {
         this.paying = false;
+        PwaInstallService.endCriticalFlow();
         this.snackBar.open(err.message || 'Payment verification failed', 'Close', { duration: 5000 });
       }
     });

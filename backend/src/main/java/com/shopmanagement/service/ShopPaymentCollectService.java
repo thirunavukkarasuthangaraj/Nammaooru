@@ -61,6 +61,13 @@ public class ShopPaymentCollectService {
         return Integer.parseInt(settingService.getSettingValue(DURATION_SETTING_KEY, "30"));
     }
 
+    /** Per-shop duration override wins over the global setting (yearly payers etc). */
+    private int effectiveDurationDays(ShopPaymentPrice price) {
+        return (price != null && price.getDurationDays() != null && price.getDurationDays() > 0)
+                ? price.getDurationDays()
+                : getDurationDays();
+    }
+
     @Transactional
     public void setDurationDays(int days) {
         if (days < 1) {
@@ -75,7 +82,8 @@ public class ShopPaymentCollectService {
         for (ShopPaymentCollection window : freeWindows) {
             shopRepository.findById(window.getShopId()).ifPresent(shop -> {
                 LocalDateTime joined = shop.getCreatedAt() != null ? shop.getCreatedAt() : window.getCreatedAt();
-                window.setValidUntil(joined.plusDays(days));
+                ShopPaymentPrice shopPrice = shopPaymentPriceRepository.findByShopId(shop.getId()).orElse(null);
+                window.setValidUntil(joined.plusDays(effectiveDurationDays(shopPrice)));
                 shopPaymentCollectionRepository.save(window);
             });
         }
@@ -124,13 +132,14 @@ public class ShopPaymentCollectService {
     }
 
     @Transactional
-    public ShopPaymentPrice setPrice(Long shopId, int amount, Long adminUserId) {
+    public ShopPaymentPrice setPrice(Long shopId, int amount, Integer durationDays, Long adminUserId) {
         if (!shopRepository.existsById(shopId)) {
             throw new RuntimeException("Shop not found: " + shopId);
         }
         ShopPaymentPrice price = shopPaymentPriceRepository.findByShopId(shopId)
                 .orElse(ShopPaymentPrice.builder().shopId(shopId).build());
         price.setAmount(amount);
+        price.setDurationDays(durationDays != null && durationDays > 0 ? durationDays : null);
         price.setUpdatedBy(adminUserId);
         ShopPaymentPrice saved = shopPaymentPriceRepository.save(price);
 
@@ -150,7 +159,7 @@ public class ShopPaymentCollectService {
                     .razorpayOrderId("grace_" + shopId + "_" + now.toEpochSecond(java.time.ZoneOffset.UTC))
                     .status(ShopPaymentCollection.CollectionStatus.PAID)
                     .paidAt(now)
-                    .validUntil(joined.plusDays(getDurationDays()))
+                    .validUntil(joined.plusDays(effectiveDurationDays(price)))
                     .build();
             shopPaymentCollectionRepository.save(grace);
             log.info("Free window for shop {} runs from join date {} until {}", shopId, joined, grace.getValidUntil());
@@ -177,6 +186,7 @@ public class ShopPaymentCollectService {
         row.put("ownerName", shop.getOwnerName());
         row.put("ownerPhone", shop.getOwnerPhone());
         row.put("amount", price != null ? price.getAmount() : 0);
+        row.put("durationDays", price != null ? price.getDurationDays() : null);
         row.put("currency", price != null ? price.getCurrency() : "INR");
         row.put("paymentBlocked", Boolean.TRUE.equals(shop.getPaymentBlocked()));
         row.put("validUntil", latestPaid != null ? latestPaid.getValidUntil() : null);
@@ -205,7 +215,7 @@ public class ShopPaymentCollectService {
         status.put("joinedAt", joinedAt);
         status.put("amount", amount);
         status.put("currency", currency);
-        status.put("durationDays", getDurationDays());
+        status.put("durationDays", effectiveDurationDays(price));
         status.put("paid", paid);
         status.put("paymentRequired", amount > 0);
         status.put("validUntil", latestPaid != null ? latestPaid.getValidUntil() : null);
@@ -301,11 +311,12 @@ public class ShopPaymentCollectService {
         LocalDateTime base = (currentlyActive != null && currentlyActive.getValidUntil() != null
                 && currentlyActive.getValidUntil().isAfter(now)) ? currentlyActive.getValidUntil() : now;
 
+        ShopPaymentPrice shopPrice = shopPaymentPriceRepository.findByShopId(collection.getShopId()).orElse(null);
         collection.setRazorpayPaymentId(razorpayPaymentId != null ? razorpayPaymentId : "test_pay_" + System.currentTimeMillis());
         collection.setRazorpaySignature(razorpaySignature != null ? razorpaySignature : "test_sig");
         collection.setStatus(ShopPaymentCollection.CollectionStatus.PAID);
         collection.setPaidAt(now);
-        collection.setValidUntil(base.plusDays(getDurationDays()));
+        collection.setValidUntil(base.plusDays(effectiveDurationDays(shopPrice)));
         ShopPaymentCollection saved = shopPaymentCollectionRepository.save(collection);
 
         recomputeBlockedFlag(collection.getShopId());

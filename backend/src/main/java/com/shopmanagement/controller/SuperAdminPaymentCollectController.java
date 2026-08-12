@@ -53,8 +53,12 @@ public class SuperAdminPaymentCollectController {
             if (amount < 0) {
                 return ResponseUtil.badRequest("amount must be zero or positive");
             }
+            // Optional per-shop duration override in days; null/absent = global setting
+            Integer durationDays = request.get("durationDays") != null
+                    ? ((Number) request.get("durationDays")).intValue()
+                    : null;
             Long adminUserId = getCurrentUser().getId();
-            ShopPaymentPrice saved = shopPaymentCollectService.setPrice(shopId, amount, adminUserId);
+            ShopPaymentPrice saved = shopPaymentCollectService.setPrice(shopId, amount, durationDays, adminUserId);
             return ResponseUtil.success(saved, "Price updated");
         } catch (Exception e) {
             log.error("Error setting shop payment price", e);

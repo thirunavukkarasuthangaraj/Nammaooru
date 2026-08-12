@@ -26,6 +26,10 @@ public class ShopPaymentPrice {
     @Column(nullable = false)
     private Integer amount;
 
+    // NULL = use the global shop_payment_collect.duration_days setting
+    @Column(name = "duration_days")
+    private Integer durationDays;
+
     @Column(nullable = false, length = 10)
     @Builder.Default
     private String currency = "INR";

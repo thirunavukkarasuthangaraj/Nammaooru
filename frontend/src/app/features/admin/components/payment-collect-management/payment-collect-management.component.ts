@@ -21,6 +21,16 @@ export class PaymentCollectManagementComponent implements OnInit {
   private readonly UNIT_DAYS: { [key: string]: number } = { days: 1, months: 30, years: 365 };
 
   editAmounts: { [shopId: number]: number } = {};
+  editDurations: { [shopId: number]: number | null } = {};
+
+  // Per-shop duration choices; null = follow the global billing duration
+  readonly durationOptions: { value: number | null; label: string }[] = [
+    { value: null, label: 'Default' },
+    { value: 30, label: '1 Month' },
+    { value: 90, label: '3 Months' },
+    { value: 180, label: '6 Months' },
+    { value: 365, label: '1 Year' }
+  ];
 
   constructor(
     private paymentCollectService: PaymentCollectService,
@@ -37,7 +47,10 @@ export class PaymentCollectManagementComponent implements OnInit {
     this.paymentCollectService.listShops(0, 100).subscribe({
       next: result => {
         this.shops = result.content;
-        this.shops.forEach(s => this.editAmounts[s.shopId] = s.amount);
+        this.shops.forEach(s => {
+          this.editAmounts[s.shopId] = s.amount;
+          this.editDurations[s.shopId] = s.durationDays ?? null;
+        });
         this.loading = false;
       },
       error: err => {
@@ -64,7 +77,8 @@ export class PaymentCollectManagementComponent implements OnInit {
   }
 
   isDirty(shop: ShopPaymentRow): boolean {
-    return this.editAmounts[shop.shopId] !== shop.amount;
+    return this.editAmounts[shop.shopId] !== shop.amount
+      || (this.editDurations[shop.shopId] ?? null) !== (shop.durationDays ?? null);
   }
 
   isValidAmount(shop: ShopPaymentRow): boolean {
@@ -148,10 +162,12 @@ export class PaymentCollectManagementComponent implements OnInit {
       return;
     }
     this.savingShopId = shop.shopId;
-    this.paymentCollectService.setPrice(shop.shopId, amount).subscribe({
+    const durationDays = this.editDurations[shop.shopId] ?? null;
+    this.paymentCollectService.setPrice(shop.shopId, amount, durationDays).subscribe({
       next: () => {
         this.savingShopId = null;
         shop.amount = amount;
+        shop.durationDays = durationDays;
         this.snackBar.open(`Price updated for ${shop.shopName}`, 'Close', { duration: 3000 });
         this.loadShops();
       },

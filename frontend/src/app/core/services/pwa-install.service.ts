@@ -37,8 +37,8 @@ export class PwaInstallService {
         console.log('New version available:', (event as VersionReadyEvent).latestVersion);
         this.updateAvailableSubject.next(true);
 
-        // Auto-reload to get new version
-        this.activateUpdate();
+        // Auto-reload to get new version — but never in the middle of a payment
+        this.scheduleActivate();
       }
     });
 
@@ -51,6 +51,39 @@ export class PwaInstallService {
           .catch(err => console.warn('SW update check failed:', err));
       }
     });
+  }
+
+  // ===== Reload deferral: a forced reload mid-checkout can take the user's money
+  // without ever running the verify step, so updates wait for payments to finish. =====
+  private static reloadBlocks = 0;
+
+  /** Call when entering a flow a reload must not interrupt (Razorpay checkout etc). */
+  static beginCriticalFlow(): void {
+    PwaInstallService.reloadBlocks++;
+  }
+
+  static endCriticalFlow(): void {
+    PwaInstallService.reloadBlocks = Math.max(0, PwaInstallService.reloadBlocks - 1);
+  }
+
+  private static reloadBlocked(): boolean {
+    // The DOM check is a safety net for any checkout path that forgot to register
+    return PwaInstallService.reloadBlocks > 0
+      || !!document.querySelector('.razorpay-container, .razorpay-checkout-frame');
+  }
+
+  private scheduleActivate(): void {
+    if (!PwaInstallService.reloadBlocked()) {
+      this.activateUpdate();
+      return;
+    }
+    console.log('Update ready but a payment is in progress — deferring reload');
+    const timer = setInterval(() => {
+      if (!PwaInstallService.reloadBlocked()) {
+        clearInterval(timer);
+        this.activateUpdate();
+      }
+    }, 5000);
   }
 
   /**

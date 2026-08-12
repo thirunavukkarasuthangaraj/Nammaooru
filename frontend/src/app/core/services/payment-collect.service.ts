@@ -10,6 +10,7 @@ export interface ShopPaymentRow {
   ownerName: string;
   ownerPhone: string;
   amount: number;
+  durationDays: number | null;
   currency: string;
   paymentBlocked: boolean;
   validUntil: string | null;
@@ -72,8 +73,8 @@ export class PaymentCollectService {
     );
   }
 
-  setPrice(shopId: number, amount: number): Observable<void> {
-    return this.http.put<ApiResponse<void>>(`${this.superAdminUrl}/${shopId}`, { amount }).pipe(
+  setPrice(shopId: number, amount: number, durationDays: number | null): Observable<void> {
+    return this.http.put<ApiResponse<void>>(`${this.superAdminUrl}/${shopId}`, { amount, durationDays }).pipe(
       map(response => this.unwrap(response)),
       catchError(error => throwError(() => error))
     );
@@ -100,20 +101,19 @@ export class PaymentCollectService {
   getStatus(): Observable<ShopPaymentStatus> {
     return this.http.get<ApiResponse<ShopPaymentStatus>>(`${this.shopOwnerUrl}/status`).pipe(
       map(response => this.unwrap(response)),
-      // Cache the verdict so the lock still holds when the device is offline
+      // Cache the full status so the lock holds offline AND the pay screen can
+      // still show amount/dates without a connection
       tap(status => {
         try {
-          localStorage.setItem(PaymentCollectService.STATUS_CACHE_KEY, JSON.stringify({
-            shopId: status.shopId, paid: status.paid, paymentRequired: status.paymentRequired, cachedAt: Date.now()
-          }));
+          localStorage.setItem(PaymentCollectService.STATUS_CACHE_KEY, JSON.stringify(status));
         } catch { /* storage full/unavailable — lock still enforced server-side */ }
       }),
       catchError(error => throwError(() => error))
     );
   }
 
-  /** Last server verdict, for offline lock decisions. Null when never cached. */
-  getCachedStatus(): { shopId: number; paid: boolean; paymentRequired: boolean } | null {
+  /** Last server status, for offline lock decisions and offline pay-screen display. */
+  getCachedStatus(): ShopPaymentStatus | null {
     try {
       return JSON.parse(localStorage.getItem(PaymentCollectService.STATUS_CACHE_KEY) || 'null');
     } catch {
