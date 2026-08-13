@@ -229,7 +229,7 @@ public class FirebaseNotificationService {
         return switch (status.toUpperCase()) {
             case "PENDING" -> "Order Placed Successfully! 🎉";
             case "CONFIRMED" -> "Order Confirmed! ✅";
-            case "PREPARING" -> "Order Being Prepared 👨‍🍳";
+            case "PREPARING" -> "Order Being Prepared 🛍️";
             case "READY" -> "Order Ready! 📦";
             case "READY_FOR_PICKUP" -> "Ready for Pickup! 🚚";
             case "OUT_FOR_DELIVERY" -> "Out for Delivery! 🛵";
@@ -254,15 +254,15 @@ public class FirebaseNotificationService {
         return switch (status.toUpperCase()) {
             case "PENDING" -> String.format("Your order %s has been placed successfully and is awaiting shop confirmation.", orderNumber);
             case "CONFIRMED" -> String.format("Your order %s has been confirmed and will be prepared soon.", orderNumber);
-            case "PREPARING" -> String.format("Your order %s is being prepared by the restaurant.", orderNumber);
+            case "PREPARING" -> String.format("Your order %s is being prepared by the shop.", orderNumber);
             case "READY" -> String.format("Your order %s is ready at the shop!", orderNumber);
             case "READY_FOR_PICKUP" -> String.format("Your order %s is ready and a delivery partner has been assigned!", orderNumber);
             case "OUT_FOR_DELIVERY" -> String.format("Your order %s is on its way to you!", orderNumber);
-            case "DELIVERED" -> String.format("Your order %s has been delivered successfully! Enjoy your meal!", orderNumber);
+            case "DELIVERED" -> String.format("Your order %s has been delivered successfully. Thank you for shopping with us!", orderNumber);
             case "COMPLETED" -> String.format("Your order %s is now completed. Thank you for choosing us!", orderNumber);
             case "CANCELLED" -> String.format("Your order %s has been cancelled.", orderNumber);
             case "REFUNDED" -> String.format("Your order %s has been refunded. The amount will be credited to your account shortly.", orderNumber);
-            case "SELF_PICKUP_COLLECTED" -> String.format("You have collected your order %s. Enjoy your meal!", orderNumber);
+            case "SELF_PICKUP_COLLECTED" -> String.format("You have collected your order %s. Thank you for shopping with us!", orderNumber);
             case "DRIVER_ACCEPTED" -> String.format("A delivery partner has accepted your order %s and will pick it up soon!", orderNumber);
             case "ORDER_ASSIGNED" -> String.format("New delivery order %s has been assigned to you. Please accept it!", orderNumber);
             case "ORDER_COLLECTED" -> String.format("Order %s has been collected by the delivery partner.", orderNumber);

@@ -128,13 +128,17 @@ class _SplashScreenState extends State<SplashScreen>
                     builder: (context, child) {
                       return FadeTransition(
                         opacity: _fadeAnimation,
-                        child: const Text(
-                          'Namma Ooru Connect',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            'Namma Ooru Connect',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ),
                       );

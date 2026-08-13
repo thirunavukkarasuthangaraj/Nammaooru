@@ -90,13 +90,24 @@ class _NammaOoruAppState extends State<NammaOoruApp> {
       themeMode: ThemeMode.light,
       routerConfig: AppRouter.router,
       builder: (context, child) {
+        // Clamp the system font-size setting app-wide. Layouts are designed
+        // for scale 1.0; phones set to very large fonts were wrapping and
+        // breaking every screen. 0.85-1.2 keeps accessibility without breakage.
+        final mediaQuery = MediaQuery.of(context);
+        final clampedScaler = mediaQuery.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.2,
+        );
         // Global keyboard dismiss: tapping anywhere outside a text field
         // closes the keyboard (cart, checkout, search - all screens)
-        return GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: ConnectivityBanner(
-            child: child ?? const SizedBox.shrink(),
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: clampedScaler),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: ConnectivityBanner(
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },
