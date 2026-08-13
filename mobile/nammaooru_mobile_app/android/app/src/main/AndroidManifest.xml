@@ -18,8 +18,12 @@
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 
-<!-- Media permissions (Android 13+ / API 33+) — required for Vivo, Samsung, etc. -->
-<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<!-- Play "Photo and Video Permissions" policy (enforced 2026-08-13) forbids
+     READ_MEDIA_IMAGES/READ_MEDIA_VIDEO for non-gallery apps. image_picker uses
+     the Android system Photo Picker on 13+, which needs no permission.
+     tools:node="remove" also strips these if any plugin's manifest adds them. -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
 
 <!-- Phone permission -->
 <uses-permission android:name="android.permission.CALL_PHONE" />
