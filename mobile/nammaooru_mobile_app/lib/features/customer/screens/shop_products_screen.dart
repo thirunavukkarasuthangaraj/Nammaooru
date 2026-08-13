@@ -10,6 +10,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/theme/village_theme.dart';
 
 class ShopProductsScreen extends StatefulWidget {
   final String shopId;
@@ -354,7 +355,8 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        // Match the app's green theme (was odd-one-out blue)
+                        color: VillageTheme.primaryGreen,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(

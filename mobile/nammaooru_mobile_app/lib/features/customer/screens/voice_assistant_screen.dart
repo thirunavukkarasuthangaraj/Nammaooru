@@ -12,6 +12,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../shared/models/cart_model.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../services/voice_assistant_service.dart';
+import '../widgets/voice_assistant_tour.dart';
 import '../orders/checkout_screen.dart';
 
 class VoiceAssistantScreen extends StatefulWidget {
@@ -34,6 +35,9 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   bool _isRecording = false;
   int _recordingSeconds = 0;
   Timer? _recordingTimer;
+
+  bool _showTour = false;
+  bool _sessionStarted = false;
 
   late AnimationController _pulseController;
 
@@ -65,11 +69,42 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
         () => mounted && (ModalRoute.of(context)?.isCurrent ?? true);
 
     // Connect cart callbacks and start session
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _connectCart();
-      // Tap-to-talk only: the mic opens ONLY when the user presses the button
-      _service.startSession();
+      // First-time users see a 3-step tour BEFORE the assistant greets —
+      // many customers didn't know what to do with the chat screen.
+      final seen = await VoiceAssistantTour.alreadySeen();
+      if (!mounted) return;
+      if (seen) {
+        _startSessionOnce();
+      } else {
+        setState(() => _showTour = true);
+      }
     });
+  }
+
+  void _startSessionOnce() {
+    if (_sessionStarted) return;
+    _sessionStarted = true;
+    // Tap-to-talk only: the mic opens ONLY when the user presses the button
+    _service.startSession();
+  }
+
+  void _onTourFinished() {
+    setState(() => _showTour = false);
+    if (!_sessionStarted) {
+      _startSessionOnce();
+    } else {
+      // Replay case: session was paused for the tour — resume silently
+      _service.resumeSession();
+    }
+  }
+
+  /// Replay the tour from the ❓ button
+  Future<void> _replayTour() async {
+    _stopRecordingUI();
+    await _service.pause();
+    if (mounted) setState(() => _showTour = true);
   }
 
   void _connectCart() {
@@ -235,12 +270,20 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: _buildAppBar(),
-      body: Column(
+      body: Stack(
         children: [
-          _buildCartTotalBar(),
-          Expanded(child: _buildMessageList()),
-          _buildStatusBar(),
-          _buildBottomBar(),
+          Column(
+            children: [
+              _buildCartTotalBar(),
+              Expanded(child: _buildMessageList()),
+              _buildStatusBar(),
+              _buildBottomBar(),
+            ],
+          ),
+          if (_showTour)
+            Positioned.fill(
+              child: VoiceAssistantTour(onFinish: _onTourFinished),
+            ),
         ],
       ),
     );
@@ -262,6 +305,11 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
       foregroundColor: Colors.white,
       elevation: 0,
       actions: [
+        IconButton(
+          icon: const Icon(Icons.help_outline),
+          tooltip: 'How to use',
+          onPressed: _replayTour,
+        ),
         if (cartCount > 0)
           Stack(
             children: [
