@@ -100,10 +100,16 @@ class VoiceAssistantService {
   /// silence limit, or STT error — so the UI can leave the recording state.
   VoidCallback? onManualListenEnded;
 
+  /// UI hook: return false when the assistant screen is not the visible
+  /// route — TTS must never talk over another page (checkout, product page).
+  bool Function()? canSpeak;
+
   // ── Public getters for UI ──
   GeminiVoiceService get geminiVoice => _recorder;
   TtsService get ttsService => _tts;
   bool get isRecordingManually => _sttListening || _stt.isListening;
+  /// Live partial transcript while the manual mic is open (for the status bar)
+  String get partialText => _sttText;
 
   // ═══════════════════════════════════════════════════════
   //  SESSION MANAGEMENT
@@ -149,6 +155,7 @@ class VoiceAssistantService {
   }
 
   Future<void> stopSession() async {
+    _manualListenTimeout?.cancel();
     _stopped = true;
     _isAutoListening = false;
     _lastSearchResults = null;
@@ -162,6 +169,7 @@ class VoiceAssistantService {
   }
 
   Future<void> pause() async {
+    _manualListenTimeout?.cancel();
     _stopped = true;
     _isAutoListening = false;
     _sttListening = false;
@@ -170,14 +178,14 @@ class VoiceAssistantService {
     await _tts.stop();
   }
 
+  /// Resume after a pause — SILENT. Re-asking "என்ன வேணும்?" every time the
+  /// cart sheet closed (or the user came back from checkout) was the #1
+  /// annoyance. The mic stays off until the user taps the button.
   Future<void> resumeSession() async {
     if (!_stopped) return;
     _stopped = false;
     _silentAttempts = 0;
-    final msg = 'சரி, தொடருங்க. என்ன வேணும்?';
-    _addBot(msg, sub: 'OK, continue. What do you need?');
-    await _speak(msg);
-    if (!_stopped) _setState(AgentState.listening);
+    _setState(AgentState.listening);
   }
 
   void resetAndListen() {
@@ -213,7 +221,11 @@ class VoiceAssistantService {
     return _sttInitialized;
   }
 
-  /// Start listening via device STT (user tapped mic)
+  Timer? _manualListenTimeout;
+
+  /// Start listening via device STT (user tapped mic).
+  /// Auto-stops ~3s after the user goes quiet, hard cap 15s — the old
+  /// 30s/60s windows made recording feel like it never ended.
   Future<bool> startManualRecording() async {
     final ready = await _initStt();
     if (!ready) return false;
@@ -221,15 +233,29 @@ class VoiceAssistantService {
     _sttListening = true;
     await _stt.listen(
       onResult: (r) {
-        if (r.recognizedWords.isNotEmpty) _sttText = r.recognizedWords;
+        if (r.recognizedWords.isNotEmpty) {
+          _sttText = r.recognizedWords;
+          onStateChanged?.call(); // live partial text in the UI
+        }
       },
       localeId: 'ta-IN',
       listenMode: stt.ListenMode.dictation,
       partialResults: true,
       cancelOnError: false,
-      pauseFor: const Duration(seconds: 30), // user taps stop manually
-      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 15),
     );
+    // Safety net: some Android devices never deliver the 'done' status,
+    // leaving the red button + timer running forever. Force-end past the cap.
+    _manualListenTimeout?.cancel();
+    _manualListenTimeout = Timer(const Duration(seconds: 17), () {
+      if (_sttListening) {
+        debugPrint('Agent: STT watchdog fired — forcing stop');
+        _sttListening = false;
+        if (_stt.isListening) _stt.stop();
+        onManualListenEnded?.call();
+      }
+    });
     debugPrint('Agent: STT manual listen started');
     return true;
   }
@@ -238,6 +264,7 @@ class VoiceAssistantService {
   Future<void> stopAndProcess() async {
     if (_stopped) return;
 
+    _manualListenTimeout?.cancel();
     if (_sttListening) {
       // Clear the flag BEFORE stopping so the status callback doesn't
       // also fire onManualListenEnded for a user-initiated stop
@@ -356,6 +383,7 @@ class VoiceAssistantService {
 
   /// Cancel recording without processing
   Future<void> cancelRecording() async {
+    _manualListenTimeout?.cancel();
     _isAutoListening = false;
     _sttListening = false;
     if (_stt.isListening) await _stt.stop();
@@ -1035,6 +1063,10 @@ TONE: Warm Tamil shopkeeper. Casual: "வேணும்", "சொல்லு�
   // ═══════════════════════════════════════════════════════
 
   Future<void> _speak(String text) async {
+    if (canSpeak != null && !canSpeak!()) {
+      debugPrint('Agent: skip TTS — assistant screen not visible');
+      return;
+    }
     _setState(AgentState.speaking);
     await _tts.speak(text);
     await Future.delayed(const Duration(milliseconds: 400));

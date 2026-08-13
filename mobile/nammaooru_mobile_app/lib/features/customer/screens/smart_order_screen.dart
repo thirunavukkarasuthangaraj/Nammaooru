@@ -91,7 +91,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
           if (mounted) setState(() => _isListening = false);
           // finalResult sometimes never fires — trigger search on done if we have text
           final text = _textController.text.trim();
-          if (text.isNotEmpty && _lastFinalText.isEmpty && !_isRetrying) {
+          if (text.isNotEmpty && _lastFinalText.isEmpty) {
             _lastFinalText = text;
             _handleFinalSpeech(text);
           }
@@ -137,77 +137,30 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
       partialResults: true,
       cancelOnError: false,
       pauseFor: const Duration(seconds: 3),
-      listenFor: const Duration(seconds: 30),
+      listenFor: const Duration(seconds: 15),
     );
   }
 
   String _lastFinalText = '';
-  bool _isRetrying = false;
 
   /// After speech finishes → send directly to Gemini AI search.
   /// Gemini understands intent even when STT gives wrong words.
+  /// No auto re-listen in the other language: the mic reopening by itself
+  /// felt like recording never ends. The text stays in the field — the user
+  /// can edit it, long-press to switch language, or tap the mic again.
   Future<void> _handleFinalSpeech(String text) async {
     setState(() => _isListening = false);
     if (text.trim().isEmpty) return;
 
-    // ALWAYS use Gemini AI for voice — it understands intent
     final results = await _service.aiSearchProducts(text.trim());
     if (results.isNotEmpty && mounted) {
       setState(() => _suggestions = results);
-      return;
-    }
-
-    // AI failed → retry with other language
-    if (!_isRetrying) {
-      _isRetrying = true;
-      final otherLocale = _currentLocale == 'en-IN' ? 'ta-IN' : 'en-IN';
-      final langName = otherLocale == 'ta-IN' ? 'Tamil' : 'English';
-
-      if (mounted) {
-        setState(() => _isListening = true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Retrying in $langName...'),
-            duration: const Duration(seconds: 1),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-
-      await _speech.listen(
-        onResult: (result) {
-          if (!mounted) return;
-          final retryText = result.recognizedWords;
-          _textController.text = retryText;
-          _textController.selection = TextSelection.fromPosition(
-            TextPosition(offset: retryText.length),
-          );
-          _onSearchChanged(retryText);
-          if (result.finalResult) {
-            setState(() => _isListening = false);
-            _isRetrying = false;
-            // Also send retry to Gemini AI
-            _service.aiSearchProducts(retryText.trim()).then((aiResults) {
-              if (aiResults.isNotEmpty && mounted) {
-                setState(() => _suggestions = aiResults);
-              }
-            });
-          }
-        },
-        localeId: otherLocale,
-        listenMode: stt.ListenMode.search,
-        partialResults: true,
-        cancelOnError: false,
-        pauseFor: const Duration(seconds: 3),
-        listenFor: const Duration(seconds: 15),
-      );
     }
   }
 
   /// Stop listening
   Future<void> _stopListening() async {
     await _speech.stop();
-    _isRetrying = false;
     setState(() => _isListening = false);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -18,6 +20,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     with TickerProviderStateMixin {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
+  Timer? _listenTimeout;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -50,6 +53,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
 
   @override
   void dispose() {
+    _listenTimeout?.cancel();
     _removeHint();
     _pulseController.dispose();
     _rippleController.dispose();
@@ -180,8 +184,15 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
           partialResults: false,
         ),
         pauseFor: const Duration(seconds: 3),
-        listenFor: const Duration(seconds: 30),
+        listenFor: const Duration(seconds: 15),
       );
+
+      // Watchdog: some devices never fire the 'done' status callback,
+      // leaving the button red forever — force-stop past the cap.
+      _listenTimeout?.cancel();
+      _listenTimeout = Timer(const Duration(seconds: 17), () {
+        if (_isListening) _stopListening();
+      });
     } catch (e) {
       debugPrint('Voice input error: $e');
       _stopListening();
@@ -189,6 +200,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
   }
 
   Future<void> _stopListening() async {
+    _listenTimeout?.cancel();
     if (!_isListening) return; // guard: prevent double-stop
     if (!mounted) return;
     // Update UI immediately — don't wait for _speech.stop()

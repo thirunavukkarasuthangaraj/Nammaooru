@@ -25,7 +25,7 @@ class VoiceAssistantScreen extends StatefulWidget {
 }
 
 class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final VoiceAssistantService _service = VoiceAssistantService();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _textController = TextEditingController();
@@ -40,6 +40,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -58,6 +59,10 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
         _scrollToBottom();
       }
     };
+    // TTS must stay silent whenever this screen is not the visible route
+    // (checkout, product page pushed on top, or screen already popped)
+    _service.canSpeak =
+        () => mounted && (ModalRoute.of(context)?.isCurrent ?? true);
 
     // Connect cart callbacks and start session
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -140,7 +145,17 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // User left the app — stop mic + TTS immediately
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _stopRecordingUI();
+      _service.pause();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _recordingTimer?.cancel();
     _pulseController.dispose();
     _scrollController.dispose();
@@ -288,26 +303,33 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
     if (!mounted) return;
 
+    bool checkoutPushed = false;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _CartBottomSheet(
         onCheckout: () {
-          Navigator.pop(ctx); // close sheet
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-          );
+          checkoutPushed = true;
+          Navigator.pop(ctx); // close sheet — checkout is pushed below
         },
       ),
     );
 
-    // Resume the session after the sheet closes (pause() marked it stopped);
-    // mic stays off until the user taps the button
-    if (mounted) {
-      await _service.resumeSession();
+    if (!mounted) return;
+
+    if (checkoutPushed) {
+      // Voice stays FULLY paused while checkout is on top — previously the
+      // assistant said "என்ன வேணும்?" over the checkout page here.
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+      );
+      if (!mounted) return;
     }
+
+    // Resume silently: no TTS, mic off until the user taps the button
+    await _service.resumeSession();
   }
 
   // ── Cart Total Bar ──
@@ -653,8 +675,14 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
     switch (state) {
       case AgentState.listening:
-        // Mic is only open while _isRecording (tap-to-talk)
-        label = _isRecording ? 'Recording... ${_recordingSeconds}s - tap to stop' : 'Tap mic to speak';
+        // Mic is only open while _isRecording (tap-to-talk).
+        // Show live partial text so the user knows it heard them.
+        final partial = _service.partialText.trim();
+        label = _isRecording
+            ? (partial.isNotEmpty
+                ? '"$partial"'
+                : 'Listening... ${_recordingSeconds}s - tap to stop')
+            : 'Tap mic to speak';
         icon = Icons.mic;
         color = _isRecording ? Colors.red : Colors.grey;
       case AgentState.processing:
@@ -681,7 +709,12 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
           else
             Icon(icon, size: 16, color: color),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+          Flexible(
+            child: Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+          ),
         ],
       ),
     );

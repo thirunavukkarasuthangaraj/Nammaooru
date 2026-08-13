@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +13,13 @@ class VoiceSearchService {
   bool _initialized = false;
   String _lastWords = '';
   String? _lastError;
+  Completer<void>? _listenDone;
+
+  void _completeListen() {
+    if (_listenDone != null && !_listenDone!.isCompleted) {
+      _listenDone!.complete();
+    }
+  }
 
   /// Check if speech recognition is available.
   /// Initializes the engine once and reuses it — re-initializing on every
@@ -22,10 +30,12 @@ class VoiceSearchService {
       bool available = await _speech.initialize(
         onStatus: (status) {
           debugPrint('VoiceSearch: Speech status: $status');
+          if (status == 'done' || status == 'notListening') _completeListen();
         },
         onError: (error) {
           _lastError = error.errorMsg;
           debugPrint('VoiceSearch: Speech error: ${error.errorMsg}');
+          _completeListen();
         },
       );
 
@@ -60,16 +70,17 @@ class VoiceSearchService {
       _lastConfidence = 0;
       _isListening = true;
       _lastError = null;
-      bool gotFinalResult = false;
+      _listenDone = Completer<void>();
 
       final locale = localeId ?? 'ta-IN';
       debugPrint('VoiceSearch: Starting with $locale locale...');
 
+      final maxListen = listenFor ?? const Duration(seconds: 12);
       await _speech.listen(
         onResult: (result) {
           _lastWords = result.recognizedWords;
           _lastConfidence = result.confidence;
-          if (result.finalResult) gotFinalResult = true;
+          if (result.finalResult) _completeListen();
           debugPrint('VoiceSearch: Recognized: $_lastWords (confidence: ${result.confidence})');
         },
         localeId: locale,
@@ -81,16 +92,14 @@ class VoiceSearchService {
         // Short windows keep the mic snappy: stop ~2s after the user goes
         // quiet instead of hanging on for 5s / 30s like before.
         pauseFor: pauseFor ?? const Duration(seconds: 2),
-        listenFor: listenFor ?? const Duration(seconds: 12),
+        listenFor: maxListen,
       );
 
-      // Wait for speech to complete naturally; exit as soon as the engine
-      // delivers a final result instead of blindly waiting out the timer.
-      int waited = 0;
-      while (_speech.isListening && !gotFinalResult && waited < 75) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        waited++;
-      }
+      // Event-driven wait: resolves on final result, engine 'done' status,
+      // or error. Hard timeout is a safety net for devices where the status
+      // callback never fires (this was the "recording never ends" bug).
+      await _listenDone!.future
+          .timeout(maxListen + const Duration(seconds: 3), onTimeout: () {});
 
       if (_speech.isListening) {
         await _speech.stop();
@@ -138,12 +147,13 @@ class VoiceSearchService {
     return listen(localeId: 'ta-IN');
   }
 
-  /// Stop listening
+  /// Stop listening (also unblocks any caller awaiting the listen future)
   Future<void> stopListening() async {
     if (_speech.isListening) {
       await _speech.stop();
     }
     _isListening = false;
+    _completeListen();
   }
 
   /// Call AI search API with voice query
