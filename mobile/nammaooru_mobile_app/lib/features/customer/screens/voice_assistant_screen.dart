@@ -11,6 +11,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../shared/models/cart_model.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../app/routes.dart';
 import '../../../services/voice_assistant_service.dart';
 import '../widgets/voice_assistant_tour.dart';
 import '../orders/checkout_screen.dart';
@@ -26,7 +27,7 @@ class VoiceAssistantScreen extends StatefulWidget {
 }
 
 class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   final VoiceAssistantService _service = VoiceAssistantService();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _textController = TextEditingController();
@@ -180,6 +181,27 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) AppRouter.routeObserver.subscribe(this, route);
+  }
+
+  /// Another screen was pushed on top — cut mic + voice IMMEDIATELY,
+  /// even mid-sentence. The assistant must never talk over another page.
+  @override
+  void didPushNext() {
+    _stopRecordingUI();
+    _service.pause();
+  }
+
+  /// Came back to the assistant — resume silently (mic off, no re-greeting)
+  @override
+  void didPopNext() {
+    _service.resumeSession();
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // User left the app — stop mic + TTS immediately
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
@@ -190,6 +212,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
   @override
   void dispose() {
+    AppRouter.routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _recordingTimer?.cancel();
     _pulseController.dispose();

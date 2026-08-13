@@ -52,11 +52,16 @@ class AppRouter {
   // Global navigator key for navigation from services
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  /// Lets screens (e.g. voice assistant) react when another route
+  /// covers them — used to silence TTS/mic on navigation
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
+
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/',
     redirect: RoleGuard.redirectLogic,
-    observers: [_KeyboardDismissObserver()],
+    observers: [_KeyboardDismissObserver(), routeObserver],
     routes: [
       GoRoute(
         path: '/',
