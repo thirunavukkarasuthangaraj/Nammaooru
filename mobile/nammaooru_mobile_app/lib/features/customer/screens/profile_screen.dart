@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/auth/auth_service.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
@@ -423,17 +422,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
+      // Logout via the provider FIRST: it unregisters the FCM token with the
+      // backend (needs the still-valid JWT) and then clears the auth session.
+      await authProvider.logout();
+
       // Clear cache
       await CacheService().clearAllCaches();
-      
+
       // Clear local storage
       await LocalStorage.clearAll();
-      
-      // Logout from auth service
-      await AuthService.logout();
-      
-      // Update auth provider
-      await authProvider.logout();
 
       if (mounted) {
         Helpers.showSnackBar(context, 'Logged out successfully');

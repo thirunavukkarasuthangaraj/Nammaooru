@@ -26,6 +26,12 @@ public interface UserFcmTokenRepository extends JpaRepository<UserFcmToken, Long
     // Find by token only
     Optional<UserFcmToken> findByFcmToken(String fcmToken);
 
+    // All rows for a token, across users (same device token can have stale rows
+    // from previous logins; Optional lookups throw on duplicates)
+    List<UserFcmToken> findAllByFcmToken(String fcmToken);
+
+    List<UserFcmToken> findAllByUserIdAndFcmToken(Long userId, String fcmToken);
+
     // Find by user and device type
     Optional<UserFcmToken> findByUserIdAndDeviceType(Long userId, String deviceType);
 

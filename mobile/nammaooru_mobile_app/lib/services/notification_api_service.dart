@@ -244,6 +244,39 @@ class NotificationApiService {
     }
   }
 
+  /// Remove FCM token association for the current user (call before logout,
+  /// while the JWT is still valid)
+  Future<Map<String, dynamic>> removeFcmToken(String fcmToken) async {
+    try {
+      final headers = await _getHeaders();
+
+      final uri = Uri.parse('$_baseUrl/customer/notifications/fcm-token')
+          .replace(queryParameters: {'token': fcmToken});
+
+      final response = await http.delete(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        return {
+          'statusCode': '0000',
+          'message': 'FCM token removed successfully',
+          'data': null,
+        };
+      } else {
+        return {
+          'statusCode': response.statusCode.toString(),
+          'message': 'Failed to remove FCM token',
+          'data': null,
+        };
+      }
+    } catch (e) {
+      return {
+        'statusCode': '9999',
+        'message': 'Network error: ${e.toString()}',
+        'data': null,
+      };
+    }
+  }
+
   /// Convert API response to NotificationModel list
   List<NotificationModel> parseNotifications(List<dynamic> jsonList) {
     return jsonList

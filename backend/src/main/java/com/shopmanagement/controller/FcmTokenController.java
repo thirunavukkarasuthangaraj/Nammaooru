@@ -6,6 +6,7 @@ import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.repository.UserFcmTokenRepository;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.service.FcmTokenService;
 import com.shopmanagement.service.FirebaseNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @RestController
@@ -26,65 +26,27 @@ public class FcmTokenController {
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final UserRepository userRepository;
     private final FirebaseNotificationService firebaseNotificationService;
+    private final FcmTokenService fcmTokenService;
+
+    private User currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
     @PostMapping("/notifications/fcm-token")
     public ResponseEntity<?> updateDeliveryPartnerFcmToken(@RequestBody FcmTokenRequest request) {
         try {
-            // Get current user (delivery partner)
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String username = auth.getName();
+            User user = currentUser();
+            log.info("🔔 Updating FCM token for delivery partner: {} (ID: {}, Role: {})",
+                    user.getUsername(), user.getId(), user.getRole());
 
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            log.info("🔔 Updating FCM token for delivery partner: {} (ID: {}, Role: {})", username, user.getId(), user.getRole());
-
-            // Check if token already exists for this user
-            Optional<UserFcmToken> existingToken = userFcmTokenRepository
-                    .findByUserIdAndFcmToken(user.getId(), request.getFcmToken());
-
-            UserFcmToken fcmToken;
-            if (existingToken.isPresent()) {
-                // Update existing token
-                fcmToken = existingToken.get();
-                fcmToken.setIsActive(true);
-                fcmToken.setUpdatedAt(LocalDateTime.now());
-                if (request.getDeviceType() != null) {
-                    fcmToken.setDeviceType(request.getDeviceType());
-                }
-                if (request.getDeviceId() != null) {
-                    fcmToken.setDeviceId(request.getDeviceId());
-                }
-                log.info("✅ Updated existing FCM token for delivery partner: {}", user.getId());
-            } else {
-                // Deactivate old tokens for the same device if deviceId is provided
-                if (request.getDeviceId() != null) {
-                    userFcmTokenRepository.findByUserIdAndIsActiveTrue(user.getId())
-                            .stream()
-                            .filter(token -> request.getDeviceId().equals(token.getDeviceId()))
-                            .forEach(token -> {
-                                token.setIsActive(false);
-                                userFcmTokenRepository.save(token);
-                            });
-                }
-
-                // Create new token
-                fcmToken = new UserFcmToken();
-                fcmToken.setUserId(user.getId());
-                fcmToken.setFcmToken(request.getFcmToken());
-                fcmToken.setDeviceType(request.getDeviceType() != null ? request.getDeviceType() : "android");
-                fcmToken.setDeviceId(request.getDeviceId());
-                fcmToken.setIsActive(true);
-                log.info("✅ Created new FCM token for delivery partner: {}", user.getId());
-            }
-
-            userFcmTokenRepository.save(fcmToken);
-
-            log.info("🎉 FCM token saved successfully for delivery partner: {} (ID: {})", username, user.getId());
+            fcmTokenService.registerToken(user.getId(), request);
 
             return ResponseEntity.ok(ApiResponse.success("FCM token updated successfully", null));
         } catch (Exception e) {
-            log.error("❌ Error updating FCM token for delivery partner", e);
+            log.error("❌ FCM registration API failed for delivery partner", e);
             return ResponseEntity.ok(ApiResponse.error("Failed to update FCM token: " + e.getMessage()));
         }
     }
@@ -92,59 +54,14 @@ public class FcmTokenController {
     @PostMapping("/customer/notifications/fcm-token")
     public ResponseEntity<?> updateFcmToken(@RequestBody FcmTokenRequest request) {
         try {
-            // Get current user
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String username = auth.getName();
+            User user = currentUser();
+            log.info("Updating FCM token for user: {} (ID: {})", user.getUsername(), user.getId());
 
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            log.info("Updating FCM token for user: {} (ID: {})", username, user.getId());
-
-            // Check if token already exists for this user
-            Optional<UserFcmToken> existingToken = userFcmTokenRepository
-                    .findByUserIdAndFcmToken(user.getId(), request.getFcmToken());
-
-            UserFcmToken fcmToken;
-            if (existingToken.isPresent()) {
-                // Update existing token
-                fcmToken = existingToken.get();
-                fcmToken.setIsActive(true);
-                fcmToken.setUpdatedAt(LocalDateTime.now());
-                if (request.getDeviceType() != null) {
-                    fcmToken.setDeviceType(request.getDeviceType());
-                }
-                if (request.getDeviceId() != null) {
-                    fcmToken.setDeviceId(request.getDeviceId());
-                }
-            } else {
-                // Deactivate old tokens for the same device if deviceId is provided
-                if (request.getDeviceId() != null) {
-                    userFcmTokenRepository.findByUserIdAndIsActiveTrue(user.getId())
-                            .stream()
-                            .filter(token -> request.getDeviceId().equals(token.getDeviceId()))
-                            .forEach(token -> {
-                                token.setIsActive(false);
-                                userFcmTokenRepository.save(token);
-                            });
-                }
-
-                // Create new token
-                fcmToken = new UserFcmToken();
-                fcmToken.setUserId(user.getId());
-                fcmToken.setFcmToken(request.getFcmToken());
-                fcmToken.setDeviceType(request.getDeviceType() != null ? request.getDeviceType() : "android");
-                fcmToken.setDeviceId(request.getDeviceId());
-                fcmToken.setIsActive(true);
-            }
-
-            userFcmTokenRepository.save(fcmToken);
-
-            log.info("FCM token saved successfully for user: {}", user.getId());
+            fcmTokenService.registerToken(user.getId(), request);
 
             return ResponseEntity.ok(ApiResponse.success("FCM token updated successfully", null));
         } catch (Exception e) {
-            log.error("Error updating FCM token", e);
+            log.error("FCM registration API failed", e);
             return ResponseEntity.ok(ApiResponse.error("Failed to update FCM token: " + e.getMessage()));
         }
     }
@@ -152,22 +69,9 @@ public class FcmTokenController {
     @DeleteMapping("/customer/notifications/fcm-token")
     public ResponseEntity<?> removeFcmToken(@RequestParam String token) {
         try {
-            // Get current user
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String username = auth.getName();
+            User user = currentUser();
 
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            // Deactivate the token
-            Optional<UserFcmToken> fcmToken = userFcmTokenRepository
-                    .findByUserIdAndFcmToken(user.getId(), token);
-
-            if (fcmToken.isPresent()) {
-                fcmToken.get().setIsActive(false);
-                userFcmTokenRepository.save(fcmToken.get());
-                log.info("FCM token deactivated for user: {}", user.getId());
-            }
+            fcmTokenService.deactivateToken(user.getId(), token);
 
             return ResponseEntity.ok(ApiResponse.success("FCM token removed successfully", null));
         } catch (Exception e) {
@@ -179,14 +83,8 @@ public class FcmTokenController {
     @GetMapping("/customer/notifications/test-push")
     public ResponseEntity<?> testPushNotification() {
         try {
-            // Get current user
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String username = auth.getName();
-
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            log.info("Testing push notification for user: {}", username);
+            User user = currentUser();
+            log.info("Testing push notification for user: {}", user.getUsername());
 
             // Get FCM token for the user
             Optional<UserFcmToken> fcmToken = userFcmTokenRepository.findByUserIdAndIsActiveTrue(user.getId())

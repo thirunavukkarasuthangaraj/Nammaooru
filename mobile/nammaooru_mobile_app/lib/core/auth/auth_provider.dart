@@ -36,6 +36,14 @@ class AuthProvider with ChangeNotifier {
         _userRole = await AuthService.getCurrentUserRole();
         _userId = await AuthService.getCurrentUserId();
         _authState = AuthState.authenticated;
+
+        // Re-sync the FCM token on app restart. Registration is idempotent on
+        // the backend, and this heals cases where the mapping was lost (e.g.
+        // registration failed at login time or the token was deactivated).
+        FirebaseNotificationService.getToken().catchError((e) {
+          debugPrint('FCM token re-sync on startup failed: $e');
+          return null;
+        });
       } else {
         _authState = AuthState.unauthenticated;
       }
@@ -147,6 +155,11 @@ class AuthProvider with ChangeNotifier {
   }
   
   Future<void> logout() async {
+    // Remove the backend user<->FCM-token association BEFORE clearing the JWT
+    // (the unregister API needs an authenticated request). The Firebase token
+    // itself stays on the device and is re-associated by the next login.
+    await _unregisterFcmToken();
+
     await AuthService.logout();
     _authState = AuthState.unauthenticated;
     _userRole = null;
@@ -199,6 +212,20 @@ class AuthProvider with ChangeNotifier {
         return '/delivery-partner/dashboard';
       default:
         return '/login';
+    }
+  }
+
+  Future<void> _unregisterFcmToken() async {
+    try {
+      await FirebaseNotificationService.unregisterFromBackend();
+
+      // Also drop topic subscriptions tied to the logged-out user/role
+      if (_userId != null && _userRole != null) {
+        await FirebaseNotificationService.unsubscribeFromUserTopics(_userId!, _userRole!);
+      }
+    } catch (e) {
+      // Never block logout on FCM cleanup failures
+      debugPrint('Error unregistering FCM token during logout: $e');
     }
   }
 

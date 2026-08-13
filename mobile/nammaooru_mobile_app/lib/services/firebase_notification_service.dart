@@ -421,10 +421,15 @@ class FirebaseNotificationService {
     }
   }
 
-  /// Get FCM token
+  /// Get FCM token and register it with the backend for the current user.
+  /// Called on every successful login and app restart — Firebase usually
+  /// returns the SAME token after logout/login, so onTokenRefresh never fires
+  /// and this explicit fetch is the only way the backend learns the new
+  /// user <-> token association.
   static Future<String?> getToken() async {
     try {
       final token = await _messaging.getToken();
+      debugPrint('🔥 FCM current token fetched');
 
       // Send token to backend for user association
       if (token != null) {
@@ -438,20 +443,50 @@ class FirebaseNotificationService {
     }
   }
 
-  /// Send FCM token to backend
+  /// Send FCM token to backend, retrying transient failures so a flaky
+  /// network at login doesn't leave the device unregistered.
   static Future<void> _sendTokenToBackend(String token) async {
+    const maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await NotificationApiService.instance.updateFcmToken(token);
+
+        if (response['statusCode'] == '0000') {
+          debugPrint('✅ FCM token registered for current user');
+          return;
+        }
+        debugPrint('❌ FCM registration API failed (attempt $attempt/$maxAttempts): ${response['message']}');
+      } catch (e) {
+        debugPrint('❌ FCM registration API failed (attempt $attempt/$maxAttempts): $e');
+      }
+      if (attempt < maxAttempts) {
+        await Future.delayed(Duration(seconds: 2 * attempt));
+      }
+    }
+    debugPrint('❌ FCM registration API failed after $maxAttempts attempts, giving up');
+  }
+
+  /// Remove the backend association between the current FCM token and the
+  /// logged-in user. Must run BEFORE the JWT/session is cleared. The token
+  /// itself stays valid on the device (we do NOT call deleteToken) so it can
+  /// be re-registered by the next login.
+  static Future<void> unregisterFromBackend() async {
+    if (kIsWeb) return;
     try {
-      debugPrint('📤 Sending FCM token to backend: $token');
+      final token = await _messaging.getToken();
+      if (token == null) {
+        debugPrint('FCM logout: no token on device, nothing to unregister');
+        return;
+      }
 
-      final response = await NotificationApiService.instance.updateFcmToken(token);
-
+      final response = await NotificationApiService.instance.removeFcmToken(token);
       if (response['statusCode'] == '0000') {
-        debugPrint('✅ FCM token sent to backend successfully');
+        debugPrint('✅ FCM token association removed during logout');
       } else {
-        debugPrint('❌ Failed to send FCM token: ${response['message']}');
+        debugPrint('❌ Failed to remove FCM token association: ${response['message']}');
       }
     } catch (e) {
-      debugPrint('Error sending token to backend: $e');
+      debugPrint('Error unregistering FCM token: $e');
     }
   }
 
@@ -493,6 +528,29 @@ class FirebaseNotificationService {
       case 'delivery_partner':
         await subscribeToTopic('delivery_partners');
         await subscribeToTopic('delivery_updates');
+        break;
+    }
+  }
+
+  /// Unsubscribe from user-specific topics (mirror of subscribeToUserTopics).
+  /// Called on logout so the logged-out user stops receiving topic pushes.
+  static Future<void> unsubscribeFromUserTopics(String userId, String userRole) async {
+    await unsubscribeFromTopic('user_$userId');
+
+    switch (userRole.toLowerCase()) {
+      case 'customer':
+      case 'user':
+        await unsubscribeFromTopic('customers');
+        await unsubscribeFromTopic('promotions');
+        break;
+      case 'shop_owner':
+        await unsubscribeFromTopic('shop_owners');
+        await unsubscribeFromTopic('shop_updates');
+        await unsubscribeFromTopic('shop_owner_$userId');
+        break;
+      case 'delivery_partner':
+        await unsubscribeFromTopic('delivery_partners');
+        await unsubscribeFromTopic('delivery_updates');
         break;
     }
   }

@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -362,12 +361,14 @@ public class FirebaseNotificationService {
      */
     private void deactivateInvalidToken(String fcmToken) {
         try {
-            Optional<UserFcmToken> tokenEntity = userFcmTokenRepository.findByFcmToken(fcmToken);
-            if (tokenEntity.isPresent()) {
-                UserFcmToken token = tokenEntity.get();
-                token.setIsActive(false);
-                userFcmTokenRepository.save(token);
-                log.info("🗑️ Deactivated invalid FCM token for user ID: {}", token.getUserId());
+            // A token can have rows for multiple users (previous logins on the same
+            // device); an Optional lookup would throw NonUniqueResultException here.
+            for (UserFcmToken token : userFcmTokenRepository.findAllByFcmToken(fcmToken)) {
+                if (Boolean.TRUE.equals(token.getIsActive())) {
+                    token.setIsActive(false);
+                    userFcmTokenRepository.save(token);
+                    log.info("🗑️ Deactivated invalid FCM token for user ID: {}", token.getUserId());
+                }
             }
         } catch (Exception e) {
             log.error("❌ Error deactivating invalid FCM token", e);
