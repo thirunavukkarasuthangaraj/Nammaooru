@@ -93,16 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.primary,
-                  AppColors.primaryDark,
-                ],
-              ),
-            ),
+            color: AppColors.primary,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -119,14 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
                             height: 180,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.circular(28),
                             ),
                             padding: const EdgeInsets.all(12),
                             child: Image.asset(
@@ -162,13 +146,26 @@ class _SplashScreenState extends State<SplashScreen>
                     builder: (context, child) {
                       return FadeTransition(
                         opacity: _fadeAnimation,
-                        child: const Text(
-                          'Hyperlocal Community Platform',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w300,
-                          ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'உங்கள் ஊரின் சூப்பர் ஆப்',
+                              style: TextStyle(
+                                fontSize: 17,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Your Village Super App',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white.withOpacity(0.75),
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },

@@ -76,6 +76,7 @@ public class OrderService {
     private final com.shopmanagement.repository.PromotionRepository promotionRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final BusinessHoursService businessHoursService;
+    private final com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -94,7 +95,8 @@ public class OrderService {
             PromotionService promotionService,
             com.shopmanagement.repository.PromotionRepository promotionRepository,
             SimpMessagingTemplate messagingTemplate,
-            BusinessHoursService businessHoursService) {
+            BusinessHoursService businessHoursService,
+            com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -112,6 +114,7 @@ public class OrderService {
         this.promotionService = promotionService;
         this.promotionRepository = promotionRepository;
         this.businessHoursService = businessHoursService;
+        this.geoLocationUtils = geoLocationUtils;
     }
 
     @Transactional
@@ -1711,7 +1714,26 @@ public class OrderService {
         // Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
-        
+
+        // For home delivery, the delivery address must be within the shop's delivery radius.
+        // Checked before any stock is reduced. Skipped when coordinates are unavailable
+        // (older app versions don't send them).
+        CustomerOrderRequest.DeliveryAddressRequest addr = request.getDeliveryAddress();
+        if ("HOME_DELIVERY".equals(deliveryType) && addr != null
+                && addr.getLatitude() != null && addr.getLongitude() != null
+                && shop.getLatitude() != null && shop.getLongitude() != null) {
+            double radiusKm = shop.getDeliveryRadius() != null ? shop.getDeliveryRadius().doubleValue() : 5.0;
+            boolean withinRadius = geoLocationUtils.isWithinRadius(
+                    shop.getLatitude(), shop.getLongitude(),
+                    BigDecimal.valueOf(addr.getLatitude()), BigDecimal.valueOf(addr.getLongitude()),
+                    radiusKm);
+            if (!withinRadius) {
+                throw new RuntimeException(String.format(
+                        "%s delivers only within %.0f km. Please choose a delivery address closer to the shop.",
+                        shop.getName(), radiusKm));
+            }
+        }
+
         // Create order items and validate/reduce stock
         List<OrderItem> orderItems = request.getItems().stream()
                 .map(itemRequest -> {
@@ -1782,6 +1804,8 @@ public class OrderService {
                 .deliveryCity(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getCity() : null)
                 .deliveryState(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getState() : null)
                 .deliveryPostalCode(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getPincode() : null)
+                .deliveryLatitude(addr != null && addr.getLatitude() != null ? BigDecimal.valueOf(addr.getLatitude()) : null)
+                .deliveryLongitude(addr != null && addr.getLongitude() != null ? BigDecimal.valueOf(addr.getLongitude()) : null)
                 .deliveryPhone(request.getCustomerInfo().getPhone())
                 .deliveryContactName(request.getCustomerInfo().getFirstName() + " " + request.getCustomerInfo().getLastName())
                 .estimatedDeliveryTime(LocalDateTime.now().plusMinutes(30))

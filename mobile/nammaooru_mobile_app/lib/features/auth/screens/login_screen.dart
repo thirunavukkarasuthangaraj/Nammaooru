@@ -115,52 +115,40 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       child: Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/login_background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(
-                  color: Colors.white.withOpacity(0.3),
-                ),
-              ),
-            ),
-            SafeArea(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        top: false,
               child: Consumer2<AuthProvider, LanguageProvider>(
                 builder: (context, authProvider, languageProvider, child) {
                   return LoadingOverlay(
                     isLoading: authProvider.authState == AuthState.loading,
                     loadingMessage: 'Logging in...',
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
                       child: AutofillGroup(
                         child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 10),
                             _buildHeader(),
-                            const SizedBox(height: 16),
-                            _buildEmailField(),
-                            const SizedBox(height: 12),
-                            _buildPasswordField(),
-                            const SizedBox(height: 8),
-                            _buildRememberMeAndForgotPassword(),
-                            const SizedBox(height: 16),
-                            _buildLoginButton(),
-                            const SizedBox(height: 12),
-                            _buildSignUpLink(),
-                            const SizedBox(height: 40),
+                            Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildEmailField(),
+                                  const SizedBox(height: 12),
+                                  _buildPasswordField(),
+                                  const SizedBox(height: 8),
+                                  _buildRememberMeAndForgotPassword(),
+                                  const SizedBox(height: 16),
+                                  _buildLoginButton(),
+                                  const SizedBox(height: 12),
+                                  _buildSignUpLink(),
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -169,17 +157,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   );
                 },
               ),
-            ),
-          ],
-        ),
-      ),
+    ),
     ),
     );
   }
 
   Widget _buildHeader() {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    return Column(
+    // Signature curved green header, matching the dashboard.
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+          24, MediaQuery.of(context).padding.top + 12, 24, 36),
+      decoration: const BoxDecoration(
+        color: VillageTheme.primaryGreen,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.elliptical(200, 40),
+          bottomRight: Radius.elliptical(200, 40),
+        ),
+      ),
+      child: Column(
       children: [
         // Language toggle at top-right
         Align(
@@ -248,54 +245,48 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Image.asset(
             'assets/icons/logo-new.png',
             fit: BoxFit.contain,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text(
           languageProvider.getText('Welcome!', 'வரவேற்கிறோம்!'),
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 26,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          languageProvider.getText('Join Namma Ooru Connect', 'நம்ம ஊரு கனெக்ட்'),
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.white,
+          languageProvider.getText('Login to continue', 'தொடர உள்நுழையுங்கள்'),
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.white.withOpacity(0.9),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           languageProvider.getText('Serving Thirupattur zone', 'திருப்பத்தூர் பகுதிக்கு சேவை'),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.white,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white.withOpacity(0.75),
           ),
         ),
       ],
+      ),
     );
   }
 
   Widget _buildEmailField() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFECEFF1),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: TextFormField(
         controller: _emailController,
@@ -366,8 +357,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPasswordField() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFECEFF1),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: TextFormField(
         controller: _passwordController,
@@ -437,12 +428,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 checkColor: Colors.white,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              const Flexible(
+              Flexible(
                 child: Text(
                   'Remember me',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white,
+                    color: Colors.grey[800],
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -464,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
               'Forgot Password?',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white,
+                color: VillageTheme.primaryGreen,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -477,23 +468,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLoginButton() {
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        gradient: const LinearGradient(
-          colors: [VillageTheme.primaryGreen, Color(0xFF45A049)],
-        ),
-      ),
+      height: 52,
       child: ElevatedButton(
         onPressed: _isLoggingIn ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
+          backgroundColor: VillageTheme.primaryGreen,
+          foregroundColor: Colors.white,
+          elevation: 0,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
         child: _isLoggingIn
@@ -523,26 +509,27 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Text(
           langProvider.getText('New to Namma Ooru Connect?', 'நம்ம ஊரு கனெக்ட்-வில் புதியவரா?'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: Colors.white70,
+            color: Colors.grey[600],
           ),
         ),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          height: 50,
+          height: 52,
           child: ElevatedButton(
             onPressed: () {
               context.go('/register');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
+              backgroundColor: VillageTheme.primaryGreen.withOpacity(0.1),
               foregroundColor: VillageTheme.primaryGreen,
-              elevation: 2,
+              elevation: 0,
+              shadowColor: Colors.transparent,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child: Text(

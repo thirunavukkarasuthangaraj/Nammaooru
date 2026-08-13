@@ -77,5 +77,17 @@
   "open": "திறந்து",
   "closed": "மூடியது",
   "open_now": "இப்போது திறந்து உள்ளது",
-  "search_shops": "கடை தேடுங்கள்"
+  "search_shops": "கடை தேடுங்கள்",
+  "deliver_to": "டெலிவரி இடம்",
+  "near_me": "என் அருகில்",
+  "selected_location": "தேர்ந்தெடுத்த இடம்",
+  "shops_delivering_here": "இந்த ஊருக்கு டெலிவரி செய்யும் கடைகள்",
+  "shops_delivering_to_you": "உங்கள் இடத்திற்கு டெலிவரி செய்யும் கடைகள்",
+  "deliver_to_which_place": "எந்த ஊருக்கு டெலிவரி?",
+  "search_village_town": "ஊர் பெயர் தேடுங்கள்...",
+  "use_current_location": "என் தற்போதைய இடத்தை பயன்படுத்து",
+  "place_not_found": "இடம் கிடைக்கவில்லை. வேறு பெயரில் தேடுங்கள்.",
+  "no_shops_here": "இங்கு கடைகள் இல்லை",
+  "search_your_village_hint": "உங்கள் ஊர் பெயரை தேடி அங்குள்ள கடைகளை பாருங்கள்",
+  "search_a_place": "வேறு ஊர் தேடுங்கள்"
 }

@@ -337,7 +337,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.grey[50],
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       body: _isLoadingShop
           ? const Center(child: LoadingWidget())
           : _hasError
@@ -542,21 +542,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             child: Container(
               width: 85,
               margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(6),
+              // Flat cards like the reference design: solid green when
+              // selected, soft grey otherwise — no borders.
               decoration: BoxDecoration(
                 color: isSelected
-                    ? VillageTheme.primaryGreen.withOpacity(0.15)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: isSelected
-                    ? Border.all(
-                        color: VillageTheme.primaryGreen,
-                        width: 2,
-                      )
-                    : Border.all(
-                        color: Colors.grey.withOpacity(0.3),
-                        width: 1,
-                      ),
+                    ? VillageTheme.primaryGreen
+                    : const Color(0xFFECEFF1),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -594,11 +587,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     child: Text(
                       displayName,
                       style: TextStyle(
-                        color: isSelected
-                            ? VillageTheme.primaryGreen
-                            : Colors.grey[800],
+                        color: isSelected ? Colors.white : Colors.grey[800],
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                        fontSize: 9,
+                        fontSize: 10,
                         height: 1.1,
                       ),
                       textAlign: TextAlign.center,
@@ -874,7 +865,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
+            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
           ),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -899,14 +890,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      // Soft amber notice — informative, not alarming (customers can still
+      // browse and add to cart; only ordering is blocked).
       decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200),
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(Icons.access_time, color: Colors.red.shade700, size: 24),
+          Icon(Icons.access_time, color: Colors.orange.shade800, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -917,7 +909,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red.shade700,
+                    color: Colors.orange.shade900,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -926,7 +918,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       'This shop is currently closed. Please try again during business hours.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.red.shade600,
+                    color: Colors.orange.shade800,
                   ),
                 ),
               ],
@@ -1192,25 +1184,18 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      // Flat soft-grey pill, matching the reference design (no shadow).
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFECEFF1),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'பொருட்களைத் தேடுங்கள்',
           hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon:
-              const Icon(Icons.search, color: VillageTheme.primaryGreen),
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
           suffixIcon: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1226,7 +1211,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 margin: const EdgeInsets.only(right: 8),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
+                    colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
                   ),
                   shape: BoxShape.circle,
                 ),
@@ -1885,7 +1870,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       sliver: SliverGrid(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75, // Adjusted for shorter card height
+          childAspectRatio: 0.7, // Taller cards: breathing room for name/price/button
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
         ),
@@ -1929,25 +1914,17 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         product['masterProduct']?['primaryImageUrl']?.toString() ??
         '';
 
-    // Debug: print image URL
-    print('Product: $productName, Image URL: $imageUrl');
-
     final hasDiscount = originalPrice > price;
     final discountPercentage = hasDiscount
         ? ((originalPrice - price) / originalPrice * 100).round()
         : 0;
 
     return Container(
+      // Reference grocery-app look: flat soft-grey card on a white page,
+      // no drop shadow.
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFECEFF1),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1957,10 +1934,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             flex: 2,
             child: Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
+              decoration: const BoxDecoration(
+                color: Colors.white,
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                    BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Stack(
                 children: [
@@ -2059,7 +2036,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2071,24 +2048,24 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       Text(
                         productName,
                         style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: Color(0xFF212121),
                           height: 1.2,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 1),
+                      const SizedBox(height: 2),
                       Text(
-                        '$weightDisplay | $stockQuantity stock',
+                        weightDisplay,
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 10,
                           color: Colors.grey[600],
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       // Price Row
                       Row(
                         children: [
@@ -2096,7 +2073,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             child: Text(
                               '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
                               style: const TextStyle(
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: VillageTheme.primaryGreen,
                               ),
@@ -2104,25 +2081,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             ),
                           ),
                           if (hasDiscount) ...[
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 4),
                             Text(
                               '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
                               style: const TextStyle(
-                                fontSize: 9,
+                                fontSize: 10,
                                 color: Colors.grey,
                                 decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Flexible(
-                              child: Text(
-                                '${discountPercentage.toStringAsFixed(0)}%',
-                                style: const TextStyle(
-                                  fontSize: 8,
-                                  color: Color(0xFFFF6B6B),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -2197,29 +2162,35 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           },
                           child: Container(
                             width: double.infinity,
-                            height: 24,
+                            height: 30,
                             decoration: BoxDecoration(
                               color: const Color(0xFF4CAF50),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
                                   color:
-                                      const Color(0xFF4CAF50).withOpacity(0.2),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
+                                      const Color(0xFF4CAF50).withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Text(
-                                'ADD',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.8,
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_rounded,
+                                    color: Colors.white, size: 16),
+                                SizedBox(width: 2),
+                                Text(
+                                  'ADD',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.8,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
                         );
@@ -2227,16 +2198,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
                       return Center(
                         child: Container(
-                          height: 24,
-                          padding: const EdgeInsets.all(1),
+                          height: 30,
+                          padding: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
                             color: const Color(0xFF4CAF50),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(15),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF4CAF50).withOpacity(0.2),
-                                blurRadius: 2,
-                                offset: const Offset(0, 1),
+                                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
@@ -2250,23 +2221,23 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                     cartProvider
                                         .decreaseQuantity(productModel.id);
                                   },
-                                  borderRadius: BorderRadius.circular(2),
+                                  borderRadius: BorderRadius.circular(13),
                                   child: Container(
-                                    width: 20,
-                                    height: 20,
+                                    width: 26,
+                                    height: 26,
                                     alignment: Alignment.center,
                                     child: const Icon(Icons.remove,
-                                        color: Colors.white, size: 12),
+                                        color: Colors.white, size: 16),
                                   ),
                                 ),
                               ),
                               Container(
-                                constraints: const BoxConstraints(minWidth: 20),
+                                constraints: const BoxConstraints(minWidth: 26),
                                 padding:
-                                    const EdgeInsets.symmetric(horizontal: 4),
+                                    const EdgeInsets.symmetric(horizontal: 6),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(2),
+                                  borderRadius: BorderRadius.circular(13),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -2274,7 +2245,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                   style: const TextStyle(
                                     color: Colors.black87,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 10,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
@@ -2285,13 +2256,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                     await _handleAddToCart(
                                         context, cartProvider, productModel);
                                   },
-                                  borderRadius: BorderRadius.circular(2),
+                                  borderRadius: BorderRadius.circular(13),
                                   child: Container(
-                                    width: 20,
-                                    height: 20,
+                                    width: 26,
+                                    height: 26,
                                     alignment: Alignment.center,
                                     child: const Icon(Icons.add,
-                                        color: Colors.white, size: 12),
+                                        color: Colors.white, size: 16),
                                   ),
                                 ),
                               ),

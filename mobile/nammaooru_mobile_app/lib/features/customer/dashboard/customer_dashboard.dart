@@ -1769,7 +1769,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
       },
       child: Scaffold(
-        backgroundColor: isDarkMode ? Colors.black : Colors.grey[50],
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
         body: SingleChildScrollView(
           child: Stack(
             children: [
@@ -1893,7 +1893,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildCurvedHeader() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final headerHeight = statusBarHeight + 160;
+    final headerHeight = statusBarHeight + 120;
 
     return Stack(
       children: [
@@ -1902,7 +1902,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           height: headerHeight,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: isDarkMode ? Colors.grey[900] : VillageTheme.primaryGreen,
+            gradient: isDarkMode
+                ? null
+                : const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [VillageTheme.primaryGreen, Color(0xFF3D9140)],
+                  ),
+            color: isDarkMode ? Colors.grey[900] : null,
             borderRadius: const BorderRadius.only(
               bottomLeft: Radius.elliptical(200, 50),
               bottomRight: Radius.elliptical(200, 50),
@@ -1928,21 +1935,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              languageProvider.welcome,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
                               languageProvider.appName,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 20,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
+                                letterSpacing: 0.3,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -2395,7 +2393,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
-      childAspectRatio: 1.15,
+      childAspectRatio: 1.45,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
       children: List.generate(4, (index) => Container(
@@ -2474,7 +2472,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
-          childAspectRatio: 1.15,
+          childAspectRatio: 1.45,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           children: _dynamicFeatures.map((feature) {
@@ -2521,117 +2519,71 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     required VoidCallback onTap,
     String? imageUrl,
   }) {
-    final lightBg = HSLColor.fromColor(color)
-        .withLightness(0.95)
-        .withSaturation(0.6)
-        .toColor();
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
+    // Each module tile carries a soft tint of its own color with a centered
+    // icon-on-white chip — colorful but flat, like the reference grocery app.
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: lightBg,
+          color: Color.alphaBlend(
+              color.withValues(alpha: 0.09), const Color(0xFFF7F9FA)),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
         ),
-        child: Stack(
-          children: [
-            // Large watermark icon/image
-            Positioned(
-              right: -8,
-              bottom: -8,
-              child: hasImage
-                  ? Opacity(
-                      opacity: 0.08,
-                      child: Image.network(
-                        ImageUrlHelper.getFullImageUrl(imageUrl),
-                        width: 75,
-                        height: 75,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(icon, size: 75, color: color.withValues(alpha: 0.08)),
-                      ),
-                    )
-                  : Icon(icon, size: 75, color: color.withValues(alpha: 0.08)),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Icon circle with image or icon
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: hasImage ? null : LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          color,
-                          HSLColor.fromColor(color)
-                              .withLightness((HSLColor.fromColor(color).lightness - 0.1).clamp(0.0, 1.0))
-                              .toColor(),
-                        ],
-                      ),
-                      color: hasImage ? Colors.white : null,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Icon on a white chip so the tint frames it
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: hasImage
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.network(
+                          ImageUrlHelper.getFullImageUrl(imageUrl),
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 28),
                         ),
-                      ],
-                    ),
-                    child: hasImage
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              ImageUrlHelper.getFullImageUrl(imageUrl),
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 28),
-                            ),
-                          )
-                        : Icon(icon, color: Colors.white, size: 28),
-                  ),
-                  // Title
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey[850],
-                          letterSpacing: 0.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (subtitle.isNotEmpty)
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: color.withValues(alpha: 0.8),
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ],
+                      )
+                    : Icon(icon, color: color, size: 28),
               ),
-            ),
-          ],
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A1A),
+                  letterSpacing: 0.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+              if (subtitle.isNotEmpty)
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -3085,26 +3037,25 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 12),
+        // Flat soft-grey card matching the app-wide design system.
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [],
-          border: Border.all(color: Colors.grey.shade300, width: 1),
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(20),
                 ),
               ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(20),
                 ),
                 child: logoUrl != null
                     ? CachedNetworkImage(

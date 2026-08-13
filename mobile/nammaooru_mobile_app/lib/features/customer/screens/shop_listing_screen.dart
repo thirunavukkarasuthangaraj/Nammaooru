@@ -11,6 +11,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../widgets/location_search_sheet.dart';
 import 'shop_details_screen.dart';
 
 class ShopListingScreen extends StatefulWidget {
@@ -67,8 +68,12 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       if (LocationService.hasCachedPosition) {
         await _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
         // The customer may have moved since login. Keep the fast cached result,
-        // but refresh it with the phone's current position in the background.
-        _fetchLocationAndRefresh();
+        // but refresh it with the phone's current position in the background —
+        // unless the customer explicitly picked a place (e.g. their native
+        // village); then GPS must not overwrite their choice.
+        if (!LocationService.isManualLocation) {
+          _fetchLocationAndRefresh();
+        }
       } else {
         // No cached location — load without location first, then try GPS in background
         await _loadShopsWithoutLocation();
@@ -148,6 +153,37 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     } catch (e) {
       debugPrint('Location unavailable: $e');
       // Keep showing non-location shops — no error to user
+    }
+  }
+
+  /// Open the place search sheet and reload shops for the chosen location.
+  Future<void> _openLocationSearch() async {
+    final result = await LocationSearchSheet.show(context);
+    if (result == null || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      if (result['useCurrentLocation'] == true) {
+        LocationService.clearManualPosition();
+        final position = await LocationService.instance.getCurrentPosition();
+        if (position?.latitude != null && position?.longitude != null) {
+          await _loadNearbyShops(position!.latitude!, position.longitude!);
+        }
+      } else {
+        final latitude = result['latitude'] as double;
+        final longitude = result['longitude'] as double;
+        LocationService.setManualPosition(latitude, longitude);
+        LocationService.manualLocationLabel = result['name'] as String?;
+        await _loadNearbyShops(latitude, longitude);
+      }
+    } catch (e) {
+      if (mounted) {
+        Helpers.showSnackBar(context, 'Failed to load shops: $e', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -263,6 +299,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       ),
       body: Column(
         children: [
+          _buildDeliverToBar(),
           _buildVillageSearchBar(),
           _buildVillageSortingChips(),
           if (_isLocationBased && !_isLoading)
@@ -274,12 +311,18 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                 children: [
                   const Icon(Icons.location_on, size: 16, color: Color(0xFF4CAF50)),
                   const SizedBox(width: 6),
-                  Text(
-                    'Showing shops that deliver to your location',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF2E7D32),
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      LocationService.isManualLocation
+                          ? (context.loc?.translate('shops_delivering_here') ?? 'Shops delivering to this place')
+                          : (context.loc?.translate('shops_delivering_to_you') ?? 'Shops delivering to your location'),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF2E7D32),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -289,6 +332,57 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
             child: _isLoading ? const LoadingWidget() : _buildVillageShopsList(),
           ),
         ],
+      ),
+    );
+  }
+
+  /// "Deliver to" bar: shows the active delivery location (GPS or a searched
+  /// village) and opens the place search when tapped.
+  Widget _buildDeliverToBar() {
+    final label = LocationService.isManualLocation
+        ? (LocationService.manualLocationLabel ??
+            (context.loc?.translate('selected_location') ?? 'Selected location'))
+        : (context.loc?.translate('near_me') ?? 'Near me');
+
+    return Container(
+      color: const Color(0xFF4CAF50),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      child: Material(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _openLocationSearch,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '${context.loc?.translate('deliver_to') ?? 'Deliver to'}: ',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -430,9 +524,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'No Shops Found',
-                style: TextStyle(
+              Text(
+                context.loc?.translate('no_shops_here') ?? 'No shops here yet',
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF424242),
@@ -441,12 +535,30 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Try adjusting your search or filters',
+                context.loc?.translate('search_your_village_hint') ??
+                    'Search your village or town to see its shops',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey.shade600,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _openLocationSearch,
+                icon: const Icon(Icons.search, size: 20),
+                label: Text(
+                  context.loc?.translate('search_a_place') ?? 'Search a place',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ],
           ),

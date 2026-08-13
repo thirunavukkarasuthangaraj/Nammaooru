@@ -42,10 +42,161 @@ class LocationService {
   /// Go back to live GPS: the next getCurrentPosition() refreshes the cache.
   static void clearManualPosition() {
     _manualLocation = false;
+    _manualLocationLabel = null;
   }
 
   // Use your Google Maps API key from env config
   static const String _googleApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
+
+  /// Human-readable label for the manually selected location, shown in the
+  /// "Deliver to" bar (e.g. the village name the user searched for).
+  static String? _manualLocationLabel;
+  static String? get manualLocationLabel => _manualLocationLabel;
+  static set manualLocationLabel(String? label) => _manualLocationLabel = label;
+
+  /// Forward-geocode a place name (village/town, Tamil or English) to
+  /// coordinates. Returns up to 5 matches within India as
+  /// {name, latitude, longitude} maps.
+  ///
+  /// Tries Google first; if it's unavailable (e.g. billing disabled on the
+  /// Cloud project) falls back to OpenStreetMap Nominatim, which needs no
+  /// API key and works on both web and mobile.
+  Future<List<Map<String, dynamic>>> searchPlaces(String query,
+      {String languageCode = 'en'}) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
+
+    // Small villages are often missing from the free geocoders, so fall back
+    // progressively: full query → part before the comma → each word (e.g.
+    // "mittur, tirupattur" → "mittur" → "tirupattur"). A nearby town match
+    // still works for the customer because shop listing covers 50 km.
+    final candidates = <String>[trimmed];
+    if (trimmed.contains(',')) {
+      candidates.add(trimmed.split(',').first.trim());
+    }
+    candidates.addAll(
+      trimmed.split(RegExp(r'[,\s]+')).where((w) => w.length >= 3),
+    );
+
+    final tried = <String>{};
+    for (final candidate in candidates) {
+      if (candidate.isEmpty || !tried.add(candidate.toLowerCase())) continue;
+      final results = await _searchPlacesAllProviders(candidate, languageCode);
+      if (results.isNotEmpty) return results;
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> _searchPlacesAllProviders(
+      String query, String languageCode) async {
+    final googleResults = await _searchPlacesGoogle(query, languageCode);
+    if (googleResults.isNotEmpty) return googleResults;
+
+    // Nominatim honours the app language (Tamil names in Tamil mode) but is
+    // strict about spelling; Photon is typo-tolerant. Order by strength per
+    // language, using the other as fallback.
+    if (languageCode == 'ta') {
+      final nominatim = await _searchPlacesNominatim(query, languageCode);
+      if (nominatim.isNotEmpty) return nominatim;
+      return _searchPlacesPhoton(query);
+    }
+    final photon = await _searchPlacesPhoton(query);
+    if (photon.isNotEmpty) return photon;
+    return _searchPlacesNominatim(query, languageCode);
+  }
+
+  /// Typo-tolerant OSM geocoder (free, no key). English names only.
+  Future<List<Map<String, dynamic>>> _searchPlacesPhoton(String query) async {
+    try {
+      final url = 'https://photon.komoot.io/api/?'
+          'q=${Uri.encodeComponent(query)}&limit=10&lang=en';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode != 200) return [];
+
+      final features = (json.decode(response.body)['features'] as List?) ?? [];
+      return features.where((f) {
+        return f['properties']?['countrycode'] == 'IN';
+      }).take(5).map<Map<String, dynamic>>((f) {
+        final props = f['properties'] as Map<String, dynamic>;
+        final coords = f['geometry']['coordinates'] as List;
+        final parts = [
+          props['name'],
+          props['city'],
+          props['district'],
+          props['state'],
+        ].whereType<String>().toSet().toList();
+        return {
+          'name': parts.join(', '),
+          'latitude': (coords[1] as num).toDouble(),
+          'longitude': (coords[0] as num).toDouble(),
+        };
+      }).toList();
+    } catch (e) {
+      print('❌ Photon place search failed: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _searchPlacesGoogle(
+      String query, String languageCode) async {
+    try {
+      final url = 'https://maps.googleapis.com/maps/api/geocode/json?'
+          'address=${Uri.encodeComponent(query)}&'
+          'components=country:IN&'
+          'language=$languageCode&'
+          'key=$_googleApiKey';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) return [];
+
+      final data = json.decode(response.body);
+      if (data['status'] != 'OK' || data['results'] == null) {
+        print('⚠️ Google place search: ${data['status']} — falling back to OSM');
+        return [];
+      }
+
+      return (data['results'] as List).take(5).map((result) {
+        final location = result['geometry']['location'];
+        return {
+          'name': result['formatted_address'] as String? ?? query,
+          'latitude': (location['lat'] as num).toDouble(),
+          'longitude': (location['lng'] as num).toDouble(),
+        };
+      }).toList();
+    } catch (e) {
+      print('❌ Google place search failed: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _searchPlacesNominatim(
+      String query, String languageCode) async {
+    try {
+      final acceptLanguage = languageCode == 'ta' ? 'ta,en' : 'en';
+      final url = 'https://nominatim.openstreetmap.org/search?'
+          'q=${Uri.encodeComponent(query)}&'
+          'countrycodes=in&format=json&limit=5&accept-language=$acceptLanguage';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode != 200) return [];
+
+      final data = json.decode(response.body) as List;
+      return data.map((result) {
+        return {
+          'name': result['display_name'] as String? ?? query,
+          'latitude': double.parse(result['lat'] as String),
+          'longitude': double.parse(result['lon'] as String),
+        };
+      }).toList();
+    } catch (e) {
+      print('❌ OSM place search failed: $e');
+      return [];
+    }
+  }
 
   Future<Map<String, String>?> getAddressFromGoogleAPI(double latitude, double longitude) async {
     try {

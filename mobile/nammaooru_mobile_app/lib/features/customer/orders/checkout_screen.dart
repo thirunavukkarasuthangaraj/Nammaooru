@@ -2506,7 +2506,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             'landmark': _landmarkController.text.trim().isNotEmpty ? _landmarkController.text.trim() : _deliveryInstructions.isNotEmpty ? _deliveryInstructions : null,
             'city': _selectedCity,
             'state': _selectedState,
-            'pincode': pincode
+            'pincode': pincode,
+            // Delivery coordinates: the backend validates them against the
+            // shop's delivery radius. Saved address coordinates win; otherwise
+            // fall back to the location the shops were browsed from.
+            'latitude': _selectedSavedAddress?.latitude ?? LocationService.cachedLatitude,
+            'longitude': _selectedSavedAddress?.longitude ?? LocationService.cachedLongitude,
           },
         'paymentMethod': _selectedPaymentMethod,
         'subtotal': cartProvider.subtotal,

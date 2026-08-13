@@ -41,6 +41,8 @@ public class CustomerOrderRequest {
         private String city;
         private String state;
         private String pincode;
+        private Double latitude;
+        private Double longitude;
     }
     
     @Data

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/theme/village_theme.dart';
+import '../../../core/localization/language_provider.dart';
 import 'otp_verification_screen.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 
@@ -98,26 +99,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       },
       child: Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/login_background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(
-                  color: Colors.white.withOpacity(0.3),
-                ),
-              ),
-            ),
-            SafeArea(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        top: false,
               child: Consumer<AuthProvider>(
                 builder: (context, authProvider, child) {
                   if (authProvider.authState == AuthState.loading) {
@@ -142,29 +126,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   }
 
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
                     child: AutofillGroup(
                       child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 40),
                             _buildHeader(),
-                            const SizedBox(height: 32),
-                            _buildNameField(),
-                            const SizedBox(height: 12),
-                            _buildEmailField(),
-                            const SizedBox(height: 12),
-                            _buildPhoneField(),
-                            const SizedBox(height: 12),
-                            _buildPasswordField(),
-                            const SizedBox(height: 16),
-                            _buildTermsRow(),
-                            const SizedBox(height: 20),
-                            _buildRegisterButton(),
-                            const SizedBox(height: 16),
-                            _buildLoginLink(),
+                            Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildNameField(),
+                                  const SizedBox(height: 12),
+                                  _buildEmailField(),
+                                  const SizedBox(height: 12),
+                                  _buildPhoneField(),
+                                  const SizedBox(height: 12),
+                                  _buildPasswordField(),
+                                  const SizedBox(height: 16),
+                                  _buildTermsRow(),
+                                  const SizedBox(height: 20),
+                                  _buildRegisterButton(),
+                                  const SizedBox(height: 16),
+                                  _buildLoginLink(),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -172,55 +161,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   );
                 },
               ),
-            ),
-          ],
-        ),
-      ),
+    ),
     ),
     );
   }
 
   Widget _buildHeader() {
-    return Column(
-      children: [
-        Container(
-          width: 110,
-          height: 110,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Image.asset(
-            'assets/icons/logo-new.png',
-            fit: BoxFit.contain,
-          ),
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    // Signature curved green header, matching the dashboard and login.
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+          24, MediaQuery.of(context).padding.top + 24, 24, 36),
+      decoration: const BoxDecoration(
+        color: VillageTheme.primaryGreen,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.elliptical(200, 40),
+          bottomRight: Radius.elliptical(200, 40),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'Register!',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Image.asset(
+              'assets/icons/logo-new.png',
+              fit: BoxFit.contain,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Join NammaOoru community',
-          style: TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+          const SizedBox(height: 24),
+          Text(
+            languageProvider.getText('Register!', 'பதிவு செய்யுங்கள்!'),
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            languageProvider.getText(
+                'Join Namma Ooru Connect', 'நம்ம ஊரு கனெக்ட்-இல் இணையுங்கள்'),
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -240,8 +234,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFECEFF1),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: TextFormField(
         controller: controller,
@@ -406,9 +400,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Expanded(
           child: Wrap(
             children: [
-              const Text(
+              Text(
                 'I agree to ',
-                style: TextStyle(fontSize: 13, color: Colors.white),
+                style: TextStyle(fontSize: 13, color: Colors.grey[800]),
               ),
               GestureDetector(
                 onTap: () => PrivacyPolicyDialog.show(context),
@@ -416,7 +410,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'Terms & Privacy Policy',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white,
+                    color: VillageTheme.primaryGreen,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline,
                   ),
@@ -430,22 +424,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildRegisterButton() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 52,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: const LinearGradient(
-          colors: [VillageTheme.primaryGreen, Color(0xFF45A049)],
-        ),
-      ),
       child: ElevatedButton(
         onPressed: _handleRegister,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
+          backgroundColor: VillageTheme.primaryGreen,
+          foregroundColor: Colors.white,
+          elevation: 0,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
         child: const Text(
@@ -464,9 +454,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'Already have an account? ',
-          style: TextStyle(fontSize: 14, color: Colors.white),
+          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
         TextButton(
           onPressed: () => context.go('/login'),
@@ -479,7 +469,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'Login',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white,
+              color: VillageTheme.primaryGreen,
               fontWeight: FontWeight.w600,
             ),
           ),
