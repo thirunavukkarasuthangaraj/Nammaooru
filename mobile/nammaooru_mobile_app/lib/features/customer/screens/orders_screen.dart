@@ -180,6 +180,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       MaterialPageRoute(
         builder: (context) => OrderTrackingScreen(
           orderNumber: order.orderNumber,
+          order: order,
         ),
       ),
     );
@@ -561,17 +562,20 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         ),
                       ),
                     ),
+                  // Cancel moved inside Order Details — a red Cancel on every
+                  // card invited accidental taps. View opens details, where
+                  // the existing Cancel Order flow lives.
                   if (order.canBeCancelled)
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: OutlinedButton.icon(
-                          onPressed: () => _showCancelDialog(order),
-                          icon: const Icon(Icons.cancel_outlined, size: 18),
-                          label: const Text('Cancel', style: TextStyle(fontSize: 12)),
+                          onPressed: () => _viewOrderDetails(order),
+                          icon: const Icon(Icons.receipt_long, size: 18),
+                          label: const Text('View', style: TextStyle(fontSize: 12)),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red, width: 1),
+                            foregroundColor: Colors.grey.shade700,
+                            side: BorderSide(color: Colors.grey.shade400, width: 1),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -675,74 +679,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
     final period = date.hour >= 12 ? 'PM' : 'AM';
     return '$hour:${date.minute.toString().padLeft(2, '0')} $period';
-  }
-
-  void _showCancelDialog(Order order) {
-    String reason = '';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Cancel Order', style: TextStyle(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to cancel order #${order.orderNumber}?',
-              style: const TextStyle(fontSize: 12),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              decoration: const InputDecoration(
-                labelText: 'Reason (Optional)',
-                labelStyle: TextStyle(fontSize: 11),
-                hintText: 'Why are you cancelling this order?',
-                hintStyle: TextStyle(fontSize: 11),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                isDense: true,
-              ),
-              style: const TextStyle(fontSize: 12),
-              maxLines: 2,
-              onChanged: (value) => reason = value,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Keep Order', style: TextStyle(fontSize: 12)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _cancelOrder(order.id, reason);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cancel Order', style: TextStyle(fontSize: 12)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _cancelOrder(String orderId, String reason) async {
-    try {
-      final result = await _orderService.cancelOrder(orderId, reason);
-
-      if (result['success']) {
-        _showSnackBar('Order cancelled successfully', Colors.orange);
-        _loadOrders(refresh: true);
-      } else {
-        _showSnackBar(result['message'] ?? 'Failed to cancel order', Colors.red);
-      }
-    } catch (e) {
-      _showSnackBar('Failed to cancel order', Colors.red);
-    }
   }
 
   Future<void> _reorderItems(Order order) async {

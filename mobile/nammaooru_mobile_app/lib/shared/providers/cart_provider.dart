@@ -132,25 +132,24 @@ class CartProvider with ChangeNotifier {
       }
       
       _saveCartToStorage();
-      
-      // Try to sync with backend (but don't fail if it doesn't work)
-      try {
-        final request = CoreCart.AddToCartRequest(
-          shopProductId: product.id,
-          quantity: quantity,
-        );
-        
-        final response = await _cartService.addToCart(request);
-        
+
+      // Sync with backend in the background. The item is already in the local
+      // cart, so the UI (add button, related-products sheet) must not wait on
+      // the network round-trip; the result was only ever logged anyway.
+      final request = CoreCart.AddToCartRequest(
+        shopProductId: product.id,
+        quantity: quantity,
+      );
+      _cartService.addToCart(request).then((response) {
         if (kDebugMode) {
           print('🛒 Backend sync result: ${response['success']}');
         }
-      } catch (backendError) {
+      }).catchError((backendError) {
         if (kDebugMode) {
           print('🛒 Backend sync failed (item still in local cart): $backendError');
         }
-      }
-      
+      });
+
       return true; // Successfully added
       
     } catch (e) {

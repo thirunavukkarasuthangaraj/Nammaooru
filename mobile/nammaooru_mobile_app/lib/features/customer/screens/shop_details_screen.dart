@@ -2388,7 +2388,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
 
-    final related = _allProducts.where((p) {
+    final candidates = _allProducts.where((p) {
       if (p['id'].toString() == added.id) return false;
       final cat = p['masterProduct']?['category']?['name']?.toString();
       if (cat == null || cat.toLowerCase() != categoryName.toLowerCase()) {
@@ -2397,7 +2397,53 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       final stock = int.tryParse(p['stockQuantity']?.toString() ?? '0') ?? 0;
       if (stock <= 0) return false;
       return cartProvider.getQuantity(p['id'].toString()) == 0;
-    }).take(8).toList();
+    }).toList();
+    if (candidates.isEmpty) return;
+
+    // Categories can be broad ("Grocery"), so rank inside the category:
+    // shared name words (English + Tamil) rank highest, plus a small bonus
+    // for a similar price range. Ties keep the original catalog order.
+    Set<String> tokensOf(dynamic p) => [
+          p?['customName']?.toString(),
+          p?['masterProduct']?['name']?.toString(),
+          p?['masterProduct']?['nameTamil']?.toString(),
+        ]
+            .whereType<String>()
+            .join(' ')
+            .toLowerCase()
+            .split(RegExp(r'[^a-z0-9஀-௿]+'))
+            .where((t) => t.length >= 3)
+            .toSet();
+
+    final addedTokens = tokensOf(raw)..addAll(tokensOf({'customName': added.name}));
+    final addedPrice = double.tryParse(raw?['price']?.toString() ?? '') ?? 0.0;
+
+    int relevance(dynamic p) {
+      var score = 0;
+      final tokens = tokensOf(p);
+      for (final t in addedTokens) {
+        if (tokens.contains(t)) score += 3;
+      }
+      final price = double.tryParse(p['price']?.toString() ?? '') ?? 0.0;
+      if (addedPrice > 0 && price > 0) {
+        final ratio = price / addedPrice;
+        if (ratio >= 0.5 && ratio <= 2.0) score += 1;
+      }
+      return score;
+    }
+
+    final ranked = List.generate(
+        candidates.length, (i) => MapEntry(i, relevance(candidates[i])))
+      ..sort((a, b) =>
+          b.value != a.value ? b.value - a.value : a.key - b.key);
+    // A name-word match scores >= 3. Show ONLY name-matched products —
+    // padding with random same-category items reads as "completely wrong",
+    // so with no real match the sheet is skipped entirely.
+    final related = ranked
+        .where((e) => e.value >= 3)
+        .take(8)
+        .map((e) => candidates[e.key])
+        .toList();
     if (related.isEmpty) return;
 
     showModalBottomSheet(

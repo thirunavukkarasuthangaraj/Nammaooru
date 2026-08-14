@@ -4,11 +4,10 @@
     <a routerLink="/label-designer"><mat-icon>qr_code_2</mat-icon> Label Designer</a>
   </nav>
   <header class="studio-header">
-    <div>
-      <button class="back-link" type="button" (click)="back()"><mat-icon>arrow_back</mat-icon> POS Billing</button>
-      <p class="eyebrow">Billing</p>
+    <button class="back-link" type="button" (click)="back()" aria-label="Back to POS Billing"><mat-icon>arrow_back</mat-icon></button>
+    <div class="header-text">
       <h1>Bill Settings</h1>
-      <p class="intro">Choose a template, configure printed details and preview the receipt.</p>
+      <p class="intro">Choose a template and preview your receipt</p>
     </div>
     <div class="header-actions">
       <button mat-stroked-button type="button" (click)="reset()">Reset</button>

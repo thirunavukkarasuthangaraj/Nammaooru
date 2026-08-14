@@ -44,7 +44,7 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
     @Query(value = "SELECT * FROM shops s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL " +
            "AND s.is_active = true AND s.status = 'APPROVED' AND s.payment_blocked = false " +
            "AND (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= :radiusInKm " +
-           "AND (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= COALESCE(s.delivery_radius, 5.0) " +
+           "AND (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= COALESCE(NULLIF(s.delivery_radius, 0), 5.0) " +
            "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) ASC",
            nativeQuery = true)
     List<Shop> findShopsWithinRadius(@Param("lat") double latitude,
@@ -56,10 +56,10 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
     // that free geocoders don't know, straight from our own shop data.
     @Query(value = "SELECT loc AS name, AVG(latitude) AS lat, AVG(longitude) AS lng, COUNT(*) AS shop_count FROM ( " +
            "  SELECT TRIM(address_line1) AS loc, latitude, longitude FROM shops " +
-           "    WHERE is_active = true AND status = 'APPROVED' AND latitude IS NOT NULL AND longitude IS NOT NULL " +
+           "    WHERE is_active = true AND status = 'APPROVED' AND payment_blocked = false AND latitude IS NOT NULL AND longitude IS NOT NULL " +
            "  UNION ALL " +
            "  SELECT TRIM(city), latitude, longitude FROM shops " +
-           "    WHERE is_active = true AND status = 'APPROVED' AND latitude IS NOT NULL AND longitude IS NOT NULL " +
+           "    WHERE is_active = true AND status = 'APPROVED' AND payment_blocked = false AND latitude IS NOT NULL AND longitude IS NOT NULL " +
            ") t WHERE loc IS NOT NULL AND loc <> '' AND LOWER(loc) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "GROUP BY loc ORDER BY COUNT(*) DESC LIMIT 5",
            nativeQuery = true)

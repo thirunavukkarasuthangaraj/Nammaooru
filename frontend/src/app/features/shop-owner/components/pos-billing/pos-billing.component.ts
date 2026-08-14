@@ -30,6 +30,10 @@ interface CartItem {
   mrp: number;  // MRP price
   total: number;
   discount: number;  // Discount per item (mrp - unitPrice)
+  // Weight-sold items (product.unit === 'kg'): billed as one line whose
+  // unitPrice IS the line total; grams and rate are kept for display/edit
+  weightGrams?: number;
+  pricePerKg?: number;
 }
 
 type PosProfile = 'grocery' | 'fashion' | 'medical' | 'general';
@@ -375,7 +379,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   newProductBarcode2: string = '';
   newProductBarcode3: string = '';
   newProductTrackInventory: boolean = true;
+  newProductUnit: 'piece' | 'kg' = 'piece';
   isSavingNewProduct: boolean = false;
+
+  // Weight picker state (products sold by kg)
+  weightProduct: CachedProduct | null = null;
+  weightGrams: number = 0;
+  weightPricePerKg: number = 0;
+  readonly weightChips: number[] = [100, 250, 500, 750, 1000, 2000];
 
   private apiUrl = environment.apiUrl;
 
@@ -1457,6 +1468,133 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // If no exact match, just keep showing filtered results
   }
 
+  // ========== Weight-based selling (products with unit 'kg') ==========
+
+  /** Product is sold by weight: unit starts with 'kg' (covers 'kg', 'Kg', 'kgs') */
+  isWeightProduct(product: CachedProduct): boolean {
+    return String(product.unit || '').toLowerCase().startsWith('kg');
+  }
+
+  /** 250 -> "250g", 1000 -> "1kg", 1500 -> "1.5kg" */
+  formatWeight(grams: number): string {
+    if (grams >= 1000) {
+      const kg = Math.round((grams / 1000) * 100) / 100;
+      return `${kg}kg`;
+    }
+    return `${grams}g`;
+  }
+
+  /** Weight label for the in-cart badge / product row ("" when not in cart) */
+  getCartWeightLabel(product: CachedProduct): string {
+    const item = this.cartIndex.get(product.id);
+    return item && item.weightGrams ? this.formatWeight(item.weightGrams) : '';
+  }
+
+  get weightTotal(): number {
+    if (this.weightGrams <= 0 || this.weightPricePerKg <= 0) return 0;
+    return Math.round(this.weightPricePerKg * this.weightGrams / 10) / 100;
+  }
+
+  openWeightPicker(product: CachedProduct): void {
+    const existing = this.cartIndex.get(product.id);
+    this.weightProduct = product;
+    this.weightPricePerKg = existing?.pricePerKg || product.price || 0;
+    this.weightGrams = existing?.weightGrams || 0;
+  }
+
+  closeWeightPicker(): void {
+    this.weightProduct = null;
+    this.weightGrams = 0;
+    this.weightPricePerKg = 0;
+  }
+
+  selectWeightChip(grams: number): void {
+    this.weightGrams = grams;
+  }
+
+  setWeightRate(event: Event): void {
+    const value = parseFloat((event.target as HTMLInputElement).value);
+    this.weightPricePerKg = isNaN(value) || value < 0 ? 0 : value;
+  }
+
+  setWeightGrams(event: Event): void {
+    const value = parseInt((event.target as HTMLInputElement).value, 10);
+    this.weightGrams = isNaN(value) || value < 0 ? 0 : value;
+  }
+
+  /** Customer asks by money ("₹20 thakkali") — convert amount to grams */
+  setWeightAmount(event: Event): void {
+    const amount = parseFloat((event.target as HTMLInputElement).value);
+    if (isNaN(amount) || amount <= 0 || this.weightPricePerKg <= 0) return;
+    // Round to the nearest 5g so the scale weight is practical
+    this.weightGrams = Math.max(5, Math.round(amount / this.weightPricePerKg * 1000 / 5) * 5);
+  }
+
+  confirmWeight(): void {
+    const product = this.weightProduct;
+    if (!product) return;
+    if (this.weightGrams <= 0) {
+      this.swal.error('Weight Required', 'Select or enter the weight');
+      return;
+    }
+    if (this.weightPricePerKg <= 0) {
+      this.swal.error('Rate Required', 'Enter the price per kg');
+      return;
+    }
+
+    const total = this.weightTotal;
+    const existing = this.cart.find(item => item.product.id === product.id);
+    if (existing) {
+      existing.weightGrams = this.weightGrams;
+      existing.pricePerKg = this.weightPricePerKg;
+      existing.quantity = 1;
+      existing.unitPrice = total;
+      existing.mrp = total;
+      existing.discount = 0;
+      existing.total = total;
+    } else {
+      this.cart.unshift({
+        product,
+        quantity: 1,
+        unitPrice: total,
+        mrp: total,
+        total,
+        discount: 0,
+        weightGrams: this.weightGrams,
+        pricePerKg: this.weightPricePerKg
+      });
+    }
+
+    this.calculateTotals();
+    this.closeWeightPicker();
+
+    // Same post-add list behaviour as addToCart()
+    if (this.activeTab === 'quick' && !this.browseProductsByDefault) {
+      this.searchTerm = '';
+      this.filteredProducts = [];
+    } else {
+      this.searchTerm = '';
+      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+    }
+  }
+
+  /** +/- steppers on a weight cart line (step 100g; below/at zero removes) */
+  adjustCartWeight(item: CartItem, deltaGrams: number): void {
+    if (!item.weightGrams || !item.pricePerKg) return;
+    const newGrams = item.weightGrams + deltaGrams;
+    if (newGrams <= 0) {
+      this.removeFromCart(item);
+      return;
+    }
+    item.weightGrams = newGrams;
+    const total = Math.round(item.pricePerKg * newGrams / 10) / 100;
+    item.unitPrice = total;
+    item.mrp = total;
+    item.discount = 0;
+    item.total = total;
+    this.calculateTotals();
+  }
+
   // ========== Temp Price/Qty Methods for Quick Bill (not saved to DB) ==========
 
   /**
@@ -1519,6 +1657,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Add to cart with temporary price and quantity (Quick Bill mode)
    */
   addToCartWithTempValues(product: CachedProduct): void {
+    if (this.isWeightProduct(product)) {
+      this.openWeightPicker(product);
+      return;
+    }
     const tempPrice = this.getTempPrice(product);
     const tempQty = this.getTempQty(product);
 
@@ -1661,6 +1803,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Add product to cart
    */
   addToCart(product: CachedProduct): void {
+    // Weight-sold products go through the weight picker instead of qty steps
+    if (this.isWeightProduct(product)) {
+      this.openWeightPicker(product);
+      return;
+    }
+
     // Out of stock: offer to restock on the spot and continue billing
     if (product.trackInventory && product.stock <= 0) {
       this.promptRestockAndAdd(product);
@@ -2055,6 +2203,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Update item quantity
    */
   updateQuantity(item: CartItem, delta: number): void {
+    // Weight lines step by 100g instead of pieces
+    if (item.weightGrams) {
+      this.adjustCartWeight(item, delta * 100);
+      return;
+    }
     const newQty = item.quantity + delta;
 
     if (newQty <= 0) {
@@ -2135,6 +2288,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.billDiscount = 0;
     this.billDiscountInput = 0;
     this.billDiscountMode = 'amount';
+    this.customerAskedForThisBill = false;
+    this.printAfterCustomerModal = false;
     this.calculateTotals();
     this.customerName = '';
     this.customerPhone = '';
@@ -2289,6 +2444,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   async generateBill(): Promise<void> {
     if (this.cart.length === 0) {
       this.swal.warning('Empty Cart', 'Please add items to generate bill');
+      return;
+    }
+
+    // First Print click with no customer: offer to capture their details
+    // (needed for WhatsApp bills). Skip continues as an anonymous walk-in;
+    // either way the question is asked only once per bill.
+    if (!this.hasCustomer() && !this.customerAskedForThisBill) {
+      this.customerAskedForThisBill = true;
+      this.printAfterCustomerModal = true;
+      this.openCustomerModal();
       return;
     }
 
@@ -3386,6 +3551,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     return !!((this.customerName && this.customerName.trim()) || (this.customerPhone && this.customerPhone.trim()));
   }
 
+  // Print-flow state: ask for customer details once per bill when Print is
+  // clicked with no customer set
+  customerAskedForThisBill = false;
+  printAfterCustomerModal = false;
+
   openCustomerModal(): void {
     this.showCustomerModal = true;
     this.showCustomerSuggestions = false;
@@ -3394,6 +3564,25 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   closeCustomerModal(): void {
     this.showCustomerModal = false;
     this.showCustomerSuggestions = false;
+    // Closed without choosing print: don't auto-print, don't re-ask this bill
+    this.printAfterCustomerModal = false;
+  }
+
+  /** "Skip & Print" from the pre-print customer ask - anonymous walk-in bill */
+  skipCustomerAndPrint(): void {
+    this.clearCustomer();
+    this.showCustomerModal = false;
+    this.showCustomerSuggestions = false;
+    this.printAfterCustomerModal = false;
+    this.generateBill();
+  }
+
+  /** "Save & Print" from the pre-print customer ask */
+  saveCustomerAndPrint(): void {
+    this.showCustomerModal = false;
+    this.showCustomerSuggestions = false;
+    this.printAfterCustomerModal = false;
+    this.generateBill();
   }
 
   clearCustomer(): void {
@@ -3981,6 +4170,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.cart.map(item => {
       let resolvedId: number | null = item.product.id;
 
+      // Weight lines: the server's quantity is a whole number, so a 250g sale is
+      // billed as one line whose unit price is the computed total, with the
+      // weight in the printed name ("Tomato 250g"). No product link / stock move.
+      if (item.weightGrams && item.weightGrams > 0) {
+        return {
+          shopProductId: null,
+          quantity: 1,
+          unitPrice: item.total,
+          productName: `${item.product.name} ${this.formatWeight(item.weightGrams)}`
+        };
+      }
+
       // Custom "Quick Add" items have no catalog product - the server bills them
       // by the typed name and price (null product ID)
       if (item.product.sku === 'CUSTOM') {
@@ -4038,6 +4239,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Deduct stock for each cart item locally
     for (const cartItem of this.cart) {
+      // Weight lines are billed without a product link — no stock movement
+      if (cartItem.weightGrams) continue;
       const productId = cartItem.product.id;
       const quantitySold = cartItem.quantity;
 
@@ -4149,6 +4352,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.newProductBarcode2 = '';
     this.newProductBarcode3 = '';
     this.newProductTrackInventory = true;
+    this.newProductUnit = 'piece';
+  }
+
+  /** Sell-by toggle: weight items skip piece-count inventory tracking */
+  setNewProductUnit(unit: 'piece' | 'kg'): void {
+    this.newProductUnit = unit;
+    if (unit === 'kg') {
+      this.newProductTrackInventory = false;
+      this.newProductStock = 0;
+    } else {
+      this.newProductTrackInventory = true;
+    }
   }
 
   /**
@@ -4166,6 +4381,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.newProductBarcode2 = '';
     this.newProductBarcode3 = '';
     this.newProductTrackInventory = true;
+    this.newProductUnit = 'piece';
     this.isSavingNewProduct = false;
   }
 
@@ -4236,8 +4452,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         price: this.newProductPrice,
         originalPrice: this.newProductMrp || this.newProductPrice,
         costPrice: this.newProductCostPrice || 0,
-        stockQuantity: this.newProductStock || 0,
-        trackInventory: this.newProductTrackInventory,
+        stockQuantity: this.newProductUnit === 'kg' ? 0 : (this.newProductStock || 0),
+        trackInventory: this.newProductUnit === 'kg' ? false : this.newProductTrackInventory,
+        unit: this.newProductUnit,
         barcode1: this.newProductBarcode1?.trim() || '',
         barcode2: this.newProductBarcode2?.trim() || '',
         barcode3: this.newProductBarcode3?.trim() || '',
@@ -4257,8 +4474,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           nameTamil: this.newProductNameTamil?.trim(),
           price: this.newProductPrice,
           originalPrice: this.newProductMrp || this.newProductPrice,
-          stock: this.newProductStock || 0,
-          trackInventory: this.newProductTrackInventory,
+          stock: this.newProductUnit === 'kg' ? 0 : (this.newProductStock || 0),
+          trackInventory: this.newProductUnit === 'kg' ? false : this.newProductTrackInventory,
+          unit: this.newProductUnit,
           sku: generatedSku,
           barcode: this.newProductBarcode1?.trim() || '',
           barcode1: this.newProductBarcode1?.trim() || '',

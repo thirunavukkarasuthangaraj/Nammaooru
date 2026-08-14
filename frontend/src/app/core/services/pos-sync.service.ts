@@ -654,6 +654,7 @@ export class PosSyncService implements OnDestroy {
           isFeatured: creation.isFeatured || false,
           tags: creation.tags,
           sku: creation.sku || '',
+          baseUnit: creation.unit || 'piece',
           barcode1: creation.barcode1,
           barcode2: creation.barcode2,
           barcode3: creation.barcode3,

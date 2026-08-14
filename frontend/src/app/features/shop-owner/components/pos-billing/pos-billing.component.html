@@ -238,7 +238,7 @@
                        min="0"
                        step="1">
               </div>
-              <div class="qty-controls">
+              <div class="qty-controls" *ngIf="!isWeightProduct(product)">
                 <button class="qty-btn minus" (click)="decrementTempQty(product); $event.stopPropagation()">
                   <mat-icon>remove</mat-icon>
                 </button>
@@ -253,9 +253,16 @@
                   <mat-icon>add</mat-icon>
                 </button>
               </div>
-              <button class="add-btn" (click)="addToCartWithTempValues(product); $event.stopPropagation()"
+              <button class="add-btn" *ngIf="!isWeightProduct(product)"
+                      (click)="addToCartWithTempValues(product); $event.stopPropagation()"
                       [disabled]="getTempQty(product) === 0">
                 <mat-icon>add_shopping_cart</mat-icon>
+              </button>
+              <button class="add-btn weight-btn" *ngIf="isWeightProduct(product)"
+                      (click)="openWeightPicker(product); $event.stopPropagation()"
+                      title="Sold by weight — tap to pick grams">
+                <mat-icon>scale</mat-icon>
+                <span>{{ getCartWeightLabel(product) || 'kg' }}</span>
               </button>
             </div>
           </div>
@@ -413,10 +420,15 @@
           </div>
           <div class="item-row-bottom">
             <div class="item-price-section">
-              <span class="item-mrp" *ngIf="item.discount > 0">₹{{ item.mrp }}</span>
-              <span class="item-price">₹{{ item.unitPrice }} x</span>
+              <ng-container *ngIf="item.weightGrams; else pieceRate">
+                <span class="item-price">₹{{ item.pricePerKg }}/kg</span>
+              </ng-container>
+              <ng-template #pieceRate>
+                <span class="item-mrp" *ngIf="item.discount > 0">₹{{ item.mrp }}</span>
+                <span class="item-price">₹{{ item.unitPrice }} x</span>
+              </ng-template>
             </div>
-            <div class="item-quantity">
+            <div class="item-quantity" *ngIf="!item.weightGrams">
               <button mat-mini-fab color="basic" (click)="updateQuantity(item, -1)">
                 <mat-icon>remove</mat-icon>
               </button>
@@ -427,6 +439,18 @@
                      min="1"
                      step="1">
               <button mat-mini-fab color="basic" (click)="updateQuantity(item, 1)">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+            <div class="item-quantity" *ngIf="item.weightGrams">
+              <button mat-mini-fab color="basic" (click)="adjustCartWeight(item, -100)" title="-100g">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <button type="button" class="weight-value" (click)="openWeightPicker(item.product)"
+                      title="Tap to change weight">
+                {{ formatWeight(item.weightGrams!) }}
+              </button>
+              <button mat-mini-fab color="basic" (click)="adjustCartWeight(item, 100)" title="+100g">
                 <mat-icon>add</mat-icon>
               </button>
             </div>
@@ -478,9 +502,18 @@
                    autocomplete="off">
             <input type="text" [(ngModel)]="orderNotes" placeholder="Notes (optional)" class="customer-input">
           </div>
-          <div class="customer-modal-actions">
+          <div class="customer-modal-actions" *ngIf="!printAfterCustomerModal">
             <button mat-stroked-button (click)="clearCustomer()">Clear</button>
             <button mat-raised-button color="primary" (click)="closeCustomerModal()">Save</button>
+          </div>
+          <!-- Pre-print ask: capture details for the WhatsApp bill, or skip -->
+          <div class="customer-modal-actions" *ngIf="printAfterCustomerModal">
+            <button mat-stroked-button (click)="skipCustomerAndPrint()">Skip & Print</button>
+            <button mat-raised-button color="primary" (click)="saveCustomerAndPrint()"
+                    [disabled]="!hasCustomer()">
+              <mat-icon>receipt_long</mat-icon>
+              Save & Print
+            </button>
           </div>
         </div>
       </div>
@@ -883,6 +916,65 @@
     </div>
   </div>
 
+  <!-- Weight Picker Dialog (products sold by kg) -->
+  <div class="quick-edit-overlay" *ngIf="weightProduct" (click)="closeWeightPicker()">
+    <div class="quick-edit-dialog weight-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3>
+          <mat-icon>scale</mat-icon>
+          {{ getProductName(weightProduct!) }}
+        </h3>
+        <button mat-icon-button (click)="closeWeightPicker()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div class="edit-fields">
+          <div class="field-group">
+            <label>Rate — Price per kg (₹) *</label>
+            <input type="number" [value]="weightPricePerKg" (input)="setWeightRate($event)"
+                   min="0" step="0.5" class="edit-input" inputmode="decimal">
+          </div>
+
+          <div class="field-group">
+            <label>Weight (எடை)</label>
+            <div class="weight-chip-row">
+              <button type="button" *ngFor="let g of weightChips"
+                      [class.active]="weightGrams === g"
+                      (click)="selectWeightChip(g)">{{ formatWeight(g) }}</button>
+            </div>
+          </div>
+
+          <div class="field-row two-cols">
+            <div class="field-group">
+              <label>Grams (g)</label>
+              <input type="number" [value]="weightGrams || ''" (input)="setWeightGrams($event)"
+                     min="0" step="50" placeholder="250" class="edit-input" inputmode="numeric">
+            </div>
+            <div class="field-group">
+              <label>Or Amount (₹)</label>
+              <input type="number" (input)="setWeightAmount($event)"
+                     min="0" step="1" placeholder="10" class="edit-input" inputmode="decimal">
+            </div>
+          </div>
+
+          <div class="weight-summary" *ngIf="weightGrams > 0 && weightPricePerKg > 0">
+            {{ formatWeight(weightGrams) }} × ₹{{ weightPricePerKg }}/kg =
+            <strong>₹{{ weightTotal }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button mat-stroked-button (click)="closeWeightPicker()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="confirmWeight()"
+                [disabled]="weightGrams <= 0 || weightPricePerKg <= 0">
+          <mat-icon>add_shopping_cart</mat-icon>
+          Add ₹{{ weightTotal }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Add New Product Dialog (Offline Capable) -->
   <div class="quick-edit-overlay" *ngIf="showAddProductDialog" (click)="closeAddProductDialog()">
     <div class="quick-edit-dialog add-product-dialog" (click)="$event.stopPropagation()">
@@ -910,17 +1002,30 @@
             </div>
           </div>
 
+          <!-- Sell By: count (eggs, packets) or weight (rice, vegetables) -->
+          <div class="field-group">
+            <label>Sell By (விற்பனை முறை)</label>
+            <div class="unit-toggle">
+              <button type="button" [class.active]="newProductUnit === 'piece'" (click)="setNewProductUnit('piece')">
+                <mat-icon>egg</mat-icon> Count / எண்ணிக்கை
+              </button>
+              <button type="button" [class.active]="newProductUnit === 'kg'" (click)="setNewProductUnit('kg')">
+                <mat-icon>scale</mat-icon> Weight / கிலோ
+              </button>
+            </div>
+          </div>
+
           <!-- Price, MRP, Stock in one row -->
           <div class="field-row three-cols">
             <div class="field-group">
-              <label>Selling Price (₹) *</label>
+              <label>{{ newProductUnit === 'kg' ? 'Price per kg (₹) *' : 'Selling Price (₹) *' }}</label>
               <input type="number" [(ngModel)]="newProductPrice" min="0" step="0.01" placeholder="0" class="edit-input" required>
             </div>
-            <div class="field-group">
+            <div class="field-group" *ngIf="newProductUnit !== 'kg'">
               <label>MRP (₹)</label>
               <input type="number" [(ngModel)]="newProductMrp" min="0" step="0.01" placeholder="Same as price" class="edit-input">
             </div>
-            <div class="field-group">
+            <div class="field-group" *ngIf="newProductUnit !== 'kg'">
               <label>Stock Quantity</label>
               <input type="number" [(ngModel)]="newProductStock" min="0" step="1" placeholder="0" class="edit-input">
             </div>
@@ -942,8 +1047,8 @@
             </div>
           </div>
 
-          <!-- Track Inventory Toggle -->
-          <div class="field-group toggle-group">
+          <!-- Track Inventory Toggle (count items only — weight items bill loose) -->
+          <div class="field-group toggle-group" *ngIf="newProductUnit !== 'kg'">
             <mat-slide-toggle [(ngModel)]="newProductTrackInventory" color="primary">
               Track Inventory
             </mat-slide-toggle>
