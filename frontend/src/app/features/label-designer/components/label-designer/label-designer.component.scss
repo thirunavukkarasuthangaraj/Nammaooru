@@ -1,6 +1,32 @@
 .label-designer {
   padding: 24px;
 
+  .settings-tabs {
+    display: flex;
+    gap: 6px;
+    width: max-content;
+    margin: 0 0 20px;
+    padding: 5px;
+    border: 1px solid #dce7e1;
+    border-radius: 11px;
+    background: #fff;
+
+    a {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      color: #596760;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    a.active { background: #43d77d; color: #fff; }
+    mat-icon { width: 18px; height: 18px; font-size: 18px; }
+  }
+
   .header {
     display: flex;
     justify-content: space-between;

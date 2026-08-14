@@ -2,6 +2,10 @@
 $green:#159b5b; $green-dark:#087443; $ink:#18251f; $muted:#66756d; $line:#dce7e1; $paper:#fffdf7; $wash:#f3f8f5;
 * { box-sizing:border-box; }
 .bill-studio { min-height:100vh; padding:28px clamp(18px,3vw,44px) 72px; background:radial-gradient(circle at 90% 0,#dff7e9 0,transparent 28%),$wash; color:$ink; }
+.settings-tabs { max-width:1440px; margin:0 auto 14px; display:flex; gap:6px; padding:5px; border:1px solid $line; border-radius:11px; background:#fff; width:max-content; }
+.settings-tabs a { display:flex; align-items:center; gap:7px; padding:9px 16px; border-radius:8px; color:#596760; text-decoration:none; font-size:13px; font-weight:700; }
+.settings-tabs a.active { background:#43d77d; color:#fff; }
+.settings-tabs mat-icon { width:18px; height:18px; font-size:18px; }
 .studio-header { max-width:1440px; margin:auto; display:flex; justify-content:space-between; gap:28px; align-items:flex-end; }
 .back-link { border:0; background:none; padding:0; display:flex; align-items:center; gap:6px; color:$green-dark; font-weight:700; cursor:pointer; }
 .back-link mat-icon { font-size:18px; width:18px; height:18px; }

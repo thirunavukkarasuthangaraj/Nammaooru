@@ -328,7 +328,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Billing',
       items: [
-        { title: 'POS Billing', icon: 'point_of_sale', route: '/shop-owner/pos-billing', badge: null }
+        { title: 'POS Billing', icon: 'point_of_sale', route: '/shop-owner/pos-billing', badge: null },
+        { title: 'Bill and Label Setting', icon: 'qr_code_2', route: '/shop-owner/bill-settings', badge: null }
       ]
     },
     {
@@ -347,8 +348,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Bulk Edit', icon: 'edit_note', route: '/shop-owner/bulk-edit', badge: null },
         { title: 'Browse Products', icon: 'manage_search', route: '/shop-owner/browse-products', badge: null },
         { title: 'Combos', icon: 'widgets', route: '/shop-owner/combos', badge: null },
-        { title: 'Bulk Import', icon: 'upload_file', route: '/products/bulk-import', badge: null },
-        { title: 'Label Designer', icon: 'qr_code_2', route: '/label-designer', badge: null }
+        { title: 'Bulk Import', icon: 'upload_file', route: '/products/bulk-import', badge: null }
       ]
     },
     {
