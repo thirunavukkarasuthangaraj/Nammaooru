@@ -51,6 +51,20 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
                                    @Param("lng") double longitude,
                                    @Param("radiusInKm") double radiusInKm);
 
+    // Localities where active shops exist (address line and city), with a
+    // representative coordinate — lets customers find villages like "Mittur"
+    // that free geocoders don't know, straight from our own shop data.
+    @Query(value = "SELECT loc AS name, AVG(latitude) AS lat, AVG(longitude) AS lng, COUNT(*) AS shop_count FROM ( " +
+           "  SELECT TRIM(address_line1) AS loc, latitude, longitude FROM shops " +
+           "    WHERE is_active = true AND status = 'APPROVED' AND latitude IS NOT NULL AND longitude IS NOT NULL " +
+           "  UNION ALL " +
+           "  SELECT TRIM(city), latitude, longitude FROM shops " +
+           "    WHERE is_active = true AND status = 'APPROVED' AND latitude IS NOT NULL AND longitude IS NOT NULL " +
+           ") t WHERE loc IS NOT NULL AND loc <> '' AND LOWER(loc) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "GROUP BY loc ORDER BY COUNT(*) DESC LIMIT 5",
+           nativeQuery = true)
+    List<Object[]> searchShopLocalities(@Param("query") String query);
+
     @Query("SELECT s FROM Shop s WHERE s.isActive = true AND s.status = 'APPROVED' AND s.paymentBlocked = false ORDER BY s.rating DESC")
     List<Shop> findTopRatedShops(Pageable pageable);
 

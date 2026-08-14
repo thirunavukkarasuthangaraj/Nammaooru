@@ -2313,6 +2313,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         isOpen: _isShopOpen,
         shopName: _shop?['name'],
       );
+
+      // First ADD of this product (not stepper +): suggest same-category
+      // products the customer may also need. They can add or just dismiss.
+      if (currentCartQuantity == 0 && context.mounted) {
+        _showRelatedProducts(product);
+      }
     } else {
       // Show dialog for different shop
       if (context.mounted) {
@@ -2363,6 +2369,210 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         }
       }
     }
+  }
+
+  /// Bottom sheet with in-stock products from the same category as the one
+  /// just added — quick extra ADDs without leaving the flow. Uses the
+  /// already-loaded product list, so no API call.
+  void _showRelatedProducts(ProductModel added) {
+    dynamic raw;
+    for (final p in _allProducts) {
+      if (p['id'].toString() == added.id) {
+        raw = p;
+        break;
+      }
+    }
+    final categoryName = raw?['masterProduct']?['category']?['name']?.toString();
+    if (categoryName == null || categoryName.isEmpty) return;
+
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+
+    final related = _allProducts.where((p) {
+      if (p['id'].toString() == added.id) return false;
+      final cat = p['masterProduct']?['category']?['name']?.toString();
+      if (cat == null || cat.toLowerCase() != categoryName.toLowerCase()) {
+        return false;
+      }
+      final stock = int.tryParse(p['stockQuantity']?.toString() ?? '0') ?? 0;
+      if (stock <= 0) return false;
+      return cartProvider.getQuantity(p['id'].toString()) == 0;
+    }).take(8).toList();
+    if (related.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12, bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    languageProvider.getText(
+                        'You may also need', 'இதுவும் வேண்டுமா?'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 195,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: related.length,
+                    itemBuilder: (context, index) {
+                      final p = related[index];
+                      final name = languageProvider.getDisplayName(p);
+                      final price =
+                          double.tryParse(p['price']?.toString() ?? '0') ?? 0.0;
+                      final stock =
+                          int.tryParse(p['stockQuantity']?.toString() ?? '0') ??
+                              0;
+                      final imageUrl = p['primaryImageUrl']?.toString() ??
+                          p['masterProduct']?['primaryImageUrl']?.toString() ??
+                          '';
+                      return Container(
+                        width: 124,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECEFF1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              height: 72,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: imageUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: ImageUrlHelper.getFullImageUrl(
+                                            imageUrl),
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) => const Icon(
+                                            Icons.inventory_2,
+                                            color: Colors.grey),
+                                      )
+                                    : const Icon(Icons.inventory_2,
+                                        color: Colors.grey),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: VillageTheme.primaryGreen,
+                              ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () async {
+                                final model = ProductModel(
+                                  id: p['id'].toString(),
+                                  name: name,
+                                  description: '',
+                                  price: price,
+                                  category: categoryName,
+                                  shopId: _shop?['shopId']?.toString() ??
+                                      widget.shopId.toString(),
+                                  shopDatabaseId: _shop?['id'] ?? widget.shopId,
+                                  shopName:
+                                      _shop?['name']?.toString() ?? 'Shop',
+                                  images:
+                                      imageUrl.isNotEmpty ? [imageUrl] : [],
+                                  stockQuantity: stock,
+                                  createdAt: DateTime.now(),
+                                  updatedAt: DateTime.now(),
+                                );
+                                final ok =
+                                    await cartProvider.addToCart(model);
+                                if (ok) {
+                                  setSheetState(() => related.remove(p));
+                                  if (related.isEmpty &&
+                                      sheetContext.mounted) {
+                                    Navigator.pop(sheetContext);
+                                  }
+                                }
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: VillageTheme.primaryGreen,
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_rounded,
+                                        color: Colors.white, size: 14),
+                                    Text(
+                                      'ADD',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showVoiceSearchDialog() {

@@ -149,6 +149,17 @@ public class ShopController {
         return ResponseUtil.success(response, "Search completed successfully");
     }
 
+    /** Search villages/towns where registered shops exist (own data, no geocoder). */
+    @GetMapping("/locations/search")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> searchShopLocations(
+            @RequestParam String q) {
+        var locations = shopService.searchShopLocalities(q);
+        Map<String, Object> response = new HashMap<>();
+        response.put("locations", locations);
+        response.put("count", locations.size());
+        return ResponseUtil.success(response, "Shop locations retrieved successfully");
+    }
+
     @GetMapping("/nearby")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getNearbyShops(
             @RequestParam double lat,

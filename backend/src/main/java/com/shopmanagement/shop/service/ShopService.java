@@ -533,6 +533,19 @@ public class ShopService {
         return password.toString();
     }
 
+    /** Localities (village/town names from shop addresses) matching the query. */
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> searchShopLocalities(String query) {
+        return shopRepository.searchShopLocalities(query).stream().map(row -> {
+            java.util.Map<String, Object> m = new java.util.HashMap<>();
+            m.put("name", row[0]);
+            m.put("latitude", row[1] != null ? ((Number) row[1]).doubleValue() : null);
+            m.put("longitude", row[2] != null ? ((Number) row[2]).doubleValue() : null);
+            return m;
+        }).filter(m -> m.get("latitude") != null && m.get("longitude") != null)
+          .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public List<ShopResponse> getNearbyShops(double latitude, double longitude, double radiusInKm) {
         List<Shop> nearbyShops = shopRepository.findShopsWithinRadius(latitude, longitude, radiusInKm);

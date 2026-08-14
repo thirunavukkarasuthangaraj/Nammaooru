@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/services/location_service.dart';
+import '../../../services/shop_api_service.dart';
 
 /// Bottom sheet that lets the customer search any village/town in India and
 /// use it as the "deliver to" location (e.g. ordering groceries for parents
@@ -60,8 +61,22 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     setState(() => _isSearching = true);
     final languageCode =
         Provider.of<LanguageProvider>(context, listen: false).currentLanguage;
-    final results = await LocationService.instance
+
+    // Our own shop localities first — finds villages like Mittur that free
+    // geocoders don't know, using registered shops' coordinates.
+    final shopLocations = await ShopApiService().searchShopLocations(query);
+    final geoResults = await LocationService.instance
         .searchPlaces(query, languageCode: languageCode);
+
+    // Merge: own localities first, then geocoder results not duplicating them
+    final seen = shopLocations
+        .map((l) => (l['name'] as String).toLowerCase())
+        .toSet();
+    final results = [
+      ...shopLocations,
+      ...geoResults.where((g) =>
+          !seen.contains((g['name'] as String).toLowerCase().split(',').first.trim())),
+    ];
     if (!mounted) return;
     setState(() {
       _results = results;

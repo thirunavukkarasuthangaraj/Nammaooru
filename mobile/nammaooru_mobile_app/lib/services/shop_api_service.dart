@@ -45,6 +45,36 @@ class ShopApiService {
     }
   }
 
+  /// Search villages/towns where registered shops exist — resolves places
+  /// like "Mittur" from our own shop addresses when geocoders don't know them.
+  Future<List<Map<String, dynamic>>> searchShopLocations(String query) async {
+    try {
+      final response = await _apiService.get(
+        '/shops/locations/search',
+        queryParams: {'q': query},
+        includeAuth: true,
+      );
+      final data = response['data'];
+      final locations = (data is Map ? data['locations'] : null) as List?;
+      if (locations == null) return [];
+      return locations
+          .whereType<Map>()
+          .map((l) => {
+                'name': l['name']?.toString() ?? '',
+                'latitude': (l['latitude'] as num?)?.toDouble(),
+                'longitude': (l['longitude'] as num?)?.toDouble(),
+              })
+          .where((l) =>
+              (l['name'] as String).isNotEmpty &&
+              l['latitude'] != null &&
+              l['longitude'] != null)
+          .toList();
+    } catch (e) {
+      Logger.e('Shop location search failed', 'SHOP', e);
+      return [];
+    }
+  }
+
   // Search Shops
   Future<Map<String, dynamic>> searchShops({
     required String query,

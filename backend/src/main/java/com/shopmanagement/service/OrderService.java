@@ -1900,10 +1900,34 @@ public class OrderService {
             log.error("❌ Failed to send FCM notification to shop owner", e);
         }
 
+        // Real-time notification to the shop owner's web dashboard. The legacy
+        // createOrder path always sent this; the customer path never did, so
+        // web owners only saw new orders on manual refresh. Published after
+        // commit so the browser's follow-up loadOrders() can see the row.
+        final Order orderForWs = savedOrder;
+        final Customer customerForWs = customer;
+        final Shop shopForWs = shop;
+        final int itemCountForWs = orderItems.size();
+        try {
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                sendNewOrderWebSocketNotification(orderForWs, customerForWs, shopForWs, itemCountForWs);
+                            }
+                        });
+            } else {
+                sendNewOrderWebSocketNotification(orderForWs, customerForWs, shopForWs, itemCountForWs);
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to schedule WebSocket notification to shop", e);
+        }
+
         log.info("Customer order created successfully: {}", savedOrder.getOrderNumber());
         return mapToResponse(savedOrder);
     }
-    
+
     public OrderTrackingResponse getOrderTracking(String orderNumber) {
         log.info("Getting tracking for order: {}", orderNumber);
         

@@ -104,29 +104,23 @@ class LanguageProvider with ChangeNotifier {
   String getDisplayName(dynamic product) {
     if (product == null) return '';
 
-    print('DEBUG: getDisplayName called - showTamil=$_showTamil');
-    print('DEBUG: product has masterProduct: ${product['masterProduct'] != null}');
-
-    // If Tamil is selected, try to show Tamil name from masterProduct
-    if (_showTamil && product['masterProduct'] != null) {
-      final nameTamil = product['masterProduct']['nameTamil'];
-      print('DEBUG: nameTamil value = $nameTamil');
-      if (nameTamil != null && nameTamil.toString().trim().isNotEmpty) {
-        print('DEBUG: Returning Tamil name: $nameTamil');
-        return nameTamil.toString();
-      }
+    // The backend computes displayName/displayNameTamil as the shop's own
+    // custom name when set, falling back to the master catalog name. The
+    // shop's edit must always win over the shared catalog name.
+    String? pick(dynamic v) {
+      final s = v?.toString().trim() ?? '';
+      return s.isEmpty ? null : s;
     }
 
-    // Fall back to English name from masterProduct or displayName
-    if (product['masterProduct'] != null && product['masterProduct']['name'] != null) {
-      final englishName = product['masterProduct']['name'].toString();
-      print('DEBUG: Returning English name: $englishName');
-      return englishName;
+    if (_showTamil) {
+      final tamil = pick(product['displayNameTamil']) ??
+          pick(product['masterProduct']?['nameTamil']);
+      if (tamil != null) return tamil;
     }
 
-    final displayName = product['displayName']?.toString() ?? '';
-    print('DEBUG: Returning displayName: $displayName');
-    return displayName;
+    return pick(product['displayName']) ??
+        pick(product['masterProduct']?['name']) ??
+        '';
   }
   
   // Common app translations

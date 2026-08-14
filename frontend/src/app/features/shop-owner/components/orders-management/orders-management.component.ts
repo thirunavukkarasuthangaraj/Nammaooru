@@ -163,6 +163,71 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     // Do NOT disconnect the WebSocket here — the connection is shared app-wide.
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    this.stopNewOrderRing();
+  }
+
+  // ---- New-order alerting -------------------------------------------------
+  // The WebSocket is the fast path, but it can silently drop; a 30s poll is
+  // the safety net. Both funnel into the same detection below, and the ring
+  // repeats until the pending order is handled (or a 2-minute cap).
+  private pollTimer: any = null;
+  private ringTimer: any = null;
+  private ringCount = 0;
+  private knownPendingOrderIds = new Set<string | number>();
+  private pendingSeeded = false;
+
+  /** Poll as a fallback for missed WebSocket events (skips when tab hidden/offline). */
+  private startPollingFallback(): void {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => {
+      if (navigator.onLine && !document.hidden) {
+        this.loadOrders();
+      }
+    }, 30000);
+  }
+
+  /** Ring on pending orders the screen has not alerted for yet. */
+  private detectNewPendingOrders(): void {
+    const key = (o: any) => o.id ?? o.orderNumber;
+    if (this.pendingSeeded) {
+      const fresh = this.pendingOrders.filter(o => !this.knownPendingOrderIds.has(key(o)));
+      if (fresh.length > 0) {
+        this.startNewOrderRing();
+        this.swal.toast(`New order #${fresh[0].orderNumber} received!`, 'success');
+      }
+      if (this.pendingOrders.length === 0) {
+        this.stopNewOrderRing();
+      }
+    }
+    this.knownPendingOrderIds = new Set(this.pendingOrders.map(key));
+    this.pendingSeeded = true;
+  }
+
+  /** Clean repeating chime: every 8s until pending orders are handled, max ~2 min. */
+  private startNewOrderRing(): void {
+    this.ringCount = 0;
+    if (this.ringTimer) return; // already ringing — don't stack sounds
+    this.playNotificationSound();
+    this.ringTimer = setInterval(() => {
+      this.ringCount++;
+      if (this.ringCount >= 15 || this.pendingOrders.length === 0) {
+        this.stopNewOrderRing();
+        return;
+      }
+      this.playNotificationSound();
+    }, 8000);
+  }
+
+  private stopNewOrderRing(): void {
+    if (this.ringTimer) {
+      clearInterval(this.ringTimer);
+      this.ringTimer = null;
+    }
+    this.ringCount = 0;
   }
 
   loadOrdersFromCache(): void {
@@ -219,6 +284,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     // Subscribe once — the service re-establishes the topic across reconnects.
     this.subscribeToShopOrders();
 
+    // Safety net in case the socket drops or an event is missed
+    this.startPollingFallback();
+
     // Connect (idempotent, shared app-wide). On every (re)connect, reload
     // orders to catch up on anything missed while the socket was down.
     const token = localStorage.getItem('auth_token');
@@ -269,10 +337,14 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       switch (message.type) {
         case 'NEW_ORDER':
           console.log('🆕 New order received:', message.orderNumber);
-          // Play notification sound
-          this.playNotificationSound();
+          // Ring until the order is handled (repeats, capped)
+          this.startNewOrderRing();
           // Show toast notification
           this.swal.toast(`New order #${message.orderNumber} received!`, 'success');
+          // Mark as alerted so the poll-side detection doesn't toast again
+          if (message.orderId != null) {
+            this.knownPendingOrderIds.add(message.orderId);
+          }
           // Reload orders to get the new order
           this.loadOrders();
           break;
@@ -550,6 +622,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
     // Filter orders by status
     this.pendingOrders = this.orders.filter(o => o.status === 'PENDING');
+    // Alert for pending orders that arrived without a WebSocket event
+    this.detectNewPendingOrders();
     this.processingOrders = this.orders.filter(o => o.status === 'CONFIRMED');
     this.activeOrders = this.orders.filter(o =>
       ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status)

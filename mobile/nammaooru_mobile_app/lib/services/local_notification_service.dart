@@ -204,6 +204,21 @@ class LocalNotificationService {
   }
 
   /// Show order notification
+  /// "READY_FOR_PICKUP" / "OUT-FOR-DELIVERY" -> "Ready for Pickup" etc.
+  /// Backend sends raw enum names in the data payload; never show them as-is.
+  static String humanizeStatus(String status) {
+    final cleaned = status.trim().replaceAll(RegExp(r'[_\-]+'), ' ');
+    if (cleaned.isEmpty) return 'Update';
+    final words = cleaned.toLowerCase().split(' ');
+    const minor = {'for', 'to', 'of', 'the', 'and'};
+    return words.asMap().entries.map((e) {
+      final w = e.value;
+      if (w.isEmpty) return w;
+      if (e.key > 0 && minor.contains(w)) return w;
+      return '${w[0].toUpperCase()}${w.substring(1)}';
+    }).join(' ');
+  }
+
   Future<void> showOrderNotification({
     required String orderNumber,
     required String status,
@@ -211,7 +226,7 @@ class LocalNotificationService {
   }) async {
     await showNotification(
       id: orderNumber.hashCode,
-      title: 'Order $status',
+      title: 'Order ${humanizeStatus(status)}',
       body: message,
       payload: 'order/$orderNumber',
       channelId: 'order_notifications',
@@ -230,7 +245,7 @@ class LocalNotificationService {
   }) async {
     await showNotification(
       id: orderId.hashCode,
-      title: 'Delivery $status',
+      title: 'Delivery ${humanizeStatus(status)}',
       body: message,
       payload: 'delivery/$orderId',
       channelId: 'delivery_notifications',
