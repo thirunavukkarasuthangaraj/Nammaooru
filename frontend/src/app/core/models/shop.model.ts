@@ -28,6 +28,7 @@ export interface Shop {
   upiId?: string;
   status: ShopStatus;
   isActive: boolean;
+  mobileAppEnabled?: boolean;
   isVerified: boolean;
   isFeatured: boolean;
   rating: number;

@@ -62,11 +62,19 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     final languageCode =
         Provider.of<LanguageProvider>(context, listen: false).currentLanguage;
 
-    // Our own shop localities first — finds villages like Mittur that free
-    // geocoders don't know, using registered shops' coordinates.
-    final shopLocations = await ShopApiService().searchShopLocations(query);
-    final geoResults = await LocationService.instance
-        .searchPlaces(query, languageCode: languageCode);
+    // Own shop localities (finds villages like Mittur straight from shop
+    // data) and the geocoders run IN PARALLEL, each isolated so one failing
+    // or hanging can never blank the other's results.
+    final lookups = await Future.wait<List<Map<String, dynamic>>>([
+      ShopApiService()
+          .searchShopLocations(query)
+          .catchError((_) => <Map<String, dynamic>>[]),
+      LocationService.instance
+          .searchPlaces(query, languageCode: languageCode)
+          .catchError((_) => <Map<String, dynamic>>[]),
+    ]);
+    final shopLocations = lookups[0];
+    final geoResults = lookups[1];
 
     // Merge: own localities first, then geocoder results not duplicating them
     final seen = shopLocations

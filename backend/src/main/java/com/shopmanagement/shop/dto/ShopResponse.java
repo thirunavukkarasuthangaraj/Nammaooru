@@ -48,6 +48,7 @@ public class ShopResponse {
 
     private String status;
     private Boolean isActive;
+    private Boolean mobileAppEnabled;
     private Boolean isVerified;
     private Boolean isFeatured;
     private Boolean isOpenNow;  // Real-time business hours status

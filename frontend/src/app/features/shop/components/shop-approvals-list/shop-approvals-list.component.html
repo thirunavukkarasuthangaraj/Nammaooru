@@ -189,6 +189,15 @@
                 <mat-icon>calendar_today</mat-icon>
                 <span>{{ shop.createdAt | date:'MMM dd, yyyy' }}</span>
               </div>
+              <div class="detail-row mobile-app-toggle-row">
+                <mat-icon>smartphone</mat-icon>
+                <mat-slide-toggle
+                    [checked]="shop.mobileAppEnabled !== false"
+                    (change)="onMobileAppToggle(shop, $event)"
+                    matTooltip="Show or hide this shop in the customer mobile app">
+                  Mobile App
+                </mat-slide-toggle>
+              </div>
             </div>
           </mat-card-content>
           

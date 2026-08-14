@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { ShopService } from '../../../../core/services/shop.service';
 import { DocumentService } from '../../../../core/services/document.service';
 import { Shop } from '../../../../core/models/shop.model';
@@ -399,6 +400,39 @@ export class ShopApprovalsListComponent implements OnInit {
               confirmButtonColor: '#667eea'
             });
           }
+        });
+      }
+    });
+  }
+
+  onMobileAppToggle(shop: Shop, event: MatSlideToggleChange): void {
+    const enabled = event.checked;
+    this.shopService.setMobileAppEnabled(shop.id, enabled).subscribe({
+      next: (updatedShop) => {
+        shop.mobileAppEnabled = updatedShop.mobileAppEnabled ?? enabled;
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: enabled
+            ? `"${shop.name}" is now visible in the mobile app.`
+            : `"${shop.name}" is now hidden from the mobile app.`,
+          showConfirmButton: false,
+          timer: 2500,
+          timerProgressBar: true
+        });
+      },
+      error: (error) => {
+        console.error('Error updating mobile app visibility:', error);
+        event.source.checked = !enabled; // revert the toggle
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'error',
+          title: `Failed to update mobile app visibility for "${shop.name}".`,
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
         });
       }
     });

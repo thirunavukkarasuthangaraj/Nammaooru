@@ -341,6 +341,18 @@ public class ShopController {
         return ResponseUtil.success(response, "Shop rejected successfully");
     }
 
+    @PatchMapping("/{id}/mobile-app-enabled")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ShopResponse>> setMobileAppEnabled(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> requestBody) {
+        boolean enabled = Boolean.TRUE.equals(requestBody.get("enabled"));
+        log.info("Setting mobile app enabled={} for shop ID: {}", enabled, id);
+        ShopResponse response = shopService.setMobileAppEnabled(id, enabled);
+        return ResponseUtil.success(response,
+                enabled ? "Shop enabled in mobile app" : "Shop hidden from mobile app");
+    }
+
     @PutMapping("/{id}/suspend")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShopResponse>> suspendShop(@PathVariable Long id) {

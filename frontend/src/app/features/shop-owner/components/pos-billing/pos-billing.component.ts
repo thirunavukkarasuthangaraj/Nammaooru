@@ -3155,45 +3155,86 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             justify-content: space-between;
             align-items: center;
           }
+          /* ============ Template styles (kept in sync with bill-settings live preview) ============ */
+
+          /* Clean Counter: airy sans-serif, faded light dividers, soft grey total (no hard boxes) */
           body.template-minimal {
             font-family: Arial, sans-serif;
+            line-height: 1.4;
           }
+          body.template-minimal .receipt-header { padding-bottom: 6px; border-bottom: 2px solid #159b5b; margin-bottom: 4px; }
           body.template-minimal .divider,
-          body.template-minimal .divider-solid { opacity: 0.45; }
-          body.template-minimal .grand-total-box { background: #f1f3f2 !important; }
+          body.template-minimal .divider-solid { opacity: 0.45; margin: 9px 0 !important; }
+          body.template-minimal .item-header th { border-bottom-color: #999 !important; }
+          body.template-minimal .grand-total-box { background: #f1f3f2 !important; border-top: none !important; padding: 6px !important; }
+
+          /* NammaOoru Bold: green filled shop-name header banner + strong green totals */
           body.template-bold {
-            border-top: 8px solid #159b5b;
             font-family: Arial, sans-serif;
           }
-          body.template-bold .shop-name,
+          body.template-bold .receipt-header {
+            margin: -${bs.paperWidth === '58mm' ? '2mm' : bs.paperWidth === 'A4' ? '10mm' : '3mm'} -${bs.paperWidth === '58mm' ? '2mm' : bs.paperWidth === 'A4' ? '10mm' : '3mm'} 6px;
+            padding: 8px 6px 7px;
+            background: #159b5b !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body.template-bold .receipt-header,
+          body.template-bold .receipt-header div { color: #fff !important; }
+          body.template-bold .shop-name { letter-spacing: 0.02em; }
           body.template-bold .grand-total-value { color: #087443; }
-          body.template-bold .grand-total-box { background: #d8f5e5 !important; border: 1px solid #8bd3aa; }
-          body.template-compact { line-height: 1.08; }
+          body.template-bold .grand-total-box { background: #d8f5e5 !important; border: 1px solid #8bd3aa; border-top: 1px solid #8bd3aa !important; }
+
+          /* Compact Thermal: one step smaller fonts, tight spacing everywhere */
+          body.template-compact { line-height: 1.08; font-size: ${Math.max(bodyFontSize - 1, 8)}px; }
+          body.template-compact .receipt-header div { margin-bottom: 0 !important; }
+          body.template-compact .shop-name { font-size: ${Math.max(headerFontSize - 3, 11)}px !important; margin-bottom: 1px; }
+          body.template-compact .shop-phone { font-size: ${Math.max(headerFontSize - 6, 9)}px; }
           body.template-compact .divider, body.template-compact .divider-solid { margin: 3px 0 !important; }
-          body.template-compact td { padding-top: 1px !important; padding-bottom: 1px !important; }
-          body.template-compact .grand-total-box { padding: 3px 4px !important; }
-          body.template-invoice { font-family: Arial, sans-serif; border-top: 4px double #159b5b; }
-          body.template-invoice .shop-name, body.template-invoice .center.shop-phone { text-align: left; }
-          body.template-invoice .divider { border-top-style: solid !important; }
-          body.template-invoice .grand-total-box { background: #fff !important; border-top: 2px double #000 !important; border-bottom: 2px double #000; }
+          body.template-compact td { font-size: ${Math.max(bodyFontSize - 2, 8)}px !important; padding-top: 1px !important; padding-bottom: 1px !important; }
+          body.template-compact .item-header th { font-size: ${Math.max(bodyFontSize - 4, 7)}px !important; padding: 1px !important; }
+          body.template-compact .flex-row span { font-size: ${Math.max(bodyFontSize - 2, 8)}px !important; }
+          body.template-compact .flex-row { padding-top: 1px !important; padding-bottom: 1px !important; }
+          body.template-compact .grand-total-box { padding: 3px 4px !important; margin-top: 2px !important; }
+          body.template-compact .grand-total-box span { font-size: ${Math.max(headerFontSize - 3, 11)}px !important; }
+          body.template-compact .footer-text { margin-top: 3px; font-size: ${Math.max(footerFontSize - 1, 7)}px !important; }
+
+          /* GST Professional: left-aligned header, Arial, solid rules, double-rule totals */
+          body.template-invoice { font-family: Arial, sans-serif; border-top: 4px double #159b5b; padding-top: 4mm; }
+          body.template-invoice .receipt-header { padding-bottom: 4px; border-bottom: 2px solid #159b5b; margin-bottom: 4px; }
+          body.template-invoice .receipt-header .center,
+          body.template-invoice .receipt-header div { text-align: left !important; }
+          body.template-invoice .divider { border-top-style: solid !important; opacity: 0.7; }
+          body.template-invoice .grand-total-box { background: #fff !important; border-top: 3px double #159b5b !important; border-bottom: 3px double #159b5b; padding: 5px 2px !important; }
+
+          /* Border Receipt: outer green frame, dotted item rows, green filled TOTAL box */
           body.template-bordered { border: 2px solid #159b5b; font-family: Arial, sans-serif; }
+          body.template-bordered .receipt-header { border: 1px solid #159b5b; padding: 5px 4px; margin-bottom: 5px; }
           body.template-bordered .shop-name { color: #087443; }
-          body.template-bordered tbody tr { border-bottom: 1px dotted #aaa; }
-          body.template-bordered .grand-total-box { background: #159b5b !important; color: #fff; }
-          body.template-bordered .grand-total-value { color: #fff; }
+          body.template-bordered tbody td { border-bottom: 1px dotted #aaa; }
+          body.template-bordered .grand-total-box {
+            background: #159b5b !important;
+            border-top: none !important;
+            padding: 6px !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body.template-bordered .grand-total-box span { color: #fff !important; }
         </style>
       </head>
       <body class="template-${bs.templateStyle || 'classic'}">
-        ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
-        ${bs.showShopAddress && shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${shopAddress}</div>` : ''}
-        ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">Ph: ${shopPhone}</div>` : ''}
-        ${bs.showGstNumber && gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${gstNumber}</div>` : ''}
-        ${bs.showFssaiInfo && fssaiNumber ? `
-          <div class="center fssai-info">
-            FSSAI: ${fssaiNumber}
-            ${fssaiName ? `<br>${fssaiName}` : ''}
-          </div>
-        ` : ''}
+        <div class="receipt-header">
+          ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
+          ${bs.showShopAddress && shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${shopAddress}</div>` : ''}
+          ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">Ph: ${shopPhone}</div>` : ''}
+          ${bs.showGstNumber && gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${gstNumber}</div>` : ''}
+          ${bs.showFssaiInfo && fssaiNumber ? `
+            <div class="center fssai-info">
+              FSSAI: ${fssaiNumber}
+              ${fssaiName ? `<br>${fssaiName}` : ''}
+            </div>
+          ` : ''}
+        </div>
         ${this.getCustomFieldsHtml('header', Math.max(footerFontSize, 9))}
         <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">Order Receipt</div>
         <div class="divider"></div>

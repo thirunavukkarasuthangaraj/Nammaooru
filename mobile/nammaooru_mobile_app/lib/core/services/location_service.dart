@@ -87,22 +87,35 @@ class LocationService {
     return [];
   }
 
+  // Google geocoding is parked while its billing is disabled — every call
+  // was a guaranteed dead round-trip that slowed each search. Flip back on
+  // when the key works again.
+  static const bool _googleGeocodingEnabled = false;
+
+  /// Hard cap per provider so one slow geocoder can't hang the search sheet
+  static const Duration _providerTimeout = Duration(seconds: 4);
+
   Future<List<Map<String, dynamic>>> _searchPlacesAllProviders(
       String query, String languageCode) async {
-    final googleResults = await _searchPlacesGoogle(query, languageCode);
-    if (googleResults.isNotEmpty) return googleResults;
+    if (_googleGeocodingEnabled) {
+      final googleResults = await _searchPlacesGoogle(query, languageCode);
+      if (googleResults.isNotEmpty) return googleResults;
+    }
 
     // Nominatim honours the app language (Tamil names in Tamil mode) but is
-    // strict about spelling; Photon is typo-tolerant. Order by strength per
-    // language, using the other as fallback.
+    // strict about spelling; Photon is typo-tolerant. Query BOTH in parallel
+    // and prefer by language strength, so total wait is one round-trip and a
+    // failing provider never blanks the results.
+    final results = await Future.wait([
+      _searchPlacesPhoton(query),
+      _searchPlacesNominatim(query, languageCode),
+    ]);
+    final photon = results[0];
+    final nominatim = results[1];
     if (languageCode == 'ta') {
-      final nominatim = await _searchPlacesNominatim(query, languageCode);
-      if (nominatim.isNotEmpty) return nominatim;
-      return _searchPlacesPhoton(query);
+      return nominatim.isNotEmpty ? nominatim : photon;
     }
-    final photon = await _searchPlacesPhoton(query);
-    if (photon.isNotEmpty) return photon;
-    return _searchPlacesNominatim(query, languageCode);
+    return photon.isNotEmpty ? photon : nominatim;
   }
 
   /// Typo-tolerant OSM geocoder (free, no key). English names only.
@@ -113,7 +126,7 @@ class LocationService {
       final response = await http.get(
         Uri.parse(url),
         headers: {'Accept': 'application/json'},
-      );
+      ).timeout(_providerTimeout);
       if (response.statusCode != 200) return [];
 
       final features = (json.decode(response.body)['features'] as List?) ?? [];
@@ -148,7 +161,7 @@ class LocationService {
           'components=country:IN&'
           'language=$languageCode&'
           'key=$_googleApiKey';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)).timeout(_providerTimeout);
       if (response.statusCode != 200) return [];
 
       final data = json.decode(response.body);
@@ -180,8 +193,12 @@ class LocationService {
           'countrycodes=in&format=json&limit=5&accept-language=$acceptLanguage';
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Accept': 'application/json'},
-      );
+        headers: {
+          'Accept': 'application/json',
+          // Nominatim's usage policy blocks anonymous clients — identify us
+          'User-Agent': 'NammaOoruApp/1.0 (nammaoorudelivary.in)',
+        },
+      ).timeout(_providerTimeout);
       if (response.statusCode != 200) return [];
 
       final data = json.decode(response.body) as List;

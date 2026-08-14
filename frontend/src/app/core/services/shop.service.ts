@@ -257,6 +257,22 @@ export class ShopService {
     );
   }
 
+  // Toggle mobile app visibility (admin only)
+  setMobileAppEnabled(id: number, enabled: boolean): Observable<Shop> {
+    return this.http.patch<ApiResponse<any>>(`${this.API_URL}/${id}/mobile-app-enabled`, { enabled }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return this.transformShop(apiResponse.data);
+      }),
+      catchError(error => {
+        console.error('Error updating mobile app visibility:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Get shop documents for approval (admin only)
   getShopDocuments(shopId: number): Observable<any[]> {
     return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/approvals/${shopId}/documents`).pipe(

@@ -186,6 +186,11 @@ public class Shop {
     @Column(name = "payment_blocked", nullable = false)
     private Boolean paymentBlocked = false;
 
+    // Super admin toggle: when false the shop is hidden from all customer-facing queries
+    @Builder.Default
+    @Column(name = "mobile_app_enabled", nullable = false)
+    private Boolean mobileAppEnabled = true;
+
     @Builder.Default
     @Column(name = "is_verified")
     private Boolean isVerified = false;

@@ -336,7 +336,8 @@ public class ShopService {
             (root, query, cb) -> cb.and(
                 cb.equal(root.get("status"), Shop.ShopStatus.APPROVED),
                 cb.equal(root.get("isActive"), true),
-                cb.equal(root.get("paymentBlocked"), false)
+                cb.equal(root.get("paymentBlocked"), false),
+                cb.equal(root.get("mobileAppEnabled"), true)
             )
         );
 
@@ -402,6 +403,18 @@ public class ShopService {
 
     public ShopResponse suspendShop(Long id) {
         return updateShopStatus(id, Shop.ShopStatus.SUSPENDED);
+    }
+
+    @Transactional
+    public ShopResponse setMobileAppEnabled(Long id, boolean enabled) {
+        log.info("Setting mobileAppEnabled={} for shop ID: {}", enabled, id);
+
+        Shop shop = shopRepository.findById(id)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + id));
+
+        shop.setMobileAppEnabled(enabled);
+        Shop updatedShop = shopRepository.save(shop);
+        return shopMapper.toResponse(updatedShop);
     }
 
     private ShopResponse updateShopStatus(Long id, Shop.ShopStatus status) {
