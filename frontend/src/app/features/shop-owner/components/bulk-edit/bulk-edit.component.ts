@@ -725,7 +725,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         barcode1: product.barcode1,
         barcode2: product.barcode2,
         barcode3: product.barcode3,
-        nameTamil: product.nameTamil
+        nameTamil: product.nameTamil,
+        // Backend stores these on masterProduct.tags (used by voice/AI search)
+        voiceSearchTags: product.tags
       };
 
       this.http.put(`${this.apiUrl}/shop-products/${product.id}`, updateData)
@@ -752,7 +754,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         barcode1: product.barcode1,
         barcode2: product.barcode2,
         barcode3: product.barcode3,
-        nameTamil: product.nameTamil
+        nameTamil: product.nameTamil,
+        voiceSearchTags: product.tags
       },
       previousValues: {
         name: product.originalValues.customName,
