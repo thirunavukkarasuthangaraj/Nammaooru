@@ -575,6 +575,9 @@ export class PosSyncService implements OnDestroy {
         if (edit.changes.barcode1 !== undefined) updateData.barcode1 = edit.changes.barcode1;
         if (edit.changes.barcode2 !== undefined) updateData.barcode2 = edit.changes.barcode2;
         if (edit.changes.barcode3 !== undefined) updateData.barcode3 = edit.changes.barcode3;
+        // Backend field is "categoryName", not "category"
+        if (edit.changes.category !== undefined) updateData.categoryName = edit.changes.category;
+        if (edit.changes.voiceSearchTags !== undefined) updateData.voiceSearchTags = edit.changes.voiceSearchTags;
 
         if (Object.keys(updateData).length > 0) {
           await this.http.patch(

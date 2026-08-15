@@ -1097,7 +1097,9 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           barcode2: updatedData.barcode2,
           barcode3: updatedData.barcode3,
           customName: updatedData.customName,
-          nameTamil: updatedData.nameTamil
+          nameTamil: updatedData.nameTamil,
+          category: updatedData.categoryName,
+          voiceSearchTags: updatedData.voiceSearchTags
         },
         previousValues: previousValues,
         createdAt: new Date().toISOString(),
@@ -1116,7 +1118,9 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
         barcode2: updatedData.barcode2,
         barcode3: updatedData.barcode3,
         name: updatedData.customName,
-        nameTamil: updatedData.nameTamil
+        nameTamil: updatedData.nameTamil,
+        category: updatedData.categoryName,
+        categoryName: updatedData.categoryName
       });
 
       console.log('Edit saved offline for product:', productId);

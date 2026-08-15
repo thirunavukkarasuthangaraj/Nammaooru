@@ -242,10 +242,13 @@ public class ShopProductService {
             shopProduct.setBaseUnit(request.getBaseUnit());
         }
 
-        // Update MasterProduct fields (sku, barcode, voice search tags, Tamil name)
-        MasterProduct masterProduct = shopProduct.getMasterProduct();
+        // Resolve category FIRST - it may clone the master product (see below), and
+        // every other master-product field edit below must land on that resolved
+        // instance, not the stale pre-clone one.
+        MasterProduct masterProduct = applyCategoryChangeIfRequested(shopProduct, request.getCategoryName(), request.getCategoryId());
         boolean masterProductUpdated = false;
 
+        // Update MasterProduct fields (sku, barcode, voice search tags, Tamil name)
         if (request.getSku() != null && !request.getSku().trim().isEmpty()) {
             masterProduct.setSku(request.getSku().trim());
             masterProductUpdated = true;
@@ -278,35 +281,6 @@ public class ShopProductService {
             masterProduct.setNameTamil(request.getNameTamil().trim().isEmpty() ? null : request.getNameTamil().trim());
             masterProductUpdated = true;
             log.debug("Updating master product Tamil name to: {}", request.getNameTamil());
-        }
-
-        // Category change. The category lives on the shared MasterProduct, and the
-        // same MasterProduct row can be used by multiple shops (added from the shared
-        // catalog). Mutating it directly would silently reassign the category for
-        // every other shop selling the same product, so if it's shared we clone it
-        // into a shop-exclusive MasterProduct first (copy-on-write) and repoint this
-        // ShopProduct to the clone instead.
-        String requestedCategoryName = request.getCategoryName() != null ? request.getCategoryName().trim() : null;
-        if (requestedCategoryName != null && !requestedCategoryName.isEmpty()) {
-            ProductCategory currentCategory = masterProduct.getCategory();
-            if (currentCategory == null || !requestedCategoryName.equalsIgnoreCase(currentCategory.getName())) {
-                ProductCategory newCategory = request.getCategoryId() != null
-                        ? categoryRepository.findById(request.getCategoryId())
-                                .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()))
-                        : categoryRepository.findByNameIgnoreCase(requestedCategoryName)
-                                .orElseThrow(() -> new RuntimeException("Category not found: " + requestedCategoryName));
-
-                long shopsUsingThisMasterProduct = shopProductRepository.countByMasterProductId(masterProduct.getId());
-                if (shopsUsingThisMasterProduct > 1) {
-                    masterProduct = cloneMasterProductForCategoryChange(masterProduct, newCategory);
-                    shopProduct.setMasterProduct(masterProduct);
-                    log.info("Cloned shared master product into {} for shop-exclusive category change", masterProduct.getId());
-                } else {
-                    masterProduct.setCategory(newCategory);
-                    masterProductUpdated = true;
-                    log.debug("Updating master product category to: {}", newCategory.getName());
-                }
-            }
         }
 
         if (masterProductUpdated) {
@@ -366,6 +340,52 @@ public class ShopProductService {
         log.info("Shop product updated successfully: {}", productId);
 
         return productMapper.toResponse(updatedProduct);
+    }
+
+    /**
+     * Resolve a requested category name/id change against a shop product's master
+     * product. The category lives on the shared MasterProduct, and the same
+     * MasterProduct row can be used by multiple shops (added from the shared
+     * catalog) - mutating it directly would silently reassign the category for
+     * every other shop selling the same product. If it's shared, clone it into a
+     * shop-exclusive MasterProduct first (copy-on-write) and repoint the
+     * ShopProduct to the clone. Persists any change itself; returns the
+     * MasterProduct the caller should keep using (same instance if nothing changed).
+     */
+    private MasterProduct applyCategoryChangeIfRequested(ShopProduct shopProduct, String requestedCategoryName, Long requestedCategoryId) {
+        MasterProduct masterProduct = shopProduct.getMasterProduct();
+        String trimmedName = requestedCategoryName != null ? requestedCategoryName.trim() : null;
+        if ((trimmedName == null || trimmedName.isEmpty()) && requestedCategoryId == null) {
+            return masterProduct;
+        }
+
+        ProductCategory currentCategory = masterProduct.getCategory();
+        boolean unchanged = requestedCategoryId != null
+                ? currentCategory != null && requestedCategoryId.equals(currentCategory.getId())
+                : currentCategory != null && trimmedName.equalsIgnoreCase(currentCategory.getName());
+        if (unchanged) {
+            return masterProduct;
+        }
+
+        ProductCategory newCategory = requestedCategoryId != null
+                ? categoryRepository.findById(requestedCategoryId)
+                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + requestedCategoryId))
+                : categoryRepository.findByNameIgnoreCase(trimmedName)
+                        .orElseThrow(() -> new RuntimeException("Category not found: " + trimmedName));
+
+        long shopsUsingThisMasterProduct = shopProductRepository.countByMasterProductId(masterProduct.getId());
+        if (shopsUsingThisMasterProduct > 1) {
+            MasterProduct clone = cloneMasterProductForCategoryChange(masterProduct, newCategory);
+            shopProduct.setMasterProduct(clone);
+            log.info("Cloned shared master product into {} for shop-exclusive category change", clone.getId());
+            return clone;
+        }
+
+        masterProduct.setCategory(newCategory);
+        masterProduct.setUpdatedBy(getCurrentUsername());
+        masterProductRepository.save(masterProduct);
+        log.debug("Updated master product category to: {}", newCategory.getName());
+        return masterProduct;
     }
 
     /**
@@ -770,9 +790,28 @@ public class ShopProductService {
             }
         }
 
+        if (request.getCustomName() != null && !request.getCustomName().trim().isEmpty()) {
+            shopProduct.setCustomName(request.getCustomName().trim());
+        }
+
+        // Resolve category FIRST - it may clone the master product (shared master
+        // products must not have one shop's quick-edit leak into another shop's
+        // category), and every field below must land on the resolved instance.
+        MasterProduct masterProduct = applyCategoryChangeIfRequested(shopProduct, request.getCategoryName(), request.getCategoryId());
+        boolean masterProductUpdated = false;
+
+        if (request.getNameTamil() != null) {
+            masterProduct.setNameTamil(request.getNameTamil().trim().isEmpty() ? null : request.getNameTamil().trim());
+            masterProductUpdated = true;
+        }
+
+        if (request.getVoiceSearchTags() != null) {
+            masterProduct.setTags(request.getVoiceSearchTags().trim().isEmpty() ? null : request.getVoiceSearchTags().trim());
+            masterProductUpdated = true;
+        }
+
         // Update barcode on master product (with duplicate validation)
         if (request.getBarcode() != null) {
-            MasterProduct masterProduct = shopProduct.getMasterProduct();
             String newBarcode = request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim();
 
             // Check for duplicate barcode (only if setting a non-null value)
@@ -823,7 +862,6 @@ public class ShopProductService {
 
         // Update SKU on master product
         if (request.getSku() != null) {
-            MasterProduct masterProduct = shopProduct.getMasterProduct();
             String newSku = request.getSku().trim().isEmpty() ? null : request.getSku().trim();
 
             if (newSku != null) {
@@ -832,9 +870,13 @@ public class ShopProductService {
             }
 
             masterProduct.setSku(newSku);
+            masterProductUpdated = true;
+            log.info("Updated SKU for master product {}: {}", masterProduct.getId(), newSku);
+        }
+
+        if (masterProductUpdated) {
             masterProduct.setUpdatedBy(getCurrentUsername());
             masterProductRepository.save(masterProduct);
-            log.info("Updated SKU for master product {}: {}", masterProduct.getId(), newSku);
         }
 
         shopProduct.setUpdatedBy(getCurrentUsername());

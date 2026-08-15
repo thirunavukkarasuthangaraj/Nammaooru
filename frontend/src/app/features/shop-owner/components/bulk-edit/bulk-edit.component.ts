@@ -758,7 +758,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         barcode2: product.barcode2,
         barcode3: product.barcode3,
         nameTamil: product.nameTamil,
-        voiceSearchTags: product.tags
+        voiceSearchTags: product.tags,
+        category: product.category
       },
       previousValues: {
         name: product.originalValues.customName,

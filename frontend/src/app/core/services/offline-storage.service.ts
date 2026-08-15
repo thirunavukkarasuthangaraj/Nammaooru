@@ -77,6 +77,8 @@ export interface OfflineEdit {
     packedDate?: string;
     expiryDate?: string;
     isAvailable?: boolean;
+    category?: string;
+    voiceSearchTags?: string;
   };
   previousValues: {
     price?: number;

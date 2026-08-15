@@ -617,6 +617,26 @@ public class ShopOwnerProductController {
                 request.setSku(skuObj != null ? skuObj.toString() : null);
             }
 
+            if (updates.containsKey("customName")) {
+                Object nameObj = updates.get("customName");
+                request.setCustomName(nameObj != null ? nameObj.toString() : null);
+            }
+
+            if (updates.containsKey("nameTamil")) {
+                Object nameTamilObj = updates.get("nameTamil");
+                request.setNameTamil(nameTamilObj != null ? nameTamilObj.toString() : null);
+            }
+
+            if (updates.containsKey("categoryName")) {
+                Object categoryObj = updates.get("categoryName");
+                request.setCategoryName(categoryObj != null ? categoryObj.toString() : null);
+            }
+
+            if (updates.containsKey("voiceSearchTags")) {
+                Object tagsObj = updates.get("voiceSearchTags");
+                request.setVoiceSearchTags(tagsObj != null ? tagsObj.toString() : null);
+            }
+
             ShopProductResponse product = shopProductService.quickUpdateProduct(currentShop.getId(), productId, request);
 
             log.info("Product quick updated successfully for shop: {} (owner: {})", currentShop.getId(), currentUsername);
