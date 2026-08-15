@@ -153,7 +153,8 @@
     <aside class="preview-column">
       <div class="preview-heading"><div><span>Live preview</span><strong>{{ settings.paperWidth }}</strong></div><mat-icon>visibility</mat-icon></div>
       <div class="paper-stage" #paperStage>
-        <iframe class="receipt-frame" [class.paper-58]="settings.paperWidth==='58mm'" [class.paper-a4]="settings.paperWidth==='A4'"
+        <iframe class="receipt-frame" #previewFrame (load)="fitPreview(previewFrame)"
+                [class.paper-58]="settings.paperWidth==='58mm'" [class.paper-a4]="settings.paperWidth==='A4'"
                 [srcdoc]="previewHtml" title="Receipt preview"></iframe>
       </div>
       <p class="preview-note"><mat-icon>info</mat-icon>This preview is the exact receipt your printer produces. Printer margins can vary by device.</p>

@@ -138,6 +138,13 @@ export class BillSettingsComponent implements OnInit {
     this.previewHtml = this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
+  /** Shrink the preview iframe to the receipt's real height (a printer cuts
+   *  after the last line, so the preview should end there too). */
+  fitPreview(frame: HTMLIFrameElement): void {
+    const body = frame.contentDocument?.body;
+    if (body) frame.style.height = Math.max(body.scrollHeight + 24, 240) + 'px';
+  }
+
   @HostListener('input')
   @HostListener('change')
   persistDraft(): void {

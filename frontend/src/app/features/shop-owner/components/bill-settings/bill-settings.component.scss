@@ -84,7 +84,7 @@ input:focus,select:focus { border-color:$green; box-shadow:0 0 0 3px rgba(21,155
 
 /* The preview iframe hosts the REAL print HTML from ReceiptTemplateService,
    so preview and printer output are always identical. */
-.receipt-frame { width:300px; height:760px; border:0; background:$paper; box-shadow:0 6px 18px rgba(34,47,41,.16); transition:width .25s ease; }
+.receipt-frame { width:300px; height:420px; border:0; background:$paper; box-shadow:0 6px 18px rgba(34,47,41,.16); transition:width .25s ease; }
 .receipt-frame.paper-58 { width:220px; }
 .receipt-frame.paper-a4 { width:100%; max-width:640px; }
 

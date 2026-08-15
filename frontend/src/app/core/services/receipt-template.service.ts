@@ -426,7 +426,7 @@ export class ReceiptTemplateService {
         ${bs.showPaymentMethod ? `
         <div class="divider"></div>
         <div class="center">
-          <span class="payment-badge">${this.escapeHtml(data.paymentLabel)}</span>
+          <span class="payment-badge">Paid by: ${this.escapeHtml(data.paymentLabel)}</span>
         </div>
         ` : ''}
 
