@@ -13,6 +13,7 @@ import { ShopContextService } from '../../services/shop-context.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 import { LabelTemplateService } from '../../../../core/services/label-template.service';
 import { LabelPrintService } from '../../../../core/services/label-print.service';
+import { ReceiptTemplateService } from '../../../../core/services/receipt-template.service';
 import {
   LabelDesign,
   LabelProductData,
@@ -401,7 +402,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     private labelPrintService: LabelPrintService,
     private ngZone: NgZone,
     private router: Router,
-    private posProductCache: PosProductCacheService
+    private posProductCache: PosProductCacheService,
+    private receiptTemplate: ReceiptTemplateService
   ) {}
 
   /**
@@ -2877,7 +2879,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Bill settings are edited on a separate route. Always reload the latest
     // saved values immediately before building the printable receipt.
     this.loadBillSettings();
-    const paperConfig = this.getPaperConfig(this.billSettings.paperWidth || '80mm');
+    const paperConfig = this.receiptTemplate.getPaperConfig(this.billSettings.paperWidth || '80mm');
     const receiptWindow = window.open('', '_blank', `width=${paperConfig.windowWidth},height=600`);
     if (!receiptWindow) return;
 
@@ -2895,482 +2897,45 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     }, 500);
   }
 
-  /**
-   * Get paper configuration based on paper width setting
-   */
-  private getPaperConfig(paperWidth: string): { pageSize: string; bodyWidth: string; maxWidth: string; windowWidth: number } {
-    switch (paperWidth) {
-      case '58mm':
-        return { pageSize: '58mm auto', bodyWidth: '180px', maxWidth: '180px', windowWidth: 300 };
-      case '80mm':
-        return { pageSize: '80mm auto', bodyWidth: '260px', maxWidth: '260px', windowWidth: 350 };
-      case 'A4':
-        return { pageSize: 'A4', bodyWidth: '100%', maxWidth: '600px', windowWidth: 700 };
-      default:
-        return { pageSize: '80mm auto', bodyWidth: '260px', maxWidth: '260px', windowWidth: 350 };
-    }
-  }
 
   /**
-   * Get separator style CSS based on setting
-   */
-  private getSeparatorStyle(style: string): string {
-    switch (style) {
-      case 'solid':
-        return 'border-top: 1px solid #000; margin: 6px 0;';
-      case 'dashed':
-        return 'border-top: 1px dashed #000; margin: 6px 0;';
-      case 'dotted':
-        return 'border-top: 1px dotted #000; margin: 6px 0;';
-      case 'none':
-        return 'margin: 6px 0;';
-      default:
-        return 'border-top: 1px dashed #000; margin: 6px 0;';
-    }
-  }
-
-  /**
-   * Escape HTML special characters so user-entered values (product names,
-   * customer name/phone, shop settings, custom fields) can never inject
-   * markup/script into the receipt - this HTML is passed to document.write(),
-   * not rendered through Angular's DOM sanitizer, so it needs manual escaping.
-   */
-  private escapeHtml(value: any): string {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  /**
-   * Generate receipt HTML - supports 58mm, 80mm thermal paper and A4
-   * Uses billSettings for customization (async for QR code generation)
+   * Generate receipt HTML via the shared ReceiptTemplateService so the
+   * print output matches the Bill Settings live preview exactly
+   * (async for QR code generation)
    */
   private async generateReceiptHtml(order: any): Promise<string> {
     const bs = this.billSettings;
-    const bodyFontSize = bs.bodyFontSize || 12;
-    const headerFontSize = bs.headerFontSize || 16;
-    const footerFontSize = bs.footerFontSize || 10;
-
-    // Paper width configuration
-    const paperConfig = this.getPaperConfig(bs.paperWidth || '80mm');
-
-    // Generate QR code (works offline)
     let qrCodeDataUrl = '';
     if (bs.showUpiQrCode && bs.upiId) {
       const qrSize = bs.paperWidth === '58mm' ? 80 : (bs.paperWidth === 'A4' ? 120 : 100);
       qrCodeDataUrl = await this.generateUpiQrCode(qrSize, this.totalAmount);
     }
-
-    const items = this.cart.map(item => {
-      const englishName = this.escapeHtml(item.product.name || '');
-      const tamilName = this.escapeHtml(item.product.nameTamil || '');
-      const rate = item.unitPrice || 0;
-      const mrp = item.mrp || rate;
-      const discount = Math.max(mrp - rate, 0);
-      // Build name HTML based on receipt language settings from billSettings
-      let nameHtml = '';
-      if (bs.showEnglish && bs.showTamil && tamilName && tamilName.trim() !== englishName.trim()) {
-        // Both languages
-        nameHtml = `${englishName}<br><span style="font-size: ${Math.max(bodyFontSize - 3, 8)}px; color: #000;">${tamilName}</span>`;
-      } else if (bs.showEnglish) {
-        // English only
-        nameHtml = englishName;
-      } else if (bs.showTamil && tamilName) {
-        // Tamil only (use Tamil if available, fallback to English)
-        nameHtml = tamilName;
-      } else {
-        // Fallback to English
-        nameHtml = englishName;
-      }
-      return `
-      <tr>
-        <td style="font-size: ${bodyFontSize}px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
-        ${bs.showItemMrp ? `<td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${mrp}</td>` : ''}
-        ${bs.showSellingPrice ? `<td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${rate}</td>` : ''}
-        ${bs.showItemDiscount ? `<td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${discount}</td>` : ''}
-        <td style="font-size: ${bodyFontSize}px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
-        <td style="font-size: ${bodyFontSize}px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.total.toFixed(0)}</td>
-      </tr>
-    `;
-    }).join('');
-
-    const isOffline = order.offlineOrderId && !order.id;
-
-    // Get shop name: billSettings first, then order, then localStorage, then component
     const storedShopName = localStorage.getItem('shop_name');
-    const shopName = this.escapeHtml((bs.shopName && bs.shopName.trim()) ||
-                     (order.shopName && order.shopName.trim()) ||
-                     (storedShopName && storedShopName.trim()) ||
-                     (this.shopName && this.shopName !== 'My Shop' ? this.shopName : null) ||
-                     'Shop');
-    const shopPhone = this.escapeHtml(bs.shopPhone || '');
-    const customerName = this.escapeHtml(this.customerName || '');
-    const customerPhone = this.escapeHtml(this.customerPhone || '');
-    const shopAddress = this.escapeHtml(bs.shopAddress || '');
-    const gstNumber = this.escapeHtml(bs.gstNumber || '');
-    const fssaiNumber = this.escapeHtml(bs.fssaiNumber || '');
-    const fssaiName = this.escapeHtml(bs.fssaiName || '');
-    const footerNote = this.escapeHtml(bs.footerNote || '');
-    const thankYouMessage = this.escapeHtml(bs.thankYouMessage || '');
-    const upiIdEscaped = this.escapeHtml(bs.upiId || '');
-
-    // Format date based on billSettings
-    const now = new Date();
-    let formattedDate = '';
-    switch (bs.dateFormat) {
-      case 'MM/DD/YYYY':
-        formattedDate = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
-        break;
-      case 'YYYY-MM-DD':
-        formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        break;
-      case 'DD/MM/YYYY':
-      default:
-        formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    }
-    const formattedTime = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-    // Bill number with prefix
-    const orderRef = this.escapeHtml(order.orderNumber || order.offlineOrderId || '');
-    const billNumber = bs.billNumberPrefix
-      ? `${this.escapeHtml(bs.billNumberPrefix)}${orderRef}`
-      : `#${orderRef}`;
-
-    console.log('Receipt - shopName sources:', {
-      billSettings: bs.shopName,
-      orderShopName: order.shopName,
-      localStorage: storedShopName,
-      thisShopName: this.shopName,
-      resolved: shopName
+    const shopNameFallback = (order.shopName && order.shopName.trim()) ||
+      (storedShopName && storedShopName.trim()) ||
+      (this.shopName && this.shopName !== 'My Shop' ? this.shopName : '') || 'Shop';
+    return this.receiptTemplate.generateReceiptHtml(bs, {
+      orderRef: order.orderNumber || order.offlineOrderId || '',
+      items: this.cart.map(item => ({
+        name: item.product.name || '',
+        nameTamil: item.product.nameTamil || '',
+        mrp: item.mrp || item.unitPrice || 0,
+        rate: item.unitPrice || 0,
+        quantity: item.quantity,
+        total: item.total
+      })),
+      subtotal: this.subtotal,
+      totalMrp: this.totalMrp,
+      totalDiscount: this.totalDiscount,
+      billDiscount: this.billDiscount,
+      totalAmount: this.totalAmount,
+      paymentLabel: this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? 'CASH' : this.selectedPaymentMethod === 'UPI' ? 'UPI' : 'CARD',
+      customerName: this.customerName || '',
+      customerPhone: this.customerPhone || '',
+      qrCodeDataUrl,
+      shopNameFallback,
+      includePrintButton: true
     });
-
-    // Get separator style
-    const separatorStyle = this.getSeparatorStyle(bs.separatorStyle || 'dashed');
-    const dividerBorder = bs.separatorStyle === 'none' ? 'none' : `1px ${bs.separatorStyle || 'dashed'} #000`;
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Receipt - ${orderRef}</title>
-        <style>
-          @page {
-            size: ${paperConfig.pageSize};
-            margin: 1mm;
-          }
-          @media print {
-            html, body { width: 100%; overflow: hidden; }
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .no-print { display: none !important; }
-          }
-          body {
-            box-sizing: border-box;
-            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: ${bodyFontSize}px;
-            width: ${paperConfig.bodyWidth};
-            max-width: ${paperConfig.maxWidth};
-            margin: 0 auto;
-            padding: ${bs.paperWidth === '58mm' ? '2mm' : bs.paperWidth === 'A4' ? '10mm' : '3mm'};
-            line-height: 1.25;
-            overflow-wrap: anywhere;
-          }
-          *, *::before, *::after { box-sizing: border-box; }
-          .center { text-align: center; }
-          .divider {
-            ${separatorStyle}
-          }
-          .divider-solid {
-            border-top: 1px solid #000;
-            margin: 6px 0;
-          }
-          table { width: 100%; border-collapse: collapse; }
-          .shop-name {
-            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: ${headerFontSize}px;
-            font-weight: 700;
-            margin-bottom: 3px;
-          }
-          .shop-phone {
-            font-size: ${Math.max(headerFontSize - 4, 10)}px;
-            color: #000;
-            font-weight: 700;
-            margin-bottom: 2px;
-          }
-          .fssai-info {
-            font-size: ${Math.max(footerFontSize, 8)}px;
-            color: #000;
-            margin-bottom: 2px;
-          }
-          .order-number {
-            font-size: ${Math.max(bodyFontSize - 1, 9)}px;
-            font-weight: 600;
-            margin: 4px 0;
-            overflow-wrap: anywhere;
-          }
-          .customer-name {
-            font-size: ${bodyFontSize}px;
-            font-weight: 700;
-          }
-          .customer-phone {
-            font-size: ${Math.max(bodyFontSize - 2, 10)}px;
-            color: #000;
-          }
-          .item-header th {
-            font-size: ${Math.max(bodyFontSize - 3, 8)}px;
-            padding: 3px 1px;
-            border-bottom: ${dividerBorder};
-            text-transform: uppercase;
-            font-weight: 600;
-          }
-          .payment-badge {
-            font-size: ${Math.max(bodyFontSize - 2, 10)}px;
-            font-weight: 600;
-            padding: 2px 0;
-            display: inline-block;
-            margin: 2px 0;
-          }
-          .footer-text {
-            font-size: ${footerFontSize}px;
-            color: #000;
-            font-weight: 600;
-            margin-top: 6px;
-          }
-          .offline-badge {
-            background: #ff9800;
-            color: white;
-            padding: 2px 6px;
-            font-size: ${Math.max(footerFontSize, 9)}px;
-            border-radius: 3px;
-          }
-          .flex-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          /* ============ Template styles (kept in sync with bill-settings live preview) ============ */
-
-          /* Clean Counter: airy sans-serif, faded light dividers, soft grey total (no hard boxes) */
-          body.template-minimal {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-          }
-          body.template-minimal .receipt-header { padding-bottom: 6px; border-bottom: 2px solid #159b5b; margin-bottom: 4px; }
-          body.template-minimal .divider,
-          body.template-minimal .divider-solid { opacity: 0.45; margin: 9px 0 !important; }
-          body.template-minimal .item-header th { border-bottom-color: #999 !important; }
-          body.template-minimal .grand-total-box { background: #f1f3f2 !important; border-top: none !important; padding: 6px !important; }
-
-          /* NammaOoru Bold: green filled shop-name header banner + strong green totals */
-          body.template-bold {
-            font-family: Arial, sans-serif;
-          }
-          body.template-bold .receipt-header {
-            margin: -${bs.paperWidth === '58mm' ? '2mm' : bs.paperWidth === 'A4' ? '10mm' : '3mm'} -${bs.paperWidth === '58mm' ? '2mm' : bs.paperWidth === 'A4' ? '10mm' : '3mm'} 6px;
-            padding: 8px 6px 7px;
-            background: #159b5b !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          body.template-bold .receipt-header,
-          body.template-bold .receipt-header div { color: #fff !important; }
-          body.template-bold .shop-name { letter-spacing: 0.02em; }
-          body.template-bold .grand-total-value { color: #087443; }
-          body.template-bold .grand-total-box { background: #d8f5e5 !important; border: 1px solid #8bd3aa; border-top: 1px solid #8bd3aa !important; }
-
-          /* Compact Thermal: one step smaller fonts, tight spacing everywhere */
-          body.template-compact { line-height: 1.08; font-size: ${Math.max(bodyFontSize - 1, 8)}px; }
-          body.template-compact .receipt-header div { margin-bottom: 0 !important; }
-          body.template-compact .shop-name { font-size: ${Math.max(headerFontSize - 3, 11)}px !important; margin-bottom: 1px; }
-          body.template-compact .shop-phone { font-size: ${Math.max(headerFontSize - 6, 9)}px; }
-          body.template-compact .divider, body.template-compact .divider-solid { margin: 3px 0 !important; }
-          body.template-compact td { font-size: ${Math.max(bodyFontSize - 2, 8)}px !important; padding-top: 1px !important; padding-bottom: 1px !important; }
-          body.template-compact .item-header th { font-size: ${Math.max(bodyFontSize - 4, 7)}px !important; padding: 1px !important; }
-          body.template-compact .flex-row span { font-size: ${Math.max(bodyFontSize - 2, 8)}px !important; }
-          body.template-compact .flex-row { padding-top: 1px !important; padding-bottom: 1px !important; }
-          body.template-compact .grand-total-box { padding: 3px 4px !important; margin-top: 2px !important; }
-          body.template-compact .grand-total-box span { font-size: ${Math.max(headerFontSize - 3, 11)}px !important; }
-          body.template-compact .footer-text { margin-top: 3px; font-size: ${Math.max(footerFontSize - 1, 7)}px !important; }
-
-          /* GST Professional: left-aligned header, Arial, solid rules, double-rule totals */
-          body.template-invoice { font-family: Arial, sans-serif; border-top: 4px double #159b5b; padding-top: 4mm; }
-          body.template-invoice .receipt-header { padding-bottom: 4px; border-bottom: 2px solid #159b5b; margin-bottom: 4px; }
-          body.template-invoice .receipt-header .center,
-          body.template-invoice .receipt-header div { text-align: left !important; }
-          body.template-invoice .divider { border-top-style: solid !important; opacity: 0.7; }
-          body.template-invoice .grand-total-box { background: #fff !important; border-top: 3px double #159b5b !important; border-bottom: 3px double #159b5b; padding: 5px 2px !important; }
-
-          /* Border Receipt: outer green frame, dotted item rows, green filled TOTAL box */
-          body.template-bordered { border: 2px solid #159b5b; font-family: Arial, sans-serif; }
-          body.template-bordered .receipt-header { border: 1px solid #159b5b; padding: 5px 4px; margin-bottom: 5px; }
-          body.template-bordered .shop-name { color: #087443; }
-          body.template-bordered tbody td { border-bottom: 1px dotted #aaa; }
-          body.template-bordered .grand-total-box {
-            background: #159b5b !important;
-            border-top: none !important;
-            padding: 6px !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          body.template-bordered .grand-total-box span { color: #fff !important; }
-        </style>
-      </head>
-      <body class="template-${bs.templateStyle || 'classic'}">
-        <div class="receipt-header">
-          ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
-          ${bs.showShopAddress && shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${shopAddress}</div>` : ''}
-          ${bs.showShopPhone && shopPhone ? `<div class="center shop-phone">Ph: ${shopPhone}</div>` : ''}
-          ${bs.showGstNumber && gstNumber ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px;">GST: ${gstNumber}</div>` : ''}
-          ${bs.showFssaiInfo && fssaiNumber ? `
-            <div class="center fssai-info">
-              FSSAI: ${fssaiNumber}
-              ${fssaiName ? `<br>${fssaiName}` : ''}
-            </div>
-          ` : ''}
-        </div>
-        ${this.getCustomFieldsHtml('header', Math.max(footerFontSize, 9))}
-        <div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">Order Receipt</div>
-        <div class="divider"></div>
-
-        ${bs.showBillNumber || bs.showDateTime ? `
-        <div class="center order-number" style="margin-bottom: 4px;">
-          ${[
-            bs.showBillNumber ? billNumber : '',
-            bs.showDateTime ? `${formattedDate} ${formattedTime}` : ''
-          ].filter(Boolean).join(' | ')}
-        </div>
-        ` : ''}
-        <div class="divider"></div>
-
-        ${bs.showCustomerDetails && (customerName || customerPhone) ? `
-        <div style="margin-bottom: 4px;">
-          ${customerName ? `<div class="customer-name">${customerName}</div>` : ''}
-          ${customerPhone ? `<div class="customer-phone">${customerPhone}</div>` : ''}
-        </div>
-        <div class="divider"></div>
-        ` : ''}
-
-        <table>
-          <thead>
-            <tr class="item-header">
-              <th style="text-align: left;">ITEM</th>
-              ${bs.showItemMrp ? '<th style="text-align: right;">MRP</th>' : ''}
-              ${bs.showSellingPrice ? '<th style="text-align: right;">RATE</th>' : ''}
-              ${bs.showItemDiscount ? '<th style="text-align: right;">DISC</th>' : ''}
-              <th style="text-align: center;">QTY</th>
-              <th style="text-align: right;">AMT</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items}
-          </tbody>
-        </table>
-        <div class="divider"></div>
-
-        ${bs.showSubtotal ? `<div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
-          <span style="font-weight: 600;">Items: ${this.cart.length} (Qty: ${this.cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
-          <span style="font-weight: 700;">₹${this.subtotal.toFixed(0)}</span>
-        </div>` : ''}
-
-        ${bs.showTotalSavings && this.totalDiscount > 0 ? `
-        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
-          <span style="font-weight: 600;">MRP Total</span>
-          <span style="font-weight: 600;">₹${this.totalMrp.toFixed(0)}</span>
-        </div>
-        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
-          <span style="font-weight: 600;">You Save</span>
-          <span style="font-weight: 700;">₹${this.totalDiscount.toFixed(0)}</span>
-        </div>
-        ` : ''}
-
-        ${bs.showTotalSavings && this.billDiscount > 0 ? `
-        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
-          <span style="font-weight: 600;">Subtotal</span>
-          <span style="font-weight: 600;">₹${this.subtotal.toFixed(0)}</span>
-        </div>
-        <div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
-          <span style="font-weight: 600;">Discount</span>
-          <span style="font-weight: 700;">- ₹${this.billDiscount.toFixed(0)}</span>
-        </div>
-        ` : ''}
-
-        <div class="flex-row grand-total-box" style="border-top: ${dividerBorder}; padding: 5px 4px; margin-top: 3px;">
-          <span style="font-size: ${headerFontSize}px; font-weight: 700;">TOTAL</span>
-          <span class="grand-total-value" style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${this.totalAmount.toFixed(0)}</span>
-        </div>
-
-        ${bs.showPaymentMethod ? `
-        <div class="divider"></div>
-        <div class="center">
-          <span class="payment-badge">
-            ${this.selectedPaymentMethod === 'CASH_ON_DELIVERY' ? 'CASH' : this.selectedPaymentMethod === 'UPI' ? 'UPI' : 'CARD'}
-          </span>
-        </div>
-        ` : ''}
-
-        ${bs.showUpiQrCode && bs.upiId && qrCodeDataUrl ? `
-        <div class="center" style="padding: 3px 0; page-break-inside: avoid;">
-          <img src="${qrCodeDataUrl}"
-               alt="UPI QR Code"
-               style="display:block; width: ${bs.paperWidth === '58mm' ? '72px' : bs.paperWidth === 'A4' ? '108px' : '88px'}; height: ${bs.paperWidth === '58mm' ? '72px' : bs.paperWidth === 'A4' ? '108px' : '88px'}; margin: 2px auto;">
-          <div style="font-size: ${Math.max(footerFontSize - 1, 7)}px; color: #000;">${upiIdEscaped}</div>
-        </div>
-        ` : ''}
-
-        <div class="divider"></div>
-
-        ${this.getCustomFieldsHtml('footer', footerFontSize)}
-
-        ${footerNote ? `
-        <div class="center" style="font-size: ${footerFontSize}px; color: #000; font-weight: 600; margin: 4px 0;">
-          ${footerNote}
-        </div>
-        ` : ''}
-
-        ${bs.showThankYouMessage ? `
-        <div class="center footer-text">
-          ${thankYouMessage || 'Thank you for your order!'}<br>
-          Printed: ${new Date().toLocaleString('en-IN')}
-        </div>
-        ` : ''}
-
-        <div class="center" style="font-size: ${Math.max(footerFontSize - 1, 7)}px; margin-top: 4px;">
-          <a href="https://nammaoorudelivary.in" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">Powered by Namma Ooru Connect</a>
-        </div>
-
-        <!-- Print Button (hidden during print) -->
-        <div class="no-print" style="margin-top: 15px; text-align: center;">
-          <button onclick="window.onafterprint=function(){window.close()};window.print()" style="
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-          ">🖨️ PRINT</button>
-          <button onclick="window.close()" style="
-            background: #666;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 14px;
-            border-radius: 5px;
-            cursor: pointer;
-          ">Close</button>
-        </div>
-      </body>
-      </html>
-    `;
   }
 
   /**
@@ -3440,21 +3005,6 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.billSettings.customFields.splice(index, 1);
   }
 
-  /**
-   * Get enabled custom fields by position
-   */
-  private getCustomFieldsHtml(position: 'header' | 'footer', fontSize: number): string {
-    const fields = this.billSettings.customFields
-      .filter(f => f.enabled && f.label && f.value && f.position === position);
-
-    if (fields.length === 0) return '';
-
-    return fields.map(f => `
-      <div style="font-size: ${fontSize}px; text-align: center; margin: 2px 0;">
-        <span style="color: #000;">${this.escapeHtml(f.label)}:</span> <span style="font-weight: 600;">${this.escapeHtml(f.value)}</span>
-      </div>
-    `).join('');
-  }
 
   /**
    * Generate UPI QR Code as base64 data URL (works offline)

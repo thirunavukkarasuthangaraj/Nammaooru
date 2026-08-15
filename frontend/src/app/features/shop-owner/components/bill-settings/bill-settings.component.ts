@@ -1,9 +1,13 @@
 import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ShopContextService } from '../../services/shop-context.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
+import { ReceiptTemplateService, ReceiptData } from '../../../../core/services/receipt-template.service';
+// @ts-ignore - qrcode library doesn't have proper type definitions
+import * as QRCode from 'qrcode';
 
 interface CustomField {
   label: string;
@@ -67,11 +71,15 @@ export class BillSettingsComponent implements OnInit {
   ] as const;
   readonly accentColors = ['#43d77d', '#1687d9', '#7c4dff', '#ef6c00', '#d81b60', '#263238'];
 
+  previewHtml: SafeHtml = '';
+
   constructor(
     private router: Router,
     private swal: SwalService,
     private shopContext: ShopContextService,
-    private http: HttpClient
+    private http: HttpClient,
+    private sanitizer: DomSanitizer,
+    private receiptTemplate: ReceiptTemplateService
   ) {}
 
   ngOnInit(): void {
@@ -97,11 +105,42 @@ export class BillSettingsComponent implements OnInit {
     else this.shopContext.shop$.subscribe(current => {
       if (current?.id && !this.serverLoaded) this.loadServerSettings(current.id);
     });
+    void this.buildPreview();
+  }
+
+  /**
+   * The live preview is the REAL print HTML (same generator the POS print
+   * uses) rendered with sample items, so the chosen template is exactly
+   * what the printer will produce.
+   */
+  async buildPreview(): Promise<void> {
+    const s = this.settings;
+    let qr = '';
+    if (s.showUpiQrCode && s.upiId) {
+      try {
+        const shopName = (s.shopName || 'Shop').replace(/[^a-zA-Z0-9 ]/g, '');
+        qr = await QRCode.toDataURL(`upi://pay?pa=${s.upiId}&pn=${shopName}&am=150&cu=INR`,
+          { width: 100, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
+      } catch { qr = ''; }
+    }
+    const sample: ReceiptData = {
+      orderRef: '1042',
+      items: [
+        { name: 'Premium Rice 1kg', nameTamil: 'பிரீமியம் அரிசி', mrp: 65, rate: 60, quantity: 2, total: 120 },
+        { name: 'Fresh Milk 500ml', nameTamil: 'பால்', mrp: 32, rate: 30, quantity: 1, total: 30 }
+      ],
+      subtotal: 150, totalMrp: 162, totalDiscount: 12, billDiscount: 0, totalAmount: 150,
+      paymentLabel: 'CASH', customerName: 'Walk-in customer', customerPhone: '',
+      qrCodeDataUrl: qr, shopNameFallback: 'Your Shop', includePrintButton: false
+    };
+    const html = this.receiptTemplate.generateReceiptHtml(s, sample);
+    this.previewHtml = this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   @HostListener('input')
   @HostListener('change')
   persistDraft(): void {
+    void this.buildPreview();
     localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
     localStorage.setItem('pos_receipt_language', JSON.stringify({ english: this.settings.showEnglish, tamil: this.settings.showTamil }));
     if (this.serverLoaded && this.shopId) {
@@ -157,6 +196,7 @@ export class BillSettingsComponent implements OnInit {
         this.settings = { ...this.cloneDefaults(), ...(data || {}) };
         this.serverLoaded = true;
         localStorage.setItem('pos_bill_settings', JSON.stringify(this.settings));
+        void this.buildPreview();
       },
       error: error => {
         console.warn('Using locally cached bill settings until the server is available', error);
