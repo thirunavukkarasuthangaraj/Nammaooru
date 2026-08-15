@@ -131,67 +131,51 @@ interface Category {
 
           <!-- Categories Grid -->
           <div *ngIf="categories.length > 0" class="categories-grid">
-            <div *ngFor="let category of categories" class="category-card">
-              <div class="category-card-header">
-                <div class="category-icon-wrapper" [style.background-color]="category.color + '20'">
+            <div *ngFor="let category of categories" class="category-card" [class.is-inactive]="!category.isActive">
+              <div class="category-top">
+                <div class="category-icon-wrapper">
                   <img *ngIf="category.iconUrl"
                        [src]="getCategoryImageUrl(category.iconUrl)"
                        alt="{{ category.name }}"
                        class="category-image"
                        (error)="onImageError($event, category)">
-                  <mat-icon *ngIf="!category.iconUrl"
-                           class="category-main-icon"
-                           [style.color]="category.color">{{ category.icon }}</mat-icon>
+                  <mat-icon *ngIf="!category.iconUrl" class="category-main-icon">{{ category.icon }}</mat-icon>
                 </div>
-                <div class="category-badges">
-                  <span class="badge" [class.active]="category.isActive" [class.inactive]="!category.isActive">
-                    <mat-icon class="badge-icon">
-                      {{ category.isActive ? 'check_circle' : 'cancel' }}
-                    </mat-icon>
-                    {{ category.isActive ? 'Active' : 'Inactive' }}
-                  </span>
+                <div class="category-info">
+                  <h3 class="category-name" [title]="category.name">{{ category.name }}</h3>
+                  <div class="category-meta">
+                    <span class="meta-item">{{ category.productCount || 0 }} products</span>
+                    <span class="meta-dot"></span>
+                    <span class="status-text" [class.on]="category.isActive">
+                      {{ category.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div class="category-info">
-                <h3 class="category-name">{{ category.name }}</h3>
-                <p class="category-description">{{ category.description || 'No description available' }}</p>
-              </div>
-
-              <div class="category-stats">
-                <div class="stat-item">
-                  <mat-icon class="meta-icon">inventory</mat-icon>
-                  <span class="stat-text">{{ category.productCount || 0 }} products</span>
-                </div>
-                <div class="stat-item">
-                  <mat-icon class="meta-icon">schedule</mat-icon>
-                  <span class="stat-text">{{ category.createdAt | date:'MMM dd' }}</span>
-                </div>
-              </div>
+              <p class="category-description"
+                 *ngIf="category.description && category.description.toLowerCase() !== category.name.toLowerCase()">
+                {{ category.description }}
+              </p>
 
               <div class="category-actions">
-                <button mat-button class="action-btn edit" (click)="editCategory(category)">
+                <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(category)">
                   <mat-icon>edit</mat-icon>
-                  Edit
                 </button>
-                <button mat-button class="action-btn view" (click)="viewProducts(category)">
-                  <mat-icon>visibility</mat-icon>
-                  Products
+                <button mat-icon-button class="action-btn" matTooltip="View products" (click)="viewProducts(category)">
+                  <mat-icon>inventory_2</mat-icon>
                 </button>
-                <button mat-button 
-                        class="action-btn toggle" 
-                        [class.activate]="!category.isActive"
-                        [class.deactivate]="category.isActive"
+                <button mat-icon-button class="action-btn"
+                        [matTooltip]="category.isActive ? 'Deactivate' : 'Activate'"
                         (click)="toggleCategoryStatus(category)">
-                  <mat-icon>{{ category.isActive ? 'pause' : 'play_arrow' }}</mat-icon>
-                  {{ category.isActive ? 'Deactivate' : 'Activate' }}
+                  <mat-icon>{{ category.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
                 </button>
-                <button mat-button 
-                        class="action-btn delete" 
-                        (click)="deleteCategory(category)" 
+                <span class="actions-spacer"></span>
+                <button mat-icon-button class="action-btn delete"
+                        matTooltip="Delete"
+                        (click)="deleteCategory(category)"
                         [disabled]="category.productCount > 0">
-                  <mat-icon>delete</mat-icon>
-                  Delete
+                  <mat-icon>delete_outline</mat-icon>
                 </button>
               </div>
             </div>
@@ -354,7 +338,7 @@ interface Category {
   `,
   styles: [`
     .categories-container {
-      background: #f5f5f7;
+      background: #fff;
       min-height: 100vh;
       padding-bottom: 32px;
     }
@@ -368,7 +352,7 @@ interface Category {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+      border-radius: 0 0 24px 24px;
     }
 
     .breadcrumb {
@@ -429,61 +413,44 @@ interface Category {
     /* Statistics Row */
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 24px;
-      padding: 32px;
-      padding-bottom: 0;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      padding: 24px 24px 0 24px;
     }
 
     .stat-card {
       background: white;
-      border-radius: 16px;
-      padding: 24px;
+      border-radius: 12px;
+      padding: 18px 20px;
       display: flex;
       align-items: center;
-      gap: 20px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: all 0.3s ease;
-      border: 2px solid transparent;
-    }
-
-    .stat-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      gap: 16px;
+      border: 1px solid #ECEFF1;
     }
 
     .stat-card.active {
-      border-color: #4caf50;
-      background: linear-gradient(135deg, #f1f8e9 0%, #fff 100%);
+      border-color: #16a34a;
     }
 
     .stat-icon {
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, #4ade8025 0%, #22c55e25 100%);
-      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      background: #E8F5E9;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .stat-card.active .stat-icon {
-      background: linear-gradient(135deg, #4caf5020 0%, #81c78420 100%);
-    }
-
     .stat-icon mat-icon {
-      font-size: 28px;
-      width: 28px;
-      height: 28px;
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
       color: #16a34a;
     }
 
-    .stat-card.active .stat-icon mat-icon {
-      color: #4caf50;
-    }
-
     .stat-value {
-      font-size: 32px;
+      font-size: 26px;
       font-weight: 700;
       line-height: 1;
       margin-bottom: 4px;
@@ -505,13 +472,13 @@ interface Category {
 
     /* Categories Section */
     .categories-section {
-      padding: 32px;
+      padding: 24px;
     }
 
     .modern-card {
-      border-radius: 16px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      border: none;
+      border-radius: 12px;
+      box-shadow: none;
+      border: 1px solid #ECEFF1;
       overflow: hidden;
     }
 
@@ -519,9 +486,9 @@ interface Category {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px 24px;
-      border-bottom: 1px solid #e0e0e0;
-      background: #fafafa;
+      padding: 16px 20px;
+      border-bottom: 1px solid #ECEFF1;
+      background: white;
     }
 
     .card-title {
@@ -581,45 +548,52 @@ interface Category {
 
     /* Categories Grid */
     .categories-grid {
-      padding: 24px;
+      padding: 20px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
     }
 
     .category-card {
       background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: all 0.3s ease;
-      border: 2px solid transparent;
+      border-radius: 12px;
+      border: 1px solid #ECEFF1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.2s ease;
     }
 
     .category-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
       border-color: #16a34a;
     }
 
-    .category-card-header {
-      padding: 20px;
+    .category-card.is-inactive {
+      background: #FAFBFC;
+    }
+
+    .category-card.is-inactive .category-icon-wrapper,
+    .category-card.is-inactive .category-name {
+      opacity: 0.55;
+    }
+
+    .category-top {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #f0f0f0;
-      background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+      gap: 12px;
     }
 
     .category-icon-wrapper {
-      width: 80px;
-      height: 80px;
-      border-radius: 12px;
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 10px;
+      background: #ECEFF1;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      position: relative;
     }
 
     .category-image {
@@ -629,125 +603,99 @@ interface Category {
     }
 
     .category-main-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
-    }
-
-    .category-badges {
-      display: flex;
-      gap: 8px;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .badge.active {
-      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-      color: #4caf50;
-    }
-
-    .badge.inactive {
-      background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-      color: #f44336;
-    }
-
-    .badge-icon {
-      font-size: 14px !important;
-      width: 14px !important;
-      height: 14px !important;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      color: #16a34a;
     }
 
     .category-info {
-      padding: 20px;
+      min-width: 0;
     }
 
     .category-name {
-      font-size: 20px;
+      font-size: 15px;
       font-weight: 600;
-      margin: 0 0 4px 0;
+      margin: 0 0 2px 0;
       color: #1a1a1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .category-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: #78909C;
+    }
+
+    .meta-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #B0BEC5;
+    }
+
+    .status-text {
+      font-weight: 600;
+      color: #90A4AE;
+    }
+
+    .status-text.on {
+      color: #16a34a;
     }
 
     .category-description {
-      font-size: 14px;
-      color: #666;
-      line-height: 1.5;
-      margin: 0;
-    }
-
-    .category-stats {
-      padding: 0 20px 16px 20px;
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .stat-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
       font-size: 13px;
-      color: #666;
-    }
-
-    .meta-icon {
-      font-size: 16px !important;
-      width: 16px !important;
-      height: 16px !important;
-      color: #999;
+      color: #607D8B;
+      line-height: 1.4;
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .category-actions {
-      padding: 16px 20px;
-      background: #fafafa;
-      border-top: 1px solid #e0e0e0;
       display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      border-top: 1px solid #ECEFF1;
+      padding-top: 8px;
+      margin-top: auto;
+    }
+
+    .actions-spacer {
+      flex: 1;
     }
 
     .action-btn {
-      border-radius: 6px;
-      font-size: 12px;
-      padding: 6px 12px;
-      min-width: auto;
+      width: 34px;
+      height: 34px;
+      line-height: 34px;
+      color: #607D8B;
     }
 
-    .action-btn.edit {
-      color: #2196f3;
+    .action-btn:hover:not([disabled]) {
+      color: #16a34a;
+      background: #E8F5E9;
     }
 
-    .action-btn.view {
-      color: #9c27b0;
+    .action-btn.delete:hover:not([disabled]) {
+      color: #e53935;
+      background: #FFEBEE;
     }
 
-    .action-btn.toggle.activate {
-      color: #4caf50;
-    }
-
-    .action-btn.toggle.deactivate {
-      color: #ff9800;
-    }
-
-    .action-btn.delete {
-      color: #f44336;
+    .action-btn[disabled] {
+      color: #CFD8DC;
     }
 
     .action-btn mat-icon {
-      font-size: 16px !important;
-      width: 16px !important;
-      height: 16px !important;
-      margin-right: 4px;
+      font-size: 19px !important;
+      width: 19px !important;
+      height: 19px !important;
     }
 
     .add-category-card {
