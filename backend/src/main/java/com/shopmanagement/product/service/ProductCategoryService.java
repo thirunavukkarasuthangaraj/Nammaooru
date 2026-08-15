@@ -237,14 +237,21 @@ public class ProductCategoryService {
         category.setUpdatedBy(getCurrentUsername());
         
         ProductCategory updatedCategory = categoryRepository.save(category);
-        log.info("Category updated successfully: {}", id);
-        
+
+        // The category rename/move doesn't change any ShopProduct row itself, so the
+        // POS/My-Products delta sync (which filters on ShopProduct.updatedAt) would
+        // never notice - shop owners would see the old category name in the browser
+        // for up to 24h (until the next full re-sync). Touch affected products so the
+        // very next delta sync (within 5 minutes) picks up the rename.
+        int touched = shopProductRepository.touchProductsByCategoryId(id);
+        log.info("Category updated successfully: {} ({} product(s) marked for re-sync)", id, touched);
+
         return productMapper.toResponse(updatedCategory);
     }
 
     public void deleteCategory(Long id) {
         log.info("Deleting category: {}", id);
-        
+
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         assertCanModify(category);
@@ -253,7 +260,11 @@ public class ProductCategoryService {
         if (categoryRepository.hasSubcategories(id)) {
             throw new RuntimeException("Cannot delete category with subcategories. Please delete subcategories first.");
         }
-        
+
+        // Touch products BEFORE detaching - once detached they no longer match
+        // this categoryId and the delta sync would never learn they lost it.
+        shopProductRepository.touchProductsByCategoryId(id);
+
         // Detach products instead of blocking the delete - they remain in the
         // shop's product listing as "uncategorized"
         int detached = masterProductRepository.detachProductsFromCategory(id);
@@ -302,6 +313,7 @@ public class ProductCategoryService {
         }
 
         ProductCategory updatedCategory = categoryRepository.save(category);
+        shopProductRepository.touchProductsByCategoryId(id);
         log.info("Category status updated: {}", id);
 
         return productMapper.toResponse(updatedCategory);

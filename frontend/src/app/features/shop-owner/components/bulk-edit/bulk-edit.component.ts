@@ -716,6 +716,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       const updateData = {
         customName: product.customName,
         category: product.category,
+        // Backend's ShopProductRequest has no "category" field (only categoryName/categoryId) -
+        // sending just "category" was being silently dropped and never persisted.
+        categoryName: product.category,
         price: product.price,
         originalPrice: product.originalPrice,
         stockQuantity: product.stockQuantity,
@@ -789,7 +792,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           sku: product.sku,
           barcode1: product.barcode1,
           barcode2: product.barcode2,
-          barcode3: product.barcode3
+          barcode3: product.barcode3,
+          category: product.category,
+          categoryName: product.category
         });
       }
     } catch (error) {

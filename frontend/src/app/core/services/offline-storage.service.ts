@@ -987,6 +987,8 @@ export class OfflineStorageService {
             if (changes.packedDate !== undefined) product.packedDate = changes.packedDate;
             if (changes.expiryDate !== undefined) product.expiryDate = changes.expiryDate;
             if (changes.isAvailable !== undefined) product.isAvailable = changes.isAvailable;
+            if (changes.category !== undefined) product.category = changes.category;
+            if (changes.categoryName !== undefined) product.categoryName = changes.categoryName;
 
             const putRequest = store.put(product);
             putRequest.onsuccess = () => {

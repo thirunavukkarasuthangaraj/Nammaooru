@@ -229,7 +229,10 @@ export class ProductEditDialogComponent implements OnInit {
       ...formValue,
       imageUrl: this.currentImageUrl || this.data.imageUrl,
       // Map frontend field names to backend field names
-      voiceSearchTags: formValue.tags // Backend expects voiceSearchTags for voice search tags
+      voiceSearchTags: formValue.tags, // Backend expects voiceSearchTags for voice search tags
+      // Backend's ShopProductRequest has no "category" field (only categoryName/categoryId) -
+      // sending just "category" was being silently dropped and never persisted.
+      categoryName: formValue.category
     };
     this.isSaving = false;
     this.dialogRef.close(updatedProduct);

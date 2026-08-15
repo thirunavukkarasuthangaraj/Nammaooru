@@ -280,10 +280,39 @@ public class ShopProductService {
             log.debug("Updating master product Tamil name to: {}", request.getNameTamil());
         }
 
+        // Category change. The category lives on the shared MasterProduct, and the
+        // same MasterProduct row can be used by multiple shops (added from the shared
+        // catalog). Mutating it directly would silently reassign the category for
+        // every other shop selling the same product, so if it's shared we clone it
+        // into a shop-exclusive MasterProduct first (copy-on-write) and repoint this
+        // ShopProduct to the clone instead.
+        String requestedCategoryName = request.getCategoryName() != null ? request.getCategoryName().trim() : null;
+        if (requestedCategoryName != null && !requestedCategoryName.isEmpty()) {
+            ProductCategory currentCategory = masterProduct.getCategory();
+            if (currentCategory == null || !requestedCategoryName.equalsIgnoreCase(currentCategory.getName())) {
+                ProductCategory newCategory = request.getCategoryId() != null
+                        ? categoryRepository.findById(request.getCategoryId())
+                                .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()))
+                        : categoryRepository.findByNameIgnoreCase(requestedCategoryName)
+                                .orElseThrow(() -> new RuntimeException("Category not found: " + requestedCategoryName));
+
+                long shopsUsingThisMasterProduct = shopProductRepository.countByMasterProductId(masterProduct.getId());
+                if (shopsUsingThisMasterProduct > 1) {
+                    masterProduct = cloneMasterProductForCategoryChange(masterProduct, newCategory);
+                    shopProduct.setMasterProduct(masterProduct);
+                    log.info("Cloned shared master product into {} for shop-exclusive category change", masterProduct.getId());
+                } else {
+                    masterProduct.setCategory(newCategory);
+                    masterProductUpdated = true;
+                    log.debug("Updating master product category to: {}", newCategory.getName());
+                }
+            }
+        }
+
         if (masterProductUpdated) {
             masterProduct.setUpdatedBy(getCurrentUsername());
             masterProductRepository.save(masterProduct);
-            log.info("Master product {} updated with SKU/barcode/tags/Tamil name", masterProduct.getId());
+            log.info("Master product {} updated with SKU/barcode/tags/Tamil name/category", masterProduct.getId());
         }
 
         // Update shop-level barcodes (barcode1, barcode2, barcode3) with duplicate validation
@@ -337,6 +366,58 @@ public class ShopProductService {
         log.info("Shop product updated successfully: {}", productId);
 
         return productMapper.toResponse(updatedProduct);
+    }
+
+    /**
+     * Copy-on-write for a shared master product: makes a shop-exclusive copy
+     * (new unique SKU, isGlobal=false, images copied) with the new category,
+     * leaving the original untouched for every other shop still using it.
+     */
+    private MasterProduct cloneMasterProductForCategoryChange(MasterProduct source, ProductCategory newCategory) {
+        String baseSku = source.getSku() + "-COPY";
+        String sku = baseSku;
+        int suffix = 2;
+        while (masterProductRepository.existsBySku(sku)) {
+            sku = baseSku + "-" + suffix++;
+        }
+
+        MasterProduct clone = MasterProduct.builder()
+                .name(source.getName())
+                .nameTamil(source.getNameTamil())
+                .description(source.getDescription())
+                .sku(sku)
+                .barcode(null) // barcode is unique per master product; shop-level barcode1/2/3 stay on the ShopProduct
+                .category(newCategory)
+                .brand(source.getBrand())
+                .baseUnit(source.getBaseUnit())
+                .baseWeight(source.getBaseWeight())
+                .specifications(source.getSpecifications())
+                .tags(source.getTags())
+                .status(source.getStatus())
+                .isFeatured(source.getIsFeatured())
+                .isGlobal(false)
+                .createdBy(getCurrentUsername())
+                .updatedBy(getCurrentUsername())
+                .build();
+        clone = masterProductRepository.save(clone);
+
+        if (source.getImages() != null && !source.getImages().isEmpty()) {
+            final MasterProduct savedClone = clone;
+            List<com.shopmanagement.product.entity.MasterProductImage> copiedImages = source.getImages().stream()
+                    .map(img -> com.shopmanagement.product.entity.MasterProductImage.builder()
+                            .masterProduct(savedClone)
+                            .imageUrl(img.getImageUrl())
+                            .altText(img.getAltText())
+                            .isPrimary(img.getIsPrimary())
+                            .sortOrder(img.getSortOrder())
+                            .createdBy(getCurrentUsername())
+                            .build())
+                    .toList();
+            clone.getImages().addAll(copiedImages);
+            clone = masterProductRepository.save(clone);
+        }
+
+        return clone;
     }
 
     public void removeProductFromShop(Long shopId, Long productId) {

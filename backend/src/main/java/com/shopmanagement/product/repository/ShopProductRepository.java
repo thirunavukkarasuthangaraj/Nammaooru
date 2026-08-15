@@ -126,6 +126,11 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     boolean existsByShopAndMasterProduct(Shop shop, MasterProduct masterProduct);
     boolean existsByShopIdAndMasterProductId(Long shopId, Long masterProductId);
 
+    // How many shops (via their ShopProduct rows) reference this master product -
+    // used to decide whether a category edit can mutate it directly or must clone it
+    // first (shared master-catalog products must not have one shop's edit leak into another's).
+    long countByMasterProductId(Long masterProductId);
+
     // Cross-shop product queries (for comparing prices across shops)
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.masterProduct = :masterProduct AND sp.isAvailable = true ORDER BY sp.price")
     List<ShopProduct> findByMasterProductOrderByPrice(@Param("masterProduct") MasterProduct masterProduct);
@@ -148,6 +153,13 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     @Transactional
     @Query("UPDATE ShopProduct sp SET sp.trackInventory = true WHERE sp.trackInventory IS NULL")
     int updateNullTrackInventory();
+
+    // Bump updatedAt on products in a category so the POS/My-Products delta sync
+    // (GET .../my-products?updatedAfter=...) picks up category rename/status/delete
+    // changes even though the ShopProduct row itself didn't change.
+    @Modifying
+    @Query("UPDATE ShopProduct sp SET sp.updatedAt = CURRENT_TIMESTAMP WHERE sp.masterProduct.category.id = :categoryId")
+    int touchProductsByCategoryId(@Param("categoryId") Long categoryId);
     
     // Category queries for customers - returns actual category names (not product names)
     @Query("SELECT DISTINCT sp.masterProduct.category.name FROM ShopProduct sp WHERE sp.shop = :shop AND sp.isAvailable = true AND sp.masterProduct.category IS NOT NULL")

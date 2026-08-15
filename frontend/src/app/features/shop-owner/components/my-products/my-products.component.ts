@@ -1034,7 +1034,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
               stockQuantity: updatedData.stockQuantity ?? this.products[index].stockQuantity,
               barcode1: updatedData.barcode1 ?? this.products[index].barcode1,
               barcode2: updatedData.barcode2 ?? this.products[index].barcode2,
-              barcode3: updatedData.barcode3 ?? this.products[index].barcode3
+              barcode3: updatedData.barcode3 ?? this.products[index].barcode3,
+              category: updatedData.categoryName ?? this.products[index].category
             };
             this.applyFilters();
           }
@@ -1048,7 +1049,9 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
             stock: updatedData.stockQuantity,
             barcode1: updatedData.barcode1,
             barcode2: updatedData.barcode2,
-            barcode3: updatedData.barcode3
+            barcode3: updatedData.barcode3,
+            category: updatedData.categoryName,
+            categoryName: updatedData.categoryName
           }).catch(err => console.warn('Failed to update cache:', err));
 
           // Update cache timestamp to prevent background sync overwriting
