@@ -671,15 +671,14 @@ interface Category {
     }
 
     .action-btn {
-      width: 36px;
-      height: 36px;
-      line-height: 36px;
-      border-radius: 8px;
       color: #607D8B;
-      display: inline-flex;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .action-btn ::ng-deep .mat-button-wrapper {
+      display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s ease, color 0.15s ease;
     }
 
     .action-btn.toggle-on {
@@ -694,17 +693,6 @@ interface Category {
     .action-btn.delete:hover {
       color: #e53935;
       background: #FFEBEE;
-    }
-
-    .action-btn mat-icon {
-      font-size: 20px !important;
-      width: 20px !important;
-      height: 20px !important;
-      line-height: 20px !important;
-    }
-
-    .action-btn ::ng-deep .mat-button-focus-overlay {
-      border-radius: 8px;
     }
 
     .add-category-card {
