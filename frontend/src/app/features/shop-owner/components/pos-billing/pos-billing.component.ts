@@ -70,7 +70,7 @@ interface BillSettings {
   billNumberPrefix: string;
   showBillNumber: boolean;
   paperWidth: '58mm' | '80mm' | 'A4';
-  templateStyle: 'classic' | 'minimal' | 'bold' | 'compact' | 'invoice' | 'bordered';
+  templateStyle: 'current' | 'classic' | 'minimal' | 'bold' | 'compact' | 'invoice' | 'bordered';
 
   // Font Sizes (in pixels)
   headerFontSize: number;  // default: 16

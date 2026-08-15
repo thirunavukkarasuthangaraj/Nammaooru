@@ -20,7 +20,7 @@ interface BillSettings {
   identityVisibilityVersion: number;
   shopName: string; shopPhone: string; shopAddress: string; gstNumber: string; fssaiNumber: string; fssaiName: string;
   dateFormat: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD'; billNumberPrefix: string; showBillNumber: boolean;
-  paperWidth: '58mm' | '80mm' | 'A4'; templateStyle: 'classic' | 'minimal' | 'bold' | 'compact' | 'invoice' | 'bordered'; accentColor: string; headerFontSize: number; bodyFontSize: number; footerFontSize: number;
+  paperWidth: '58mm' | '80mm' | 'A4'; templateStyle: 'current' | 'classic' | 'minimal' | 'bold' | 'compact' | 'invoice' | 'bordered'; accentColor: string; headerFontSize: number; bodyFontSize: number; footerFontSize: number;
   showShopName: boolean; showShopPhone: boolean; showShopAddress: boolean; showGstNumber: boolean; showFssaiInfo: boolean;
   showDateTime: boolean; showCustomerDetails: boolean; showThankYouMessage: boolean;
   showItemSku: boolean; showItemBarcode: boolean; showItemMrp: boolean; showSellingPrice: boolean; showItemDiscount: boolean; showItemTax: boolean;
@@ -62,6 +62,7 @@ export class BillSettingsComponent implements OnInit {
   private serverLoaded = false;
   private saveTimer?: ReturnType<typeof setTimeout>;
   readonly templates = [
+    { value: 'current', name: 'Current Print', note: 'Exactly the receipt you print today', icon: 'print' },
     { value: 'classic', name: 'Market Classic', note: 'Familiar, detailed and practical', icon: 'receipt_long' },
     { value: 'minimal', name: 'Clean Counter', note: 'Quiet, fast-scanning layout', icon: 'density_small' },
     { value: 'bold', name: 'NammaOoru Bold', note: 'Strong total and shop identity', icon: 'storefront' },
