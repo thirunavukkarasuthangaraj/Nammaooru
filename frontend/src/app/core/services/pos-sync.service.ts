@@ -12,6 +12,10 @@ export interface SyncStatus {
   pendingProductCreations: number;
   lastProductSync: Date | null;
   isSyncing: boolean;
+  // Orders the server genuinely rejected (e.g. insufficient stock) - not a
+  // network failure, so they won't resolve on their own. Cash was already
+  // collected for these; they need a human to review and resolve.
+  failedOrders: number;
 }
 
 @Injectable({
@@ -38,7 +42,8 @@ export class PosSyncService implements OnDestroy {
     pendingEdits: 0,
     pendingProductCreations: 0,
     lastProductSync: null,
-    isSyncing: false
+    isSyncing: false,
+    failedOrders: 0
   });
 
   constructor(
@@ -74,10 +79,10 @@ export class PosSyncService implements OnDestroy {
    * Run the full sync sequence (edits -> creations -> orders), guarding against
    * overlapping runs from the timer, the 'online' event and page-open sync.
    */
-  async runSyncSequence(): Promise<{ synced: number; failed: number }> {
+  async runSyncSequence(): Promise<{ synced: number; failed: number; newlyFailedOrders: { order: OfflineOrder; message: string }[] }> {
     if (this.syncSequenceRunning) {
       console.log('Sync sequence already running - skipping');
-      return { synced: 0, failed: 0 };
+      return { synced: 0, failed: 0, newlyFailedOrders: [] };
     }
     this.syncSequenceRunning = true;
     try {
@@ -86,11 +91,43 @@ export class PosSyncService implements OnDestroy {
       const orders = await this.syncPendingOrders();
       return {
         synced: edits.synced + creations.synced + orders.synced,
-        failed: edits.failed + creations.failed + orders.failed
+        failed: edits.failed + creations.failed + orders.failed,
+        newlyFailedOrders: orders.newlyFailed
       };
     } finally {
       this.syncSequenceRunning = false;
     }
+  }
+
+  /**
+   * Bills the server permanently rejected on sync (need manual review) -
+   * see OfflineOrder.failedPermanently.
+   */
+  async getFailedOrders(): Promise<OfflineOrder[]> {
+    return this.offlineStorage.getFailedOrders();
+  }
+
+  /**
+   * Retry a single previously-failed bill (e.g. after the owner restocked
+   * the item, or the conflicting sale was itself cancelled).
+   */
+  async retryFailedOrder(offlineOrderId: string): Promise<{ success: boolean; message?: string }> {
+    await this.offlineStorage.clearOrderFailure(offlineOrderId);
+    const result = await this.syncPendingOrders();
+    const stillFailed = result.newlyFailed.find(f => f.order.offlineOrderId === offlineOrderId);
+    if (stillFailed) {
+      return { success: false, message: stillFailed.message };
+    }
+    return { success: true };
+  }
+
+  /**
+   * Give up on a stuck bill (owner has manually reconciled it some other
+   * way - refund, manual ledger entry, etc.) and remove it from the queue.
+   */
+  async discardFailedOrder(offlineOrderId: string): Promise<void> {
+    await this.offlineStorage.removeOfflineOrder(offlineOrderId);
+    await this.updatePendingCount();
   }
 
   /**
@@ -155,10 +192,12 @@ export class PosSyncService implements OnDestroy {
     const ordersCount = await this.offlineStorage.getPendingOrdersCount();
     const editsCount = await this.offlineStorage.getPendingEditsCount();
     const productCreationsCount = await this.offlineStorage.getPendingProductCreationsCount();
+    const failedOrdersCount = await this.offlineStorage.getFailedOrdersCount();
     this.updateStatus({
       pendingOrders: ordersCount,
       pendingEdits: editsCount,
-      pendingProductCreations: productCreationsCount
+      pendingProductCreations: productCreationsCount,
+      failedOrders: failedOrdersCount
     });
   }
 
@@ -448,16 +487,19 @@ export class PosSyncService implements OnDestroy {
   /**
    * Sync all pending orders to server
    */
-  async syncPendingOrders(): Promise<{ synced: number; failed: number }> {
+  async syncPendingOrders(): Promise<{ synced: number; failed: number; newlyFailed: { order: OfflineOrder; message: string }[] }> {
     if (!navigator.onLine) {
       console.log('Cannot sync - offline');
-      return { synced: 0, failed: 0 };
+      return { synced: 0, failed: 0, newlyFailed: [] };
     }
 
-    const pendingOrders = await this.offlineStorage.getPendingOrders();
+    // Excludes orders already marked permanently failed - those need a human
+    // decision (retry/discard from the failed-orders panel), not another
+    // silent auto-retry every sync cycle.
+    const pendingOrders = await this.offlineStorage.getRetryablePendingOrders();
     if (pendingOrders.length === 0) {
       console.log('No pending orders to sync');
-      return { synced: 0, failed: 0 };
+      return { synced: 0, failed: 0, newlyFailed: [] };
     }
 
     this.updateStatus({ isSyncing: true });
@@ -465,6 +507,7 @@ export class PosSyncService implements OnDestroy {
 
     let synced = 0;
     let failed = 0;
+    const newlyFailed: { order: OfflineOrder; message: string }[] = [];
 
     for (const order of pendingOrders) {
       try {
@@ -505,9 +548,21 @@ export class PosSyncService implements OnDestroy {
         await this.offlineStorage.markOrderSynced(order.offlineOrderId);
         synced++;
         console.log(`Synced order: ${order.offlineOrderId}`);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to sync order ${order.offlineOrderId}:`, error);
         failed++;
+
+        // A genuine server rejection (e.g. insufficient stock because another
+        // device sold the same units first) will fail again on every retry -
+        // cash was already collected for this bill, so it must not just sit
+        // in a silent retry loop forever. Network/timeout failures (status 0)
+        // are left alone; those resolve on their own once connectivity returns.
+        const status = error?.status;
+        if (typeof status === 'number' && status >= 400 && status < 600) {
+          const message = error?.error?.message || error?.error?.error || error?.message || 'Server rejected this bill';
+          await this.offlineStorage.markOrderFailed(order.offlineOrderId, message);
+          newlyFailed.push({ order, message });
+        }
       }
     }
 
@@ -515,7 +570,7 @@ export class PosSyncService implements OnDestroy {
     this.updateStatus({ isSyncing: false });
 
     console.log(`Sync complete: ${synced} synced, ${failed} failed`);
-    return { synced, failed };
+    return { synced, failed, newlyFailed };
   }
 
   // ==================== OFFLINE EDITS SYNC ====================

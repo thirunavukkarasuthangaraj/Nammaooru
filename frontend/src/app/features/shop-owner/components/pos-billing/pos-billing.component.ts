@@ -231,8 +231,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     pendingEdits: 0,
     pendingProductCreations: 0,
     lastProductSync: null,
-    isSyncing: false
+    isSyncing: false,
+    failedOrders: 0
   };
+  private lastKnownFailedOrders = 0;
 
   // Cache validity - only sync from server if cache is older than this
   private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
@@ -835,6 +837,18 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       .pipe(takeUntil(this.destroy$))
       .subscribe(status => {
         this.syncStatus = status;
+
+        // A bill can fail to sync from a background/automatic retry (network
+        // reconnect, periodic timer) with no one actively watching for it.
+        // Catch that transition here so it's never silent - real cash was
+        // already collected for these bills.
+        if (status.failedOrders > this.lastKnownFailedOrders) {
+          this.swal.warning(
+            'A bill could not be synced',
+            `${status.failedOrders} bill(s) were rejected by the server (e.g. item sold out on another device) and need review. Tap the red "Failed" badge to see details.`
+          );
+        }
+        this.lastKnownFailedOrders = status.failedOrders;
       });
   }
 
@@ -3077,6 +3091,73 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.swal.close();
       console.error('Sync error:', error);
       this.swal.error('Sync Failed', error.message || 'Failed to sync data');
+    }
+  }
+
+  /**
+   * Show bills the server permanently rejected on sync (e.g. insufficient
+   * stock because another device sold the same units first). Cash was
+   * already collected for these - lets the owner retry (after fixing stock)
+   * or discard (if reconciled some other way, e.g. a manual refund).
+   */
+  async viewFailedOrders(): Promise<void> {
+    const failed = await this.syncService.getFailedOrders();
+    if (failed.length === 0) {
+      this.swal.success('All Clear', 'No failed bills to review.');
+      return;
+    }
+
+    const rows = failed.map(o => `
+      <div style="text-align:left;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;">
+          <strong>${o.offlineOrderId}</strong>
+          <span>₹${o.totalAmount}</span>
+        </div>
+        <div style="color:#666;font-size:0.85em;">${o.customerName || 'Walk-in'} &bull; ${new Date(o.createdAt).toLocaleString()}</div>
+        <div style="color:#ef4444;font-size:0.85em;margin-top:4px;">${o.syncError || 'Rejected by server'}</div>
+      </div>
+    `).join('');
+
+    const result = await this.swal.custom({
+      title: `${failed.length} bill(s) need review`,
+      html: `<div style="max-height:300px;overflow-y:auto;">${rows}</div>
+             <p style="font-size:0.85em;color:#666;margin-top:8px;">These bills were paid by the customer but could not be recorded on the server. Retry after fixing stock, or discard if you've already reconciled it manually.</p>`,
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'Retry All',
+      denyButtonText: 'Discard All',
+      cancelButtonText: 'Close',
+      confirmButtonColor: '#22c55e',
+      denyButtonColor: '#ef4444'
+    });
+
+    if (result.isConfirmed) {
+      this.swal.loading('Retrying...');
+      let succeeded = 0;
+      let stillFailed = 0;
+      for (const o of failed) {
+        const r = await this.syncService.retryFailedOrder(o.offlineOrderId);
+        if (r.success) {
+          succeeded++;
+        } else {
+          stillFailed++;
+        }
+      }
+      this.swal.close();
+      if (stillFailed > 0) {
+        this.swal.warning('Retry complete', `${succeeded} synced, ${stillFailed} still failing - review again.`);
+      } else {
+        this.swal.success('All synced', `${succeeded} bill(s) synced successfully.`);
+      }
+      await this.loadProducts();
+    } else if (result.isDenied) {
+      const confirmResult = await this.swal.confirmDelete(`${failed.length} failed bill(s)`);
+      if (confirmResult.isConfirmed) {
+        for (const o of failed) {
+          await this.syncService.discardFailedOrder(o.offlineOrderId);
+        }
+        this.swal.success('Discarded', 'Failed bills removed from the queue.');
+      }
     }
   }
 

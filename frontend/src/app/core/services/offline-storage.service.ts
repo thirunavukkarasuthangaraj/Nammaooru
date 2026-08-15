@@ -56,6 +56,13 @@ export interface OfflineOrder {
   discountAmount?: number;
   createdAt: string;
   synced: boolean;
+  // Set when the server genuinely rejected this bill on sync (e.g. insufficient
+  // stock because another device sold the same units first) - as opposed to a
+  // network/timeout failure, which just retries automatically. A permanently
+  // failed order means cash was already collected from the customer but the
+  // sale never made it into the shop's records - it needs a human to look at it.
+  failedPermanently?: boolean;
+  syncError?: string;
 }
 
 export interface OfflineEdit {
@@ -752,6 +759,81 @@ export class OfflineStorageService {
   }
 
   /**
+   * Pending orders that are still worth auto-retrying (excludes orders the
+   * server has already permanently rejected - those need a human decision,
+   * not another silent retry every couple of minutes).
+   */
+  async getRetryablePendingOrders(): Promise<OfflineOrder[]> {
+    const pending = await this.getPendingOrders();
+    return pending.filter(o => !o.failedPermanently);
+  }
+
+  /**
+   * Orders the server genuinely rejected on sync (not a network failure) -
+   * cash was already collected for these but they never made it into the
+   * shop's records. Needs the shop owner/employee to review and resolve.
+   */
+  async getFailedOrders(): Promise<OfflineOrder[]> {
+    const pending = await this.getPendingOrders();
+    return pending.filter(o => o.failedPermanently);
+  }
+
+  /**
+   * Mark an offline order as permanently failed (server rejected it - e.g.
+   * insufficient stock). Stops it from being silently retried in the
+   * background until the owner explicitly retries or discards it.
+   */
+  async markOrderFailed(offlineOrderId: string, error: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(ORDERS_STORE, 'readwrite');
+    const store = transaction.objectStore(ORDERS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(offlineOrderId);
+      getRequest.onsuccess = () => {
+        const order = getRequest.result;
+        if (order) {
+          order.failedPermanently = true;
+          order.syncError = error;
+          const putRequest = store.put(order);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Clear the failed flag so the order is picked up by the normal retry
+   * loop again (used by the shop owner's manual "Retry" action).
+   */
+  async clearOrderFailure(offlineOrderId: string): Promise<void> {
+    const db = await this.getDB();
+    const transaction = db.transaction(ORDERS_STORE, 'readwrite');
+    const store = transaction.objectStore(ORDERS_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(offlineOrderId);
+      getRequest.onsuccess = () => {
+        const order = getRequest.result;
+        if (order) {
+          order.failedPermanently = false;
+          order.syncError = undefined;
+          const putRequest = store.put(order);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
    * Get all offline orders
    */
   async getAllOfflineOrders(): Promise<OfflineOrder[]> {
@@ -807,11 +889,20 @@ export class OfflineStorageService {
   }
 
   /**
-   * Get pending orders count
+   * Get pending (still retryable) orders count - excludes permanently failed
+   * orders, which are counted separately via getFailedOrdersCount().
    */
   async getPendingOrdersCount(): Promise<number> {
-    const pending = await this.getPendingOrders();
+    const pending = await this.getRetryablePendingOrders();
     return pending.length;
+  }
+
+  /**
+   * Get permanently failed orders count (need manual review, see getFailedOrders)
+   */
+  async getFailedOrdersCount(): Promise<number> {
+    const failed = await this.getFailedOrders();
+    return failed.length;
   }
 
   /**

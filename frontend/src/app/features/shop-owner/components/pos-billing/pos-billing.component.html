@@ -40,6 +40,10 @@
           <button mat-icon-button (click)="manualSync()" [disabled]="!syncStatus.isOnline || syncStatus.isSyncing" class="sync-btn" *ngIf="syncStatus.isOnline">
             <mat-icon [class.spinning]="syncStatus.isSyncing">sync</mat-icon>
           </button>
+          <button mat-icon-button (click)="viewFailedOrders()" class="failed-orders-btn" *ngIf="syncStatus.failedOrders > 0"
+                  title="Bill(s) failed to sync - tap to review" matBadge="{{ syncStatus.failedOrders }}" matBadgeColor="warn" matBadgeSize="small">
+            <mat-icon color="warn">report_problem</mat-icon>
+          </button>
         </div>
       </div>
 
