@@ -134,6 +134,15 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop = :shop ORDER BY sp.createdAt DESC")
     Page<ShopProduct> findRecentlyAddedByShop(@Param("shop") Shop shop, Pageable pageable);
 
+    // Hard-delete support: order_items keep their name/price snapshot, only the FK is cleared
+    @Modifying
+    @Query("UPDATE OrderItem oi SET oi.shopProduct = null WHERE oi.shopProduct.id = :productId")
+    int detachOrderItemsFromProduct(@Param("productId") Long productId);
+
+    @Modifying
+    @Query("DELETE FROM ComboItem ci WHERE ci.shopProduct.id = :productId")
+    int deleteComboItemsForProduct(@Param("productId") Long productId);
+
     // Data fix methods
     @Modifying
     @Transactional

@@ -349,17 +349,17 @@ public class ShopProductService {
         // Get shop before updating the product
         Shop shop = shopProduct.getShop();
 
-        // Soft delete: Set status to INACTIVE and make unavailable instead of deleting
-        // This preserves order history and prevents foreign key violations
-        shopProduct.setStatus(ShopProduct.ShopProductStatus.INACTIVE);
-        shopProduct.setIsAvailable(false);
-        shopProduct.setUpdatedBy(getCurrentUsername());
-        shopProductRepository.save(shopProduct);
+        // Hard delete: order_items keep their productName/price snapshot (FK is nullable),
+        // combo items referencing this product are removed, images cascade on delete
+        int detachedOrderItems = shopProductRepository.detachOrderItemsFromProduct(productId);
+        int removedComboItems = shopProductRepository.deleteComboItemsForProduct(productId);
+        shopProductRepository.delete(shopProduct);
 
         // Update shop's product count
         updateShopProductCount(shop);
 
-        log.info("Product removed from shop successfully (soft delete): {}", productId);
+        log.info("Product {} permanently deleted from shop {} (detached {} order items, removed {} combo items)",
+                productId, shopId, detachedOrderItems, removedComboItems);
     }
 
     @Transactional(readOnly = true)
