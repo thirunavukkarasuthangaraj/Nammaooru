@@ -31,6 +31,7 @@ import java.util.stream.IntStream;
 public class ProductCategoryService {
 
     private final ProductCategoryRepository categoryRepository;
+    private final com.shopmanagement.product.repository.MasterProductRepository masterProductRepository;
     private final ProductMapper productMapper;
     private final com.shopmanagement.product.repository.ShopProductRepository shopProductRepository;
     private final com.shopmanagement.shop.repository.ShopRepository shopRepository;
@@ -161,13 +162,12 @@ public class ProductCategoryService {
     public ProductCategoryResponse createCategory(ProductCategoryRequest request) {
         log.info("Creating category: {}", request.getName());
         
-        // Validate slug uniqueness
-        String slug = StringUtils.hasText(request.getSlug()) ? 
+        // Slug is globally unique (DB constraint) but categories are per-shop,
+        // so another shop's "dish-wash" must not block this owner's "Dish Wash".
+        // Auto-suffix to a free slug instead of rejecting the save.
+        String slug = StringUtils.hasText(request.getSlug()) ?
             request.getSlug() : generateSlug(request.getName());
-            
-        if (categoryRepository.existsBySlug(slug)) {
-            throw new RuntimeException("Category with slug already exists: " + slug);
-        }
+        slug = nextFreeSlug(slug, null);
         
         // Get parent category if specified
         ProductCategory parent = null;
@@ -212,8 +212,8 @@ public class ProductCategoryService {
         String slug = StringUtils.hasText(request.getSlug()) ? 
             request.getSlug() : generateSlug(request.getName());
             
-        if (!slug.equals(category.getSlug()) && categoryRepository.existsBySlug(slug)) {
-            throw new RuntimeException("Category with slug already exists: " + slug);
+        if (!slug.equals(category.getSlug())) {
+            slug = nextFreeSlug(slug, category.getSlug());
         }
         
         // Validate parent change (prevent circular references)
@@ -254,13 +254,12 @@ public class ProductCategoryService {
             throw new RuntimeException("Cannot delete category with subcategories. Please delete subcategories first.");
         }
         
-        // Check if category has products
-        if (!category.getProducts().isEmpty()) {
-            throw new RuntimeException("Cannot delete category with products. Please move products to another category first.");
-        }
-        
+        // Detach products instead of blocking the delete - they remain in the
+        // shop's product listing as "uncategorized"
+        int detached = masterProductRepository.detachProductsFromCategory(id);
+
         categoryRepository.delete(category);
-        log.info("Category deleted successfully: {}", id);
+        log.info("Category {} deleted successfully ({} products left uncategorized)", id, detached);
     }
 
     @Transactional(readOnly = true)
@@ -380,6 +379,16 @@ public class ProductCategoryService {
             subcat.setUpdatedBy(getCurrentUsername());
             deactivateSubcategories(subcat); // Recursive deactivation
         });
+    }
+
+    /** First free slug: base, base-2, base-3… (currentSlug stays valid for updates) */
+    private String nextFreeSlug(String base, String currentSlug) {
+        String candidate = base;
+        int n = 2;
+        while (!candidate.equals(currentSlug) && categoryRepository.existsBySlug(candidate)) {
+            candidate = base + "-" + n++;
+        }
+        return candidate;
     }
 
     private String generateSlug(String name) {

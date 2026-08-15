@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,6 +25,11 @@ public interface MasterProductRepository extends JpaRepository<MasterProduct, Lo
     List<MasterProduct> findByStatus(MasterProduct.ProductStatus status);
     Page<MasterProduct> findByStatus(MasterProduct.ProductStatus status, Pageable pageable);
     
+    // Category delete support: products stay, they just become uncategorized
+    @Modifying
+    @Query("UPDATE MasterProduct mp SET mp.category = null WHERE mp.category.id = :categoryId")
+    int detachProductsFromCategory(@Param("categoryId") Long categoryId);
+
     // Category-based queries
     List<MasterProduct> findByCategory(ProductCategory category);
     Page<MasterProduct> findByCategory(ProductCategory category, Pageable pageable);

@@ -163,9 +163,9 @@ interface Category {
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button mat-icon-button class="action-btn" matTooltip="View products" (click)="viewProducts(category)">
-                  <mat-icon>inventory_2</mat-icon>
+                  <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button class="action-btn"
+                <button mat-icon-button class="action-btn" [class.toggle-on]="category.isActive"
                         [matTooltip]="category.isActive ? 'Deactivate' : 'Activate'"
                         (click)="toggleCategoryStatus(category)">
                   <mat-icon>{{ category.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
@@ -173,8 +173,7 @@ interface Category {
                 <span class="actions-spacer"></span>
                 <button mat-icon-button class="action-btn delete"
                         matTooltip="Delete"
-                        (click)="deleteCategory(category)"
-                        [disabled]="category.productCount > 0">
+                        (click)="deleteCategory(category)">
                   <mat-icon>delete_outline</mat-icon>
                 </button>
               </div>
@@ -672,30 +671,40 @@ interface Category {
     }
 
     .action-btn {
-      width: 34px;
-      height: 34px;
-      line-height: 34px;
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      border-radius: 8px;
       color: #607D8B;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, color 0.15s ease;
     }
 
-    .action-btn:hover:not([disabled]) {
+    .action-btn.toggle-on {
+      color: #16a34a;
+    }
+
+    .action-btn:hover {
       color: #16a34a;
       background: #E8F5E9;
     }
 
-    .action-btn.delete:hover:not([disabled]) {
+    .action-btn.delete:hover {
       color: #e53935;
       background: #FFEBEE;
     }
 
-    .action-btn[disabled] {
-      color: #CFD8DC;
+    .action-btn mat-icon {
+      font-size: 20px !important;
+      width: 20px !important;
+      height: 20px !important;
+      line-height: 20px !important;
     }
 
-    .action-btn mat-icon {
-      font-size: 19px !important;
-      width: 19px !important;
-      height: 19px !important;
+    .action-btn ::ng-deep .mat-button-focus-overlay {
+      border-radius: 8px;
     }
 
     .add-category-card {
@@ -1392,11 +1401,6 @@ export class CategoriesComponent implements OnInit {
   }
 
   deleteCategory(category: Category): void {
-    if (category.productCount > 0) {
-      this.swal.warning('Cannot Delete', 'This category contains products. Please remove all products first.');
-      return;
-    }
-
     this.swal.confirmDelete(category.name).then((result) => {
       if (result.isConfirmed) {
         this.categoryService.deleteCategory(category.id).subscribe({
