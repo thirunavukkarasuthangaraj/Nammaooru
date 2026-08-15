@@ -55,11 +55,11 @@ export class ReceiptTemplateService {
 
   private getSeparatorStyle(style: string): string {
     switch (style) {
-      case 'solid': return 'border-top: 1px solid #000; margin: 6px 0;';
-      case 'dotted': return 'border-top: 1px dotted #000; margin: 6px 0;';
-      case 'none': return 'margin: 6px 0;';
+      case 'solid': return 'border-top: 1px solid #000; margin: 4px 0;';
+      case 'dotted': return 'border-top: 1px dotted #000; margin: 4px 0;';
+      case 'none': return 'margin: 4px 0;';
       case 'dashed':
-      default: return 'border-top: 1px dashed #000; margin: 6px 0;';
+      default: return 'border-top: 1px dashed #000; margin: 4px 0;';
     }
   }
 
@@ -190,7 +190,7 @@ export class ReceiptTemplateService {
             max-width: ${paperConfig.maxWidth};
             margin: 0 auto;
             padding: ${bodyPadding};
-            line-height: 1.25;
+            line-height: 1.2;
             overflow-wrap: anywhere;
           }
           *, *::before, *::after { box-sizing: border-box; }
@@ -200,7 +200,7 @@ export class ReceiptTemplateService {
           }
           .divider-solid {
             border-top: 1px solid #000;
-            margin: 6px 0;
+            margin: 4px 0;
           }
           table { width: 100%; border-collapse: collapse; }
           .shop-name {
@@ -223,7 +223,7 @@ export class ReceiptTemplateService {
           .order-number {
             font-size: ${Math.max(bodyFontSize - 1, 9)}px;
             font-weight: 600;
-            margin: 4px 0;
+            margin: 2px 0;
             overflow-wrap: anywhere;
           }
           .customer-name {
@@ -252,7 +252,7 @@ export class ReceiptTemplateService {
             font-size: ${footerFontSize}px;
             color: #000;
             font-weight: 600;
-            margin-top: 6px;
+            margin-top: 4px;
           }
           .flex-row {
             display: flex;
@@ -378,7 +378,7 @@ export class ReceiptTemplateService {
         </table>
         <div class="divider"></div>
 
-        ${bs.showSubtotal ? `<div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 4px 0;">
+        ${bs.showSubtotal ? `<div class="flex-row" style="font-size: ${bodyFontSize}px; padding: 2px 0;">
           <span style="font-weight: 600;">Items: ${itemCount} (Qty: ${totalQty})</span>
           <span style="font-weight: 700;">₹${data.subtotal.toFixed(0)}</span>
         </div>` : ''}
@@ -405,7 +405,7 @@ export class ReceiptTemplateService {
         </div>
         ` : ''}
 
-        <div class="flex-row grand-total-box" style="border-top: ${dividerBorder}; padding: 5px 4px; margin-top: 3px;">
+        <div class="flex-row grand-total-box" style="border-top: ${dividerBorder}; padding: 4px; margin-top: 2px;">
           <span style="font-size: ${headerFontSize}px; font-weight: 700;">TOTAL</span>
           <span class="grand-total-value" style="font-size: ${headerFontSize + 2}px; font-weight: 700;">₹${data.totalAmount.toFixed(0)}</span>
         </div>
