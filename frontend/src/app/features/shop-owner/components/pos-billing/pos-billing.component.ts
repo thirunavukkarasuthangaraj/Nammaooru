@@ -286,7 +286,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     billNumberPrefix: '',
     showBillNumber: true,
     paperWidth: '80mm',
-    templateStyle: 'classic',
+    templateStyle: 'current',
     // Font Sizes
     headerFontSize: 16,
     bodyFontSize: 12,

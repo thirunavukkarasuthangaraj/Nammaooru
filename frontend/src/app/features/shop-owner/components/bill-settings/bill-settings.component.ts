@@ -34,7 +34,7 @@ interface BillSettings {
 const DEFAULT_SETTINGS: BillSettings = {
   identityVisibilityVersion: 1,
   shopName: '', shopPhone: '', shopAddress: '', gstNumber: '', fssaiNumber: '', fssaiName: '',
-  dateFormat: 'DD/MM/YYYY', billNumberPrefix: '', showBillNumber: true, paperWidth: '80mm', templateStyle: 'classic', accentColor: '#43d77d',
+  dateFormat: 'DD/MM/YYYY', billNumberPrefix: '', showBillNumber: true, paperWidth: '80mm', templateStyle: 'current', accentColor: '#43d77d',
   headerFontSize: 16, bodyFontSize: 12, footerFontSize: 10,
   showShopName: true, showShopPhone: true, showShopAddress: false, showGstNumber: false, showFssaiInfo: false,
   showDateTime: true, showCustomerDetails: true, showThankYouMessage: true,

@@ -261,6 +261,19 @@ export class ReceiptTemplateService {
           }
           /* ============ Template styles (shared by print and live preview) ============ */
 
+          /* Market Classic: light-green filled header + soft green total box.
+             'current' (Current Print) has no overrides - it IS the base design. */
+          body.template-classic .receipt-header {
+            margin: -${bodyPadding} -${bodyPadding} 6px;
+            padding: 8px 6px 7px;
+            background: #43d77d !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body.template-classic .receipt-header,
+          body.template-classic .receipt-header div { color: #fff !important; }
+          body.template-classic .grand-total-box { background: #e6f9ee !important; border-top: none !important; padding: 6px !important; }
+
           /* Clean Counter: airy sans-serif, faded light dividers, soft grey total (no hard boxes) */
           body.template-minimal {
             font-family: Arial, sans-serif;
@@ -326,7 +339,7 @@ export class ReceiptTemplateService {
           body.template-bordered .grand-total-box span { color: #fff !important; }
         </style>
       </head>
-      <body class="template-${bs.templateStyle || 'classic'}">
+      <body class="template-${bs.templateStyle || 'current'}">
         <div class="receipt-header">
           ${bs.showShopName ? `<div class="center shop-name">${shopName}</div>` : ''}
           ${bs.showShopAddress && shopAddress ? `<div class="center" style="font-size: ${Math.max(footerFontSize, 9)}px; color: #000; font-weight: 600;">${shopAddress}</div>` : ''}

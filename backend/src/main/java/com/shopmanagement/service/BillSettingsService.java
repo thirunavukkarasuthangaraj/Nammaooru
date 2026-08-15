@@ -98,7 +98,7 @@ public class BillSettingsService {
         m.put("gstNumber", shop == null ? "" : shop.getGstNumber());
         m.put("fssaiNumber", shop == null ? "" : shop.getFssaiCertificateNumber()); m.put("fssaiName", "");
         m.put("dateFormat", "DD/MM/YYYY"); m.put("billNumberPrefix", ""); m.put("showBillNumber", true);
-        m.put("paperWidth", "80mm"); m.put("templateStyle", "classic"); m.put("accentColor", "#43d77d");
+        m.put("paperWidth", "80mm"); m.put("templateStyle", "current"); m.put("accentColor", "#43d77d");
         m.put("headerFontSize", 16); m.put("bodyFontSize", 12); m.put("footerFontSize", 10);
         for (String key : List.of("showShopName","showShopPhone","showDateTime","showCustomerDetails","showThankYouMessage",
                 "showItemMrp","showSellingPrice","showSubtotal","showTotalSavings","showPaymentMethod","showEnglish","showTamil")) m.put(key, true);
