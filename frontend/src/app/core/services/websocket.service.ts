@@ -44,7 +44,10 @@ export class WebSocketService {
    */
   connect(token?: string): Observable<boolean> {
     if (!this.stompClient) {
-      const wsUrl = `${environment.apiUrl.replace('/api', '')}/ws`;
+      // Strip only a TRAILING "/api" - a plain .replace('/api','') matches the
+      // first "/api" anywhere in the string, which is inside "https://api."
+      // for this domain and corrupts the host (e.g. "https://.nammaoorudelivary.in").
+      const wsUrl = `${environment.apiUrl.replace(/\/api$/, '')}/ws`;
       console.log('📡 Connecting to WebSocket via SockJS:', wsUrl);
 
       this.stompClient = new Client({

@@ -107,7 +107,7 @@ export class FeatureConfigManagementComponent implements OnInit {
   getImageUrl(imageUrl: string): string {
     if (!imageUrl) return '';
     if (imageUrl.startsWith('http')) return imageUrl;
-    const base = environment.apiUrl.replace('/api', '');
+    const base = environment.apiUrl.replace(/\/api$/, '');
     return `${base}${imageUrl}`;
   }
 

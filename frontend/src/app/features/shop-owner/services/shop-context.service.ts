@@ -326,7 +326,7 @@ export class ShopContextService {
     if (logoUrl) {
       // Ensure full URL
       if (!logoUrl.startsWith('http')) {
-        logoUrl = `${environment.apiUrl.replace('/api', '')}${logoUrl}`;
+        logoUrl = `${environment.apiUrl.replace(/\/api$/, '')}${logoUrl}`;
       }
       localStorage.setItem('shop_logo_url', logoUrl);
       console.log('Shop logo URL saved:', logoUrl);
