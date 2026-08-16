@@ -1508,13 +1508,17 @@ public class OrderService {
     private OrderResponse mapToResponse(Order order, Boolean assignedToDeliveryPartner) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getOrderItems().stream()
                 .map(item -> {
+                    // shopProduct is null for a hard-deleted product - the order item keeps
+                    // its own productName/sku/price snapshot, only the FK link is cleared
+                    // (see ShopProductRepository.detachOrderItemsFromProduct). Fall back to
+                    // the item's own snapshot and the order's shop instead of NPE-ing.
                     ShopProduct shopProduct = item.getShopProduct();
-                    MasterProduct masterProduct = shopProduct.getMasterProduct();
-                    Shop shop = shopProduct.getShop();
+                    MasterProduct masterProduct = shopProduct != null ? shopProduct.getMasterProduct() : null;
+                    Shop shop = shopProduct != null ? shopProduct.getShop() : order.getShop();
 
                     // Get product image - fallback to master product images if order item doesn't have one
                     String productImageUrl = item.getProductImageUrl();
-                    if (productImageUrl == null || productImageUrl.isEmpty()) {
+                    if ((productImageUrl == null || productImageUrl.isEmpty()) && masterProduct != null) {
                         // Try primary image URL first
                         productImageUrl = masterProduct.getPrimaryImageUrl();
                         // If still empty, try images collection
@@ -1526,15 +1530,15 @@ public class OrderService {
 
                     return OrderResponse.OrderItemResponse.builder()
                             .id(item.getId())
-                            .shopProductId(shopProduct.getId())
+                            .shopProductId(shopProduct != null ? shopProduct.getId() : null)
                             .productName(item.getProductName())
-                            .productNameTamil(masterProduct.getNameTamil())
+                            .productNameTamil(masterProduct != null ? masterProduct.getNameTamil() : null)
                             .productDescription(item.getProductDescription())
                             .productSku(item.getProductSku())
                             .productImageUrl(productImageUrl)
-                            .unit(masterProduct.getBaseUnit())
-                            .shopId(shop.getId())
-                            .shopName(shop.getName())
+                            .unit(masterProduct != null ? masterProduct.getBaseUnit() : null)
+                            .shopId(shop != null ? shop.getId() : null)
+                            .shopName(shop != null ? shop.getName() : null)
                             .quantity(item.getQuantity())
                             .unitPrice(item.getUnitPrice())
                             .totalPrice(item.getTotalPrice())
