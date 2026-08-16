@@ -249,7 +249,12 @@ public class ShopProductService {
         boolean masterProductUpdated = false;
 
         // Update MasterProduct fields (sku, barcode, voice search tags, Tamil name)
-        if (request.getSku() != null && !request.getSku().trim().isEmpty()) {
+        // Only touch SKU when it actually changed - the frontend resends the current
+        // SKU on every save, and blindly re-applying it here would stomp the fresh
+        // unique SKU a category-change clone (above) just generated for itself,
+        // colliding with the original master product's still-unchanged SKU.
+        if (request.getSku() != null && !request.getSku().trim().isEmpty()
+                && !request.getSku().trim().equals(masterProduct.getSku())) {
             masterProduct.setSku(request.getSku().trim());
             masterProductUpdated = true;
             log.debug("Updating master product SKU to: {}", request.getSku());
