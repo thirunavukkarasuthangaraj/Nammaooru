@@ -242,6 +242,12 @@ public class ShopProductService {
             shopProduct.setBaseUnit(request.getBaseUnit());
         }
 
+        // Capture the SKU as it was BEFORE any category-change clone, so the SKU
+        // block below can tell "user actually edited the SKU" apart from "frontend
+        // just echoed back the pre-clone SKU" - the clone below gets its own fresh
+        // unique SKU and must not have it stomped by the latter.
+        String preCloneSku = shopProduct.getMasterProduct().getSku();
+
         // Resolve category FIRST - it may clone the master product (see below), and
         // every other master-product field edit below must land on that resolved
         // instance, not the stale pre-clone one.
@@ -254,7 +260,7 @@ public class ShopProductService {
         // unique SKU a category-change clone (above) just generated for itself,
         // colliding with the original master product's still-unchanged SKU.
         if (request.getSku() != null && !request.getSku().trim().isEmpty()
-                && !request.getSku().trim().equals(masterProduct.getSku())) {
+                && !request.getSku().trim().equals(preCloneSku)) {
             masterProduct.setSku(request.getSku().trim());
             masterProductUpdated = true;
             log.debug("Updating master product SKU to: {}", request.getSku());
