@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface Notification {
   id: number;
@@ -34,7 +34,7 @@ export class NotificationsComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   viewOrder(notification: Notification): void {
@@ -106,7 +106,7 @@ export class NotificationsComponent implements OnInit {
         console.error('Error loading notifications:', error);
         this.notifications = [];
         this.loading = false;
-        this.snackBar.open('Failed to load notifications', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load notifications', 'error');
       }
     });
   }
@@ -124,7 +124,7 @@ export class NotificationsComponent implements OnInit {
     this.http.put(`${environment.apiUrl}/notifications/${notification.id}/read`, {}, { headers }).subscribe({
       next: () => {
         notification.isRead = true;
-        this.snackBar.open('Notification marked as read', 'Close', { duration: 2000 });
+        this.swal.toast('Notification marked as read', 'success');
       },
       error: (error) => {
         console.error('Error marking notification as read:', error);
@@ -156,11 +156,11 @@ export class NotificationsComponent implements OnInit {
     this.http.put(`${environment.apiUrl}/notifications/user/${userId}/read-all`, {}, { headers }).subscribe({
       next: () => {
         this.notifications.forEach(n => n.isRead = true);
-        this.snackBar.open('All notifications marked as read', 'Close', { duration: 2000 });
+        this.swal.toast('All notifications marked as read', 'success');
       },
       error: (error) => {
         console.error('Error marking all as read:', error);
-        this.snackBar.open('Failed to mark all as read', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to mark all as read', 'error');
       }
     });
   }

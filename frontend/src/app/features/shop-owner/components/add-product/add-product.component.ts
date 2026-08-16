@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, ActivatedRoute } from '@angular/router';
+import { SwalService } from '@core/services/swal.service';
 import { ProductService } from '@core/services/product.service';
 import { ShopProductService } from '@core/services/shop-product.service';
 import { ShopService } from '@core/services/shop.service';
@@ -614,7 +614,7 @@ export class AddProductComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private router: Router,
     private route: ActivatedRoute,
     private productService: ProductService,
@@ -665,7 +665,7 @@ export class AddProductComponent implements OnInit {
           this.loadProductForEdit(this.editingProductId);
         } else {
           console.error('Invalid product ID:', params['id']);
-          this.snackBar.open('Invalid product ID provided', 'Close', { duration: 3000 });
+          this.swal.toast('Invalid product ID provided', 'error');
           this.router.navigate(['/shop-owner/my-products']);
         }
       }
@@ -1049,7 +1049,7 @@ export class AddProductComponent implements OnInit {
     }
 
     if (attempts >= maxAttempts) {
-      this.snackBar.open('Could not generate unique barcode. Please try again.', 'Close', { duration: 3000 });
+      this.swal.toast('Could not generate unique barcode. Please try again.', 'error');
       return;
     }
 
@@ -1071,7 +1071,7 @@ export class AddProductComponent implements OnInit {
       barcode3
     });
 
-    this.snackBar.open('Barcodes generated!', 'Close', { duration: 2000 });
+    this.swal.toast('Barcodes generated!', 'success');
   }
 
   private generateRandomBarcode(): string {
@@ -1123,13 +1123,13 @@ export class AddProductComponent implements OnInit {
     if (file) {
       // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
-        this.snackBar.open('Image size must be less than 5MB', 'Close', { duration: 3000 });
+        this.swal.toast('Image size must be less than 5MB', 'warning');
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        this.snackBar.open('Please select a valid image file', 'Close', { duration: 3000 });
+        this.swal.toast('Please select a valid image file', 'warning');
         return;
       }
 
@@ -1153,7 +1153,7 @@ export class AddProductComponent implements OnInit {
     if (this.productForm.valid && this.currentShop) {
       // Validate shop ID is valid
       if (!this.currentShop.id || this.currentShop.id === 0) {
-        this.snackBar.open('Shop information not available. Please log out and log in again.', 'Close', { duration: 5000 });
+        this.swal.toast('Shop information not available. Please log out and log in again.', 'error');
         return;
       }
 
@@ -1165,15 +1165,15 @@ export class AddProductComponent implements OnInit {
       const b3 = formData.barcode3?.trim() || '';
 
       if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
-        this.snackBar.open('Barcode 1 and Barcode 2 cannot be the same.', 'Close', { duration: 3000 });
+        this.swal.toast('Barcode 1 and Barcode 2 cannot be the same.', 'warning');
         return;
       }
       if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
-        this.snackBar.open('Barcode 1 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        this.swal.toast('Barcode 1 and Barcode 3 cannot be the same.', 'warning');
         return;
       }
       if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
-        this.snackBar.open('Barcode 2 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        this.swal.toast('Barcode 2 and Barcode 3 cannot be the same.', 'warning');
         return;
       }
 
@@ -1190,7 +1190,7 @@ export class AddProductComponent implements OnInit {
     const barcodeValidationError = await this.offlineStorage.validateBarcodes(b1 || null, b2 || null, b3 || null);
 
     if (barcodeValidationError) {
-      this.snackBar.open(barcodeValidationError, 'Close', { duration: 5000 });
+      this.swal.toast(barcodeValidationError, 'error');
       return;
     }
 
@@ -1272,10 +1272,7 @@ export class AddProductComponent implements OnInit {
               errorMessage = error.message;
             }
             
-            this.snackBar.open(errorMessage, 'Close', {
-              duration: 5000,
-              panelClass: ['error-snackbar']
-            });
+            this.swal.toast(errorMessage, 'error');
             
             throw error;
           })
@@ -1317,12 +1314,7 @@ export class AddProductComponent implements OnInit {
               console.warn('Failed to add product to cache:', err);
             }
 
-            this.snackBar.open('Product created and added to your shop successfully!', 'Close', {
-              duration: 3000,
-              horizontalPosition: 'end',
-              verticalPosition: 'top',
-              panelClass: ['success-snackbar']
-            });
+            this.swal.toast('Product created and added to your shop successfully!', 'success');
 
             // Navigate back to products list
             this.router.navigate(['/shop-owner/my-products']);
@@ -1335,7 +1327,7 @@ export class AddProductComponent implements OnInit {
 
   saveDraft(): void {
     console.log('Saving as draft:', this.productForm.value);
-    this.snackBar.open('Product saved as draft', 'Close', { duration: 3000 });
+    this.swal.toast('Product saved as draft', 'success');
   }
 
   resetForm(): void {
@@ -1359,7 +1351,7 @@ export class AddProductComponent implements OnInit {
    */
   private async saveProductOffline(formData: any): Promise<void> {
     if (!this.currentShop) {
-      this.snackBar.open('Shop information not available. Cannot save offline.', 'Close', { duration: 3000 });
+      this.swal.toast('Shop information not available. Cannot save offline.', 'error');
       return;
     }
 
@@ -1424,13 +1416,13 @@ export class AddProductComponent implements OnInit {
       localStorage.setItem('pos_products_changed', 'true');
 
       this.isLoading = false;
-      this.snackBar.open('Product saved offline. Will sync when online.', 'Close', { duration: 4000 });
+      this.swal.toast('Product saved offline. Will sync when online.', 'success');
       this.router.navigate(['/shop-owner/my-products']);
 
     } catch (error: any) {
       this.isLoading = false;
       const errorMessage = error?.message || 'Failed to save product offline.';
-      this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+      this.swal.toast(errorMessage, 'error');
     }
   }
 }

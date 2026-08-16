@@ -675,14 +675,14 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     );
 
     if (this.usingFallbackData) {
-      this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'Close', { duration: 2000 });
+      this.swalService.toast(`Product ${isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'success');
       return;
     }
 
     if (!navigator.onLine) {
       // Save as offline edit so it syncs when internet returns
       this.saveEditOffline(product.id, { isAvailable }, { isAvailable: !isAvailable });
-      this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} (saved offline)`, 'Close', { duration: 2000 });
+      this.swalService.toast(`Product ${isAvailable ? 'activated' : 'deactivated'} (saved offline)`, 'success');
       return;
     }
 
@@ -691,13 +691,13 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     }).pipe(takeUntil(this.destroy$))
     .subscribe({
       next: () => {
-        this.snackBar.open(`Product ${isAvailable ? 'activated' : 'deactivated'} successfully`, 'Close', { duration: 2000 });
+        this.swalService.toast(`Product ${isAvailable ? 'activated' : 'deactivated'} successfully`, 'success');
       },
       error: (error) => {
         console.error('Error updating product status:', error);
         product.isAvailable = !isAvailable;
         product.status = isAvailable ? 'INACTIVE' : 'ACTIVE';
-        this.snackBar.open('Failed to update product status', 'Close', { duration: 3000 });
+        this.swalService.toast('Failed to update product status', 'error');
       }
     });
   }
@@ -730,7 +730,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     product.status = product.isAvailable ? 'ACTIVE' : 'INACTIVE';
     
     if (this.usingFallbackData) {
-      this.snackBar.open(`Product ${product.isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'Close', { duration: 2000 });
+      this.swalService.toast(`Product ${product.isAvailable ? 'activated' : 'deactivated'} (demo mode)`, 'success');
       return;
     }
 
@@ -740,14 +740,14 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     }).pipe(takeUntil(this.destroy$))
     .subscribe({
       next: () => {
-        this.snackBar.open(`Product ${product.isAvailable ? 'activated' : 'deactivated'} successfully`, 'Close', { duration: 2000 });
+        this.swalService.toast(`Product ${product.isAvailable ? 'activated' : 'deactivated'} successfully`, 'success');
       },
       error: (error) => {
         console.error('Error updating product availability:', error);
         // Revert the change
         product.isAvailable = !product.isAvailable;
         product.status = product.isAvailable ? 'ACTIVE' : 'INACTIVE';
-        this.snackBar.open('Failed to update product availability', 'Close', { duration: 3000 });
+        this.swalService.toast('Failed to update product availability', 'error');
       }
     });
   }
@@ -817,7 +817,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.usingFallbackData) {
       // Update locally for demo
       product.isAvailable = status;
-      this.snackBar.open(`Product ${status ? 'enabled' : 'disabled'} (demo mode)`, 'Close', { duration: 2000 });
+      this.swalService.toast(`Product ${status ? 'enabled' : 'disabled'} (demo mode)`, 'success');
       return;
     }
 
@@ -835,7 +835,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
             this.products[index] = { ...this.products[index], isAvailable: status };
             this.applyFilters();
           }
-          this.snackBar.open(`Product ${status ? 'enabled' : 'disabled'}`, 'Close', { duration: 2000 });
+          this.swalService.toast(`Product ${status ? 'enabled' : 'disabled'}`, 'success');
         },
         error: (error) => {
           console.error('Error updating product status:', error);
@@ -853,7 +853,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       if (newCostPrice !== undefined) {
         product.costPrice = newCostPrice;
       }
-      this.snackBar.open('Price updated (demo mode)', 'Close', { duration: 2000 });
+      this.swalService.toast('Price updated (demo mode)', 'success');
       return;
     }
 
@@ -888,7 +888,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           // Update cache timestamp to prevent immediate re-fetch from server
           localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
 
-          this.snackBar.open('Price updated successfully', 'Close', { duration: 2000 });
+          this.swalService.toast('Price updated successfully', 'success');
         },
         error: (error) => {
           console.error('Error updating product price:', error);
@@ -901,7 +901,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.usingFallbackData) {
       // Update locally for demo
       product.stockQuantity = newStock;
-      this.snackBar.open('Stock updated (demo mode)', 'Close', { duration: 2000 });
+      this.swalService.toast('Stock updated (demo mode)', 'success');
       return;
     }
 
@@ -931,7 +931,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           // Update cache timestamp to prevent immediate re-fetch from server
           localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
 
-          this.snackBar.open('Stock updated successfully', 'Close', { duration: 2000 });
+          this.swalService.toast('Stock updated successfully', 'success');
         },
         error: (error) => {
           console.error('Error updating product stock:', error);
@@ -1011,7 +1011,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
         this.applyFilters();
       }
       this.saveEditOffline(productId, updatedData, previousValues);
-      this.snackBar.open('Product updated (saved offline)', 'Close', { duration: 2000 });
+      this.swalService.toast('Product updated (saved offline)', 'success');
       return;
     }
 
@@ -1025,14 +1025,14 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     // For offline-created products (negative temp ID), save offline only
     if (productId < 0) {
       this.saveEditOffline(productId, updatedData, previousValues);
-      this.snackBar.open('Product updated (saved offline)', 'Close', { duration: 2000 });
+      this.swalService.toast('Product updated (saved offline)', 'success');
       return;
     }
 
     // Try to update in backend if online
     if (!navigator.onLine) {
       this.saveEditOffline(productId, updatedData, previousValues);
-      this.snackBar.open('Product updated (saved offline, will sync when online)', 'Close', { duration: 3000 });
+      this.swalService.toast('Product updated (saved offline, will sync when online)', 'success');
       return;
     }
 
@@ -1079,7 +1079,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           this.searchTerm = '';
           this.applyFilters();
 
-          this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
+          this.swalService.toast('Product updated successfully', 'success');
         },
         error: (error) => {
           console.warn('Backend update failed, saving offline:', error);
@@ -1089,12 +1089,12 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
             // Clear search filter after offline update
             this.searchTerm = '';
             this.applyFilters();
-            this.snackBar.open('Product updated (saved offline, will sync when online)', 'Close', { duration: 3000 });
+            this.swalService.toast('Product updated (saved offline, will sync when online)', 'success');
           } else {
             // Server error - still update locally since we already did optimistic update
             this.searchTerm = '';
             this.applyFilters();
-            this.snackBar.open('Product updated', 'Close', { duration: 2000 });
+            this.swalService.toast('Product updated', 'success');
           }
         }
       });
@@ -1157,7 +1157,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
 
     if (this.usingFallbackData) {
       // Update locally for demo
-      this.snackBar.open('Product updated (demo mode)', 'Close', { duration: 2000 });
+      this.swalService.toast('Product updated (demo mode)', 'success');
       return;
     }
 
@@ -1168,12 +1168,12 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
         next: () => {
           // Refresh from database to get the latest data
           this.loadProducts();
-          this.snackBar.open('Product updated successfully', 'Close', { duration: 2000 });
+          this.swalService.toast('Product updated successfully', 'success');
         },
         error: (error) => {
           console.warn('Backend update failed, but local update successful:', error);
           // Still show success since we updated locally
-          this.snackBar.open('Product updated locally', 'Close', { duration: 2000 });
+          this.swalService.toast('Product updated locally', 'success');
         }
       });
   }
@@ -1183,7 +1183,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       // Remove from local array for demo
       this.products = this.products.filter(p => p.id !== product.id);
       this.applyFilters();
-      this.snackBar.open('Product deleted (demo mode)', 'Close', { duration: 2000 });
+      this.swalService.toast('Product deleted (demo mode)', 'success');
       return;
     }
 
@@ -1330,10 +1330,10 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       // Remove from local array regardless
       this.products = this.products.filter(p => p.id !== product.id);
       this.applyFilters();
-      this.snackBar.open(matchingCreation ? 'Offline product deleted' : 'Product removed from list', 'Close', { duration: 2000 });
+      this.swalService.toast(matchingCreation ? 'Offline product deleted' : 'Product removed from list', 'success');
     } catch (error) {
       console.error('Error deleting offline product:', error);
-      this.snackBar.open('Failed to delete offline product', 'Close', { duration: 3000 });
+      this.swalService.toast('Failed to delete offline product', 'error');
     }
   }
 
@@ -1455,9 +1455,9 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
         this.applyFilters();
 
         if (errorCount === 0) {
-          this.snackBar.open(`${successCount} products deleted successfully`, 'Close', { duration: 3000 });
+          this.swalService.toast(`${successCount} products deleted successfully`, 'success');
         } else {
-          this.snackBar.open(`Deleted ${successCount} products, ${errorCount} failed`, 'Close', { duration: 5000 });
+          this.swalService.toast(`Deleted ${successCount} products, ${errorCount} failed`, 'warning');
         }
         return;
       }
@@ -1487,14 +1487,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     // Force refresh by clearing cache timestamp
     localStorage.removeItem(this.CACHE_TIMESTAMP_KEY);
     this.loadProducts();
-    this.snackBar.open('Products refreshed from server', 'Close', { duration: 2000 });
+    this.swalService.toast('Products refreshed from server', 'success');
   }
   
   private handleError(message: string): void {
-    this.snackBar.open(message, 'Close', { 
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+    this.swalService.toast(message, 'error');
   }
   
   formatCurrency(amount: number): string {
@@ -1517,11 +1514,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   bulkUpload(): void {
-    this.snackBar.open('Bulk upload feature coming soon', 'Close', { duration: 2000 });
+    this.swalService.toast('Bulk upload feature coming soon', 'info');
   }
 
   duplicateProduct(productId: number): void {
-    this.snackBar.open('Duplicate product feature coming soon', 'Close', { duration: 2000 });
+    this.swalService.toast('Duplicate product feature coming soon', 'info');
   }
 
   toggleProductStatus(productId: number): void {
@@ -1532,11 +1529,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   viewAnalytics(productId: number): void {
-    this.snackBar.open('Product analytics feature coming soon', 'Close', { duration: 2000 });
+    this.swalService.toast('Product analytics feature coming soon', 'info');
   }
 
   updateStock(productId: number): void {
-    this.snackBar.open('Update stock feature coming soon', 'Close', { duration: 2000 });
+    this.swalService.toast('Update stock feature coming soon', 'info');
   }
 
   get dynamicPageSizeOptions(): number[] {
@@ -1592,7 +1589,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   bulkPriceUpdate(): void {
     if (this.selectedProducts.length === 0) {
-      this.snackBar.open('Please select products to update prices', 'Close', { duration: 2000 });
+      this.swalService.toast('Please select products to update prices', 'warning');
       return;
     }
 
@@ -1620,7 +1617,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           product.price = product.price * (1 + updateData.percentage / 100);
         }
       });
-      this.snackBar.open(`Updated prices for ${this.selectedProducts.length} products (demo mode)`, 'Close', { duration: 3000 });
+      this.swalService.toast(`Updated prices for ${this.selectedProducts.length} products (demo mode)`, 'success');
       this.clearProductSelection();
       return;
     }
@@ -1637,13 +1634,13 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.snackBar.open(`Updated prices for ${this.selectedProducts.length} products`, 'Close', { duration: 3000 });
+          this.swalService.toast(`Updated prices for ${this.selectedProducts.length} products`, 'success');
           this.loadProducts(); // Reload to get updated data
           this.clearProductSelection();
         },
         error: (error) => {
           console.error('Error updating bulk prices:', error);
-          this.snackBar.open('Failed to update prices', 'Close', { duration: 3000 });
+          this.swalService.toast('Failed to update prices', 'error');
         }
       });
   }
@@ -1663,7 +1660,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!effectiveShopId) {
       // No shop ID available - user needs to login again
       console.error('No shop ID found - user needs to login again');
-      this.snackBar.open('Please logout and login again to refresh your shop data', 'Close', { duration: 5000 });
+      this.swalService.toast('Please logout and login again to refresh your shop data', 'warning');
       return;
     }
 
@@ -1733,7 +1730,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           console.warn('Failed to add product to cache:', err);
         }
 
-        this.snackBar.open(`Product "${assignmentData.masterProduct.name}" assigned to your shop!`, 'Close', { duration: 3000 });
+        this.swalService.toast(`Product "${assignmentData.masterProduct.name}" assigned to your shop!`, 'success');
 
         // Reload products to show the new assignment
         this.loadProducts();
@@ -1749,7 +1746,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
           errorMessage = error.message;
         }
 
-        this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+        this.swalService.toast(errorMessage, 'error');
       }
     });
   }

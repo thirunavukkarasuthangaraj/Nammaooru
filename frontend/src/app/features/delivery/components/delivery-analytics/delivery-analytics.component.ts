@@ -1,8 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DeliveryAnalyticsService } from '../../services/delivery-analytics.service';
 import { ApiResponseHelper } from '../../../../core/models/api-response.model';
+import { SwalService } from '../../../../core/services/swal.service';
 import { ChartConfiguration, ChartType } from 'chart.js';
 
 @Component({
@@ -132,7 +132,7 @@ export class DeliveryAnalyticsComponent implements OnInit, OnDestroy {
 
   constructor(
     private analyticsService: DeliveryAnalyticsService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -162,7 +162,7 @@ export class DeliveryAnalyticsComponent implements OnInit, OnDestroy {
       this.isLoading = false;
     }).catch(error => {
       console.error('Error loading analytics:', error);
-      this.snackBar.open('Failed to load analytics', 'Close', { duration: 3000 });
+      this.swal.toast('Failed to load analytics', 'error');
       this.isLoading = false;
     });
   }
@@ -375,11 +375,11 @@ export class DeliveryAnalyticsComponent implements OnInit, OnDestroy {
           a.click();
           window.URL.revokeObjectURL(url);
           
-          this.snackBar.open('Report exported successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Report exported successfully', 'success');
         },
         error: (error) => {
           console.error('Error exporting report:', error);
-          this.snackBar.open('Failed to export report', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to export report', 'error');
         }
       });
   }

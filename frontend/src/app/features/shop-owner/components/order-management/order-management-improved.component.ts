@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderService } from '../../../../core/services/order.service';
 import { ShopContextService } from '../../services/shop-context.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import Swal from 'sweetalert2';
 
 interface Order {
@@ -72,7 +72,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
   constructor(
     private orderService: OrderService,
     private shopContext: ShopContextService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -192,7 +192,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
 
   refreshOrders(): void {
     this.loadAllData();
-    this.snackBar.open('Orders refreshed', 'Close', { duration: 2000 });
+    this.swal.toast('Orders refreshed', 'success');
   }
 
   toggleAutoRefresh(): void {
@@ -331,7 +331,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
                 timerProgressBar: true
               });
 
-              this.snackBar.open('Order handed over successfully!', 'Close', { duration: 3000 });
+              this.swal.toast('Order handed over successfully!', 'success');
             },
             error: (error) => {
               console.error('Error handing over order:', error);
@@ -398,7 +398,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
                 timerProgressBar: true
               });
 
-              this.snackBar.open('Order handed over to delivery partner!', 'Close', { duration: 3000 });
+              this.swal.toast('Order handed over to delivery partner!', 'success');
             },
             error: (error) => {
               console.error('Error verifying OTP:', error);
@@ -415,7 +415,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.loadAllData();
-          this.snackBar.open('Order rejected successfully!', 'Close', { duration: 3000 });
+          this.swal.toast('Order rejected successfully!', 'success');
 
           Swal.fire({
             title: 'Order Rejected!',
@@ -454,7 +454,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.loadAllData();
-          this.snackBar.open(successMessage, 'Close', { duration: 3000 });
+          this.swal.toast(successMessage, 'success');
 
           Swal.fire({
             title: 'Success!',
@@ -507,10 +507,7 @@ export class OrderManagementImprovedComponent implements OnInit, OnDestroy {
   }
 
   private handleError(message: string): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+    this.swal.toast(message, 'error');
   }
 
   getStatusBadgeClass(status: string): string {

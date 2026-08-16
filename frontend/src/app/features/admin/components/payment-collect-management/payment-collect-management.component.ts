@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { PaymentCollectService, ShopPaymentRow, UsageSummary } from '../../../../core/services/payment-collect.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-payment-collect-management',
@@ -43,7 +43,7 @@ export class PaymentCollectManagementComponent implements OnInit {
 
   constructor(
     private paymentCollectService: PaymentCollectService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -67,7 +67,7 @@ export class PaymentCollectManagementComponent implements OnInit {
       },
       error: err => {
         this.loading = false;
-        this.snackBar.open(err.message || 'Failed to load shops', 'Close', { duration: 4000 });
+        this.swal.toast(err.message || 'Failed to load shops', 'error');
       }
     });
   }
@@ -151,23 +151,23 @@ export class PaymentCollectManagementComponent implements OnInit {
 
   saveDuration(): void {
     if (this.durationValue == null || isNaN(this.durationValue) || this.durationValue < 1) {
-      this.snackBar.open('Enter a duration of at least 1', 'Close', { duration: 3000 });
+      this.swal.toast('Enter a duration of at least 1', 'warning');
       return;
     }
     this.onDurationInputChange();
     if (this.durationDays < 1) {
-      this.snackBar.open('Duration must be at least 1 day', 'Close', { duration: 3000 });
+      this.swal.toast('Duration must be at least 1 day', 'warning');
       return;
     }
     this.durationSaving = true;
     this.paymentCollectService.setDuration(this.durationDays).subscribe({
       next: () => {
         this.durationSaving = false;
-        this.snackBar.open(`Billing duration updated to ${this.durationDays} days`, 'Close', { duration: 3000 });
+        this.swal.toast(`Billing duration updated to ${this.durationDays} days`, 'success');
       },
       error: err => {
         this.durationSaving = false;
-        this.snackBar.open(err.message || 'Failed to update duration', 'Close', { duration: 4000 });
+        this.swal.toast(err.message || 'Failed to update duration', 'error');
       }
     });
   }
@@ -175,7 +175,7 @@ export class PaymentCollectManagementComponent implements OnInit {
   savePrice(shop: ShopPaymentRow): void {
     const amount = this.editAmounts[shop.shopId];
     if (amount == null || amount < 0) {
-      this.snackBar.open('Enter a valid amount', 'Close', { duration: 3000 });
+      this.swal.toast('Enter a valid amount', 'warning');
       return;
     }
     this.savingShopId = shop.shopId;
@@ -187,12 +187,12 @@ export class PaymentCollectManagementComponent implements OnInit {
         shop.amount = amount;
         shop.durationDays = durationDays;
         shop.whatsappRatePaise = whatsappRatePaise;
-        this.snackBar.open(`Price updated for ${shop.shopName}`, 'Close', { duration: 3000 });
+        this.swal.toast(`Price updated for ${shop.shopName}`, 'success');
         this.loadShops();
       },
       error: err => {
         this.savingShopId = null;
-        this.snackBar.open(err.message || 'Failed to update price', 'Close', { duration: 4000 });
+        this.swal.toast(err.message || 'Failed to update price', 'error');
       }
     });
   }
@@ -219,19 +219,19 @@ export class PaymentCollectManagementComponent implements OnInit {
 
   saveBillingConfig(): void {
     if ([this.billRatePaise, this.marketingRatePaise, this.gstPercent].some(v => v == null || isNaN(v) || v < 0)) {
-      this.snackBar.open('Enter valid, non-negative values', 'Close', { duration: 3000 });
+      this.swal.toast('Enter valid, non-negative values', 'warning');
       return;
     }
     this.billingConfigSaving = true;
     this.paymentCollectService.updateBillingConfig(this.billRatePaise, this.marketingRatePaise, this.gstPercent).subscribe({
       next: () => {
         this.billingConfigSaving = false;
-        this.snackBar.open('WhatsApp usage pricing updated', 'Close', { duration: 3000 });
+        this.swal.toast('WhatsApp usage pricing updated', 'success');
         this.loadShops();
       },
       error: err => {
         this.billingConfigSaving = false;
-        this.snackBar.open(err.message || 'Failed to update pricing', 'Close', { duration: 4000 });
+        this.swal.toast(err.message || 'Failed to update pricing', 'error');
       }
     });
   }

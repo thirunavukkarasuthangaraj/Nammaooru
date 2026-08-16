@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ParcelAdminService } from '../../services/parcel.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface ParcelPost {
   id: number;
@@ -54,7 +54,7 @@ export class ParcelReportedComponent implements OnInit {
 
   constructor(
     private parcelService: ParcelAdminService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -74,7 +74,7 @@ export class ParcelReportedComponent implements OnInit {
       error: (err) => {
         console.error('Error loading reported parcel posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load reported posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load reported posts', 'error');
       }
     });
   }
@@ -86,11 +86,11 @@ export class ParcelReportedComponent implements OnInit {
       }
       this.parcelService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.serviceName}" removed`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.serviceName}" removed`, 'success');
           this.loadReportedPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to remove post', 'error');
         }
       });
       return;
@@ -101,11 +101,11 @@ export class ParcelReportedComponent implements OnInit {
 
     this.parcelService.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.serviceName}" → ${label}`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.serviceName}" → ${label}`, 'success');
         this.loadReportedPosts();
       },
       error: () => {
-        this.snackBar.open(`Failed to change status to ${label}`, 'Close', { duration: 3000 });
+        this.swal.toast(`Failed to change status to ${label}`, 'error');
       }
     });
   }

@@ -5,6 +5,7 @@ import { DeliveryPartnerService, DeliveryPartner } from '../../services/delivery
 import { OrderAssignmentService, OrderAssignment } from '../../services/order-assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { GeolocationService } from '../../../../core/services/geolocation.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { ApiResponseHelper } from '../../../../core/models/api-response.model';
 
 @Component({
@@ -46,7 +47,8 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
     private assignmentService: OrderAssignmentService,
     private authService: AuthService,
     private geolocationService: GeolocationService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -65,7 +67,7 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
   private loadPartnerData(): void {
     const user = this.authService.getCurrentUser();
     if (!user) {
-      this.snackBar.open('User not found', 'Close', { duration: 3000 });
+      this.swal.toast('User not found', 'error');
       return;
     }
 
@@ -79,13 +81,13 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
             this.isAvailable = response.data.isAvailable;
             this.loadTodayStats();
           } else {
-            this.snackBar.open('Failed to load partner data', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to load partner data', 'error');
           }
           this.isLoading = false;
         },
         error: (error) => {
           console.error('Error loading partner data:', error);
-          this.snackBar.open('Error loading partner data', 'Close', { duration: 3000 });
+          this.swal.toast('Error loading partner data', 'error');
           this.isLoading = false;
         }
       });
@@ -150,7 +152,7 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
             this.isAvailable = response.data.isAvailable;
             
             const message = this.isOnline ? 'You are now online' : 'You are now offline';
-            this.snackBar.open(message, 'Close', { duration: 3000 });
+            this.swal.toast(message, 'success');
             
             if (this.isOnline) {
               this.requestLocationPermission();
@@ -159,7 +161,7 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error updating online status:', error);
-          this.snackBar.open('Failed to update status', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to update status', 'error');
         }
       });
   }
@@ -175,12 +177,12 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
             this.isAvailable = response.data.isAvailable;
             
             const message = this.isAvailable ? 'You are now available for orders' : 'You are now unavailable';
-            this.snackBar.open(message, 'Close', { duration: 3000 });
+            this.swal.toast(message, 'success');
           }
         },
         error: (error) => {
           console.error('Error updating availability:', error);
-          this.snackBar.open('Failed to update availability', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to update availability', 'error');
         }
       });
   }
@@ -255,14 +257,14 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Order accepted successfully', 'Close', { duration: 3000 });
+            this.swal.toast('Order accepted successfully', 'success');
             this.loadActiveOrders();
             this.loadAvailableOrders();
           }
         },
         error: (error) => {
           console.error('Error accepting order:', error);
-          this.snackBar.open('Failed to accept order', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to accept order', 'error');
         }
       });
   }
@@ -278,13 +280,13 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Order rejected', 'Close', { duration: 3000 });
+            this.swal.toast('Order rejected', 'success');
             this.loadAvailableOrders();
           }
         },
         error: (error) => {
           console.error('Error rejecting order:', error);
-          this.snackBar.open('Failed to reject order', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to reject order', 'error');
         }
       });
   }
@@ -297,13 +299,13 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Order marked as picked up', 'Close', { duration: 3000 });
+            this.swal.toast('Order marked as picked up', 'success');
             this.loadActiveOrders();
           }
         },
         error: (error) => {
           console.error('Error marking pickup:', error);
-          this.snackBar.open('Failed to mark as picked up', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to mark as picked up', 'error');
         }
       });
   }
@@ -316,13 +318,13 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Delivery started', 'Close', { duration: 3000 });
+            this.swal.toast('Delivery started', 'success');
             this.loadActiveOrders();
           }
         },
         error: (error) => {
           console.error('Error starting delivery:', error);
-          this.snackBar.open('Failed to start delivery', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to start delivery', 'error');
         }
       });
   }
@@ -338,14 +340,14 @@ export class DeliveryPartnerDashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Delivery completed successfully!', 'Close', { duration: 3000 });
+            this.swal.toast('Delivery completed successfully!', 'success');
             this.loadActiveOrders();
             this.loadTodayStats();
           }
         },
         error: (error) => {
           console.error('Error completing delivery:', error);
-          this.snackBar.open('Failed to complete delivery', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to complete delivery', 'error');
         }
       });
   }

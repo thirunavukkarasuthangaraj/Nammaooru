@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../../environments/environment';
 import Swal from 'sweetalert2';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface OrderItem {
   id: number;
@@ -50,7 +50,7 @@ export class OrdersListComponent implements OnInit {
   constructor(
     private router: Router,
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -121,7 +121,7 @@ export class OrdersListComponent implements OnInit {
           console.error('Error message:', error.message);
           this.orders = [];
           this.loading = false;
-          this.snackBar.open('Failed to load orders', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load orders', 'error');
         }
       });
   }
@@ -262,10 +262,7 @@ export class OrdersListComponent implements OnInit {
         order.status = 'CANCELLED';
         
         // Show success message
-        this.snackBar.open('Order cancelled successfully', 'Close', {
-          duration: 5000,
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('Order cancelled successfully', 'success');
 
         // Show confirmation dialog
         Swal.fire({
@@ -287,10 +284,7 @@ export class OrdersListComponent implements OnInit {
           errorMessage = error.error.message;
         }
         
-        this.snackBar.open(errorMessage, 'Close', {
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast(errorMessage, 'error');
       }
     });
   }

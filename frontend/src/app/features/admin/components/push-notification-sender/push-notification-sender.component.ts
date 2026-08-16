@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { PushNotificationService, PushNotificationRequest } from '../../../../core/services/push-notification.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-push-notification-sender',
@@ -26,7 +26,7 @@ export class PushNotificationSenderComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private pushNotificationService: PushNotificationService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -75,19 +75,13 @@ export class PushNotificationSenderComponent implements OnInit {
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        this.snackBar.open('Please select an image file', 'Close', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Please select an image file', 'error');
         return;
       }
 
       // Validate file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        this.snackBar.open('Image size must be less than 2MB', 'Close', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Image size must be less than 2MB', 'error');
         return;
       }
 
@@ -111,18 +105,12 @@ export class PushNotificationSenderComponent implements OnInit {
       next: (response) => {
         this.uploading = false;
         this.uploadedImageUrl = response.url;
-        this.snackBar.open('Image uploaded successfully', 'Close', {
-          duration: 2000,
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('Image uploaded successfully', 'success');
       },
       error: (error) => {
         this.uploading = false;
         console.error('Image upload failed:', error);
-        this.snackBar.open('Failed to upload image', 'Close', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Failed to upload image', 'error');
         this.removeImage();
       }
     });
@@ -156,10 +144,7 @@ export class PushNotificationSenderComponent implements OnInit {
     }
 
     if (this.uploading) {
-      this.snackBar.open('Please wait for image upload to complete', 'Close', {
-        duration: 3000,
-        panelClass: ['error-snackbar']
-      });
+      this.swal.toast('Please wait for image upload to complete', 'error');
       return;
     }
 
@@ -194,10 +179,7 @@ export class PushNotificationSenderComponent implements OnInit {
     sendObservable.subscribe({
       next: (response) => {
         this.loading = false;
-        this.snackBar.open('Push notification sent successfully!', 'Close', {
-          duration: 3000,
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('Push notification sent successfully!', 'success');
         this.notificationForm.reset({
           priority: 'HIGH',
           type: 'INFO',
@@ -209,10 +191,7 @@ export class PushNotificationSenderComponent implements OnInit {
         this.loading = false;
         console.error('Error sending notification:', error);
         const errorMessage = error.error?.message || 'Failed to send push notification';
-        this.snackBar.open(errorMessage, 'Close', {
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast(errorMessage, 'error');
       }
     });
   }

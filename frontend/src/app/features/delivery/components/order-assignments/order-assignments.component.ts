@@ -3,12 +3,12 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { Subject, takeUntil, interval } from 'rxjs';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { OrderAssignmentService } from '../../services/order-assignment.service';
 import { environment } from '../../../../../environments/environment';
+import { SwalService } from '../../../../core/services/swal.service';
 
 export interface PartnerRow {
   partnerId: number;
@@ -68,7 +68,7 @@ export class OrderAssignmentsComponent implements OnInit, OnDestroy {
     private assignmentService: OrderAssignmentService,
     private http: HttpClient,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.dataSource = new MatTableDataSource<PartnerRow>([]);
   }
@@ -130,7 +130,7 @@ export class OrderAssignmentsComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading delivery partners:', error);
-          this.snackBar.open('Failed to load delivery partners', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load delivery partners', 'error');
           this.dataSource.data = [];
           this.isLoading = false;
         }
@@ -180,11 +180,11 @@ export class OrderAssignmentsComponent implements OnInit, OnDestroy {
 
   // Action methods
   viewPartnerDetails(partner: PartnerRow): void {
-    this.snackBar.open(`Viewing details for ${partner.partnerName}`, 'Close', { duration: 2000 });
+    this.swal.toast(`Viewing details for ${partner.partnerName}`, 'info');
   }
 
   assignOrder(partner: PartnerRow): void {
-    this.snackBar.open(`Assigning order to ${partner.partnerName}`, 'Close', { duration: 2000 });
+    this.swal.toast(`Assigning order to ${partner.partnerName}`, 'info');
   }
 
   callPartner(phone: string): void {
@@ -192,11 +192,11 @@ export class OrderAssignmentsComponent implements OnInit, OnDestroy {
   }
 
   messagePartner(partner: PartnerRow): void {
-    this.snackBar.open(`Opening message for ${partner.partnerName}`, 'Close', { duration: 2000 });
+    this.swal.toast(`Opening message for ${partner.partnerName}`, 'info');
   }
 
   trackPartner(partner: PartnerRow): void {
-    this.snackBar.open(`Tracking ${partner.partnerName}`, 'Close', { duration: 2000 });
+    this.swal.toast(`Tracking ${partner.partnerName}`, 'info');
   }
 
   togglePartnerStatus(partner: PartnerRow): void {
@@ -207,19 +207,19 @@ export class OrderAssignmentsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.snackBar.open(`Partner ${newStatus.toLowerCase()}`, 'Close', { duration: 2000 });
+          this.swal.toast(`Partner ${newStatus.toLowerCase()}`, 'success');
           this.loadAssignmentData();
           this.isProcessing = false;
         },
         error: (error) => {
           console.error('Error updating partner status:', error);
-          this.snackBar.open('Failed to update status', 'Close', { duration: 2000 });
+          this.swal.toast('Failed to update status', 'error');
           this.isProcessing = false;
         }
       });
   }
 
   exportData(): void {
-    this.snackBar.open('Exporting assignment data...', 'Close', { duration: 2000 });
+    this.swal.toast('Exporting assignment data...', 'info');
   }
 }

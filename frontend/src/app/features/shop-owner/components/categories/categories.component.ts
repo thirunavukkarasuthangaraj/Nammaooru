@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProductCategoryService } from '@core/services/product-category.service';
 import { environment } from '../../../../../environments/environment';
 import { SwalService } from '@core/services/swal.service';
@@ -1090,7 +1089,6 @@ export class CategoriesComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar,
     private categoryService: ProductCategoryService,
     private swal: SwalService
   ) {
@@ -1135,7 +1133,7 @@ export class CategoriesComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error loading categories:', error);
-          this.snackBar.open('Failed to load categories.', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load categories.', 'error');
           this.categories = [];
         }
       });

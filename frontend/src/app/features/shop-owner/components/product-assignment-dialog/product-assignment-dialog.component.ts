@@ -1,10 +1,10 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService } from '@core/services/offline-storage.service';
+import { SwalService } from '@core/services/swal.service';
 
 export interface ProductAssignmentData {
   product: {
@@ -42,7 +42,7 @@ export class ProductAssignmentDialogComponent implements OnInit {
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<ProductAssignmentDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ProductAssignmentData,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private http: HttpClient,
     private offlineStorage: OfflineStorageService
   ) {
@@ -156,20 +156,18 @@ export class ProductAssignmentDialogComponent implements OnInit {
             console.warn('Failed to add product to IndexedDB cache:', err);
           }
 
-          this.snackBar.open(
+          this.swal.toast(
             `Successfully added "${this.data.product.name}" to your shop`,
-            'Close',
-            { duration: 3000, panelClass: 'success-snackbar' }
+            'success'
           );
           this.dialogRef.close({ success: true, data: response });
         },
         error: (error) => {
           console.error('Error assigning product:', error);
           const errorMsg = error.error?.message || error.message || 'Failed to add product';
-          this.snackBar.open(
+          this.swal.toast(
             `Error: ${errorMsg}`,
-            'Close',
-            { duration: 4000, panelClass: 'error-snackbar' }
+            'error'
           );
           this.isLoading = false;
         }

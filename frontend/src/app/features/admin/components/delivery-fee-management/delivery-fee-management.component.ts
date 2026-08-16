@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { DeliveryFeeService, DeliveryFeeRange } from '../../../../core/services/delivery-fee.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-delivery-fee-management',
@@ -24,7 +24,7 @@ export class DeliveryFeeManagementComponent implements OnInit {
 
   constructor(
     private deliveryFeeService: DeliveryFeeService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -38,13 +38,13 @@ export class DeliveryFeeManagementComponent implements OnInit {
         if (response.success) {
           this.ranges = response.data || [];
         } else {
-          this.snackBar.open('Failed to load delivery fee ranges', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load delivery fee ranges', 'error');
         }
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading ranges:', error);
-        this.snackBar.open('Error loading delivery fee ranges', 'Close', { duration: 3000 });
+        this.swal.toast('Error loading delivery fee ranges', 'error');
         this.isLoading = false;
       }
     });
@@ -58,17 +58,17 @@ export class DeliveryFeeManagementComponent implements OnInit {
     this.deliveryFeeService.createRange(this.newRange).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Delivery fee range created successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Delivery fee range created successfully', 'success');
           this.loadRanges();
           this.resetNewRange();
           this.isAddingRange = false;
         } else {
-          this.snackBar.open(response.message || 'Failed to create range', 'Close', { duration: 3000 });
+          this.swal.toast(response.message || 'Failed to create range', 'error');
         }
       },
       error: (error) => {
         console.error('Error creating range:', error);
-        this.snackBar.open('Error creating delivery fee range', 'Close', { duration: 3000 });
+        this.swal.toast('Error creating delivery fee range', 'error');
       }
     });
   }
@@ -81,16 +81,16 @@ export class DeliveryFeeManagementComponent implements OnInit {
     this.deliveryFeeService.updateRange(range.id, range).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Delivery fee range updated successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Delivery fee range updated successfully', 'success');
           this.loadRanges();
           this.editingRange = null;
         } else {
-          this.snackBar.open(response.message || 'Failed to update range', 'Close', { duration: 3000 });
+          this.swal.toast(response.message || 'Failed to update range', 'error');
         }
       },
       error: (error) => {
         console.error('Error updating range:', error);
-        this.snackBar.open('Error updating delivery fee range', 'Close', { duration: 3000 });
+        this.swal.toast('Error updating delivery fee range', 'error');
       }
     });
   }
@@ -103,15 +103,15 @@ export class DeliveryFeeManagementComponent implements OnInit {
     this.deliveryFeeService.deleteRange(id).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Delivery fee range deleted successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Delivery fee range deleted successfully', 'success');
           this.loadRanges();
         } else {
-          this.snackBar.open(response.message || 'Failed to delete range', 'Close', { duration: 3000 });
+          this.swal.toast(response.message || 'Failed to delete range', 'error');
         }
       },
       error: (error) => {
         console.error('Error deleting range:', error);
-        this.snackBar.open('Error deleting delivery fee range', 'Close', { duration: 3000 });
+        this.swal.toast('Error deleting delivery fee range', 'error');
       }
     });
   }
@@ -146,22 +146,22 @@ export class DeliveryFeeManagementComponent implements OnInit {
 
   validateRange(range: DeliveryFeeRange): boolean {
     if (range.minDistanceKm < 0 || range.maxDistanceKm <= 0) {
-      this.snackBar.open('Distance values must be positive', 'Close', { duration: 3000 });
+      this.swal.toast('Distance values must be positive', 'warning');
       return false;
     }
 
     if (range.minDistanceKm >= range.maxDistanceKm) {
-      this.snackBar.open('Maximum distance must be greater than minimum distance', 'Close', { duration: 3000 });
+      this.swal.toast('Maximum distance must be greater than minimum distance', 'warning');
       return false;
     }
 
     if (range.deliveryFee <= 0 || range.partnerCommission <= 0) {
-      this.snackBar.open('Fee and commission must be positive values', 'Close', { duration: 3000 });
+      this.swal.toast('Fee and commission must be positive values', 'warning');
       return false;
     }
 
     if (range.partnerCommission >= range.deliveryFee) {
-      this.snackBar.open('Partner commission must be less than delivery fee', 'Close', { duration: 3000 });
+      this.swal.toast('Partner commission must be less than delivery fee', 'warning');
       return false;
     }
 

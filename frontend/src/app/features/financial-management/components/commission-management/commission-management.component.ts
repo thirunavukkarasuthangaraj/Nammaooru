@@ -2,12 +2,12 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import Swal from 'sweetalert2';
+import { SwalService } from '../../../../core/services/swal.service';
 
 export interface CommissionData {
   id: number;
@@ -68,7 +68,7 @@ export class CommissionManagementComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -204,7 +204,7 @@ export class CommissionManagementComponent implements OnInit {
     ];
 
     this.dataSource.data = mockData;
-    this.snackBar.open('Loaded mock commission data - API not available', 'Close', { duration: 3000 });
+    this.swal.toast('Loaded mock commission data - API not available', 'warning');
   }
 
   applyFilter(): void {

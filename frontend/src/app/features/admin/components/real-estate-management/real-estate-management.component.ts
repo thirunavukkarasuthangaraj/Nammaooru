@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { RealEstateAdminService } from '../../services/real-estate.service';
 import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface RealEstatePost {
   id: number;
@@ -52,8 +52,8 @@ export class RealEstateManagementComponent implements OnInit {
 
   constructor(
     private realEstateService: RealEstateAdminService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -77,7 +77,7 @@ export class RealEstateManagementComponent implements OnInit {
       error: (err) => {
         console.error('Error loading real estate posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load posts', 'error');
       }
     });
   }
@@ -96,11 +96,11 @@ export class RealEstateManagementComponent implements OnInit {
   approvePost(post: RealEstatePost): void {
     this.realEstateService.approvePost(post.id).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" approved`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.title}" approved`, 'success');
         this.loadPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to approve post', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to approve post', 'error');
       }
     });
   }
@@ -109,11 +109,11 @@ export class RealEstateManagementComponent implements OnInit {
     if (confirm(`Reject "${post.title}"?`)) {
       this.realEstateService.rejectPost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" rejected`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" rejected`, 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to reject post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to reject post', 'error');
         }
       });
     }
@@ -123,11 +123,11 @@ export class RealEstateManagementComponent implements OnInit {
     if (confirm(`Delete "${post.title}" permanently?`)) {
       this.realEstateService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
+          this.swal.toast('Post deleted', 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to delete post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to delete post', 'error');
         }
       });
     }
@@ -143,11 +143,11 @@ export class RealEstateManagementComponent implements OnInit {
       if (result) {
         this.realEstateService.adminUpdatePost(post.id, result).subscribe({
           next: () => {
-            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
           error: () => {
-            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to update post', 'error');
           }
         });
       }
@@ -160,14 +160,13 @@ export class RealEstateManagementComponent implements OnInit {
         const updated = response.data;
         const featured = updated?.isFeatured;
         post.isFeatured = featured;
-        this.snackBar.open(
+        this.swal.toast(
           featured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
-          'OK',
-          { duration: 3000 }
+          'success'
         );
       },
       error: () => {
-        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to toggle featured', 'error');
       }
     });
   }

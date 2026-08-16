@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { MarketplaceAdminService } from '../../services/marketplace.service';
 import { FarmerProductsAdminService } from '../../services/farmer-products.service';
 import { LabourAdminService } from '../../services/labour.service';
@@ -63,7 +63,7 @@ export class AllReportsComponent implements OnInit {
     private parcelService: ParcelAdminService,
     private rentalService: RentalAdminService,
     private realEstateService: RealEstateAdminService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     for (const tab of this.tabs) {
       this.tabStates[tab.key] = {
@@ -109,7 +109,7 @@ export class AllReportsComponent implements OnInit {
         console.error(`Error loading ${key} reported posts:`, err);
         state.loading = false;
         state.loaded = true;
-        this.snackBar.open(`Failed to load ${key} reported posts`, 'Close', { duration: 3000 });
+        this.swal.toast(`Failed to load ${key} reported posts`, 'error');
       }
     });
   }
@@ -130,11 +130,11 @@ export class AllReportsComponent implements OnInit {
       if (!service) return;
       service.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${postName}" removed`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${postName}" removed`, 'success');
           this.loadTab(key);
         },
         error: () => {
-          this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to remove post', 'error');
         }
       });
       return;
@@ -147,11 +147,11 @@ export class AllReportsComponent implements OnInit {
 
     service.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${postName}" → ${label}`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${postName}" → ${label}`, 'success');
         this.loadTab(key);
       },
       error: () => {
-        this.snackBar.open(`Failed to change status to ${label}`, 'Close', { duration: 3000 });
+        this.swal.toast(`Failed to change status to ${label}`, 'error');
       }
     });
   }

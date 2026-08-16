@@ -4,11 +4,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { PaymentCollectService, ShopPaymentStatus } from '../../../../core/services/payment-collect.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PwaInstallService } from '../../../../core/services/pwa-install.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 declare const Razorpay: any;
 
@@ -33,7 +34,7 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
     private paymentCollectService: PaymentCollectService,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private ngZone: NgZone
   ) {}
 
@@ -67,14 +68,14 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
           this.status = cached;
           return;
         }
-        this.snackBar.open(err.message || 'Failed to load payment status', 'Close', { duration: 4000 });
+        this.swal.toast(err.message || 'Failed to load payment status', 'error');
       }
     });
   }
 
   pay(): void {
     if (!this.isOnline) {
-      this.snackBar.open('Please connect to the internet to pay', 'Close', { duration: 4000 });
+      this.swal.toast('Please connect to the internet to pay', 'warning');
       return;
     }
     this.paying = true;
@@ -86,7 +87,7 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
       if (!loaded) {
         this.paying = false;
         PwaInstallService.endCriticalFlow();
-        this.snackBar.open('Could not load payment gateway. Check your internet connection and try again.', 'Close', { duration: 5000 });
+        this.swal.toast('Could not load payment gateway. Check your internet connection and try again.', 'error');
         return;
       }
 
@@ -122,7 +123,7 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
         error: err => {
           this.paying = false;
           PwaInstallService.endCriticalFlow();
-          this.snackBar.open(err.message || 'Failed to start payment', 'Close', { duration: 4000 });
+          this.swal.toast(err.message || 'Failed to start payment', 'error');
         }
       });
     });
@@ -137,13 +138,13 @@ export class PayAndUseComponent implements OnInit, OnDestroy {
       next: () => {
         this.paying = false;
         PwaInstallService.endCriticalFlow();
-        this.snackBar.open('Payment successful. You can now use the app.', 'Close', { duration: 4000 });
+        this.swal.toast('Payment successful. You can now use the app.', 'success');
         this.router.navigate(['/shop-owner/dashboard']);
       },
       error: err => {
         this.paying = false;
         PwaInstallService.endCriticalFlow();
-        this.snackBar.open(err.message || 'Payment verification failed', 'Close', { duration: 5000 });
+        this.swal.toast(err.message || 'Payment verification failed', 'error');
       }
     });
   }

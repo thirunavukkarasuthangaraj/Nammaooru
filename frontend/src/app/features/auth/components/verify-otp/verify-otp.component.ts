@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@core/services/auth.service';
 import { UserRole } from '@core/models/auth.model';
+import { SwalService } from '@core/services/swal.service';
 
 @Component({
   selector: 'app-verify-otp',
@@ -23,7 +23,7 @@ export class VerifyOtpComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.otpForm = this.fb.group({
       otp: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]]
@@ -37,10 +37,7 @@ export class VerifyOtpComponent implements OnInit {
       this.mobileNumber = params['mobile'] || '';
 
       if (!this.email && !this.mobileNumber) {
-        this.snackBar.open('Invalid access. Please register again.', 'Close', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Invalid access. Please register again.', 'error');
         this.router.navigate(['/auth/register']);
       }
     });
@@ -60,12 +57,7 @@ export class VerifyOtpComponent implements OnInit {
       this.authService.verifyOtp(verifyData).subscribe({
         next: (response) => {
           this.isLoading = false;
-          this.snackBar.open('Email verified successfully! You can now login.', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top',
-            panelClass: ['success-snackbar']
-          });
+          this.swal.toast('Email verified successfully! You can now login.', 'success');
 
           // Redirect to login
           this.router.navigate(['/auth/login']);
@@ -78,12 +70,7 @@ export class VerifyOtpComponent implements OnInit {
             errorMessage = error.error.message;
           }
 
-          this.snackBar.open(errorMessage, 'Close', {
-            duration: 5000,
-            horizontalPosition: 'center',
-            verticalPosition: 'top',
-            panelClass: ['error-snackbar']
-          });
+          this.swal.toast(errorMessage, 'error');
         }
       });
     }
@@ -101,10 +88,7 @@ export class VerifyOtpComponent implements OnInit {
 
     this.authService.resendOtp(resendData).subscribe({
       next: () => {
-        this.snackBar.open('OTP sent successfully!', 'Close', {
-          duration: 3000,
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('OTP sent successfully!', 'success');
         this.startCooldown();
       },
       error: (error) => {
@@ -112,10 +96,7 @@ export class VerifyOtpComponent implements OnInit {
         if (error.error && error.error.message) {
           errorMessage = error.error.message;
         }
-        this.snackBar.open(errorMessage, 'Close', {
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast(errorMessage, 'error');
       }
     });
   }

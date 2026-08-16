@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { FeatureConfigService, FeatureConfig } from '../../services/feature-config.service';
 import { environment } from '../../../../../environments/environment';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-feature-config-management',
@@ -64,7 +64,7 @@ export class FeatureConfigManagementComponent implements OnInit {
   constructor(
     private featureConfigService: FeatureConfigService,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -98,7 +98,7 @@ export class FeatureConfigManagementComponent implements OnInit {
         this.isLoading = false;
       },
       error: () => {
-        this.snackBar.open('Failed to load feature configs', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load feature configs', 'error');
         this.isLoading = false;
       }
     });
@@ -187,20 +187,20 @@ export class FeatureConfigManagementComponent implements OnInit {
     if (this.editingId) {
       this.featureConfigService.updateFeature(this.editingId, config, this.selectedImage || undefined, this.imageDeleted).subscribe({
         next: () => {
-          this.snackBar.open('Feature updated', 'Close', { duration: 3000 });
+          this.swal.toast('Feature updated', 'success');
           this.showForm = false;
           this.loadFeatures();
         },
-        error: () => this.snackBar.open('Failed to update feature', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to update feature', 'error')
       });
     } else {
       this.featureConfigService.createFeature(config, this.selectedImage || undefined).subscribe({
         next: () => {
-          this.snackBar.open('Feature created', 'Close', { duration: 3000 });
+          this.swal.toast('Feature created', 'success');
           this.showForm = false;
           this.loadFeatures();
         },
-        error: () => this.snackBar.open('Failed to create feature', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to create feature', 'error')
       });
     }
   }
@@ -211,20 +211,20 @@ export class FeatureConfigManagementComponent implements OnInit {
         const updated = response.data;
         const idx = this.features.findIndex(f => f.id === feature.id);
         if (idx >= 0 && updated) this.features[idx] = { ...updated };
-        this.snackBar.open(
+        this.swal.toast(
           `${feature.displayName} ${updated?.isActive ? 'enabled' : 'disabled'} in app`,
-          'Close', { duration: 2000 }
+          'success'
         );
       },
-      error: () => this.snackBar.open('Failed to toggle', 'Close', { duration: 3000 })
+      error: () => this.swal.toast('Failed to toggle', 'error')
     });
   }
 
   deleteFeature(feature: FeatureConfig): void {
     if (!confirm(`Delete "${feature.displayName}"?`)) return;
     this.featureConfigService.deleteFeature(feature.id!).subscribe({
-      next: () => { this.snackBar.open('Deleted', 'Close', { duration: 3000 }); this.loadFeatures(); },
-      error: () => this.snackBar.open('Failed to delete', 'Close', { duration: 3000 })
+      next: () => { this.swal.toast('Deleted', 'success'); this.loadFeatures(); },
+      error: () => this.swal.toast('Failed to delete', 'error')
     });
   }
 }

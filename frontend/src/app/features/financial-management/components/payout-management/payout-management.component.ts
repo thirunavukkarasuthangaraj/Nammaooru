@@ -2,12 +2,12 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import Swal from 'sweetalert2';
+import { SwalService } from '../../../../core/services/swal.service';
 
 export interface PayoutData {
   id: number;
@@ -84,7 +84,7 @@ export class PayoutManagementComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -249,7 +249,7 @@ export class PayoutManagementComponent implements OnInit {
     ];
 
     this.dataSource.data = mockData;
-    this.snackBar.open('Loaded mock payout data - API not available', 'Close', { duration: 3000 });
+    this.swal.toast('Loaded mock payout data - API not available', 'warning');
   }
 
   loadPayoutStats(): void {
@@ -364,7 +364,7 @@ export class PayoutManagementComponent implements OnInit {
 
   processPayout(payout: PayoutData): void {
     if (payout.status !== 'APPROVED') {
-      this.snackBar.open('Payout must be approved before processing', 'Close', { duration: 3000 });
+      this.swal.toast('Payout must be approved before processing', 'warning');
       return;
     }
 
@@ -450,8 +450,8 @@ export class PayoutManagementComponent implements OnInit {
     link.download = `payouts-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
-    
-    this.snackBar.open('Payout data exported successfully', 'Close', { duration: 3000 });
+
+    this.swal.toast('Payout data exported successfully', 'success');
   }
 
   private convertToCSV(data: any[]): string {

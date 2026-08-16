@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService, UserResponse } from '../../../../core/services/user.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-user-detail',
@@ -17,7 +17,7 @@ export class UserDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private userService: UserService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -28,7 +28,7 @@ export class UserDetailComponent implements OnInit {
         this.loadUser(numericUserId);
       } else {
         console.error('Invalid user ID:', userId);
-        this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
+        this.swal.toast('Invalid user ID', 'error');
         this.router.navigate(['/users']);
       }
     }
@@ -45,7 +45,7 @@ export class UserDetailComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading user:', error);
-        this.snackBar.open('Error loading user details', 'Close', { duration: 3000 });
+        this.swal.toast('Error loading user details', 'error');
         this.loading = false;
         this.router.navigate(['/users']);
       }
@@ -79,11 +79,11 @@ export class UserDetailComponent implements OnInit {
     this.userService.toggleUserStatus(this.user.id).subscribe({
       next: (updatedUser) => {
         this.user = updatedUser;
-        this.snackBar.open(`User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully`, 'Close', { duration: 3000 });
+        this.swal.toast(`User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully`, 'success');
       },
       error: (error) => {
         console.error('Error toggling user status:', error);
-        this.snackBar.open('Error updating user status', 'Close', { duration: 3000 });
+        this.swal.toast('Error updating user status', 'error');
       }
     });
   }
@@ -94,11 +94,11 @@ export class UserDetailComponent implements OnInit {
     if (confirm(`Reset password for ${this.user.fullName}?`)) {
       this.userService.resetPassword(this.user.id).subscribe({
         next: () => {
-          this.snackBar.open('Password reset email sent successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Password reset email sent successfully', 'success');
         },
         error: (error) => {
           console.error('Error resetting password:', error);
-          this.snackBar.open('Error resetting password', 'Close', { duration: 3000 });
+          this.swal.toast('Error resetting password', 'error');
         }
       });
     }
@@ -112,11 +112,11 @@ export class UserDetailComponent implements OnInit {
       this.userService.lockUser(this.user.id, reason).subscribe({
         next: (updatedUser) => {
           this.user = updatedUser;
-          this.snackBar.open('User locked successfully', 'Close', { duration: 3000 });
+          this.swal.toast('User locked successfully', 'success');
         },
         error: (error) => {
           console.error('Error locking user:', error);
-          this.snackBar.open('Error locking user', 'Close', { duration: 3000 });
+          this.swal.toast('Error locking user', 'error');
         }
       });
     }
@@ -128,11 +128,11 @@ export class UserDetailComponent implements OnInit {
     this.userService.unlockUser(this.user.id).subscribe({
       next: (updatedUser) => {
         this.user = updatedUser;
-        this.snackBar.open('User unlocked successfully', 'Close', { duration: 3000 });
+        this.swal.toast('User unlocked successfully', 'success');
       },
       error: (error) => {
         console.error('Error unlocking user:', error);
-        this.snackBar.open('Error unlocking user', 'Close', { duration: 3000 });
+        this.swal.toast('Error unlocking user', 'error');
       }
     });
   }
@@ -143,12 +143,12 @@ export class UserDetailComponent implements OnInit {
     if (confirm(`Are you sure you want to delete ${this.user.fullName}? This action cannot be undone.`)) {
       this.userService.deleteUser(this.user.id).subscribe({
         next: () => {
-          this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
+          this.swal.toast('User deleted successfully', 'success');
           this.router.navigate(['/users']);
         },
         error: (error) => {
           console.error('Error deleting user:', error);
-          this.snackBar.open('Error deleting user', 'Close', { duration: 3000 });
+          this.swal.toast('Error deleting user', 'error');
         }
       });
     }

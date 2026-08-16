@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService, UserRequest } from '../../../../core/services/user.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { DeliveryPartnerService, DeliveryPartnerDocument } from '../../../delivery/services/delivery-partner.service';
 import { ShopService } from '../../../../core/services/shop.service';
 
@@ -59,9 +59,9 @@ export class UserFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private userService: UserService,
-    private snackBar: MatSnackBar,
     private deliveryPartnerService: DeliveryPartnerService,
-    private shopService: ShopService
+    private shopService: ShopService,
+    private swal: SwalService
   ) {
     this.userForm = this.createForm();
   }
@@ -77,7 +77,7 @@ export class UserFormComponent implements OnInit {
           this.loadUser();
         } else {
           console.error('Invalid user ID:', params['id']);
-          this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
+          this.swal.toast('Invalid user ID', 'error');
           this.router.navigate(['/users']);
         }
       }
@@ -148,7 +148,7 @@ export class UserFormComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading user:', error);
-        this.snackBar.open('Error loading user details', 'Close', { duration: 3000 });
+        this.swal.toast('Error loading user details', 'error');
         this.loading = false;
         this.goBack();
       }
@@ -207,12 +207,12 @@ export class UserFormComponent implements OnInit {
           }
 
           if (this.isEditMode) {
-            this.snackBar.open('User updated successfully', 'Close', { duration: 3000 });
+            this.swal.toast('User updated successfully', 'success');
             this.router.navigate(['/users']);
           } else {
             // Handle new user creation
             this.savedUserId = response.id;
-            this.snackBar.open('User created successfully', 'Close', { duration: 3000 });
+            this.swal.toast('User created successfully', 'success');
 
             // Check if this is a delivery partner role
             if (formData.role === 'DELIVERY_PARTNER') {
@@ -224,10 +224,9 @@ export class UserFormComponent implements OnInit {
         },
         error: (error) => {
           console.error(`Error ${this.isEditMode ? 'updating' : 'creating'} user:`, error);
-          this.snackBar.open(
-            error.error?.message || `Error ${this.isEditMode ? 'updating' : 'creating'} user`, 
-            'Close', 
-            { duration: 3000 }
+          this.swal.toast(
+            error.error?.message || `Error ${this.isEditMode ? 'updating' : 'creating'} user`,
+            'error'
           );
           this.loading = false;
         }
@@ -304,11 +303,7 @@ export class UserFormComponent implements OnInit {
       error: (error) => {
         console.error('Error checking delivery partner:', error);
         // For now, just show a message and navigate to users
-        this.snackBar.open(
-          'User created. Please create delivery partner record separately.',
-          'Close',
-          { duration: 5000 }
-        );
+        this.swal.toast('User created. Please create delivery partner record separately.', 'warning');
         this.router.navigate(['/users']);
       }
     });
@@ -320,11 +315,7 @@ export class UserFormComponent implements OnInit {
     this.deliveryPartnerId = userId; // Mock - in real implementation, this would be the delivery partner ID
     this.showDeliveryPartnerDocuments = true;
 
-    this.snackBar.open(
-      'Delivery partner record created. Please upload required documents.',
-      'Close',
-      { duration: 3000 }
-    );
+    this.swal.toast('Delivery partner record created. Please upload required documents.', 'info');
   }
 
   onDocumentsChanged(documents: DeliveryPartnerDocument[]): void {
@@ -333,20 +324,12 @@ export class UserFormComponent implements OnInit {
   }
 
   finishDeliveryPartnerSetup(): void {
-    this.snackBar.open(
-      'Delivery partner setup completed successfully!',
-      'Close',
-      { duration: 3000 }
-    );
+    this.swal.toast('Delivery partner setup completed successfully!', 'success');
     this.router.navigate(['/users']);
   }
 
   skipDocumentUpload(): void {
-    this.snackBar.open(
-      'Documents can be uploaded later from the delivery partners section.',
-      'Close',
-      { duration: 5000 }
-    );
+    this.swal.toast('Documents can be uploaded later from the delivery partners section.', 'info');
     this.router.navigate(['/users']);
   }
 }

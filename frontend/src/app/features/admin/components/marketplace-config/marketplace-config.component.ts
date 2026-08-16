@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { SettingsService } from '../../../../core/services/settings.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface PostTypeConfig {
   key: string;
@@ -65,7 +65,7 @@ export class MarketplaceConfigComponent implements OnInit {
 
   constructor(
     private settingsService: SettingsService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -93,7 +93,7 @@ export class MarketplaceConfigComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.snackBar.open('Failed to load settings', 'OK', { duration: 3000 });
+        this.swal.toast('Failed to load settings', 'error');
         this.loading = false;
       }
     });
@@ -109,7 +109,7 @@ export class MarketplaceConfigComponent implements OnInit {
       if (pt.visibleStatuses.length > 1) {
         pt.visibleStatuses.splice(idx, 1);
       } else {
-        this.snackBar.open('At least one status must be selected', 'OK', { duration: 3000 });
+        this.swal.toast('At least one status must be selected', 'warning');
       }
     } else {
       pt.visibleStatuses.push(status);
@@ -128,11 +128,11 @@ export class MarketplaceConfigComponent implements OnInit {
     this.settingsService.updateMultipleSettings(settings).subscribe({
       next: () => {
         this.savingType = null;
-        this.snackBar.open(`${pt.label} settings saved`, 'OK', { duration: 3000 });
+        this.swal.toast(`${pt.label} settings saved`, 'success');
       },
       error: () => {
         this.savingType = null;
-        this.snackBar.open(`Failed to save ${pt.label} settings`, 'OK', { duration: 3000 });
+        this.swal.toast(`Failed to save ${pt.label} settings`, 'error');
       }
     });
   }
@@ -146,11 +146,11 @@ export class MarketplaceConfigComponent implements OnInit {
     this.settingsService.updateMultipleSettings(settings).subscribe({
       next: () => {
         this.savingRadius = false;
-        this.snackBar.open('Location radius settings saved', 'OK', { duration: 3000 });
+        this.swal.toast('Location radius settings saved', 'success');
       },
       error: () => {
         this.savingRadius = false;
-        this.snackBar.open('Failed to save radius settings', 'OK', { duration: 3000 });
+        this.swal.toast('Failed to save radius settings', 'error');
       }
     });
   }

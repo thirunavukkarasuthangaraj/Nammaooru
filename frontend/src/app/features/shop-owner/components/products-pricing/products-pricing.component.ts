@@ -2,8 +2,8 @@ import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface ProductPricing {
   id: number;
@@ -56,7 +56,7 @@ export class ProductsPricingComponent implements OnInit, AfterViewInit {
 
   constructor(
     private productService: ShopOwnerProductService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -209,17 +209,14 @@ export class ProductsPricingComponent implements OnInit, AfterViewInit {
       
       this.productService.updatePrice(product.id, price).subscribe({
         next: () => {
-          this.snackBar.open('Price updated successfully', 'Close', { 
-            duration: 2000,
-            panelClass: 'success-snackbar'
-          });
+          this.swal.toast('Price updated successfully', 'success');
           this.calculateMetrics();
         },
         error: (error: any) => {
           console.error('Error updating price:', error);
           // Revert the price if update fails
           this.loadProducts();
-          this.snackBar.open('Failed to update price', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to update price', 'error');
         }
       });
     }
@@ -244,17 +241,14 @@ export class ProductsPricingComponent implements OnInit, AfterViewInit {
       
       this.productService.updateStock(stockUpdate).subscribe({
         next: () => {
-          this.snackBar.open('Stock updated successfully', 'Close', { 
-            duration: 2000,
-            panelClass: 'success-snackbar'
-          });
+          this.swal.toast('Stock updated successfully', 'success');
           this.calculateMetrics();
         },
         error: (error: any) => {
           console.error('Error updating stock:', error);
           // Revert the stock if update fails
           this.loadProducts();
-          this.snackBar.open('Failed to update stock', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to update stock', 'error');
         }
       });
     }
@@ -263,17 +257,16 @@ export class ProductsPricingComponent implements OnInit, AfterViewInit {
   toggleProductStatus(product: ProductPricing): void {
     this.productService.toggleProductStatus(product.id).subscribe({
       next: () => {
-        this.snackBar.open(
-          product.isActive ? 'Product activated' : 'Product deactivated', 
-          'Close', 
-          { duration: 2000 }
+        this.swal.toast(
+          product.isActive ? 'Product activated' : 'Product deactivated',
+          'success'
         );
         this.calculateMetrics();
       },
       error: (error: any) => {
         console.error('Error toggling product status:', error);
         product.isActive = !product.isActive; // Revert
-        this.snackBar.open('Failed to update product status', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to update product status', 'error');
       }
     });
   }
@@ -282,10 +275,7 @@ export class ProductsPricingComponent implements OnInit, AfterViewInit {
     this.syncing = true;
     // Simulate sync - in real app, would call a sync API
     setTimeout(() => {
-      this.snackBar.open('Market prices synced successfully', 'Close', { 
-        duration: 3000,
-        panelClass: 'success-snackbar'
-      });
+      this.swal.toast('Market prices synced successfully', 'success');
       this.loadProducts(); // Reload with updated prices
       this.syncing = false;
     }, 2000);

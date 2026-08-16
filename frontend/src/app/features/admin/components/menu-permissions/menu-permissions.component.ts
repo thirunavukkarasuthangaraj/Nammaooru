@@ -1,8 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MenuPermissionService, Permission, UserMenuPermission } from '../../../../core/services/menu-permission.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-menu-permissions',
@@ -32,7 +32,7 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
 
   constructor(
     private menuPermissionService: MenuPermissionService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -57,7 +57,7 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading permissions:', error);
-          this.snackBar.open('Error loading permissions', 'Close', { duration: 3000 });
+          this.swal.toast('Error loading permissions', 'error');
           this.loading = false;
         }
       });
@@ -73,7 +73,7 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading shop owners:', error);
-          this.snackBar.open('Error loading shop owners', 'Close', { duration: 3000 });
+          this.swal.toast('Error loading shop owners', 'error');
           this.loading = false;
         }
       });
@@ -96,12 +96,12 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             shopOwner.menuPermissions = shopOwner.menuPermissions.filter(p => p !== permissionName);
-            this.snackBar.open(`Permission removed for ${shopOwner.fullName}`, 'Close', { duration: 2000 });
+            this.swal.toast(`Permission removed for ${shopOwner.fullName}`, 'success');
             this.saving[shopOwner.userId] = false;
           },
           error: (error) => {
             console.error('Error removing permission:', error);
-            this.snackBar.open('Error removing permission', 'Close', { duration: 3000 });
+            this.swal.toast('Error removing permission', 'error');
             this.saving[shopOwner.userId] = false;
           }
         });
@@ -112,12 +112,12 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             shopOwner.menuPermissions.push(permissionName);
-            this.snackBar.open(`Permission granted for ${shopOwner.fullName}`, 'Close', { duration: 2000 });
+            this.swal.toast(`Permission granted for ${shopOwner.fullName}`, 'success');
             this.saving[shopOwner.userId] = false;
           },
           error: (error) => {
             console.error('Error adding permission:', error);
-            this.snackBar.open('Error adding permission', 'Close', { duration: 3000 });
+            this.swal.toast('Error adding permission', 'error');
             this.saving[shopOwner.userId] = false;
           }
         });
@@ -133,12 +133,12 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           shopOwner.menuPermissions = [...shopOwner.allAvailablePermissions];
-          this.snackBar.open(`All permissions granted for ${shopOwner.fullName}`, 'Close', { duration: 2000 });
+          this.swal.toast(`All permissions granted for ${shopOwner.fullName}`, 'success');
           this.saving[shopOwner.userId] = false;
         },
         error: (error) => {
           console.error('Error granting all permissions:', error);
-          this.snackBar.open('Error granting permissions', 'Close', { duration: 3000 });
+          this.swal.toast('Error granting permissions', 'error');
           this.saving[shopOwner.userId] = false;
         }
       });
@@ -153,12 +153,12 @@ export class MenuPermissionsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           shopOwner.menuPermissions = [];
-          this.snackBar.open(`All permissions revoked for ${shopOwner.fullName}`, 'Close', { duration: 2000 });
+          this.swal.toast(`All permissions revoked for ${shopOwner.fullName}`, 'success');
           this.saving[shopOwner.userId] = false;
         },
         error: (error) => {
           console.error('Error revoking all permissions:', error);
-          this.snackBar.open('Error revoking permissions', 'Close', { duration: 3000 });
+          this.swal.toast('Error revoking permissions', 'error');
           this.saving[shopOwner.userId] = false;
         }
       });

@@ -5,7 +5,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface OrderSummary {
   id: number;
@@ -76,7 +76,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private router: Router,
     private shopContext: ShopContextService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -305,7 +305,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
 
   refreshData(): void {
     this.loadAllDashboardData();
-    this.snackBar.open('Dashboard refreshed', 'Close', { duration: 2000 });
+    this.swal.toast('Dashboard refreshed', 'success');
   }
 
   onDateChange(): void {
@@ -326,10 +326,7 @@ export class BusinessSummaryComponent implements OnInit, OnDestroy {
   }
 
   private handleError(message: string): void {
-    this.snackBar.open(message, 'Close', { 
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+    this.swal.toast(message, 'error');
   }
 
   formatCurrency(amount: number): string {

@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, takeUntil, interval } from 'rxjs';
 import { OrderAssignmentService } from '../../services/order-assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface OrderItem {
   id: number;
@@ -59,7 +59,7 @@ export class PartnerOrdersComponent implements OnInit, OnDestroy {
   constructor(
     private orderAssignmentService: OrderAssignmentService,
     private authService: AuthService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private router: Router
   ) {}
 
@@ -185,16 +185,16 @@ export class PartnerOrdersComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.snackBar.open('Marked as picked up!', 'OK', { duration: 3000 });
+            this.swal.toast('Marked as picked up!', 'success');
             this.loadOrders();
           } else {
-            this.snackBar.open(response.message || 'Failed', 'Close', { duration: 3000 });
+            this.swal.toast(response.message || 'Failed', 'error');
           }
           this.processingOrderId = null;
         },
         error: (error) => {
           console.error('Error:', error);
-          this.snackBar.open('Failed to update status', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to update status', 'error');
           this.processingOrderId = null;
         }
       });
@@ -209,16 +209,16 @@ export class PartnerOrdersComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.snackBar.open('Delivery completed!', 'OK', { duration: 3000 });
+            this.swal.toast('Delivery completed!', 'success');
             this.loadOrders();
           } else {
-            this.snackBar.open(response.message || 'Failed', 'Close', { duration: 3000 });
+            this.swal.toast(response.message || 'Failed', 'error');
           }
           this.processingOrderId = null;
         },
         error: (error) => {
           console.error('Error:', error);
-          this.snackBar.open('Failed to update status', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to update status', 'error');
           this.processingOrderId = null;
         }
       });

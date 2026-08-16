@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { LabourAdminService } from '../../services/labour.service';
 import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface LabourPost {
   id: number;
@@ -47,7 +47,7 @@ export class LabourManagementComponent implements OnInit {
 
   constructor(
     private labourService: LabourAdminService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog
   ) {}
 
@@ -72,7 +72,7 @@ export class LabourManagementComponent implements OnInit {
       error: (err) => {
         console.error('Error loading labour posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load posts', 'error');
       }
     });
   }
@@ -91,11 +91,11 @@ export class LabourManagementComponent implements OnInit {
   approvePost(post: LabourPost): void {
     this.labourService.approvePost(post.id).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.name}" approved`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.name}" approved`, 'success');
         this.loadPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to approve post', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to approve post', 'error');
       }
     });
   }
@@ -104,11 +104,11 @@ export class LabourManagementComponent implements OnInit {
     if (confirm(`Reject "${post.name}"?`)) {
       this.labourService.rejectPost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.name}" rejected`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.name}" rejected`, 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to reject post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to reject post', 'error');
         }
       });
     }
@@ -118,11 +118,11 @@ export class LabourManagementComponent implements OnInit {
     if (confirm(`Delete "${post.name}" permanently?`)) {
       this.labourService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
+          this.swal.toast('Post deleted', 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to delete post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to delete post', 'error');
         }
       });
     }
@@ -138,11 +138,11 @@ export class LabourManagementComponent implements OnInit {
       if (result) {
         this.labourService.adminUpdatePost(post.id, result).subscribe({
           next: () => {
-            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
           error: () => {
-            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to update post', 'error');
           }
         });
       }
@@ -155,14 +155,13 @@ export class LabourManagementComponent implements OnInit {
         const updated = response.data;
         const isFeatured = updated?.featured;
         post.featured = isFeatured;
-        this.snackBar.open(
+        this.swal.toast(
           isFeatured ? `"${post.name}" marked as featured` : `"${post.name}" removed from featured`,
-          'OK',
-          { duration: 3000 }
+          'success'
         );
       },
       error: () => {
-        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to toggle featured', 'error');
       }
     });
   }

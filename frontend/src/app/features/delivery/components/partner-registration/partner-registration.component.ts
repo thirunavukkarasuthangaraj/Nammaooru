@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-partner-registration',
@@ -17,7 +17,7 @@ export class PartnerRegistrationComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     public router: Router,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private deliveryPartnerService: DeliveryPartnerService
   ) {
     this.registrationForm = this.fb.group({
@@ -41,12 +41,12 @@ export class PartnerRegistrationComponent implements OnInit {
       this.isLoading = true;
       this.deliveryPartnerService.registerPartner(this.registrationForm.value).subscribe({
         next: (response) => {
-          this.snackBar.open('Registration submitted successfully!', 'Close', { duration: 3000 });
+          this.swal.toast('Registration submitted successfully!', 'success');
           this.router.navigate(['/delivery/partner/dashboard']);
           this.isLoading = false;
         },
         error: (error) => {
-          this.snackBar.open('Registration failed. Please try again.', 'Close', { duration: 3000 });
+          this.swal.toast('Registration failed. Please try again.', 'error');
           this.isLoading = false;
         }
       });

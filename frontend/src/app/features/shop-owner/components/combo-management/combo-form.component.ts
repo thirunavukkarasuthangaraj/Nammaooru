@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
@@ -47,7 +47,7 @@ export class ComboFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     public dialogRef: MatDialogRef<ComboFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { mode: 'create' | 'edit'; combo?: any; shopId: number }
   ) {
@@ -348,12 +348,7 @@ export class ComboFormComponent implements OnInit {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
-    });
+    this.swal.toast(message, type);
   }
 
   // Image upload methods

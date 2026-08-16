@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ShopService } from '@core/services/shop.service';
 import { AuthService } from '@core/services/auth.service';
 import { SettingsService } from '@core/services/settings.service';
+import { SwalService } from '@core/services/swal.service';
 import { finalize } from 'rxjs/operators';
 
 interface ShopSettings {
@@ -635,7 +635,7 @@ export class ShopSettingsComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog,
     private shopService: ShopService,
     private authService: AuthService,
@@ -729,12 +729,12 @@ export class ShopSettingsComponent implements OnInit {
               });
             }
           } else {
-            this.snackBar.open('No shop found for this account', 'Close', { duration: 3000 });
+            this.swal.toast('No shop found for this account', 'warning');
           }
         },
         error: (error) => {
           console.error('Error loading shop settings:', error);
-          this.snackBar.open('Failed to load shop settings', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load shop settings', 'error');
         }
       });
   }
@@ -747,7 +747,7 @@ export class ShopSettingsComponent implements OnInit {
       // Simulate API call
       setTimeout(() => {
         this.loading = false;
-        this.snackBar.open('Shop information saved successfully', 'Close', { duration: 3000 });
+        this.swal.toast('Shop information saved successfully', 'success');
       }, 1000);
     }
   }
@@ -759,7 +759,7 @@ export class ShopSettingsComponent implements OnInit {
     // Simulate API call
     setTimeout(() => {
       this.loading = false;
-      this.snackBar.open('Business hours saved successfully', 'Close', { duration: 3000 });
+      this.swal.toast('Business hours saved successfully', 'success');
     }, 1000);
   }
 
@@ -770,7 +770,7 @@ export class ShopSettingsComponent implements OnInit {
     // Simulate API call
     setTimeout(() => {
       this.loading = false;
-      this.snackBar.open('Notification settings saved successfully', 'Close', { duration: 3000 });
+      this.swal.toast('Notification settings saved successfully', 'success');
     }, 1000);
   }
 
@@ -782,7 +782,7 @@ export class ShopSettingsComponent implements OnInit {
       // Simulate API call
       setTimeout(() => {
         this.loading = false;
-        this.snackBar.open('Business settings saved successfully', 'Close', { duration: 3000 });
+        this.swal.toast('Business settings saved successfully', 'success');
       }, 1000);
     }
   }
@@ -794,7 +794,7 @@ export class ShopSettingsComponent implements OnInit {
     // Simulate API call
     setTimeout(() => {
       this.loading = false;
-      this.snackBar.open('Integration settings saved successfully', 'Close', { duration: 3000 });
+      this.swal.toast('Integration settings saved successfully', 'success');
     }, 1000);
   }
 
@@ -805,10 +805,10 @@ export class ShopSettingsComponent implements OnInit {
       // Simulate API call to save all settings
       setTimeout(() => {
         this.loading = false;
-        this.snackBar.open('All settings saved successfully', 'Close', { duration: 3000 });
+        this.swal.toast('All settings saved successfully', 'success');
       }, 1500);
     } else {
-      this.snackBar.open('Please check all forms for errors', 'Close', { duration: 3000 });
+      this.swal.toast('Please check all forms for errors', 'warning');
     }
   }
 
@@ -832,21 +832,21 @@ export class ShopSettingsComponent implements OnInit {
   }
 
   testEmailSettings(): void {
-    this.snackBar.open('Sending test email...', 'Close', { duration: 2000 });
+    this.swal.toast('Sending test email...', 'info');
     setTimeout(() => {
-      this.snackBar.open('Test email sent successfully!', 'Close', { duration: 3000 });
+      this.swal.toast('Test email sent successfully!', 'success');
     }, 2000);
   }
 
   testSmsSettings(): void {
-    this.snackBar.open('Sending test SMS...', 'Close', { duration: 2000 });
+    this.swal.toast('Sending test SMS...', 'info');
     setTimeout(() => {
-      this.snackBar.open('Test SMS sent successfully!', 'Close', { duration: 3000 });
+      this.swal.toast('Test SMS sent successfully!', 'success');
     }, 2000);
   }
 
   viewShopProfile(): void {
-    this.snackBar.open('Opening shop profile...', 'Close', { duration: 2000 });
+    this.swal.toast('Opening shop profile...', 'info');
   }
 
   backupSettings(): void {
@@ -867,7 +867,7 @@ export class ShopSettingsComponent implements OnInit {
     link.click();
     window.URL.revokeObjectURL(url);
     
-    this.snackBar.open('Settings backup downloaded successfully', 'Close', { duration: 3000 });
+    this.swal.toast('Settings backup downloaded successfully', 'success');
   }
 
   exportSettings(): void {

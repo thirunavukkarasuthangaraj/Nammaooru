@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { BulkImportService, BulkImportResponse, BulkImportResult } from '../../services/bulk-import.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
 
@@ -23,7 +23,7 @@ export class ProductBulkImportComponent implements OnInit {
 
   constructor(
     private bulkImportService: BulkImportService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private authService: AuthService,
     private offlineStorage: OfflineStorageService
   ) {}
@@ -43,7 +43,7 @@ export class ProductBulkImportComponent implements OnInit {
       // Validate file
       const validation = this.bulkImportService.validateExcelFile(file);
       if (!validation.valid) {
-        this.snackBar.open(validation.error || 'Invalid file', 'Close', { duration: 5000 });
+        this.swal.toast(validation.error || 'Invalid file', 'error');
         return;
       }
 
@@ -61,7 +61,7 @@ export class ProductBulkImportComponent implements OnInit {
 
   uploadFile(): void {
     if (!this.selectedFile) {
-      this.snackBar.open('Please select a file first', 'Close', { duration: 3000 });
+      this.swal.toast('Please select a file first', 'warning');
       return;
     }
 
@@ -93,15 +93,9 @@ export class ProductBulkImportComponent implements OnInit {
           console.log('Product cache cleared after bulk import');
 
           const message = `Import completed! Success: ${response.data.successCount}, Failed: ${response.data.failureCount}`;
-          this.snackBar.open(message, 'Close', {
-            duration: 5000,
-            panelClass: response.data.failureCount === 0 ? ['success-snackbar'] : ['warning-snackbar']
-          });
+          this.swal.toast(message, response.data.failureCount === 0 ? 'success' : 'warning');
         } else {
-          this.snackBar.open(response.message || 'Import failed', 'Close', {
-            duration: 5000,
-            panelClass: ['error-snackbar']
-          });
+          this.swal.toast(response.message || 'Import failed', 'error');
         }
       },
       error: (error) => {
@@ -109,17 +103,14 @@ export class ProductBulkImportComponent implements OnInit {
         this.uploadProgress = 0;
 
         const errorMessage = error.error?.message || error.message || 'Upload failed. Please try again.';
-        this.snackBar.open(errorMessage, 'Close', {
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast(errorMessage, 'error');
       }
     });
   }
 
   downloadSampleCSV(): void {
     this.bulkImportService.downloadSampleCSV();
-    this.snackBar.open('Sample CSV downloaded', 'Close', { duration: 3000 });
+    this.swal.toast('Sample CSV downloaded', 'success');
   }
 
   getTemplateInfo(): void {
@@ -129,7 +120,7 @@ export class ProductBulkImportComponent implements OnInit {
         if (response.success) {
           console.log('Template Info:', response.data);
           // You can display this in a dialog if needed
-          this.snackBar.open('Template info loaded. Check console for details.', 'Close', { duration: 3000 });
+          this.swal.toast('Template info loaded. Check console for details.', 'info');
         }
       },
       error: (error) => {
@@ -186,7 +177,7 @@ export class ProductBulkImportComponent implements OnInit {
     link.click();
     document.body.removeChild(link);
 
-    this.snackBar.open('Results exported', 'Close', { duration: 3000 });
+    this.swal.toast('Results exported', 'success');
   }
 
   private generateResultsCSV(): string {

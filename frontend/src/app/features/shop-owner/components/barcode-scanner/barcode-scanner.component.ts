@@ -2,6 +2,7 @@ import { Component, EventEmitter, Output, ViewChild, ElementRef } from '@angular
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-barcode-scanner',
@@ -27,7 +28,8 @@ export class BarcodeScannerComponent {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private swal: SwalService
   ) {
     this.setupBarcodeListener();
   }
@@ -64,7 +66,7 @@ export class BarcodeScannerComponent {
   // Process scanned or entered barcode
   private processBarcode(barcode: string): void {
     if (barcode === this.lastScannedCode) {
-      this.snackBar.open('Product already scanned', 'Close', { duration: 2000 });
+      this.swal.toast('Product already scanned', 'warning');
       return;
     }
 
@@ -97,7 +99,7 @@ export class BarcodeScannerComponent {
           this.handleProductFound(product);
         },
         error: (error) => {
-          this.snackBar.open('Product not found', 'Close', { duration: 3000 });
+          this.swal.toast('Product not found', 'error');
           this.playErrorSound();
         }
       });
@@ -164,6 +166,6 @@ export class BarcodeScannerComponent {
     ];
     
     console.log('Test Barcodes:', testBarcodes);
-    this.snackBar.open('Check console for test barcodes', 'Close', { duration: 3000 });
+    this.swal.toast('Check console for test barcodes', 'info');
   }
 }

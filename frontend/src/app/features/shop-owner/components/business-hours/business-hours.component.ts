@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ShopService } from '@core/services/shop.service';
+import { SwalService } from '@core/services/swal.service';
 import { BusinessHoursService, BusinessHour, ShopStatus } from '../../services/business-hours.service';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
@@ -600,9 +600,9 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
     private shopService: ShopService,
-    private businessHoursService: BusinessHoursService
+    private businessHoursService: BusinessHoursService,
+    private swal: SwalService
   ) {
     this.businessHoursForm = this.fb.group({});
   }
@@ -642,13 +642,9 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error loading shop:', error);
           if (error.status === 404) {
-            this.snackBar.open('No shop found. Please contact admin to assign a shop.', 'Close', { 
-              duration: 5000 
-            });
+            this.swal.toast('No shop found. Please contact admin to assign a shop.', 'error');
           } else {
-            this.snackBar.open('Failed to load shop data.', 'Close', { 
-              duration: 3000 
-            });
+            this.swal.toast('Failed to load shop data.', 'error');
           }
         }
       });
@@ -668,9 +664,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error loading business hours:', error);
           this.setDefaultHours();
-          this.snackBar.open('Failed to load business hours. Using defaults.', 'Close', { 
-            duration: 3000 
-          });
+          this.swal.toast('Failed to load business hours. Using defaults.', 'error');
         }
       });
   }
@@ -692,9 +686,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (hours: BusinessHour[]) => {
           this.businessHours = this.businessHoursService.convertFromBackendFormat(hours);
-          this.snackBar.open('Default business hours created. Please configure your schedule.', 'Close', { 
-            duration: 3000 
-          });
+          this.swal.toast('Default business hours created. Please configure your schedule.', 'info');
         },
         error: (error) => {
           console.error('Error creating default hours:', error);
@@ -705,7 +697,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
 
   saveBusinessHours(): void {
     if (!this.currentShopId) {
-      this.snackBar.open('No shop found. Cannot save business hours.', 'Close', { duration: 3000 });
+      this.swal.toast('No shop found. Cannot save business hours.', 'error');
       return;
     }
 
@@ -721,11 +713,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (updatedHours) => {
           this.businessHours = this.businessHoursService.convertFromBackendFormat(updatedHours);
-          this.snackBar.open('Business hours saved successfully!', 'Close', { 
-            duration: 3000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top'
-          });
+          this.swal.toast('Business hours saved successfully!', 'success');
           
           // Refresh shop status
           if (this.currentShopId) {
@@ -734,9 +722,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error saving business hours:', error);
-          this.snackBar.open('Failed to save business hours. Please try again.', 'Close', { 
-            duration: 3000 
-          });
+          this.swal.toast('Failed to save business hours. Please try again.', 'error');
         }
       });
   }
@@ -763,7 +749,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       }
     });
     
-    this.snackBar.open('Monday hours copied to all days', 'Close', { duration: 2000 });
+    this.swal.toast('Monday hours copied to all days', 'success');
   }
 
   setDefaultHours(): void {
@@ -776,7 +762,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
     // Close Sunday by default
     this.businessHours[6].closed = true;
     
-    this.snackBar.open('Default hours set (9 AM - 6 PM)', 'Close', { duration: 2000 });
+    this.swal.toast('Default hours set (9 AM - 6 PM)', 'success');
   }
 
   set24Hours(): void {
@@ -786,7 +772,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       hour.closed = false;
     });
     
-    this.snackBar.open('24-hour operation set for all days', 'Close', { duration: 2000 });
+    this.swal.toast('24-hour operation set for all days', 'success');
   }
 
   closeWeekends(): void {
@@ -794,7 +780,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
     this.businessHours[5].closed = true;
     this.businessHours[6].closed = true;
     
-    this.snackBar.open('Weekends set to closed', 'Close', { duration: 2000 });
+    this.swal.toast('Weekends set to closed', 'success');
   }
 
   openAllDays(): void {
@@ -804,7 +790,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       if (!hour.close) hour.close = '18:00';
     });
     
-    this.snackBar.open('All days set to open', 'Close', { duration: 2000 });
+    this.swal.toast('All days set to open', 'success');
   }
 
   formatTimeRange(hour: LocalBusinessHour): string {
@@ -830,12 +816,12 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
     this.businessHoursService.forceUpdateAvailability(this.currentShopId)
       .subscribe({
         next: () => {
-          this.snackBar.open('Shop status updated!', 'Close', { duration: 2000 });
+          this.swal.toast('Shop status updated!', 'success');
           this.loadShopStatus(this.currentShopId!);
         },
         error: (error) => {
           console.error('Error updating status:', error);
-          this.snackBar.open('Failed to update status', 'Close', { duration: 2000 });
+          this.swal.toast('Failed to update status', 'error');
         }
       });
   }
@@ -848,12 +834,12 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
     this.businessHoursService.overrideAvailability(this.currentShopId, isOpen, reason)
       .subscribe({
         next: () => {
-          this.snackBar.open(`Shop manually ${isOpen ? 'opened' : 'closed'}!`, 'Close', { duration: 2000 });
+          this.swal.toast(`Shop manually ${isOpen ? 'opened' : 'closed'}!`, 'success');
           this.loadShopStatus(this.currentShopId!);
         },
         error: (error) => {
           console.error('Error overriding status:', error);
-          this.snackBar.open('Failed to override status', 'Close', { duration: 2000 });
+          this.swal.toast('Failed to override status', 'error');
         }
       });
   }
@@ -864,12 +850,12 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
     this.businessHoursService.clearAvailabilityOverride(this.currentShopId)
       .subscribe({
         next: () => {
-          this.snackBar.open('Manual override cleared. Using automatic schedule.', 'Close', { duration: 3000 });
+          this.swal.toast('Manual override cleared. Using automatic schedule.', 'success');
           this.loadShopStatus(this.currentShopId!);
         },
         error: (error) => {
           console.error('Error clearing override:', error);
-          this.snackBar.open('Failed to clear override', 'Close', { duration: 2000 });
+          this.swal.toast('Failed to clear override', 'error');
         }
       });
   }
@@ -883,7 +869,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
     const index = this.holidays.indexOf(holiday);
     if (index > -1) {
       this.holidays.splice(index, 1);
-      this.snackBar.open('Holiday removed', 'Close', { duration: 2000 });
+      this.swal.toast('Holiday removed', 'success');
     }
   }
 }

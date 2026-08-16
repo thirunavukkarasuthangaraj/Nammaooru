@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { LabelTemplateService } from '../../../../core/services/label-template.service';
 import { LabelPrintService } from '../../../../core/services/label-print.service';
 import {
@@ -78,7 +78,7 @@ export class LabelDesignerComponent implements OnInit {
     private labelTemplateService: LabelTemplateService,
     private printService: LabelPrintService,
     private sanitizer: DomSanitizer,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private host: ElementRef<HTMLElement>
   ) {}
 
@@ -186,17 +186,17 @@ export class LabelDesignerComponent implements OnInit {
       next: (saved) => {
         this.templateId = saved.id;
         this.isSaving = false;
-        this.snackBar.open('Label template saved', 'Close', { duration: 2500 });
+        this.swal.toast('Label template saved', 'success');
       },
       error: (err) => {
         this.isSaving = false;
-        this.snackBar.open(err?.error?.message || 'Failed to save template', 'Close', { duration: 4000 });
+        this.swal.toast(err?.error?.message || 'Failed to save template', 'error');
       }
     });
   }
 
   printTest(): void {
     this.printService.print(this.buildTemplate(), [this.sample])
-      .catch((err) => this.snackBar.open(err?.message || 'Print failed', 'Close', { duration: 4000 }));
+      .catch((err) => this.swal.toast(err?.message || 'Print failed', 'error'));
   }
 }

@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { NotificationService } from '@core/services/notification.service';
@@ -10,6 +9,7 @@ import { AuthService } from '@core/services/auth.service';
 import { OrderService, OrderResponse } from '@core/services/order.service';
 import { ShopOwnerOrderService } from '../../services/shop-owner-order.service';
 import { FirebaseService } from '@core/services/firebase.service';
+import { SwalService } from '@core/services/swal.service';
 import { finalize, switchMap, catchError, takeUntil } from 'rxjs/operators';
 import { of, Subject, interval } from 'rxjs';
 
@@ -479,7 +479,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog,
     private router: Router,
     private notificationService: NotificationService,
@@ -529,7 +529,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     const currentUser = this.authService.getCurrentUser();
     
     if (!currentUser) {
-      this.snackBar.open('User not found', 'Close', { duration: 3000 });
+      this.swal.toast('User not found', 'error');
       this.loading = false;
       return;
     }
@@ -545,7 +545,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading order notifications:', error);
-          this.snackBar.open('Failed to load notifications', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load notifications', 'error');
           // Show empty state on error
           this.notifications = [];
         }
@@ -694,13 +694,13 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
   refreshNotifications(): void {
     this.loadNotifications();
-    this.snackBar.open('Notifications refreshed', 'Close', { duration: 2000 });
+    this.swal.toast('Notifications refreshed', 'success');
   }
 
   loadMoreNotifications(): void {
     // Simulate loading more notifications
     this.hasMoreNotifications = false;
-    this.snackBar.open('No more notifications to load', 'Close', { duration: 2000 });
+    this.swal.toast('No more notifications to load', 'info');
   }
 
   getFilteredNotifications(): ShopNotification[] {
@@ -780,7 +780,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   markAsUnread(notification: ShopNotification): void {
     notification.status = 'unread';
     notification.readAt = undefined;
-    this.snackBar.open('Notification marked as unread', 'Close', { duration: 2000 });
+    this.swal.toast('Notification marked as unread', 'success');
   }
 
   markAllAsRead(): void {
@@ -790,19 +790,19 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         notification.readAt = new Date();
       }
     });
-    this.snackBar.open('All notifications marked as read', 'Close', { duration: 3000 });
+    this.swal.toast('All notifications marked as read', 'success');
   }
 
   archiveNotification(notification: ShopNotification): void {
     notification.status = 'archived';
-    this.snackBar.open('Notification archived', 'Close', { duration: 2000 });
+    this.swal.toast('Notification archived', 'success');
   }
 
   deleteNotification(notification: ShopNotification): void {
     const index = this.notifications.indexOf(notification);
     if (index > -1) {
       this.notifications.splice(index, 1);
-      this.snackBar.open('Notification deleted', 'Close', { duration: 2000 });
+      this.swal.toast('Notification deleted', 'success');
     }
   }
 
@@ -813,7 +813,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     } else if (notification.actionUrl) {
       this.router.navigate([notification.actionUrl]);
     } else {
-      this.snackBar.open('Action completed', 'Close', { duration: 2000 });
+      this.swal.toast('Action completed', 'success');
     }
 
     // Mark as read without navigating (action buttons handle their own flow)
@@ -843,7 +843,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (acceptedOrder) => {
           console.log('Order accepted successfully:', acceptedOrder);
-          this.snackBar.open(`Order ${notification.relatedEntity!.name} accepted successfully!`, 'Close', { duration: 5000 });
+          this.swal.toast(`Order ${notification.relatedEntity!.name} accepted successfully!`, 'success');
           
           // Update notification
           notification.actionRequired = false;
@@ -858,7 +858,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error accepting order:', error);
           notification.status = 'unread';
-          this.snackBar.open('Failed to accept order. Please try again.', 'Close', { duration: 5000 });
+          this.swal.toast('Failed to accept order. Please try again.', 'error');
         }
       });
   }
@@ -884,7 +884,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (rejectedOrder) => {
           console.log('Order rejected successfully:', rejectedOrder);
-          this.snackBar.open(`Order ${notification.relatedEntity!.name} rejected.`, 'Close', { duration: 5000 });
+          this.swal.toast(`Order ${notification.relatedEntity!.name} rejected.`, 'warning');
           
           // Update notification
           notification.actionRequired = false;
@@ -899,7 +899,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error rejecting order:', error);
           notification.status = 'unread';
-          this.snackBar.open('Failed to reject order. Please try again.', 'Close', { duration: 5000 });
+          this.swal.toast('Failed to reject order. Please try again.', 'error');
         }
       });
   }

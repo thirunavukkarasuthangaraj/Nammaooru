@@ -2,10 +2,10 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { CartService, Cart } from '../../services/cart.service';
 import { CheckoutService, DeliveryAddress } from '../../services/checkout.service';
 import { FirebaseService } from '../../../../core/services/firebase.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -52,7 +52,7 @@ export class CheckoutImprovedComponent implements OnInit, OnDestroy {
     private cartService: CartService,
     private checkoutService: CheckoutService,
     private firebaseService: FirebaseService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.checkoutForm = this.createForm();
   }
@@ -276,7 +276,7 @@ export class CheckoutImprovedComponent implements OnInit, OnDestroy {
               ? `Order placed! Come to the shop to collect in ${this.estimatedDeliveryTime}`
               : `Order placed! Will be delivered in ${this.estimatedDeliveryTime}`;
 
-            this.snackBar.open(message, 'Close', { duration: 5000 });
+            this.swal.toast(message, 'success');
 
             // Process payment if not COD
             if (this.selectedPaymentMethod !== 'CASH_ON_DELIVERY') {

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { JobAdminService } from '../../services/job.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface JobPost {
   id: number;
@@ -35,7 +35,7 @@ export class JobReportedComponent implements OnInit {
 
   constructor(
     private jobService: JobAdminService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -55,7 +55,7 @@ export class JobReportedComponent implements OnInit {
       error: (err) => {
         console.error('Error loading reported job posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load reported posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load reported posts', 'error');
       }
     });
   }
@@ -63,11 +63,11 @@ export class JobReportedComponent implements OnInit {
   approvePost(post: JobPost): void {
     this.jobService.approvePost(post.id).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.jobTitle}" approved — reports cleared`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.jobTitle}" approved — reports cleared`, 'success');
         this.loadReportedPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to approve post', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to approve post', 'error');
       }
     });
   }
@@ -77,11 +77,11 @@ export class JobReportedComponent implements OnInit {
     if (reason === null) return;
     this.jobService.rejectPost(post.id, reason).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.jobTitle}" rejected`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.jobTitle}" rejected`, 'success');
         this.loadReportedPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to reject post', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to reject post', 'error');
       }
     });
   }
@@ -90,11 +90,11 @@ export class JobReportedComponent implements OnInit {
     if (confirm(`Delete "${post.jobTitle}" by ${post.companyName} permanently?`)) {
       this.jobService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
+          this.swal.toast('Post deleted', 'success');
           this.loadReportedPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to delete post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to delete post', 'error');
         }
       });
     }

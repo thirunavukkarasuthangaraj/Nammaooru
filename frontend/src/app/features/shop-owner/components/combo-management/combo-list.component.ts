@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -53,7 +52,6 @@ export class ComboListComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar,
     private offlineStorage: OfflineStorageService,
     private swalService: SwalService
   ) {}
@@ -66,14 +64,14 @@ export class ComboListComponent implements OnInit, OnDestroy {
   private handleOnline = (): void => {
     console.log('Network online - refreshing combos');
     this.isOffline = false;
-    this.snackBar.open('Back online! Refreshing combos...', 'Close', { duration: 3000 });
+    this.swalService.toast('Back online! Refreshing combos...', 'success');
     this.loadCombos();
   }
 
   private handleOffline = (): void => {
     console.log('Network offline - using cached combos');
     this.isOffline = true;
-    this.snackBar.open('You are offline. Showing cached combos.', 'Close', { duration: 3000 });
+    this.swalService.toast('You are offline. Showing cached combos.', 'warning');
   }
 
   getTimeSinceSync(): string {
@@ -291,12 +289,7 @@ export class ComboListComponent implements OnInit, OnDestroy {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
-    });
+    this.swalService.toast(message, type);
   }
 
   getImageUrl(url: string | undefined): string {

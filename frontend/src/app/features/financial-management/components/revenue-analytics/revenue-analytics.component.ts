@@ -2,8 +2,8 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
+import { SwalService } from '../../../../core/services/swal.service';
 import { environment } from '../../../../../environments/environment';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -89,7 +89,7 @@ export class RevenueAnalyticsComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -215,7 +215,7 @@ export class RevenueAnalyticsComponent implements OnInit {
     ];
 
     this.dataSource.data = mockData;
-    this.snackBar.open('Loaded mock revenue data - API not available', 'Close', { duration: 3000 });
+    this.swal.toast('Loaded mock revenue data - API not available', 'warning');
   }
 
   loadRevenueStats(): void {
@@ -290,7 +290,7 @@ export class RevenueAnalyticsComponent implements OnInit {
     link.click();
     window.URL.revokeObjectURL(url);
     
-    this.snackBar.open('Revenue data exported successfully', 'Close', { duration: 3000 });
+    this.swal.toast('Revenue data exported successfully', 'success');
   }
 
   private convertToCSV(data: any[]): string {
@@ -309,7 +309,7 @@ export class RevenueAnalyticsComponent implements OnInit {
   }
 
   viewShopDetails(revenue: RevenueData): void {
-    this.snackBar.open(`Viewing details for ${revenue.shopName}`, 'Close', { duration: 2000 });
+    this.swal.toast(`Viewing details for ${revenue.shopName}`, 'info');
   }
 
   formatCurrency(amount: number): string {

@@ -12,6 +12,7 @@ import { WebSocketService } from '../../../../core/services/websocket.service';
 import { PartnerDetailsDialogComponent } from '../partner-details-dialog/partner-details-dialog.component';
 import { DocumentVerificationDialogComponent } from '../document-verification-dialog/document-verification-dialog.component';
 import { environment } from '../../../../../environments/environment';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-admin-partners',
@@ -67,7 +68,8 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
     private webSocketService: WebSocketService,
     private http: HttpClient,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private swal: SwalService
   ) {
     this.dataSource = new MatTableDataSource<DeliveryPartner>([]);
   }
@@ -131,7 +133,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading partners:', error);
-          this.snackBar.open('Failed to load delivery partners', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load delivery partners', 'error');
           this.dataSource.data = [];
           this.isLoading = false;
         }
@@ -243,7 +245,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
 
   approvePartner(partner: DeliveryPartner): void {
     if (!partner.allDocumentsVerified) {
-      this.snackBar.open('Please verify all documents before approval', 'Close', { duration: 3000 });
+      this.swal.toast('Please verify all documents before approval', 'warning');
       return;
     }
 
@@ -255,7 +257,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
           if (ApiResponseHelper.isSuccess(response)) {
             this.partnerService.updateVerificationStatus(partner.id, 'VERIFIED')
               .subscribe(() => {
-                this.snackBar.open('Partner approved successfully', 'Close', { duration: 3000 });
+                this.swal.toast('Partner approved successfully', 'success');
                 this.loadPartners();
                 this.loadStatistics();
               });
@@ -264,7 +266,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error approving partner:', error);
-          this.snackBar.open('Failed to approve partner', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to approve partner', 'error');
           this.isProcessing = false;
         }
       });
@@ -278,7 +280,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Partner rejected', 'Close', { duration: 3000 });
+            this.swal.toast('Partner rejected', 'success');
             this.loadPartners();
             this.loadStatistics();
           }
@@ -286,7 +288,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error rejecting partner:', error);
-          this.snackBar.open('Failed to reject partner', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to reject partner', 'error');
           this.isProcessing = false;
         }
       });
@@ -299,7 +301,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Partner suspended', 'Close', { duration: 3000 });
+            this.swal.toast('Partner suspended', 'success');
             this.loadPartners();
             this.loadStatistics();
           }
@@ -307,7 +309,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error suspending partner:', error);
-          this.snackBar.open('Failed to suspend partner', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to suspend partner', 'error');
           this.isProcessing = false;
         }
       });
@@ -320,7 +322,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (ApiResponseHelper.isSuccess(response)) {
-            this.snackBar.open('Partner activated', 'Close', { duration: 3000 });
+            this.swal.toast('Partner activated', 'success');
             this.loadPartners();
             this.loadStatistics();
           }
@@ -328,7 +330,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error activating partner:', error);
-          this.snackBar.open('Failed to activate partner', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to activate partner', 'error');
           this.isProcessing = false;
         }
       });
@@ -342,7 +344,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (response) => {
             if (ApiResponseHelper.isSuccess(response)) {
-              this.snackBar.open('Partner blocked', 'Close', { duration: 3000 });
+              this.swal.toast('Partner blocked', 'success');
               this.loadPartners();
               this.loadStatistics();
             }
@@ -350,7 +352,7 @@ export class AdminPartnersComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Error blocking partner:', error);
-            this.snackBar.open('Failed to block partner', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to block partner', 'error');
             this.isProcessing = false;
           }
         });

@@ -1,8 +1,8 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DeliveryPartnerService, DeliveryPartnerDocument, DocumentVerificationStatus } from '../../services/delivery-partner.service';
 import { environment } from '../../../../../environments/environment';
+import { SwalService } from '../../../../core/services/swal.service';
 import Swal from 'sweetalert2';
 
 export interface DocumentViewerData {
@@ -456,7 +456,7 @@ export class DeliveryPartnerDocumentViewerComponent implements OnInit {
     public dialogRef: MatDialogRef<DeliveryPartnerDocumentViewerComponent>,
     @Inject(MAT_DIALOG_DATA) public data: DocumentViewerData,
     private deliveryPartnerService: DeliveryPartnerService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit() {
@@ -471,11 +471,11 @@ export class DeliveryPartnerDocumentViewerComponent implements OnInit {
     this.deliveryPartnerService.getPartnerDocuments(this.data.partnerId).subscribe({
       next: (response) => {
         this.documents = response.data || [];
-        this.snackBar.open('Documents refreshed successfully', 'Close', { duration: 2000 });
+        this.swal.toast('Documents refreshed successfully', 'success');
       },
       error: (error) => {
         console.error('Error refreshing documents:', error);
-        this.snackBar.open('Error refreshing documents', 'Close', { duration: 3000 });
+        this.swal.toast('Error refreshing documents', 'error');
       }
     });
   }
@@ -492,7 +492,7 @@ export class DeliveryPartnerDocumentViewerComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error downloading document:', error);
-        this.snackBar.open('Error downloading document', 'Close', { duration: 3000 });
+        this.swal.toast('Error downloading document', 'error');
       }
     });
   }
@@ -551,15 +551,11 @@ export class DeliveryPartnerDocumentViewerComponent implements OnInit {
               this.documents[index] = response.data;
             }
 
-            this.snackBar.open(
-              `Document ${actionText}ed successfully`,
-              'Close',
-              { duration: 3000 }
-            );
+            this.swal.toast(`Document ${actionText}ed successfully`, 'success');
           },
           error: (error) => {
             console.error(`Error ${actionText}ing document:`, error);
-            this.snackBar.open(`Error ${actionText}ing document`, 'Close', { duration: 3000 });
+            this.swal.toast(`Error ${actionText}ing document`, 'error');
           }
         });
       }

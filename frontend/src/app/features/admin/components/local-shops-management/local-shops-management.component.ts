@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { LocalShopsAdminService } from '../../services/local-shops.service';
 import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface LocalShopPost {
   id: number;
@@ -46,7 +46,7 @@ export class LocalShopsManagementComponent implements OnInit {
 
   constructor(
     private service: LocalShopsAdminService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog
   ) {}
 
@@ -70,7 +70,7 @@ export class LocalShopsManagementComponent implements OnInit {
       },
       error: () => {
         this.loading = false;
-        this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load posts', 'error');
       }
     });
   }
@@ -89,10 +89,10 @@ export class LocalShopsManagementComponent implements OnInit {
   approvePost(post: LocalShopPost): void {
     this.service.approvePost(post.id).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.shopName}" approved`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.shopName}" approved`, 'success');
         this.loadPosts();
       },
-      error: () => this.snackBar.open('Failed to approve', 'Close', { duration: 3000 })
+      error: () => this.swal.toast('Failed to approve', 'error')
     });
   }
 
@@ -100,10 +100,10 @@ export class LocalShopsManagementComponent implements OnInit {
     if (confirm(`Reject "${post.shopName}"?`)) {
       this.service.rejectPost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.shopName}" rejected`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.shopName}" rejected`, 'success');
           this.loadPosts();
         },
-        error: () => this.snackBar.open('Failed to reject', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to reject', 'error')
       });
     }
   }
@@ -112,10 +112,10 @@ export class LocalShopsManagementComponent implements OnInit {
     if (confirm(`Delete "${post.shopName}" permanently?`)) {
       this.service.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
+          this.swal.toast('Post deleted', 'success');
           this.loadPosts();
         },
-        error: () => this.snackBar.open('Failed to delete', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to delete', 'error')
       });
     }
   }
@@ -130,10 +130,10 @@ export class LocalShopsManagementComponent implements OnInit {
       if (result) {
         this.service.adminUpdatePost(post.id, result).subscribe({
           next: () => {
-            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
-          error: () => this.snackBar.open('Failed to update', 'Close', { duration: 3000 })
+          error: () => this.swal.toast('Failed to update', 'error')
         });
       }
     });
@@ -144,12 +144,12 @@ export class LocalShopsManagementComponent implements OnInit {
       next: (response) => {
         const updated = response.data;
         post.featured = updated?.featured;
-        this.snackBar.open(
+        this.swal.toast(
           post.featured ? `"${post.shopName}" marked as featured` : `"${post.shopName}" removed from featured`,
-          'OK', { duration: 3000 }
+          'success'
         );
       },
-      error: () => this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 })
+      error: () => this.swal.toast('Failed to toggle featured', 'error')
     });
   }
 

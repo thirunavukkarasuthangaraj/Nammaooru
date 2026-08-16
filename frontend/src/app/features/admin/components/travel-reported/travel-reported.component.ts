@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TravelAdminService } from '../../services/travel.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface TravelPost {
   id: number;
@@ -53,7 +53,7 @@ export class TravelReportedComponent implements OnInit {
 
   constructor(
     private travelService: TravelAdminService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -73,7 +73,7 @@ export class TravelReportedComponent implements OnInit {
       error: (err) => {
         console.error('Error loading reported travel posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load reported posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load reported posts', 'error');
       }
     });
   }
@@ -85,11 +85,11 @@ export class TravelReportedComponent implements OnInit {
       }
       this.travelService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" removed`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" removed`, 'success');
           this.loadReportedPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to remove post', 'error');
         }
       });
       return;
@@ -100,11 +100,11 @@ export class TravelReportedComponent implements OnInit {
 
     this.travelService.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" → ${label}`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.title}" → ${label}`, 'success');
         this.loadReportedPosts();
       },
       error: () => {
-        this.snackBar.open(`Failed to change status to ${label}`, 'Close', { duration: 3000 });
+        this.swal.toast(`Failed to change status to ${label}`, 'error');
       }
     });
   }

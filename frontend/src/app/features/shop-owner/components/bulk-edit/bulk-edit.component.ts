@@ -1,5 +1,4 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
@@ -93,7 +92,6 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar,
     private offlineStorage: OfflineStorageService,
     private versionService: VersionService,
     private dialog: MatDialog,
@@ -125,7 +123,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   private handleOnline = (): void => {
     console.log('Network online - syncing categories first, then products');
     this.isOffline = false;
-    this.snackBar.open('Back online! Syncing changes...', 'Close', { duration: 3000 });
+    this.swalService.toast('Back online! Syncing changes...', 'success');
     // Sync offline categories first, then load products
     syncOfflineCategories(this.http, this.apiUrl).then(() => {
       this.loadProducts(true);
@@ -135,7 +133,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   private handleOffline = (): void => {
     console.log('Network offline - using cached data');
     this.isOffline = true;
-    this.snackBar.open('You are offline. Changes will be saved locally.', 'Close', { duration: 3000 });
+    this.swalService.toast('You are offline. Changes will be saved locally.', 'warning');
   }
 
   private async loadLastSyncTime(): Promise<void> {
@@ -314,7 +312,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       console.error('Failed to sync products:', error);
       this.loading = false;
       if (this.products.length === 0) {
-        this.snackBar.open('Failed to load products', 'Close', { duration: 3000 });
+        this.swalService.toast('Failed to load products', 'error');
       }
     }
   }
@@ -639,7 +637,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // Save changes
   async saveChanges(): Promise<void> {
     if (this.modifiedProducts.size === 0) {
-      this.snackBar.open('No changes to save', 'Close', { duration: 2000 });
+      this.swalService.toast('No changes to save', 'info');
       return;
     }
 
@@ -671,7 +669,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     });
 
     if (invalidProducts.length > 0) {
-      this.snackBar.open(`Please fix errors: ${invalidProducts.slice(0, 3).join(', ')}`, 'Close', { duration: 5000 });
+      this.swalService.toast(`Please fix errors: ${invalidProducts.slice(0, 3).join(', ')}`, 'warning');
       return;
     }
 
@@ -720,9 +718,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.saving = false;
 
     if (errorCount === 0) {
-      this.snackBar.open(`${successCount} products saved successfully`, 'Close', { duration: 3000 });
+      this.swalService.toast(`${successCount} products saved successfully`, 'success');
     } else {
-      this.snackBar.open(`Saved ${successCount} products, ${errorCount} failed`, 'Close', { duration: 5000 });
+      this.swalService.toast(`Saved ${successCount} products, ${errorCount} failed`, 'warning');
     }
 
     // Update local cache only - no need to reload from server
@@ -891,14 +889,14 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      this.snackBar.open('Please select an image file', 'Close', { duration: 3000 });
+      this.swalService.toast('Please select an image file', 'warning');
       this.uploadingImageFor = null;
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      this.snackBar.open('Image must be less than 5MB', 'Close', { duration: 3000 });
+      this.swalService.toast('Image must be less than 5MB', 'warning');
       this.uploadingImageFor = null;
       return;
     }
@@ -915,15 +913,15 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       // Update local image URL
       if (response?.data?.imageUrl || response?.imageUrl) {
         product.imageUrl = response?.data?.imageUrl || response?.imageUrl;
-        this.snackBar.open('Image updated successfully', 'Close', { duration: 2000 });
+        this.swalService.toast('Image updated successfully', 'success');
       } else {
         // Reload products to get new image
         this.loadProducts(true);
-        this.snackBar.open('Image uploaded', 'Close', { duration: 2000 });
+        this.swalService.toast('Image uploaded', 'success');
       }
     } catch (error: any) {
       console.error('Failed to upload image:', error);
-      this.snackBar.open(error?.error?.message || 'Failed to upload image', 'Close', { duration: 3000 });
+      this.swalService.toast(error?.error?.message || 'Failed to upload image', 'error');
     } finally {
       this.uploadingImageFor = null;
       input.value = ''; // Reset file input
@@ -1056,7 +1054,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     product.tags = Array.from(tags).join(', ');
     this.markModified(product);
 
-    this.snackBar.open(`Generated ${tags.size} tags`, 'Close', { duration: 2000 });
+    this.swalService.toast(`Generated ${tags.size} tags`, 'success');
   }
 
   // Remove image
@@ -1072,12 +1070,12 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
       // Clear local image URL
       product.imageUrl = '';
-      this.snackBar.open('Image removed', 'Close', { duration: 2000 });
+      this.swalService.toast('Image removed', 'success');
     } catch (error: any) {
       console.error('Failed to remove image:', error);
       // Even if API fails, clear locally
       product.imageUrl = '';
-      this.snackBar.open('Image removed locally', 'Close', { duration: 2000 });
+      this.swalService.toast('Image removed locally', 'success');
     } finally {
       this.uploadingImageFor = null;
     }

@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { environment } from '../../../../../environments/environment';
 
 export interface CategoryCreateDialogData {
@@ -162,7 +162,7 @@ export class CategoryCreateDialogComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     public dialogRef: MatDialogRef<CategoryCreateDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: CategoryCreateDialogData
   ) {}
@@ -216,7 +216,7 @@ export class CategoryCreateDialogComponent implements OnInit {
           slug: newCat?.slug
         };
         this.saving = false;
-        this.snackBar.open(`Category "${result.name}" created!`, 'Close', { duration: 2000 });
+        this.swal.toast(`Category "${result.name}" created!`, 'success');
         this.dialogRef.close(result);
       },
       error: (err) => {
@@ -250,7 +250,7 @@ export class CategoryCreateDialogComponent implements OnInit {
       createdOffline: true
     };
     this.saving = false;
-    this.snackBar.open(`Category "${name}" saved locally. Will sync when online.`, 'Close', { duration: 3000 });
+    this.swal.toast(`Category "${name}" saved locally. Will sync when online.`, 'success');
     this.dialogRef.close(result);
   }
 }

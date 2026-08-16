@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { WomensCornerAdminService } from '../../services/womens-corner.service';
 import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface WomensCornerPost {
   id: number;
@@ -58,7 +58,7 @@ export class WomensCornerManagementComponent implements OnInit {
 
   constructor(
     private womensCornerService: WomensCornerAdminService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog
   ) {}
 
@@ -83,7 +83,7 @@ export class WomensCornerManagementComponent implements OnInit {
       error: (err) => {
         console.error('Error loading women\'s corner posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load posts', 'error');
       }
     });
   }
@@ -102,11 +102,11 @@ export class WomensCornerManagementComponent implements OnInit {
   approvePost(post: WomensCornerPost): void {
     this.womensCornerService.approvePost(post.id).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" approved`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.title}" approved`, 'success');
         this.loadPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to approve post', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to approve post', 'error');
       }
     });
   }
@@ -115,11 +115,11 @@ export class WomensCornerManagementComponent implements OnInit {
     if (confirm(`Reject "${post.title}"?`)) {
       this.womensCornerService.rejectPost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" rejected`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" rejected`, 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to reject post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to reject post', 'error');
         }
       });
     }
@@ -129,11 +129,11 @@ export class WomensCornerManagementComponent implements OnInit {
     if (confirm(`Delete "${post.title}" permanently?`)) {
       this.womensCornerService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
+          this.swal.toast('Post deleted', 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to delete post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to delete post', 'error');
         }
       });
     }
@@ -149,11 +149,11 @@ export class WomensCornerManagementComponent implements OnInit {
       if (result) {
         this.womensCornerService.adminUpdatePost(post.id, result).subscribe({
           next: () => {
-            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
           error: () => {
-            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to update post', 'error');
           }
         });
       }
@@ -172,14 +172,13 @@ export class WomensCornerManagementComponent implements OnInit {
         const updated = response.data;
         const isFeatured = updated?.featured;
         post.featured = isFeatured;
-        this.snackBar.open(
+        this.swal.toast(
           isFeatured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
-          'OK',
-          { duration: 3000 }
+          'success'
         );
       },
       error: () => {
-        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to toggle featured', 'error');
       }
     });
   }
@@ -189,30 +188,30 @@ export class WomensCornerManagementComponent implements OnInit {
       if (!confirm(`Remove "${post.title}" permanently?`)) return;
       this.womensCornerService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" removed`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" removed`, 'success');
           this.loadPosts();
         },
-        error: () => this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to remove post', 'error')
       });
       return;
     }
     if (newStatus === 'SOLD') {
       this.womensCornerService.markAsSold(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" marked as sold`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" marked as sold`, 'success');
           this.loadPosts();
         },
-        error: () => this.snackBar.open('Failed to mark as sold', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to mark as sold', 'error')
       });
       return;
     }
     const label = this.statusOptions.find(o => o.value === newStatus)?.label || newStatus;
     this.womensCornerService.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" \u2192 ${label}`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.title}" \u2192 ${label}`, 'success');
         this.loadPosts();
       },
-      error: () => this.snackBar.open(`Failed to change status`, 'Close', { duration: 3000 })
+      error: () => this.swal.toast(`Failed to change status`, 'error')
     });
   }
 

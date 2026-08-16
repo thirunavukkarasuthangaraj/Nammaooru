@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { LocalShopsAdminService } from '../../services/local-shops.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface LocalShopPost {
   id: number;
@@ -49,7 +49,7 @@ export class LocalShopsReportedComponent implements OnInit {
 
   constructor(
     private service: LocalShopsAdminService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -68,7 +68,7 @@ export class LocalShopsReportedComponent implements OnInit {
       },
       error: () => {
         this.loading = false;
-        this.snackBar.open('Failed to load reported posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load reported posts', 'error');
       }
     });
   }
@@ -78,10 +78,10 @@ export class LocalShopsReportedComponent implements OnInit {
       if (!confirm(`Remove "${post.shopName}" permanently?`)) return;
       this.service.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.shopName}" removed`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.shopName}" removed`, 'success');
           this.loadReportedPosts();
         },
-        error: () => this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to remove post', 'error')
       });
       return;
     }
@@ -89,10 +89,10 @@ export class LocalShopsReportedComponent implements OnInit {
     const option = this.statusOptions.find(o => o.value === newStatus);
     this.service.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.shopName}" → ${option?.label || newStatus}`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.shopName}" → ${option?.label || newStatus}`, 'success');
         this.loadReportedPosts();
       },
-      error: () => this.snackBar.open(`Failed to change status`, 'Close', { duration: 3000 })
+      error: () => this.swal.toast(`Failed to change status`, 'error')
     });
   }
 

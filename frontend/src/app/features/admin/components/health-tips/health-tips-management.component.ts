@@ -2,8 +2,8 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HealthTipsService, HealthTip, HealthTipQueueStats } from '../../services/health-tips.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-health-tips-management',
@@ -90,7 +90,7 @@ export class HealthTipsManagementComponent implements OnInit {
 
   constructor(
     private healthTipsService: HealthTipsService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.queueDataSource = new MatTableDataSource<HealthTip>([]);
     this.historyDataSource = new MatTableDataSource<HealthTip>([]);
@@ -284,11 +284,6 @@ export class HealthTipsManagementComponent implements OnInit {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
-    });
+    this.swal.toast(message, type);
   }
 }

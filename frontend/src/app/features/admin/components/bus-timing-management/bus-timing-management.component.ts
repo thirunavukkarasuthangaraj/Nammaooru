@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { BusTimingService, BusTiming } from '../../../../core/services/bus-timing.service';
 
 interface BusStop {
@@ -44,7 +44,7 @@ export class BusTimingManagementComponent implements OnInit {
 
   constructor(
     private busTimingService: BusTimingService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -80,7 +80,7 @@ export class BusTimingManagementComponent implements OnInit {
 
   autoCalculateTimes(stops: BusStop[], departureTime: string, arrivalTime: string): void {
     if (!departureTime || !arrivalTime || stops.length === 0) {
-      this.snackBar.open('Enter departure time, arrival time, and at least one stop', 'Close', { duration: 3000 });
+      this.swal.toast('Enter departure time, arrival time, and at least one stop', 'warning');
       return;
     }
 
@@ -88,7 +88,7 @@ export class BusTimingManagementComponent implements OnInit {
     const arrMinutes = this.timeToMinutes(arrivalTime);
 
     if (depMinutes === null || arrMinutes === null) {
-      this.snackBar.open('Invalid time format. Use HH:MM AM/PM (e.g., 06:30 AM)', 'Close', { duration: 3000 });
+      this.swal.toast('Invalid time format. Use HH:MM AM/PM (e.g., 06:30 AM)', 'error');
       return;
     }
 
@@ -186,13 +186,13 @@ export class BusTimingManagementComponent implements OnInit {
           this.extractLocationOptions();
           this.applyFilters();
         } else {
-          this.snackBar.open('Failed to load bus timings', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load bus timings', 'error');
         }
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading bus timings:', error);
-        this.snackBar.open('Error loading bus timings', 'Close', { duration: 3000 });
+        this.swal.toast('Error loading bus timings', 'error');
         this.isLoading = false;
       }
     });
@@ -259,16 +259,16 @@ export class BusTimingManagementComponent implements OnInit {
     this.busTimingService.createBusTiming(this.newTiming).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Bus timing created successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Bus timing created successfully', 'success');
           this.loadTimings();
           this.cancelAdding();
         } else {
-          this.snackBar.open(response.message || 'Failed to create bus timing', 'Close', { duration: 3000 });
+          this.swal.toast(response.message || 'Failed to create bus timing', 'error');
         }
       },
       error: (error) => {
         console.error('Error creating bus timing:', error);
-        this.snackBar.open('Error creating bus timing', 'Close', { duration: 3000 });
+        this.swal.toast('Error creating bus timing', 'error');
       }
     });
   }
@@ -291,17 +291,17 @@ export class BusTimingManagementComponent implements OnInit {
     this.busTimingService.updateBusTiming(timing.id, timing).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Bus timing updated successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Bus timing updated successfully', 'success');
           this.loadTimings();
           this.editingTiming = null;
           this.editingStops = [];
         } else {
-          this.snackBar.open(response.message || 'Failed to update bus timing', 'Close', { duration: 3000 });
+          this.swal.toast(response.message || 'Failed to update bus timing', 'error');
         }
       },
       error: (error) => {
         console.error('Error updating bus timing:', error);
-        this.snackBar.open('Error updating bus timing', 'Close', { duration: 3000 });
+        this.swal.toast('Error updating bus timing', 'error');
       }
     });
   }
@@ -312,38 +312,38 @@ export class BusTimingManagementComponent implements OnInit {
     this.busTimingService.deleteBusTiming(id).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Bus timing deleted successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Bus timing deleted successfully', 'success');
           this.loadTimings();
         } else {
-          this.snackBar.open(response.message || 'Failed to delete bus timing', 'Close', { duration: 3000 });
+          this.swal.toast(response.message || 'Failed to delete bus timing', 'error');
         }
       },
       error: (error) => {
         console.error('Error deleting bus timing:', error);
-        this.snackBar.open('Error deleting bus timing', 'Close', { duration: 3000 });
+        this.swal.toast('Error deleting bus timing', 'error');
       }
     });
   }
 
   validateTiming(timing: BusTiming): boolean {
     if (!timing.busNumber?.trim()) {
-      this.snackBar.open('Bus number is required', 'Close', { duration: 3000 });
+      this.swal.toast('Bus number is required', 'warning');
       return false;
     }
     if (!timing.routeFrom?.trim()) {
-      this.snackBar.open('Route From is required', 'Close', { duration: 3000 });
+      this.swal.toast('Route From is required', 'warning');
       return false;
     }
     if (!timing.routeTo?.trim()) {
-      this.snackBar.open('Route To is required', 'Close', { duration: 3000 });
+      this.swal.toast('Route To is required', 'warning');
       return false;
     }
     if (!timing.departureTime?.trim()) {
-      this.snackBar.open('Departure time is required', 'Close', { duration: 3000 });
+      this.swal.toast('Departure time is required', 'warning');
       return false;
     }
     if (!timing.locationArea?.trim()) {
-      this.snackBar.open('Location area is required', 'Close', { duration: 3000 });
+      this.swal.toast('Location area is required', 'warning');
       return false;
     }
     return true;

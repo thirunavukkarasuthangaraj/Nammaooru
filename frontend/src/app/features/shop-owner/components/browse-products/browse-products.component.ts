@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -10,6 +9,7 @@ import { ShopOwnerProductService } from '../../services/shop-owner-product.servi
 import { ProductAssignmentDialogComponent, ProductAssignmentData } from '../product-assignment-dialog/product-assignment-dialog.component';
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult } from '../category-create-dialog/category-create-dialog.component';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface MasterProduct {
   id: number;
@@ -75,7 +75,7 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private shopContext: ShopContextService,
     private dialog: MatDialog,
     private productService: ShopOwnerProductService
@@ -187,7 +187,7 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
           this.totalProducts = this.masterProducts.length;
           this.categories = [...new Set(this.masterProducts.map(p => p.category?.name).filter(Boolean) as string[])];
           this.loading = false;
-          this.snackBar.open('Using sample data (API unavailable)', 'Close', { duration: 3000 });
+          this.swal.toast('Using sample data (API unavailable)', 'warning');
         }
       });
   }
@@ -273,7 +273,7 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
 
   assignSelectedProducts(): void {
     if (this.selectedProducts.length === 0) {
-      this.snackBar.open('Please select products to assign', 'Close', { duration: 2000 });
+      this.swal.toast('Please select products to assign', 'warning');
       return;
     }
 
@@ -328,18 +328,13 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
     this.loading = false;
     
     if (successCount > 0) {
-      this.snackBar.open(
-        `Successfully assigned ${successCount} products to your shop` + 
+      this.swal.toast(
+        `Successfully assigned ${successCount} products to your shop` +
         (errorCount > 0 ? ` (${errorCount} failed)` : ''),
-        'Close',
-        { duration: 4000 }
+        'success'
       );
     } else {
-      this.snackBar.open(
-        'Failed to assign products. Please try again.',
-        'Close',
-        { duration: 3000 }
-      );
+      this.swal.toast('Failed to assign products. Please try again.', 'error');
     }
     
     this.clearSelection();
@@ -407,7 +402,7 @@ export class BrowseProductsComponent implements OnInit, OnDestroy {
   // Quick view functionality
   quickView(product: MasterProduct): void {
     console.log('Quick view for:', product.name);
-    this.snackBar.open('Quick view dialog will be implemented', 'Close', { duration: 2000 });
+    this.swal.toast('Quick view dialog will be implemented', 'info');
   }
 
   // Load products with enhanced functionality

@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { HttpClient, HttpEventType } from '@angular/common/http';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { ProductImage } from '../../../../core/models/product.model';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { API_ENDPOINTS } from '../../../../core/constants/app.constants';
@@ -367,7 +367,7 @@ export class ProductImageUploadComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -453,7 +453,7 @@ export class ProductImageUploadComponent implements OnInit {
           console.log('Current images after:', this.images.length);
           this.imagesChange.emit(this.images);
           this.imagesUploaded.emit(uploadedImages);
-          this.snackBar.open(`${uploadedImages.length} images uploaded successfully`, 'Close', { duration: 3000 });
+          this.swal.toast(`${uploadedImages.length} images uploaded successfully`, 'success');
           
           setTimeout(() => {
             this.uploadProgress = 0;
@@ -482,10 +482,7 @@ export class ProductImageUploadComponent implements OnInit {
           errorMessage = `Upload failed: ${error.error.message}`;
         }
         
-        this.snackBar.open(errorMessage, 'Close', { 
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast(errorMessage, 'error');
       }
     });
   }
@@ -493,14 +490,14 @@ export class ProductImageUploadComponent implements OnInit {
   private validateFile(file: File): boolean {
     // Check file type
     if (!file.type.startsWith('image/')) {
-      this.snackBar.open(`${file.name} is not a valid image file`, 'Close', { duration: 3000 });
+      this.swal.toast(`${file.name} is not a valid image file`, 'error');
       return false;
     }
 
     // Check file size (5MB limit)
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      this.snackBar.open(`${file.name} is too large (max 5MB)`, 'Close', { duration: 3000 });
+      this.swal.toast(`${file.name} is too large (max 5MB)`, 'error');
       return false;
     }
 
@@ -541,11 +538,11 @@ export class ProductImageUploadComponent implements OnInit {
           updatedImage.isPrimary = true;
         }
         this.imagesChange.emit(this.images);
-        this.snackBar.open('Primary image updated', 'Close', { duration: 2000 });
+        this.swal.toast('Primary image updated', 'success');
       },
       error: (error) => {
         console.error('Failed to set primary image:', error);
-        this.snackBar.open('Failed to update primary image', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to update primary image', 'error');
       }
     });
   }
@@ -574,7 +571,7 @@ export class ProductImageUploadComponent implements OnInit {
             this.loadImages();
           }, 1000);
           
-          this.snackBar.open('Image deleted successfully', 'Close', { duration: 2000 });
+          this.swal.toast('Image deleted successfully', 'success');
         },
         error: (error) => {
           console.error('Failed to delete image:', error);
@@ -585,7 +582,7 @@ export class ProductImageUploadComponent implements OnInit {
             errorMessage = `Failed to delete image: ${error.error.message}`;
           }
           
-          this.snackBar.open(errorMessage, 'Close', { duration: 3000 });
+          this.swal.toast(errorMessage, 'error');
         }
       });
     }

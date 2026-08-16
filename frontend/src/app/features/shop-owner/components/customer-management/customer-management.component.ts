@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { AuthService } from '@core/services/auth.service';
 import { PosSyncService } from '@core/services/pos-sync.service';
 
@@ -836,7 +836,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   loadingHistory = false;
 
   constructor(
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private authService: AuthService,
     private syncService: PosSyncService
   ) {}
@@ -862,7 +862,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   async loadCustomers(): Promise<void> {
     const shopId = this.resolveShopId();
     if (!shopId) {
-      this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
+      this.swal.toast('Shop information not found', 'error');
       return;
     }
 
@@ -890,7 +890,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
       });
     } catch (error) {
       console.error('Error loading customers:', error);
-      this.snackBar.open('Failed to load customers', 'Close', { duration: 3000 });
+      this.swal.toast('Failed to load customers', 'error');
     } finally {
       this.loading = false;
     }
@@ -956,11 +956,11 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
       return;
     }
     if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      this.snackBar.open('Only JPEG or PNG images are supported', 'Close', { duration: 4000 });
+      this.swal.toast('Only JPEG or PNG images are supported', 'warning');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      this.snackBar.open('Image too large (max 5MB)', 'Close', { duration: 4000 });
+      this.swal.toast('Image too large (max 5MB)', 'warning');
       return;
     }
     this.offerImageFile = file;
@@ -1020,9 +1020,9 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
       const result = await this.syncService.sendOfferToCustomers(shopId, ids, text, imageUrl);
       const sent = result.sent ?? 0;
       const failed = result.failed ?? 0;
-      this.snackBar.open(
+      this.swal.toast(
         failed > 0 ? `Offer sent to ${sent} customers (${failed} failed)` : `Offer sent to ${sent} customers`,
-        'Close', { duration: 5000 }
+        failed > 0 ? 'warning' : 'success'
       );
       if (sent > 0) {
         this.selectedIds.clear();
@@ -1033,7 +1033,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
     } catch (error: any) {
       console.error('Error sending offer:', error);
       const message = error?.error?.message || error?.message || 'Failed to send offer messages';
-      this.snackBar.open(message, 'Close', { duration: 5000 });
+      this.swal.toast(message, 'error');
     } finally {
       this.sendingOffer = false;
     }
@@ -1066,7 +1066,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
       }));
     } catch (error) {
       console.error('Error loading purchase history:', error);
-      this.snackBar.open('Failed to load purchase history', 'Close', { duration: 3000 });
+      this.swal.toast('Failed to load purchase history', 'error');
     } finally {
       this.loadingHistory = false;
     }
@@ -1098,7 +1098,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
 
   exportCustomers(): void {
     if (this.customers.length === 0) {
-      this.snackBar.open('No customers to export', 'Close', { duration: 2000 });
+      this.swal.toast('No customers to export', 'warning');
       return;
     }
     const header = 'Name,Mobile Number,Bills,Total Spent,Last Visit';
@@ -1117,6 +1117,6 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
     link.click();
     window.URL.revokeObjectURL(url);
 
-    this.snackBar.open('Customer list exported', 'Close', { duration: 2000 });
+    this.swal.toast('Customer list exported', 'success');
   }
 }

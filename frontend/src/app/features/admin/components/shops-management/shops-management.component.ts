@@ -2,9 +2,9 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { AdminDashboardService, AdminShop } from '../../services/admin-dashboard.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -48,7 +48,7 @@ export class ShopsManagementComponent implements OnInit {
 
   constructor(
     private adminService: AdminDashboardService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private router: Router
   ) {}
 
@@ -82,7 +82,7 @@ export class ShopsManagementComponent implements OnInit {
         this.dataSource.data = [];
         this.categories = [];
         this.isLoading = false;
-        this.snackBar.open('Failed to load shops. Please try again later.', 'Close', { duration: 5000 });
+        this.swal.toast('Failed to load shops. Please try again later.', 'error');
       }
     });
   }
@@ -201,7 +201,7 @@ export class ShopsManagementComponent implements OnInit {
     }).then((result) => {
       if (result.isConfirmed) {
         // This would need to be implemented in the service
-        this.snackBar.open('Shop suspended successfully', 'Close', { duration: 3000 });
+        this.swal.toast('Shop suspended successfully', 'success');
         this.loadShops();
       }
     });
@@ -250,11 +250,11 @@ export class ShopsManagementComponent implements OnInit {
         link.download = `shops-${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
         window.URL.revokeObjectURL(url);
-        this.snackBar.open('Shops exported successfully', 'Close', { duration: 3000 });
+        this.swal.toast('Shops exported successfully', 'success');
       },
       error: (error) => {
         console.error('Error exporting shops:', error);
-        this.snackBar.open('Failed to export shops', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to export shops', 'error');
       }
     });
   }
@@ -270,7 +270,7 @@ export class ShopsManagementComponent implements OnInit {
     const pendingShops = this.filteredShops.filter(shop => shop.status === 'PENDING');
     
     if (pendingShops.length === 0) {
-      this.snackBar.open('No pending shops to approve', 'Close', { duration: 3000 });
+      this.swal.toast('No pending shops to approve', 'warning');
       return;
     }
 
@@ -284,7 +284,7 @@ export class ShopsManagementComponent implements OnInit {
     }).then((result) => {
       if (result.isConfirmed) {
         // This would need to be implemented as a batch operation
-        this.snackBar.open(`${pendingShops.length} shops approved successfully`, 'Close', { duration: 3000 });
+        this.swal.toast(`${pendingShops.length} shops approved successfully`, 'success');
         this.loadShops();
       }
     });

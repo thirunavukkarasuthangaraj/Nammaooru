@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { ContactViewsService } from '../../services/contact-views.service';
 
 interface ContactView {
@@ -45,7 +45,7 @@ export class ContactViewsComponent implements OnInit {
 
   constructor(
     private contactViewsService: ContactViewsService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -68,7 +68,7 @@ export class ContactViewsComponent implements OnInit {
       error: (err) => {
         console.error('Error loading contact views:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load contact views', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load contact views', 'error');
       }
     });
   }
@@ -91,12 +91,12 @@ export class ContactViewsComponent implements OnInit {
 
     this.contactViewsService.blockUser(view.viewerUserId).subscribe({
       next: () => {
-        this.snackBar.open(`User "${view.viewerName || view.viewerUserId}" has been blocked`, 'OK', { duration: 3000 });
+        this.swal.toast(`User "${view.viewerName || view.viewerUserId}" has been blocked`, 'success');
         this.loadViews();
       },
       error: (err) => {
         console.error('Error blocking user:', err);
-        this.snackBar.open('Failed to block user', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to block user', 'error');
       }
     });
   }

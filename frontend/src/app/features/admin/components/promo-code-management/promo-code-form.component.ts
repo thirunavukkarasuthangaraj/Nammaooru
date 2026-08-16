@@ -1,8 +1,8 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { PromoCodeService } from '../../../../core/services/promo-code.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { PromoCode, CreatePromoCodeRequest } from '../../../../core/models/promo-code.model';
 
 @Component({
@@ -30,7 +30,7 @@ export class PromoCodeFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private promoCodeService: PromoCodeService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     public dialogRef: MatDialogRef<PromoCodeFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { mode: 'create' | 'edit'; promoCode?: PromoCode }
   ) {
@@ -254,11 +254,6 @@ export class PromoCodeFormComponent implements OnInit {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
-    });
+    this.swal.toast(message, type);
   }
 }

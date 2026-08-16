@@ -5,8 +5,8 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderService } from '../../../../core/services/order.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { OrderAssignmentService } from '../../../../core/services/order-assignment.service';
 import { DeliveryPartnerService, DeliveryPartner } from '../../../delivery/services/delivery-partner.service';
 import { OfflineStorageService, CachedOrder } from '../../../../core/services/offline-storage.service';
@@ -109,8 +109,8 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     private assignmentService: OrderAssignmentService,
     private partnerService: DeliveryPartnerService,
     private shopContext: ShopContextService,
-    private snackBar: MatSnackBar,
-    private offlineStorage: OfflineStorageService
+    private offlineStorage: OfflineStorageService,
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -156,14 +156,14 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   private handleOnline(): void {
     console.log('Network online - refreshing orders');
     this.isOffline = false;
-    this.snackBar.open('Back online! Refreshing orders...', 'Close', { duration: 3000 });
+    this.swal.toast('Back online! Refreshing orders...', 'success');
     this.loadAllData();
   }
 
   private handleOffline(): void {
     console.log('Network offline - using cached data');
     this.isOffline = true;
-    this.snackBar.open('You are offline. Showing cached orders.', 'Close', { duration: 3000 });
+    this.swal.toast('You are offline. Showing cached orders.', 'success');
   }
 
   private async loadLastSyncTime(): Promise<void> {
@@ -269,13 +269,13 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
         console.log('Loaded', cachedOrders.length, 'orders from cache');
         this.categorizeOrders(cachedOrders as Order[]);
         this.calculateTodayStats(cachedOrders as Order[]);
-        this.snackBar.open(`Showing ${cachedOrders.length} cached orders`, 'Close', { duration: 3000 });
+        this.swal.toast(`Showing ${cachedOrders.length} cached orders`, 'success');
       } else {
         console.log('No cached orders found');
         this.pendingOrders = [];
         this.activeOrders = [];
         this.completedOrders = [];
-        this.snackBar.open('No cached orders available. Connect to internet to load orders.', 'Close', { duration: 5000 });
+        this.swal.toast('No cached orders available. Connect to internet to load orders.', 'success');
       }
     } catch (error) {
       console.error('Error loading orders from cache:', error);
@@ -339,7 +339,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   refreshOrders(): void {
     this.loadAllData();
-    this.snackBar.open('Orders refreshed', 'Close', { duration: 2000 });
+    this.swal.toast('Orders refreshed', 'success');
     console.log('Orders refreshed manually');
   }
 
@@ -424,7 +424,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
         next: (response) => {
           console.log('Order reject response:', response);
           this.loadAllData();
-          this.snackBar.open('Order rejected successfully!', 'Close', { duration: 3000 });
+          this.swal.toast('Order rejected successfully!', 'success');
           
           Swal.fire({
             title: 'Order Rejected!',
@@ -465,8 +465,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
         next: (response) => {
           console.log(`Order ${action} response:`, response);
           this.loadAllData();
-          this.snackBar.open(successMessage, 'Close', { duration: 3000 });
-          
+
           Swal.fire({
             title: 'Success!',
             text: successMessage,
@@ -517,10 +516,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   }
 
   private handleError(message: string): void {
-    this.snackBar.open(message, 'Close', { 
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+    this.swal.toast(message, 'error');
   }
 
   toggleAutoRefresh(): void {
@@ -784,7 +780,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   }
 
   sendDailySummary(): void {
-    this.snackBar.open('Daily summary sent!', 'Close', { duration: 2000 });
+    this.swal.toast('Daily summary sent!', 'success');
   }
 
   // Assignment Methods
@@ -820,7 +816,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
           console.error('Error loading partners:', error);
           this.availablePartners = [];
           this.loadingPartners = false;
-          this.snackBar.open('Failed to load delivery partners', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to load delivery partners', 'error');
         }
       });
   }
@@ -857,7 +853,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           console.log('Order assigned successfully:', response);
-          this.snackBar.open('Order assigned to delivery partner!', 'Close', { duration: 3000 });
+          this.swal.toast('Order assigned to delivery partner!', 'success');
           
           Swal.fire({
             title: 'Success!',
@@ -872,7 +868,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error assigning order:', error);
-          this.snackBar.open('Failed to assign order. Please try again.', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to assign order. Please try again.', 'error');
           
           Swal.fire({
             title: 'Error!',
@@ -914,7 +910,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   printReceipt(orderId: number): void {
     // Implement receipt printing
-    this.snackBar.open('Receipt printing feature will be implemented', 'Close', { duration: 3000 });
+    this.swal.toast('Receipt printing feature will be implemented', 'success');
   }
 
   callCustomer(phone: string): void {
@@ -925,7 +921,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   reportIssue(orderId: number): void {
     // Implement issue reporting
-    this.snackBar.open('Issue reporting feature will be implemented', 'Close', { duration: 3000 });
+    this.swal.toast('Issue reporting feature will be implemented', 'success');
   }
 
   applyFilter(): void {

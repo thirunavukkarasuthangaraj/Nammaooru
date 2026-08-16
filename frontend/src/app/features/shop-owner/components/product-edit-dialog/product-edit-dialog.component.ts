@@ -1,10 +1,10 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult } from '../category-create-dialog/category-create-dialog.component';
 import { LabelTemplateService } from '../../../../core/services/label-template.service';
 import { LabelPrintService } from '../../../../core/services/label-print.service';
@@ -60,7 +60,7 @@ export class ProductEditDialogComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private http: HttpClient,
     private offlineStorage: OfflineStorageService,
     private dialog: MatDialog,
@@ -184,22 +184,22 @@ export class ProductEditDialogComponent implements OnInit {
       const b3 = formValue.barcode3?.trim() || '';
 
       if (b1 && b2 && b1.toLowerCase() === b2.toLowerCase()) {
-        this.snackBar.open('Barcode 1 and Barcode 2 cannot be the same.', 'Close', { duration: 3000 });
+        this.swal.toast('Barcode 1 and Barcode 2 cannot be the same.', 'warning');
         return;
       }
       if (b1 && b3 && b1.toLowerCase() === b3.toLowerCase()) {
-        this.snackBar.open('Barcode 1 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        this.swal.toast('Barcode 1 and Barcode 3 cannot be the same.', 'warning');
         return;
       }
       if (b2 && b3 && b2.toLowerCase() === b3.toLowerCase()) {
-        this.snackBar.open('Barcode 2 and Barcode 3 cannot be the same.', 'Close', { duration: 3000 });
+        this.swal.toast('Barcode 2 and Barcode 3 cannot be the same.', 'warning');
         return;
       }
 
       // Validate barcodes against other products (async)
       this.validateAndSave(formValue, b1, b2, b3);
     } else {
-      this.snackBar.open('Please fill all required fields', 'Close', { duration: 2000 });
+      this.swal.toast('Please fill all required fields', 'warning');
     }
   }
 
@@ -219,7 +219,7 @@ export class ProductEditDialogComponent implements OnInit {
 
     if (barcodeValidationError) {
       this.isSaving = false;
-      this.snackBar.open(barcodeValidationError, 'Close', { duration: 5000 });
+      this.swal.toast(barcodeValidationError, 'error');
       return;
     }
 
@@ -314,7 +314,7 @@ export class ProductEditDialogComponent implements OnInit {
         const tpl = this.templateWithDates(template || defaultLabelTemplate());
         this.labelPrintService.print(tpl, [product])
           .catch((err) => {
-            this.snackBar.open(err?.message || 'Failed to print label', 'Close', { duration: 4000 });
+            this.swal.toast(err?.message || 'Failed to print label', 'error');
           })
           .finally(() => { this.isPrinting = false; });
       },
@@ -322,7 +322,7 @@ export class ProductEditDialogComponent implements OnInit {
         // No backend template available - fall back to the built-in default
         this.labelPrintService.print(this.templateWithDates(defaultLabelTemplate()), [product])
           .catch((err) => {
-            this.snackBar.open(err?.message || 'Failed to print label', 'Close', { duration: 4000 });
+            this.swal.toast(err?.message || 'Failed to print label', 'error');
           })
           .finally(() => { this.isPrinting = false; });
       }
@@ -396,13 +396,13 @@ export class ProductEditDialogComponent implements OnInit {
       
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        this.snackBar.open('Please select a valid image file', 'Close', { duration: 3000 });
+        this.swal.toast('Please select a valid image file', 'warning');
         return;
       }
       
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        this.snackBar.open('Image size should be less than 5MB', 'Close', { duration: 3000 });
+        this.swal.toast('Image size should be less than 5MB', 'warning');
         return;
       }
       
@@ -445,13 +445,13 @@ export class ProductEditDialogComponent implements OnInit {
         this.imagePreview = reader.result as string;
         this.currentImageUrl = reader.result as string;
         this.data.imageUrl = reader.result as string;
-        this.snackBar.open('Image preview updated (not saved to server)', 'Close', { duration: 3000 });
+        this.swal.toast('Image preview updated (not saved to server)', 'info');
       };
       reader.readAsDataURL(file);
       return;
     }
     
-    this.snackBar.open('Uploading image...', 'Close', { duration: 1000 });
+    this.swal.toast('Uploading image...', 'info');
     
     // Upload image immediately
     const formData = new FormData();
@@ -484,14 +484,14 @@ export class ProductEditDialogComponent implements OnInit {
         
         // Update preview to show the uploaded image
         this.imagePreview = null; // Clear base64 preview
-        this.snackBar.open('Image uploaded successfully!', 'Close', { duration: 3000 });
+        this.swal.toast('Image uploaded successfully!', 'success');
       } else if (response.statusCode === '9999') {
-        this.snackBar.open('Error: ' + response.message, 'Close', { duration: 5000 });
+        this.swal.toast('Error: ' + response.message, 'error');
       }
     })
     .catch(error => {
       console.error('Upload error:', error);
-      this.snackBar.open('Failed to upload image', 'Close', { duration: 3000 });
+      this.swal.toast('Failed to upload image', 'error');
     });
   }
 
@@ -513,7 +513,7 @@ export class ProductEditDialogComponent implements OnInit {
     }
 
     if (attempts >= maxAttempts) {
-      this.snackBar.open('Could not generate unique barcode. Please try again.', 'Close', { duration: 3000 });
+      this.swal.toast('Could not generate unique barcode. Please try again.', 'error');
       return;
     }
 

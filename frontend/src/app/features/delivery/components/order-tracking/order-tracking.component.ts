@@ -1,13 +1,13 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil, interval } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DeliveryTrackingService, DeliveryTracking } from '../../services/delivery-tracking.service';
 import { OrderAssignmentService, OrderAssignment } from '../../services/order-assignment.service';
 import { LiveTrackingService, PartnerLocation } from '../../../../core/services/live-tracking.service';
 import { GoogleMapsService, MapOptions, MapMarker, MapLocation } from '../../../../core/services/google-maps.service';
 import { ApiResponseHelper } from '../../../../core/models/api-response.model';
 import { environment } from '../../../../../environments/environment';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-order-tracking',
@@ -56,7 +56,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
     private assignmentService: OrderAssignmentService,
     private liveTrackingService: LiveTrackingService,
     public googleMapsService: GoogleMapsService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -175,13 +175,13 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
               this.startLiveTracking();
             }
           } else {
-            this.snackBar.open('Assignment not found', 'Close', { duration: 3000 });
+            this.swal.toast('Assignment not found', 'error');
           }
           this.isLoading = false;
         },
         error: (error) => {
           console.error('Error loading assignment:', error);
-          this.snackBar.open('Error loading tracking information', 'Close', { duration: 3000 });
+          this.swal.toast('Error loading tracking information', 'error');
           this.isLoading = false;
         }
       });
@@ -275,7 +275,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
 
   refreshTracking(): void {
     this.loadTrackingData();
-    this.snackBar.open('Tracking data refreshed', 'Close', { duration: 2000 });
+    this.swal.toast('Tracking data refreshed', 'success');
   }
 
   getStatusColor(status: string): string {
@@ -367,7 +367,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
     } else {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href).then(() => {
-        this.snackBar.open('Tracking link copied to clipboard', 'Close', { duration: 3000 });
+        this.swal.toast('Tracking link copied to clipboard', 'success');
       });
     }
   }
@@ -390,7 +390,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
         },
         error: (error) => {
           console.error('Error initializing map:', error);
-          this.snackBar.open('Error loading map', 'Close', { duration: 3000 });
+          this.swal.toast('Error loading map', 'error');
         }
       });
   }
@@ -568,7 +568,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
       }
     } catch (error) {
       console.warn('Location permission not granted:', error);
-      this.snackBar.open('Location access not available', 'Close', { duration: 3000 });
+      this.swal.toast('Location access not available', 'error');
     }
   }
 
@@ -643,22 +643,21 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
       travelMode: 'DRIVING'
     }).subscribe({
       next: (route) => {
-        this.snackBar.open(
-          `Route calculated: ${route.distance.text}, ${route.duration.text}`, 
-          'Close', 
-          { duration: 5000 }
+        this.swal.toast(
+          `Route calculated: ${route.distance.text}, ${route.duration.text}`,
+          'success'
         );
       },
       error: (error) => {
         console.error('Failed to calculate route:', error);
-        this.snackBar.open('Failed to calculate directions', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to calculate directions', 'error');
       }
     });
   }
 
   getDirectionsToLocation(): void {
     if (!this.userLocation || !this.deliveryLocation) {
-      this.snackBar.open('Location not available for directions', 'Close', { duration: 3000 });
+      this.swal.toast('Location not available for directions', 'warning');
       return;
     }
 
@@ -671,14 +670,14 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
     if (this.userLocation && this.isMapLoaded) {
       this.googleMapsService.setCenter(this.userLocation, 16);
     } else {
-      this.snackBar.open('Your location is not available', 'Close', { duration: 3000 });
+      this.swal.toast('Your location is not available', 'warning');
     }
   }
 
   // Places Integration
   async searchNearbyPlaces(type: string): Promise<void> {
     if (!this.deliveryLocation) {
-      this.snackBar.open('Delivery location not available', 'Close', { duration: 3000 });
+      this.swal.toast('Delivery location not available', 'warning');
       return;
     }
 
@@ -708,10 +707,10 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
         this.googleMapsService.addMarker(marker);
       });
 
-      this.snackBar.open(`Found ${places.length} nearby ${type}s`, 'Close', { duration: 3000 });
+      this.swal.toast(`Found ${places.length} nearby ${type}s`, 'success');
     } catch (error) {
       console.error('Failed to search nearby places:', error);
-      this.snackBar.open(`Failed to find nearby ${type}s`, 'Close', { duration: 3000 });
+      this.swal.toast(`Failed to find nearby ${type}s`, 'error');
     }
   }
 

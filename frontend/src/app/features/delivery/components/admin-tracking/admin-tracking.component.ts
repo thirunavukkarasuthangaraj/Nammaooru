@@ -2,10 +2,10 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject, takeUntil, interval, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderAssignmentService, OrderAssignment } from '../../services/order-assignment.service';
 import { DeliveryTrackingService } from '../../services/delivery-tracking.service';
 import { ApiResponseHelper } from '../../../../core/models/api-response.model';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-admin-tracking',
@@ -43,7 +43,7 @@ export class AdminTrackingComponent implements OnInit, OnDestroy {
     private assignmentService: OrderAssignmentService,
     private trackingService: DeliveryTrackingService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -91,7 +91,7 @@ export class AdminTrackingComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.isLoading = false;
-        this.snackBar.open('Failed to load active deliveries', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load active deliveries', 'error');
       }
     });
   }
@@ -126,7 +126,7 @@ export class AdminTrackingComponent implements OnInit, OnDestroy {
   refreshData(): void {
     this.isLoading = true;
     this.loadActiveDeliveries();
-    this.snackBar.open('Refreshing tracking data...', 'Close', { duration: 1500 });
+    this.swal.toast('Refreshing tracking data...', 'info');
   }
 
   getStatusColor(status: string): string {

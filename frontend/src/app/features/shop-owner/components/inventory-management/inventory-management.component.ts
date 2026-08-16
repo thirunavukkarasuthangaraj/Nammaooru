@@ -3,12 +3,12 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormControl, FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { AuthService } from '@core/services/auth.service';
 import { OfflineStorageService, CachedProduct } from '@core/services/offline-storage.service';
+import { SwalService } from '@core/services/swal.service';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
@@ -744,7 +744,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private http: HttpClient,
     private authService: AuthService,
     private offlineStorage: OfflineStorageService
@@ -910,7 +910,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
           this.loading = false;
           // If we already loaded from cache, don't show error
           if (!this.loadedFromCache) {
-            this.snackBar.open('Failed to load inventory data', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to load inventory data', 'error');
           }
         }
       });
@@ -1090,7 +1090,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
         this.dataSource.data = [...this.inventoryData];
       }
       
-      this.snackBar.open('Stock updated successfully', 'Close', { duration: 3000 });
+      this.swal.toast('Stock updated successfully', 'success');
       this.closeQuickUpdate();
     }
   }
@@ -1120,7 +1120,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
       }
 
       if (this.rawProductData.length === 0) {
-        this.snackBar.open('No products to export', 'Close', { duration: 3000 });
+        this.swal.toast('No products to export', 'warning');
         this.exporting = false;
         return;
       }
@@ -1217,11 +1217,11 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
       link.click();
       window.URL.revokeObjectURL(url);
 
-      this.snackBar.open(`Exported ${exportData.length} products successfully!`, 'Close', { duration: 3000 });
+      this.swal.toast(`Exported ${exportData.length} products successfully!`, 'success');
 
     } catch (error) {
       console.error('Export failed:', error);
-      this.snackBar.open('Failed to export products', 'Close', { duration: 3000 });
+      this.swal.toast('Failed to export products', 'error');
     } finally {
       this.exporting = false;
     }

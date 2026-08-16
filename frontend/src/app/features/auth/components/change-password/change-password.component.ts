@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-change-password',
@@ -21,7 +21,7 @@ export class ChangePasswordComponent implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -79,19 +79,13 @@ export class ChangePasswordComponent implements OnInit {
 
       this.authService.changePassword(request).subscribe({
         next: () => {
-          this.snackBar.open('Password changed successfully!', 'Close', {
-            duration: 3000,
-            panelClass: ['success-snackbar']
-          });
+          this.swal.toast('Password changed successfully!', 'success');
           this.router.navigate([this.getHomeRouteForRole()]);
         },
         error: (error) => {
           this.loading = false;
           const errorMessage = error.error?.message || 'Failed to change password';
-          this.snackBar.open(errorMessage, 'Close', {
-            duration: 5000,
-            panelClass: ['error-snackbar']
-          });
+          this.swal.toast(errorMessage, 'error');
         }
       });
     }

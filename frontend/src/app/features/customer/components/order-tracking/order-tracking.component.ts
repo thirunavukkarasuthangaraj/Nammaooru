@@ -1,10 +1,10 @@
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil, interval } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderService, OrderTrackingInfo } from '../../services/order.service';
 import { FirebaseService } from '../../../../core/services/firebase.service';
 import { environment } from '../../../../../environments/environment';
+import { SwalService } from '../../../../core/services/swal.service';
 
 declare var google: any;
 
@@ -29,7 +29,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
     private router: Router,
     private orderService: OrderService,
     private firebaseService: FirebaseService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -90,9 +90,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
         error: (error) => {
           console.error('Error loading order tracking:', error);
           this.loading = false;
-          this.snackBar.open('Failed to load order tracking', 'Close', {
-            duration: 3000
-          });
+          this.swal.toast('Failed to load order tracking', 'error');
         }
       });
   }
@@ -276,16 +274,12 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.snackBar.open('Order cancelled successfully', 'Close', {
-              duration: 3000
-            });
+            this.swal.toast('Order cancelled successfully', 'success');
             this.refreshTracking();
           },
           error: (error) => {
             console.error('Error cancelling order:', error);
-            this.snackBar.open('Failed to cancel order', 'Close', {
-              duration: 3000
-            });
+            this.swal.toast('Failed to cancel order', 'error');
           }
         });
     }

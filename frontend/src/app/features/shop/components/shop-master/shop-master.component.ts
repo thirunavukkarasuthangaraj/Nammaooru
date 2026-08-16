@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -17,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import Swal from 'sweetalert2';
+import { SwalService } from '../../../../core/services/swal.service';
 
 import { ShopService, Shop, ShopResponse } from '../../../../core/services/shop.service';
 
@@ -65,7 +65,7 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
     private shopService: ShopService,
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.shopForm = this.createShopForm();
   }
@@ -371,17 +371,11 @@ export class ShopMasterComponent implements OnInit, OnDestroy {
   }
 
   private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar']
-    });
+    this.swal.toast(message, 'success');
   }
 
   private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+    this.swal.toast(message, 'error');
   }
 
   onDocumentsChanged(documents: any[]) {

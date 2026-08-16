@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { SettingsService, Setting } from '../../../../core/services/settings.service';
 import Swal from 'sweetalert2';
 import * as L from 'leaflet';
@@ -34,7 +34,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private settingsService: SettingsService
   ) {
     this.settingsForm = this.fb.group({});
@@ -311,7 +311,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     this.settings = mockSettings;
     this.settingsForm = this.createForm();
-    this.snackBar.open('Loaded mock settings - API not available', 'Close', { duration: 3000 });
+    this.swal.toast('Loaded mock settings - API not available', 'warning');
   }
 
   getSettingsByCategory(category: string): Setting[] {
@@ -376,11 +376,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
     };
     this.settingsService.updateMultipleSettings(settings).subscribe({
       next: () => {
-        this.snackBar.open('Service area saved successfully', 'Close', { duration: 3000 });
+        this.swal.toast('Service area saved successfully', 'success');
         this.serviceAreaSaving = false;
       },
       error: () => {
-        this.snackBar.open('Failed to save service area', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to save service area', 'error');
         this.serviceAreaSaving = false;
       }
     });

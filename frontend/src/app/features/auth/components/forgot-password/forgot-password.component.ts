@@ -1,8 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../../core/services/auth.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -31,7 +31,7 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private authService: AuthService
   ) {
     this.emailForm = this.fb.group({
@@ -75,10 +75,7 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
             this.currentStep = 'otp';
             this.startResendTimer();
             
-            this.snackBar.open('OTP sent to your email!', 'Close', {
-              duration: 5000,
-              panelClass: ['success-snackbar']
-            });
+            this.swal.toast('OTP sent to your email!', 'success');
           },
           error: (error: any) => {
             this.isLoading = false;
@@ -99,10 +96,7 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
             this.isLoading = false;
             this.currentStep = 'password';
             
-            this.snackBar.open('OTP verified successfully!', 'Close', {
-              duration: 3000,
-              panelClass: ['success-snackbar']
-            });
+            this.swal.toast('OTP verified successfully!', 'success');
           },
           error: (error: any) => {
             this.isLoading = false;
@@ -123,10 +117,7 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
           next: (response: any) => {
             this.isLoading = false;
             
-            this.snackBar.open('Password updated successfully! Redirecting to login...', 'Close', {
-              duration: 3000,
-              panelClass: ['success-snackbar']
-            });
+            this.swal.toast('Password updated successfully! Redirecting to login...', 'success');
             
             // Redirect to login after a delay
             setTimeout(() => {
@@ -152,10 +143,7 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
           this.isLoading = false;
           this.startResendTimer();
           
-          this.snackBar.open('OTP resent successfully!', 'Close', {
-            duration: 3000,
-            panelClass: ['success-snackbar']
-          });
+          this.swal.toast('OTP resent successfully!', 'success');
         },
         error: (error: any) => {
           this.isLoading = false;
@@ -194,9 +182,6 @@ export class ForgotPasswordComponent implements OnInit, OnDestroy {
   }
 
   private showErrorMessage(message: string): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
+    this.swal.toast(message, 'error');
   }
 }

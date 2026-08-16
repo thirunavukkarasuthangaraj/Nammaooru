@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -41,7 +40,6 @@ export class ShopPromoListComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private swalService: SwalService
   ) {}
@@ -200,11 +198,6 @@ export class ShopPromoListComponent implements OnInit {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
-    });
+    this.swalService.toast(message, type);
   }
 }

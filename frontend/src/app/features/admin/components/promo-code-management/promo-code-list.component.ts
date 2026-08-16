@@ -3,8 +3,8 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { PromoCodeService } from '../../../../core/services/promo-code.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { PromoCode } from '../../../../core/models/promo-code.model';
 import { PromoCodeFormComponent } from './promo-code-form.component';
 import { PromoCodeStatsComponent } from './promo-code-stats.component';
@@ -26,7 +26,7 @@ export class PromoCodeListComponent implements OnInit {
   constructor(
     private promoCodeService: PromoCodeService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.dataSource = new MatTableDataSource<PromoCode>([]);
   }
@@ -177,11 +177,6 @@ export class PromoCodeListComponent implements OnInit {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: type === 'success' ? 'snackbar-success' : 'snackbar-error'
-    });
+    this.swal.toast(message, type);
   }
 }

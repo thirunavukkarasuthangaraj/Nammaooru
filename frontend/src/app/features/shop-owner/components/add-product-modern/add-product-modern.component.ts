@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { SwalService } from '../../../../core/services/swal.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
@@ -993,7 +993,7 @@ export class AddProductModernComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private router: Router
   ) {
     this.initForm();
@@ -1115,12 +1115,12 @@ export class AddProductModernComponent implements OnInit {
   }
 
   openScanner(): void {
-    this.snackBar.open('Barcode scanner opening...', 'Close', { duration: 2000 });
+    this.swal.toast('Barcode scanner opening...', 'info');
     // Implement barcode scanner
   }
 
   requestNewProduct(): void {
-    this.snackBar.open('Requesting new product from admin...', 'Close', { duration: 2000 });
+    this.swal.toast('Requesting new product from admin...', 'info');
     // Navigate to request form
   }
 
@@ -1134,7 +1134,7 @@ export class AddProductModernComponent implements OnInit {
       // Save as draft API call
       setTimeout(() => {
         this.saving = false;
-        this.snackBar.open('Saved as draft', 'Close', { duration: 2000 });
+        this.swal.toast('Saved as draft', 'success');
       }, 1000);
     }
   }
@@ -1143,10 +1143,7 @@ export class AddProductModernComponent implements OnInit {
     // Mark all fields as touched to show validation errors
     if (this.productForm.invalid) {
       this.markFormGroupTouched(this.productForm);
-      this.snackBar.open('Please fill all required fields', 'Close', {
-        duration: 3000,
-        panelClass: ['error-snackbar']
-      });
+      this.swal.toast('Please fill all required fields', 'warning');
       return;
     }
 
@@ -1161,10 +1158,7 @@ export class AddProductModernComponent implements OnInit {
       // API call to save product
       setTimeout(() => {
         this.saving = false;
-        this.snackBar.open('Product added to your store!', 'Close', {
-          duration: 3000,
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('Product added to your store!', 'success');
         this.router.navigate(['/shop-owner/products']);
       }, 1500);
     }

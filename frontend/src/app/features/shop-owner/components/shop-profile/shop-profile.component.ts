@@ -1,8 +1,8 @@
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ShopService } from '@core/services/shop.service';
+import { SwalService } from '@core/services/swal.service';
 import { Shop } from '@core/models/shop.model';
 import { getImageUrl } from '@core/utils/image-url.util';
 import { ShopContextService } from '../../services/shop-context.service';
@@ -939,7 +939,7 @@ export class ShopProfileComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private shopService: ShopService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private router: Router,
     private shopContext: ShopContextService
   ) {
@@ -1225,11 +1225,7 @@ export class ShopProfileComponent implements OnInit {
       // Here you would typically save the setting to the backend
       console.log(`Setting ${settingKey} changed to:`, value);
       
-      this.snackBar.open(`${setting.label} ${value ? 'enabled' : 'disabled'}`, 'Close', {
-        duration: 2000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top'
-      });
+      this.swal.toast(`${setting.label} ${value ? 'enabled' : 'disabled'}`, 'success');
     }
   }
   
@@ -1389,11 +1385,7 @@ export class ShopProfileComponent implements OnInit {
         recurring: false
       };
       
-      this.snackBar.open(`Holiday "${holiday.name}" added successfully`, 'Close', {
-        duration: 3000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top'
-      });
+      this.swal.toast(`Holiday "${holiday.name}" added successfully`, 'success');
       
       // Here you would typically save to backend
       console.log('Holiday added:', holiday);
@@ -1405,11 +1397,7 @@ export class ShopProfileComponent implements OnInit {
     if (index > -1) {
       this.holidays.splice(index, 1);
       
-      this.snackBar.open(`Holiday "${holiday.name}" removed`, 'Close', {
-        duration: 2000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top'
-      });
+      this.swal.toast(`Holiday "${holiday.name}" removed`, 'success');
       
       // Here you would typically remove from backend
       console.log('Holiday removed:', holiday);
@@ -1482,12 +1470,7 @@ export class ShopProfileComponent implements OnInit {
         if (error.status === 404) {
           this.handleNoShopFound();
         } else {
-          this.snackBar.open('Error loading shop profile. Please try again.', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top',
-            panelClass: ['error-snackbar']
-          });
+          this.swal.toast('Error loading shop profile. Please try again.', 'error');
         }
       }
     });
@@ -1506,12 +1489,7 @@ export class ShopProfileComponent implements OnInit {
     // Set email separately since it's disabled
     this.shopForm.get('email')?.setValue('');
     
-    this.snackBar.open('No shop found. Please contact admin to assign a shop.', 'Close', {
-      duration: 5000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['warning-snackbar']
-    });
+    this.swal.toast('No shop found. Please contact admin to assign a shop.', 'warning');
   }
   
   private loadShopStatistics(): void {
@@ -1606,22 +1584,12 @@ export class ShopProfileComponent implements OnInit {
           // Refresh shop context so other pages (like POS Billing) get updated data
           this.shopContext.refreshShop();
 
-          this.snackBar.open('Shop profile updated successfully!', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top',
-            panelClass: ['success-snackbar']
-          });
+          this.swal.toast('Shop profile updated successfully!', 'success');
         },
         error: (error) => {
           this.isLoading = false;
           console.error('Error updating shop profile:', error);
-          this.snackBar.open('Error updating shop profile', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top',
-            panelClass: ['error-snackbar']
-          });
+          this.swal.toast('Error updating shop profile', 'error');
         }
       });
     }
@@ -1629,11 +1597,7 @@ export class ShopProfileComponent implements OnInit {
 
   onReset(): void {
     this.loadShopProfile();
-    this.snackBar.open('Form reset to saved values', 'Close', {
-      duration: 2000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top'
-    });
+    this.swal.toast('Form reset to saved values', 'success');
   }
 
   // Image upload methods
@@ -1648,23 +1612,13 @@ export class ShopProfileComponent implements OnInit {
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        this.snackBar.open('Please select an image file', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Please select an image file', 'warning');
         return;
       }
 
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        this.snackBar.open('Image size should be less than 5MB', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Image size should be less than 5MB', 'warning');
         return;
       }
 
@@ -1674,12 +1628,7 @@ export class ShopProfileComponent implements OnInit {
 
   private uploadImage(file: File): void {
     if (!this.shop || !this.shop.id) {
-      this.snackBar.open('Shop not found. Please refresh the page.', 'Close', {
-        duration: 3000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top',
-        panelClass: ['error-snackbar']
-      });
+      this.swal.toast('Shop not found. Please refresh the page.', 'error');
       return;
     }
 
@@ -1695,12 +1644,7 @@ export class ShopProfileComponent implements OnInit {
           this.shopLogoId = response.id;
         }
 
-        this.snackBar.open('Shop logo uploaded successfully!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('Shop logo uploaded successfully!', 'success');
 
         // Reset the file input
         this.fileInput.nativeElement.value = '';
@@ -1708,12 +1652,7 @@ export class ShopProfileComponent implements OnInit {
       error: (error) => {
         this.isUploadingImage = false;
         console.error('Error uploading image:', error);
-        this.snackBar.open('Failed to upload logo. Please try again.', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Failed to upload logo. Please try again.', 'error');
       }
     });
   }
@@ -1731,22 +1670,12 @@ export class ShopProfileComponent implements OnInit {
         this.shopLogoUrl = null;
         this.shopLogoId = null;
 
-        this.snackBar.open('Shop logo removed successfully', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['success-snackbar']
-        });
+        this.swal.toast('Shop logo removed successfully', 'success');
       },
       error: (error) => {
         this.isUploadingImage = false;
         console.error('Error removing logo:', error);
-        this.snackBar.open('Failed to remove logo. Please try again.', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Failed to remove logo. Please try again.', 'error');
       }
     });
   }

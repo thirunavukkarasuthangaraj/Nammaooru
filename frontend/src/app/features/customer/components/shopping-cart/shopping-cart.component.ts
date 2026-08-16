@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { Location } from '@angular/common';
 import { CartService, Cart, CartItem } from '../../services/cart.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 @Component({
@@ -36,7 +36,7 @@ export class ShoppingCartComponent implements OnInit, OnDestroy {
     private router: Router,
     private location: Location,
     private cartService: CartService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -65,9 +65,7 @@ export class ShoppingCartComponent implements OnInit, OnDestroy {
 
   removeItem(item: CartItem): void {
     this.cartService.removeFromCart(item.productId);
-    this.snackBar.open(`${item.productName} removed from cart`, 'Close', { 
-      duration: 2000 
-    });
+    this.swal.toast(`${item.productName} removed from cart`, 'success');
   }
 
   clearCart(): void {
@@ -75,9 +73,7 @@ export class ShoppingCartComponent implements OnInit, OnDestroy {
     this.discountApplied = false;
     this.discountCode = '';
     this.discountMessage = '';
-    this.snackBar.open('Cart cleared', 'Close', { 
-      duration: 2000 
-    });
+    this.swal.toast('Cart cleared', 'success');
   }
 
   applyDiscount(): void {
@@ -101,14 +97,10 @@ export class ShoppingCartComponent implements OnInit, OnDestroy {
         this.cartService.applyDiscount(discountAmount);
         this.discountApplied = true;
         this.discountMessage = `${discountPercent}% discount applied!`;
-        this.snackBar.open(`Discount of ₹${discountAmount} applied!`, 'Close', { 
-          duration: 3000 
-        });
+        this.swal.toast(`Discount of ₹${discountAmount} applied!`, 'success');
       } else {
         this.discountMessage = 'Invalid discount code';
-        this.snackBar.open('Invalid discount code', 'Close', { 
-          duration: 2000 
-        });
+        this.swal.toast('Invalid discount code', 'warning');
       }
       this.applyingDiscount = false;
     }, 1000);

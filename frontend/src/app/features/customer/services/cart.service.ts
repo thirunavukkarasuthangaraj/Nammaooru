@@ -4,6 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { catchError, switchMap } from 'rxjs/operators';
+import { SwalService } from '../../../core/services/swal.service';
 
 export interface CartItem {
   productId: number;
@@ -39,7 +40,8 @@ export class CartService {
 
   constructor(
     private snackBar: MatSnackBar,
-    private http: HttpClient
+    private http: HttpClient,
+    private swal: SwalService
   ) {
     this.loadCart();
   }
@@ -158,9 +160,7 @@ export class CartService {
     this.updateCartTotals(currentCart);
     this.saveCart(currentCart);
     
-    this.snackBar.open(`${product.name} added to cart`, 'View Cart', { 
-      duration: 3000 
-    });
+    this.swal.toast(`${product.name} added to cart`, 'success');
     
     return true;
   }

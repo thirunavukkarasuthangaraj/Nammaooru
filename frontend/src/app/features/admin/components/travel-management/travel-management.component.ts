@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TravelAdminService } from '../../services/travel.service';
 import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface TravelPost {
   id: number;
@@ -49,7 +49,7 @@ export class TravelManagementComponent implements OnInit {
 
   constructor(
     private travelService: TravelAdminService,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog
   ) {}
 
@@ -74,7 +74,7 @@ export class TravelManagementComponent implements OnInit {
       error: (err) => {
         console.error('Error loading travel posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load posts', 'error');
       }
     });
   }
@@ -93,11 +93,11 @@ export class TravelManagementComponent implements OnInit {
   approvePost(post: TravelPost): void {
     this.travelService.approvePost(post.id).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" approved`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.title}" approved`, 'success');
         this.loadPosts();
       },
       error: () => {
-        this.snackBar.open('Failed to approve post', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to approve post', 'error');
       }
     });
   }
@@ -106,11 +106,11 @@ export class TravelManagementComponent implements OnInit {
     if (confirm(`Reject "${post.title}"?`)) {
       this.travelService.rejectPost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" rejected`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" rejected`, 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to reject post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to reject post', 'error');
         }
       });
     }
@@ -120,11 +120,11 @@ export class TravelManagementComponent implements OnInit {
     if (confirm(`Delete "${post.title}" permanently?`)) {
       this.travelService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open('Post deleted', 'OK', { duration: 3000 });
+          this.swal.toast('Post deleted', 'success');
           this.loadPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to delete post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to delete post', 'error');
         }
       });
     }
@@ -140,11 +140,11 @@ export class TravelManagementComponent implements OnInit {
       if (result) {
         this.travelService.adminUpdatePost(post.id, result).subscribe({
           next: () => {
-            this.snackBar.open('Post updated', 'OK', { duration: 3000 });
+            this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
           error: () => {
-            this.snackBar.open('Failed to update post', 'Close', { duration: 3000 });
+            this.swal.toast('Failed to update post', 'error');
           }
         });
       }
@@ -157,14 +157,13 @@ export class TravelManagementComponent implements OnInit {
         const updated = response.data;
         const isFeatured = updated?.featured;
         post.featured = isFeatured;
-        this.snackBar.open(
+        this.swal.toast(
           isFeatured ? `"${post.title}" marked as featured` : `"${post.title}" removed from featured`,
-          'OK',
-          { duration: 3000 }
+          'success'
         );
       },
       error: () => {
-        this.snackBar.open('Failed to toggle featured', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to toggle featured', 'error');
       }
     });
   }

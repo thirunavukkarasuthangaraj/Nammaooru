@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { VillageService, Village } from '../../services/village.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-village-management',
@@ -23,7 +23,7 @@ export class VillageManagementComponent implements OnInit {
   constructor(
     private villageService: VillageService,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -52,7 +52,7 @@ export class VillageManagementComponent implements OnInit {
         this.isLoading = false;
       },
       error: () => {
-        this.snackBar.open('Failed to load villages', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load villages', 'error');
         this.isLoading = false;
       }
     });
@@ -92,20 +92,20 @@ export class VillageManagementComponent implements OnInit {
     if (this.editingId) {
       this.villageService.updateVillage(this.editingId, village).subscribe({
         next: () => {
-          this.snackBar.open('Village updated successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Village updated successfully', 'success');
           this.showForm = false;
           this.loadVillages();
         },
-        error: () => this.snackBar.open('Failed to update village', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to update village', 'error')
       });
     } else {
       this.villageService.createVillage(village).subscribe({
         next: () => {
-          this.snackBar.open('Village created successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Village created successfully', 'success');
           this.showForm = false;
           this.loadVillages();
         },
-        error: () => this.snackBar.open('Failed to create village', 'Close', { duration: 3000 })
+        error: () => this.swal.toast('Failed to create village', 'error')
       });
     }
   }
@@ -118,9 +118,9 @@ export class VillageManagementComponent implements OnInit {
         if (idx >= 0 && updated) {
           this.villages[idx] = updated;
         }
-        this.snackBar.open('Village toggled', 'Close', { duration: 2000 });
+        this.swal.toast('Village toggled', 'success');
       },
-      error: () => this.snackBar.open('Failed to toggle village', 'Close', { duration: 3000 })
+      error: () => this.swal.toast('Failed to toggle village', 'error')
     });
   }
 
@@ -129,10 +129,10 @@ export class VillageManagementComponent implements OnInit {
 
     this.villageService.deleteVillage(village.id!).subscribe({
       next: () => {
-        this.snackBar.open('Village deleted', 'Close', { duration: 3000 });
+        this.swal.toast('Village deleted', 'success');
         this.loadVillages();
       },
-      error: () => this.snackBar.open('Failed to delete village', 'Close', { duration: 3000 })
+      error: () => this.swal.toast('Failed to delete village', 'error')
     });
   }
 

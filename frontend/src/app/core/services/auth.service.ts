@@ -3,10 +3,10 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap, catchError, throwError, map } from 'rxjs';
 import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '@environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User, UserRole } from '../models/auth.model';
 import { ApiResponse, ApiResponseHelper } from '../models/api-response.model';
+import { SwalService } from './swal.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,7 +22,7 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
@@ -431,11 +431,6 @@ export class AuthService {
   }
 
   private showSnackBar(message: string, type: 'success' | 'error' | 'warning' | 'info'): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: [`${type}-snackbar`]
-    });
+    this.swal.toast(message, type);
   }
 }

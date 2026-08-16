@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, takeUntil, interval } from 'rxjs';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-delivery-management',
@@ -39,7 +39,7 @@ export class DeliveryManagementComponent implements OnInit, OnDestroy {
 
   constructor(
     private router: Router,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -516,10 +516,6 @@ export class DeliveryManagementComponent implements OnInit, OnDestroy {
   }
 
   private showInfo(message: string): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'center',
-      verticalPosition: 'top'
-    });
+    this.swal.toast(message, 'info');
   }
 }

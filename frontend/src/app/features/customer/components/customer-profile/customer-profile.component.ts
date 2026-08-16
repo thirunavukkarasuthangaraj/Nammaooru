@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { AddressService, DeliveryLocation } from '../../services/address.service';
 import { AddressDialogComponent } from '../address-dialog/address-dialog.component';
+import { SwalService } from '../../../../core/services/swal.service';
 import Swal from 'sweetalert2';
 
 interface Address {
@@ -35,7 +35,7 @@ export class CustomerProfileComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private dialog: MatDialog,
     private addressService: AddressService
   ) {
@@ -78,7 +78,7 @@ export class CustomerProfileComponent implements OnInit {
       error: (error) => {
         console.error('Error loading addresses:', error);
         this.loading = false;
-        this.snackBar.open('Failed to load addresses', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load addresses', 'error');
       }
     });
   }
@@ -94,10 +94,7 @@ export class CustomerProfileComponent implements OnInit {
       
       localStorage.setItem('shop_management_user', JSON.stringify(updatedUser));
       
-      this.snackBar.open('Profile updated successfully!', 'Close', {
-        duration: 3000,
-        panelClass: ['success-snackbar']
-      });
+      this.swal.toast('Profile updated successfully!', 'success');
     }
   }
 
@@ -114,7 +111,7 @@ export class CustomerProfileComponent implements OnInit {
           next: (newAddress) => {
             console.log('Address saved successfully:', newAddress);
             this.addresses.push(newAddress);
-            this.snackBar.open('Address added successfully!', 'Close', { duration: 3000 });
+            this.swal.toast('Address added successfully!', 'success');
           },
           error: (error) => {
             console.error('Error adding address:', error);
@@ -140,7 +137,7 @@ export class CustomerProfileComponent implements OnInit {
           next: (updatedAddress) => {
             console.log('Address updated successfully:', updatedAddress);
             this.addresses[index] = updatedAddress;
-            this.snackBar.open('Address updated successfully!', 'Close', { duration: 3000 });
+            this.swal.toast('Address updated successfully!', 'success');
           },
           error: (error) => {
             console.error('Error updating address:', error);
@@ -167,7 +164,7 @@ export class CustomerProfileComponent implements OnInit {
         this.addressService.deleteAddress(address.id).subscribe({
           next: () => {
             this.addresses.splice(index, 1);
-            this.snackBar.open('Address deleted successfully', 'Close', { duration: 2000 });
+            this.swal.toast('Address deleted successfully', 'success');
           },
           error: (error) => {
             console.error('Error deleting address:', error);
@@ -180,9 +177,6 @@ export class CustomerProfileComponent implements OnInit {
 
   savePreferences(): void {
     // Save preferences
-    this.snackBar.open('Preferences saved!', 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar']
-    });
+    this.swal.toast('Preferences saved!', 'success');
   }
 }

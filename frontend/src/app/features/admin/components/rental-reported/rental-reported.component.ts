@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { RentalAdminService } from '../../services/rental.service';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface RentalPost {
   id: number;
@@ -52,7 +52,7 @@ export class RentalReportedComponent implements OnInit {
 
   constructor(
     private rentalService: RentalAdminService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -72,7 +72,7 @@ export class RentalReportedComponent implements OnInit {
       error: (err) => {
         console.error('Error loading reported rental posts:', err);
         this.loading = false;
-        this.snackBar.open('Failed to load reported posts', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load reported posts', 'error');
       }
     });
   }
@@ -84,11 +84,11 @@ export class RentalReportedComponent implements OnInit {
       }
       this.rentalService.deletePost(post.id).subscribe({
         next: () => {
-          this.snackBar.open(`"${post.title}" removed`, 'OK', { duration: 3000 });
+          this.swal.toast(`"${post.title}" removed`, 'success');
           this.loadReportedPosts();
         },
         error: () => {
-          this.snackBar.open('Failed to remove post', 'Close', { duration: 3000 });
+          this.swal.toast('Failed to remove post', 'error');
         }
       });
       return;
@@ -99,11 +99,11 @@ export class RentalReportedComponent implements OnInit {
 
     this.rentalService.changePostStatus(post.id, newStatus).subscribe({
       next: () => {
-        this.snackBar.open(`"${post.title}" → ${label}`, 'OK', { duration: 3000 });
+        this.swal.toast(`"${post.title}" → ${label}`, 'success');
         this.loadReportedPosts();
       },
       error: () => {
-        this.snackBar.open(`Failed to change status to ${label}`, 'Close', { duration: 3000 });
+        this.swal.toast(`Failed to change status to ${label}`, 'error');
       }
     });
   }

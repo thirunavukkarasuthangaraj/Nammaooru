@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MarketingService, MarketingMessageResponse, TemplateInfo, MarketingStats } from '../../services/marketing.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
   selector: 'app-marketing-messages',
@@ -23,7 +23,7 @@ export class MarketingMessagesComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private marketingService: MarketingService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.initializeForm();
   }
@@ -88,10 +88,7 @@ export class MarketingMessagesComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading templates:', error);
-        this.snackBar.open('Failed to load templates', 'Close', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
+        this.swal.toast('Failed to load templates', 'error');
         this.isLoading = false;
       }
     });
@@ -115,10 +112,7 @@ export class MarketingMessagesComponent implements OnInit {
 
   onSendMessages(): void {
     if (this.marketingForm.invalid) {
-      this.snackBar.open('Please fill in all required fields', 'Close', {
-        duration: 3000,
-        panelClass: ['error-snackbar']
-      });
+      this.swal.toast('Please fill in all required fields', 'warning');
       return;
     }
 
@@ -146,14 +140,7 @@ export class MarketingMessagesComponent implements OnInit {
         this.lastResult = response;
 
         if (response.success) {
-          this.snackBar.open(
-            `Successfully sent ${response.successCount} messages!`,
-            'Close',
-            {
-              duration: 5000,
-              panelClass: ['success-snackbar']
-            }
-          );
+          this.swal.toast(`Successfully sent ${response.successCount} messages!`, 'success');
 
           // Reset form after successful send
           this.marketingForm.patchValue({
@@ -163,28 +150,14 @@ export class MarketingMessagesComponent implements OnInit {
           // Reload stats
           this.loadStats();
         } else {
-          this.snackBar.open(
-            `Failed to send messages: ${response.message}`,
-            'Close',
-            {
-              duration: 5000,
-              panelClass: ['error-snackbar']
-            }
-          );
+          this.swal.toast(`Failed to send messages: ${response.message}`, 'error');
         }
       },
       error: (error) => {
         console.error('Error sending marketing messages:', error);
         this.isSending = false;
 
-        this.snackBar.open(
-          'Failed to send marketing messages. Please try again.',
-          'Close',
-          {
-            duration: 5000,
-            panelClass: ['error-snackbar']
-          }
-        );
+        this.swal.toast('Failed to send marketing messages. Please try again.', 'error');
       }
     });
   }

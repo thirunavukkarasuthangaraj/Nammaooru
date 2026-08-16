@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { OrderAssignmentService } from '../../services/order-assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { SwalService } from '../../../../core/services/swal.service';
 
 interface AvailableOrder {
   id: string;
@@ -31,7 +31,7 @@ export class AvailableOrdersComponent implements OnInit {
   constructor(
     private orderAssignmentService: OrderAssignmentService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -70,7 +70,7 @@ export class AvailableOrdersComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading available orders:', error);
-        this.snackBar.open('Failed to load available orders', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to load available orders', 'error');
         this.dataSource.data = [];
         this.isLoading = false;
       }
@@ -82,12 +82,12 @@ export class AvailableOrdersComponent implements OnInit {
 
     this.orderAssignmentService.acceptAssignment(Number(orderId), this.partnerId).subscribe({
       next: () => {
-        this.snackBar.open('Order accepted successfully!', 'Close', { duration: 3000 });
+        this.swal.toast('Order accepted successfully!', 'success');
         this.loadAvailableOrders();
       },
       error: (error) => {
         console.error('Error accepting order:', error);
-        this.snackBar.open('Failed to accept order', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to accept order', 'error');
       }
     });
   }
@@ -97,12 +97,12 @@ export class AvailableOrdersComponent implements OnInit {
 
     this.orderAssignmentService.rejectAssignment(Number(orderId), this.partnerId, 'Not available').subscribe({
       next: () => {
-        this.snackBar.open('Order rejected', 'Close', { duration: 3000 });
+        this.swal.toast('Order rejected', 'success');
         this.loadAvailableOrders();
       },
       error: (error) => {
         console.error('Error rejecting order:', error);
-        this.snackBar.open('Failed to reject order', 'Close', { duration: 3000 });
+        this.swal.toast('Failed to reject order', 'error');
       }
     });
   }

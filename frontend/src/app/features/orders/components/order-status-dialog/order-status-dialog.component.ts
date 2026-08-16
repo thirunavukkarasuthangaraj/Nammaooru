@@ -1,7 +1,7 @@
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { SwalService } from '../../../../core/services/swal.service';
 import { OrderService } from '../../../../core/services/order.service';
 
 export interface OrderStatusDialogData {
@@ -34,7 +34,7 @@ export class OrderStatusDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: OrderStatusDialogData,
     private fb: FormBuilder,
     private orderService: OrderService,
-    private snackBar: MatSnackBar
+    private swal: SwalService
   ) {
     this.statusForm = this.fb.group({
       status: [data.currentStatus, Validators.required],
@@ -53,12 +53,12 @@ export class OrderStatusDialogComponent {
       
       this.orderService.updateOrderStatus(this.data.orderId, newStatus).subscribe({
         next: () => {
-          this.snackBar.open('Order status updated successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Order status updated successfully', 'success');
           this.dialogRef.close(true);
         },
         error: (error) => {
           console.error('Error updating order status:', error);
-          this.snackBar.open('Error updating order status', 'Close', { duration: 3000 });
+          this.swal.toast('Error updating order status', 'error');
           this.loading = false;
         }
       });

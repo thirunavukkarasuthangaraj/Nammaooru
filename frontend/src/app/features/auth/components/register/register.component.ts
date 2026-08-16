@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@core/services/auth.service';
 import { RegisterRequest, UserRole } from '@core/models/auth.model';
 import { VersionService } from '@core/services/version.service';
+import { SwalService } from '@core/services/swal.service';
 
 @Component({
   selector: 'app-register',
@@ -21,7 +21,7 @@ export class RegisterComponent implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     public versionService: VersionService
   ) {
     this.registerForm = this.fb.group({
@@ -70,12 +70,7 @@ export class RegisterComponent implements OnInit {
       this.authService.register(registerData).subscribe({
         next: (response) => {
           this.isLoading = false;
-          this.snackBar.open('Registration successful! Please verify your email with the OTP sent.', 'Close', {
-            duration: 5000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top',
-            panelClass: ['success-snackbar']
-          });
+          this.swal.toast('Registration successful! Please verify your email with the OTP sent.', 'success');
 
           // Navigate to OTP verification screen
           this.router.navigate(['/auth/verify-otp'], {
@@ -106,12 +101,7 @@ export class RegisterComponent implements OnInit {
           }
 
           // Show the error message
-          this.snackBar.open(errorMessage, 'Close', {
-            duration: 5000,
-            horizontalPosition: 'center',
-            verticalPosition: 'top',
-            panelClass: ['error-snackbar']
-          });
+          this.swal.toast(errorMessage, 'error');
         }
       });
     }

@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ShopProductService } from '@core/services/shop-product.service';
 import { AuthService } from '@core/services/auth.service';
+import { SwalService } from '@core/services/swal.service';
 import { HttpEvent, HttpEventType } from '@angular/common/http';
 
 interface UploadResult {
@@ -894,10 +894,10 @@ export class BulkUploadComponent implements OnInit {
   ];
 
   constructor(
-    private snackBar: MatSnackBar,
     private router: Router,
     private shopProductService: ShopProductService,
-    private authService: AuthService
+    private authService: AuthService,
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {}
@@ -931,7 +931,7 @@ export class BulkUploadComponent implements OnInit {
     link.click();
     window.URL.revokeObjectURL(url);
 
-    this.snackBar.open('Template downloaded successfully', 'Close', { duration: 3000 });
+    this.swal.toast('Template downloaded successfully', 'success');
   }
 
   downloadSample(): void {
@@ -957,7 +957,7 @@ export class BulkUploadComponent implements OnInit {
     link.click();
     window.URL.revokeObjectURL(url);
 
-    this.snackBar.open('Sample data downloaded successfully', 'Close', { duration: 3000 });
+    this.swal.toast('Sample data downloaded successfully', 'success');
   }
 
   onFileSelected(event: any): void {
@@ -965,7 +965,7 @@ export class BulkUploadComponent implements OnInit {
     if (file) {
       // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
-        this.snackBar.open('File size must be less than 10MB', 'Close', { duration: 3000 });
+        this.swal.toast('File size must be less than 10MB', 'error');
         return;
       }
 
@@ -973,7 +973,7 @@ export class BulkUploadComponent implements OnInit {
       const validTypes = ['.csv', '.xlsx', '.xls'];
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       if (!validTypes.includes(fileExtension)) {
-        this.snackBar.open('Please select a CSV or Excel file', 'Close', { duration: 3000 });
+        this.swal.toast('Please select a CSV or Excel file', 'error');
         return;
       }
 
@@ -999,7 +999,7 @@ export class BulkUploadComponent implements OnInit {
 
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser || !currentUser.shopId) {
-      this.snackBar.open('Shop information not found', 'Close', { duration: 3000 });
+      this.swal.toast('Shop information not found', 'error');
       return;
     }
 
@@ -1035,7 +1035,7 @@ export class BulkUploadComponent implements OnInit {
               };
               this.nextStep();
             } else {
-              this.snackBar.open('Upload failed: ' + (event.body.message || 'Unknown error'), 'Close', { duration: 5000 });
+              this.swal.toast('Upload failed: ' + (event.body.message || 'Unknown error'), 'error');
             }
             break;
         }
@@ -1046,7 +1046,7 @@ export class BulkUploadComponent implements OnInit {
         console.error('Bulk upload error:', error);
         
         // Fallback to mock processing for demo
-        this.snackBar.open('API not available. Using demo mode.', 'Close', { duration: 3000 });
+        this.swal.toast('API not available. Using demo mode.', 'warning');
         this.simulateMockUpload();
       }
     });
@@ -1103,7 +1103,7 @@ export class BulkUploadComponent implements OnInit {
     link.click();
     window.URL.revokeObjectURL(url);
 
-    this.snackBar.open('Error report downloaded', 'Close', { duration: 3000 });
+    this.swal.toast('Error report downloaded', 'success');
   }
 
   importProducts(): void {
@@ -1115,16 +1115,7 @@ export class BulkUploadComponent implements OnInit {
     setTimeout(() => {
       this.isImporting = false;
       
-      this.snackBar.open(
-        `Successfully imported ${this.uploadResult?.successfulRows || 0} products!`,
-        'Close',
-        {
-          duration: 5000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['success-snackbar']
-        }
-      );
+      this.swal.toast(`Successfully imported ${this.uploadResult?.successfulRows || 0} products!`, 'success');
 
       // Navigate back to products
       this.router.navigate(['/shop-owner/my-products']);

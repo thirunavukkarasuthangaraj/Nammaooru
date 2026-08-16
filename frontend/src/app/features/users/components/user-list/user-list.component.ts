@@ -2,10 +2,10 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, ActivatedRoute } from '@angular/router';
 import { UserService, UserResponse } from '../../../../core/services/user.service';
+import { SwalService } from '../../../../core/services/swal.service';
 import { DeliveryPartnerService } from '../../../delivery/services/delivery-partner.service';
 import { DeliveryPartnerDocumentViewerComponent } from '../../../delivery/components/delivery-partner-document-viewer/delivery-partner-document-viewer.component';
 
@@ -75,11 +75,11 @@ export class UserListComponent implements OnInit {
 
   constructor(
     private userService: UserService,
-    private snackBar: MatSnackBar,
     private router: Router,
     private route: ActivatedRoute,
     private dialog: MatDialog,
-    private deliveryPartnerService: DeliveryPartnerService
+    private deliveryPartnerService: DeliveryPartnerService,
+    private swal: SwalService
   ) {}
 
   ngOnInit(): void {
@@ -117,7 +117,7 @@ export class UserListComponent implements OnInit {
         this.loading = false;
 
         const roleMessage = this.roleFilter ? `${this.roleFilter} users` : 'all users';
-        this.snackBar.open(`✅ Loaded ${roleMessage} successfully!`, 'Close', { duration: 3000 });
+        this.swal.toast(`✅ Loaded ${roleMessage} successfully!`, 'success');
       },
       error: (error) => {
         console.error('❌ Error loading users from API:', error);
@@ -294,7 +294,7 @@ export class UserListComponent implements OnInit {
 
     this.originalData = mockUsers as any;
     this.dataSource.data = [...this.originalData];
-    this.snackBar.open('Loaded mock user data - API not available', 'Close', { duration: 3000 });
+    this.swal.toast('Loaded mock user data - API not available', 'warning');
   }
 
   applyFilter(): void {
@@ -342,7 +342,7 @@ export class UserListComponent implements OnInit {
       this.paginator.firstPage();
     }
     
-    this.snackBar.open('Filters cleared', 'Close', { duration: 2000 });
+    this.swal.toast('Filters cleared', 'success');
   }
 
   createUser(): void {
@@ -356,7 +356,7 @@ export class UserListComponent implements OnInit {
       this.router.navigate(['/users', user.id]);
     } else {
       console.error('User ID is missing or invalid:', user);
-      this.snackBar.open('Invalid user ID', 'Close', { duration: 3000 });
+      this.swal.toast('Invalid user ID', 'error');
     }
   }
 
@@ -383,11 +383,11 @@ export class UserListComponent implements OnInit {
             this.dataSource.data = [...this.dataSource.data]; // Trigger change detection
           }
           
-          this.snackBar.open(`User ${user.fullName} ${action}d successfully`, 'Close', { duration: 3000 });
+          this.swal.toast(`User ${user.fullName} ${action}d successfully`, 'success');
         },
         error: (error) => {
           console.error('Error toggling user status:', error);
-          this.snackBar.open(`Error ${action}ing user`, 'Close', { duration: 3000 });
+          this.swal.toast(`Error ${action}ing user`, 'error');
         }
       });
     }
@@ -397,11 +397,11 @@ export class UserListComponent implements OnInit {
     if (confirm(`Reset password for ${user.fullName}?`)) {
       this.userService.resetPassword(user.id).subscribe({
         next: () => {
-          this.snackBar.open('Password reset email sent successfully', 'Close', { duration: 3000 });
+          this.swal.toast('Password reset email sent successfully', 'success');
         },
         error: (error) => {
           console.error('Error resetting password:', error);
-          this.snackBar.open('Error resetting password', 'Close', { duration: 3000 });
+          this.swal.toast('Error resetting password', 'error');
         }
       });
     }
@@ -411,12 +411,12 @@ export class UserListComponent implements OnInit {
     if (confirm(`Are you sure you want to delete ${user.fullName}?`)) {
       this.userService.deleteUser(user.id).subscribe({
         next: () => {
-          this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
+          this.swal.toast('User deleted successfully', 'success');
           this.loadUsers();
         },
         error: (error) => {
           console.error('Error deleting user:', error);
-          this.snackBar.open('Error deleting user', 'Close', { duration: 3000 });
+          this.swal.toast('Error deleting user', 'error');
         }
       });
     }
@@ -576,7 +576,7 @@ export class UserListComponent implements OnInit {
   // Delivery Partner Document Management Methods
   viewDocuments(user: UserResponse): void {
     if (user.role !== 'DELIVERY_PARTNER') {
-      this.snackBar.open('Document viewing is only available for delivery partners', 'Close', { duration: 3000 });
+      this.swal.toast('Document viewing is only available for delivery partners', 'warning');
       return;
     }
 
@@ -586,7 +586,7 @@ export class UserListComponent implements OnInit {
 
   manageDocuments(user: UserResponse): void {
     if (user.role !== 'DELIVERY_PARTNER') {
-      this.snackBar.open('Document management is only available for delivery partners', 'Close', { duration: 3000 });
+      this.swal.toast('Document management is only available for delivery partners', 'warning');
       return;
     }
 
@@ -620,7 +620,7 @@ export class UserListComponent implements OnInit {
   // Add documents for delivery partner
   addDocuments(user: UserResponse): void {
     if (user.role !== 'DELIVERY_PARTNER') {
-      this.snackBar.open('Document upload is only available for delivery partners', 'Close', { duration: 3000 });
+      this.swal.toast('Document upload is only available for delivery partners', 'warning');
       return;
     }
 
@@ -653,16 +653,12 @@ export class UserListComponent implements OnInit {
             }
           });
         } else {
-          this.snackBar.open(
-            `No documents found for ${user.fullName}. Use "Manage Documents" to upload.`,
-            'Close',
-            { duration: 5000 }
-          );
+          this.swal.toast(`No documents found for ${user.fullName}. Use "Manage Documents" to upload.`, 'warning');
         }
       },
       error: (error) => {
         console.error('Error loading partner documents:', error);
-        this.snackBar.open('Error loading documents. Please try again.', 'Close', { duration: 3000 });
+        this.swal.toast('Error loading documents. Please try again.', 'error');
       }
     });
   }
