@@ -578,7 +578,7 @@ public class BillPdfService {
             bodyCell.addElement(printed);
 
             if (bool(settings, "showAppDownloadLink", true)) {
-                bodyCell.addElement(centeredLink("📱 Download the Namma Ooru App",
+                bodyCell.addElement(centeredLink("📱 Download the Namma Ooru Connect App",
                         "https://play.google.com/store/apps/details?id=com.nammaooru.app&hl=en_IN", footerFont));
             }
             if (bool(settings, "showOrderDetailsLink", true) && order.getOrderNumber() != null) {

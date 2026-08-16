@@ -458,7 +458,7 @@ export class ReceiptTemplateService {
 
         ${bs.showAppDownloadLink !== false ? `
         <div class="center" style="font-size: ${Math.max(footerFontSize - 1, 7)}px; margin-top: 4px;">
-          <a href="https://play.google.com/store/apps/details?id=com.nammaooru.app&hl=en_IN" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">📱 Download the Namma Ooru App</a>
+          <a href="https://play.google.com/store/apps/details?id=com.nammaooru.app&hl=en_IN" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">📱 Download the Namma Ooru Connect App</a>
         </div>
         ` : ''}
 
