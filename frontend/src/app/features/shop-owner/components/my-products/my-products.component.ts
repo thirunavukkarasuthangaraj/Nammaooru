@@ -81,6 +81,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   products: ShopProduct[] = [];
   filteredProducts: ShopProduct[] = [];
   categories: string[] = [];
+  filteredCategories: string[] = [];
+  categoryFilterText = '';
   loading = false;
   searching = false;
   usingFallbackData = false;
@@ -560,6 +562,22 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   loadCategories(): void {
     // Extract unique categories from products
     this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
+    this.filteredCategories = this.categories;
+  }
+
+  /** Search box inside the Category filter dropdown - too many categories to scroll. */
+  filterCategoryOptions(): void {
+    const term = this.categoryFilterText.toLowerCase().trim();
+    this.filteredCategories = !term
+      ? this.categories
+      : this.categories.filter(c => c.toLowerCase().includes(term));
+  }
+
+  onCategoryDropdownOpenedChange(opened: boolean): void {
+    if (opened) {
+      this.categoryFilterText = '';
+      this.filteredCategories = this.categories;
+    }
   }
 
   applyFilter(): void {

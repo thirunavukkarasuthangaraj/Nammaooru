@@ -1869,3 +1869,36 @@ mat-icon, .material-icons {
   text-transform: none !important;
   letter-spacing: normal !important;
 }
+
+/* Search box pinned inside a mat-select panel (e.g. Category dropdowns with
+   40+ options) - the panel is rendered in the CDK overlay, outside any
+   component's own DOM, so this must be global rather than component-scoped. */
+.category-search-box {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.category-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #43a047;
+  }
+}
+
+.category-no-results {
+  padding: 12px;
+  color: #888;
+  font-size: 13px;
+  text-align: center;
+}

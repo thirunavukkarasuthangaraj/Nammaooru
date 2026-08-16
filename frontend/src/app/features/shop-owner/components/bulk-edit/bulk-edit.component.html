@@ -23,7 +23,6 @@
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Search products...</mat-label>
         <input matInput
-               [value]="searchTerm"
                (input)="onSearchChange($event)"
                placeholder="Search by name, SKU, or tags">
         <mat-icon matSuffix>search</mat-icon>
@@ -31,11 +30,22 @@
 
       <mat-form-field appearance="outline" class="filter-field">
         <mat-label>Category</mat-label>
-        <mat-select [value]="selectedCategory" (selectionChange)="onCategoryChange($event.value)">
+        <mat-select [value]="selectedCategory" (selectionChange)="onCategoryChange($event.value)" (openedChange)="onCategoryDropdownOpenedChange($event)">
+          <div class="category-search-box" (click)="$event.stopPropagation()">
+            <input type="text"
+                   [(ngModel)]="categoryFilterText"
+                   (ngModelChange)="filterCategoryOptions()"
+                   placeholder="Search category..."
+                   class="category-search-input"
+                   autocomplete="off">
+          </div>
           <mat-option value="">All Categories</mat-option>
-          <mat-option *ngFor="let category of categories" [value]="category">
+          <mat-option *ngFor="let category of filteredCategories" [value]="category">
             {{ category }}
           </mat-option>
+          <div class="category-no-results" *ngIf="categoryFilterText && filteredCategories.length === 0">
+            No categories match "{{ categoryFilterText }}"
+          </div>
         </mat-select>
       </mat-form-field>
     </div>

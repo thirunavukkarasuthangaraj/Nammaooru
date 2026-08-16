@@ -60,6 +60,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   products: BulkEditProduct[] = [];
   filteredProducts: BulkEditProduct[] = [];
   categories: string[] = [];
+  filteredCategories: string[] = [];
+  categoryFilterText = '';
   loading = false;
   saving = false;
 
@@ -319,6 +321,22 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   private extractCategories(): void {
     this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
+    this.filteredCategories = this.categories;
+  }
+
+  /** Search box inside the Category filter dropdown - 49+ categories is too many to scroll. */
+  filterCategoryOptions(): void {
+    const term = this.categoryFilterText.toLowerCase().trim();
+    this.filteredCategories = !term
+      ? this.categories
+      : this.categories.filter(c => c.toLowerCase().includes(term));
+  }
+
+  onCategoryDropdownOpenedChange(opened: boolean): void {
+    if (opened) {
+      this.categoryFilterText = '';
+      this.filteredCategories = this.categories;
+    }
   }
 
   applyFilters(): void {
