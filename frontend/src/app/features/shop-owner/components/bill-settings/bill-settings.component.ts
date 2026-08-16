@@ -27,6 +27,7 @@ interface BillSettings {
   showSubtotal: boolean; showTotalSavings: boolean; showTaxBreakdown: boolean; showPaymentMethod: boolean;
   showEnglish: boolean; showTamil: boolean; thankYouMessage: string; footerNote: string;
   separatorStyle: 'solid' | 'dashed' | 'dotted' | 'none'; upiId: string; showUpiQrCode: boolean;
+  showAppDownloadLink: boolean; showOrderDetailsLink: boolean;
   autoSendWhatsAppOnPrint: boolean; autoSendEmailOnPrint: boolean;
   customFields: CustomField[]; sectionOrder: string[];
 }
@@ -42,6 +43,7 @@ const DEFAULT_SETTINGS: BillSettings = {
   showSubtotal: true, showTotalSavings: true, showTaxBreakdown: false, showPaymentMethod: true,
   showEnglish: true, showTamil: true, thankYouMessage: 'Thank you for your order!', footerNote: '',
   separatorStyle: 'dashed', upiId: '', showUpiQrCode: false,
+  showAppDownloadLink: true, showOrderDetailsLink: true,
   autoSendWhatsAppOnPrint: false, autoSendEmailOnPrint: false,
   customFields: [
     { label: '', value: '', enabled: false, position: 'header' },

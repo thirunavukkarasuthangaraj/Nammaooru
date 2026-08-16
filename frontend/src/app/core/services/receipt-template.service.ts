@@ -456,6 +456,18 @@ export class ReceiptTemplateService {
         </div>
         ` : ''}
 
+        ${bs.showAppDownloadLink !== false ? `
+        <div class="center" style="font-size: ${Math.max(footerFontSize - 1, 7)}px; margin-top: 4px;">
+          <a href="https://play.google.com/store/apps/details?id=com.nammaooru.app&hl=en_IN" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">📱 Download the Namma Ooru App</a>
+        </div>
+        ` : ''}
+
+        ${bs.showOrderDetailsLink !== false && data.orderRef ? `
+        <div class="center" style="font-size: ${Math.max(footerFontSize - 1, 7)}px; margin-top: 2px;">
+          <a href="https://nammaoorudelivary.in/customer/track-order/${encodeURIComponent(data.orderRef)}" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">🔗 View Order Details</a>
+        </div>
+        ` : ''}
+
         <div class="center" style="font-size: ${Math.max(footerFontSize - 1, 7)}px; margin-top: 4px;">
           <a href="https://nammaoorudelivary.in" target="_blank" rel="noopener" style="color:#000;text-decoration:none;">Powered by Namma Ooru Connect</a>
         </div>

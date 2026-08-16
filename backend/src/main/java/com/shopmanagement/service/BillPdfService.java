@@ -1,5 +1,6 @@
 package com.shopmanagement.service;
 
+import com.lowagie.text.Anchor;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -576,6 +577,15 @@ public class BillPdfService {
             printed.setAlignment(Element.ALIGN_CENTER);
             bodyCell.addElement(printed);
 
+            if (bool(settings, "showAppDownloadLink", true)) {
+                bodyCell.addElement(centeredLink("📱 Download the Namma Ooru App",
+                        "https://play.google.com/store/apps/details?id=com.nammaooru.app&hl=en_IN", footerFont));
+            }
+            if (bool(settings, "showOrderDetailsLink", true) && order.getOrderNumber() != null) {
+                bodyCell.addElement(centeredLink("🔗 View Order Details",
+                        "https://nammaoorudelivary.in/customer/track-order/" + order.getOrderNumber(), footerFont));
+            }
+
             Paragraph powered = new Paragraph("Powered by Namma Ooru Connect", footerFont);
             powered.setAlignment(Element.ALIGN_CENTER);
             bodyCell.addElement(powered);
@@ -828,6 +838,15 @@ public class BillPdfService {
 
     private Paragraph centered(String text, Font font) {
         Paragraph paragraph = new Paragraph(text, font);
+        paragraph.setAlignment(Element.ALIGN_CENTER);
+        return paragraph;
+    }
+
+    private Paragraph centeredLink(String text, String url, Font font) {
+        Anchor anchor = new Anchor(text, font);
+        anchor.setReference(url);
+        Paragraph paragraph = new Paragraph();
+        paragraph.add(anchor);
         paragraph.setAlignment(Element.ALIGN_CENTER);
         return paragraph;
     }
