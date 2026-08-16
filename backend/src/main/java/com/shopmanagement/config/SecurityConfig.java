@@ -136,6 +136,14 @@ public class SecurityConfig {
                                 "/uploads/**",
                                 "/shops/**",
                                 "/delivery-partners/**",
+                                // SockJS's initial "/ws/info" handshake is a plain GET with no
+                                // Authorization header (the browser can't attach one to it), so
+                                // it always 403'd under .anyRequest().authenticated() below -
+                                // WebSocket notifications never connected. There's no STOMP-level
+                                // auth interceptor on this channel either, so this only opens the
+                                // same real-time broadcast/tracking topics the app already exposes.
+                                "/ws/**",
+                                "/ws-native/**",
                                 "/actuator/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
