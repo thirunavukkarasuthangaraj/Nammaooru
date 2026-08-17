@@ -20,6 +20,7 @@ import { BrowseMasterProductsDialogComponent, ProductAssignmentResult } from '..
 import { ProductEditDialogComponent } from '../product-edit-dialog/product-edit-dialog.component';
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 import { SwalService } from '../../../../core/services/swal.service';
+import { ProductCategoryService } from '../../../../core/services/product-category.service';
 
 interface MasterProduct {
   id?: number;
@@ -155,7 +156,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     private shopOwnerProductService: ShopOwnerProductService,
     private offlineStorage: OfflineStorageService,
     private elementRef: ElementRef,
-    private swalService: SwalService
+    private swalService: SwalService,
+    private categoryService: ProductCategoryService
   ) {}
 
   // Scroll event handler for infinite scroll (called from template)
@@ -560,9 +562,20 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   loadCategories(): void {
-    // Extract unique categories from products
-    this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
-    this.filteredCategories = this.categories;
+    // Master category list (includes newly created categories with no products assigned yet)
+    this.categoryService.getCategories(undefined, true, undefined, 0, 500).subscribe({
+      next: (page) => {
+        const masterNames = (page.content || []).map(c => c.name);
+        const productNames = this.products.map(p => p.category).filter(Boolean) as string[];
+        this.categories = [...new Set([...masterNames, ...productNames])].sort();
+        this.filteredCategories = this.categories;
+      },
+      error: () => {
+        // Fall back to categories in use if the master list can't be fetched
+        this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
+        this.filteredCategories = this.categories;
+      }
+    });
   }
 
   /** Filters the Category autocomplete options as the user types directly in the field. */

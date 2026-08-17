@@ -9,6 +9,7 @@ import { VersionService } from '../../../../core/services/version.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineCategories } from '../category-create-dialog/category-create-dialog.component';
+import { ProductCategoryService } from '../../../../core/services/product-category.service';
 
 interface BulkEditProduct {
   id: number;
@@ -95,7 +96,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     private offlineStorage: OfflineStorageService,
     private versionService: VersionService,
     private dialog: MatDialog,
-    private swalService: SwalService
+    private swalService: SwalService,
+    private categoryService: ProductCategoryService
   ) {}
 
   ngOnInit(): void {
@@ -318,8 +320,20 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   }
 
   private extractCategories(): void {
-    this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
-    this.filteredCategories = this.categories;
+    // Master category list (includes newly created categories with no products assigned yet)
+    this.categoryService.getCategories(undefined, true, undefined, 0, 500).subscribe({
+      next: (page) => {
+        const masterNames = (page.content || []).map(c => c.name);
+        const productNames = this.products.map(p => p.category).filter(Boolean) as string[];
+        this.categories = [...new Set([...masterNames, ...productNames])].sort();
+        this.filteredCategories = this.categories;
+      },
+      error: () => {
+        // Fall back to categories in use if the master list can't be fetched
+        this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
+        this.filteredCategories = this.categories;
+      }
+    });
   }
 
   /** Filters the Category autocomplete options as the user types directly in the field. */
