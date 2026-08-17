@@ -565,19 +565,12 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     this.filteredCategories = this.categories;
   }
 
-  /** Search box inside the Category filter dropdown - too many categories to scroll. */
+  /** Filters the Category autocomplete options as the user types directly in the field. */
   filterCategoryOptions(): void {
     const term = this.categoryFilterText.toLowerCase().trim();
     this.filteredCategories = !term
       ? this.categories
       : this.categories.filter(c => c.toLowerCase().includes(term));
-  }
-
-  onCategoryDropdownOpenedChange(opened: boolean): void {
-    if (opened) {
-      this.categoryFilterText = '';
-      this.filteredCategories = this.categories;
-    }
   }
 
   applyFilter(): void {
@@ -793,6 +786,8 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   clearFilters(): void {
     this.searchTerm = '';
     this.selectedCategory = '';
+    this.categoryFilterText = '';
+    this.filteredCategories = this.categories;
     this.selectedStatus = '';
     this.applyFilters(); // Clear filters locally (like mobile app)
   }

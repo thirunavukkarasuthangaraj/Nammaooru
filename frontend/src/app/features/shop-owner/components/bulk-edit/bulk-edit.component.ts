@@ -322,19 +322,12 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.filteredCategories = this.categories;
   }
 
-  /** Search box inside the Category filter dropdown - 49+ categories is too many to scroll. */
+  /** Filters the Category autocomplete options as the user types directly in the field. */
   filterCategoryOptions(): void {
     const term = this.categoryFilterText.toLowerCase().trim();
     this.filteredCategories = !term
       ? this.categories
       : this.categories.filter(c => c.toLowerCase().includes(term));
-  }
-
-  onCategoryDropdownOpenedChange(opened: boolean): void {
-    if (opened) {
-      this.categoryFilterText = '';
-      this.filteredCategories = this.categories;
-    }
   }
 
   applyFilters(): void {

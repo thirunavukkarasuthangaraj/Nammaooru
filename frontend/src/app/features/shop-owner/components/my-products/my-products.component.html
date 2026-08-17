@@ -61,23 +61,23 @@
         <div class="filter-controls">
           <mat-form-field appearance="outline">
             <mat-label>Category</mat-label>
-            <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange($event.value)" (openedChange)="onCategoryDropdownOpenedChange($event)">
-              <div class="category-search-box" (click)="$event.stopPropagation()">
-                <input type="text"
-                       [(ngModel)]="categoryFilterText"
-                       (ngModelChange)="filterCategoryOptions()"
-                       placeholder="Search category..."
-                       class="category-search-input"
-                       autocomplete="off">
-              </div>
+            <input matInput
+                   type="text"
+                   [(ngModel)]="categoryFilterText"
+                   (ngModelChange)="filterCategoryOptions()"
+                   [matAutocomplete]="categoryAuto"
+                   placeholder="All Categories"
+                   autocomplete="off">
+            <mat-icon matSuffix>search</mat-icon>
+            <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryChange($event.option.value)">
               <mat-option value="">All Categories</mat-option>
               <mat-option *ngFor="let category of filteredCategories" [value]="category">
                 {{ category }}
               </mat-option>
-              <div class="category-no-results" *ngIf="categoryFilterText && filteredCategories.length === 0">
+              <mat-option *ngIf="categoryFilterText && filteredCategories.length === 0" disabled>
                 No categories match "{{ categoryFilterText }}"
-              </div>
-            </mat-select>
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
