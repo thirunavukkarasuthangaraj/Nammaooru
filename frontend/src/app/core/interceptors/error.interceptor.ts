@@ -2,15 +2,15 @@ import { Injectable } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { SwalService } from '../services/swal.service';
 
 @Injectable()
 export class ErrorInterceptor implements HttpInterceptor {
 
   constructor(
-    private snackBar: MatSnackBar,
+    private swal: SwalService,
     private authService: AuthService,
     private router: Router
   ) {}
@@ -81,17 +81,9 @@ export class ErrorInterceptor implements HttpInterceptor {
             break;
         }
 
-        // Don't show snackbar for auth endpoints or customer endpoints to avoid duplicate messages
+        // Don't show toast for auth endpoints or customer endpoints to avoid duplicate messages
         if (!request.url.includes('/auth/') && !request.url.includes('/customer/')) {
-          // Longer duration for auth errors so user can read the message
-          const duration = error.status === 401 ? 8000 : 5000;
-
-          this.snackBar.open(errorMessage, 'Close', {
-            duration: duration,
-            horizontalPosition: 'center',
-            verticalPosition: 'top',
-            panelClass: error.status === 401 ? ['error-snackbar', 'auth-error'] : ['error-snackbar']
-          });
+          this.swal.toast(errorMessage, 'error');
         }
 
         // Preserve the error message for downstream handlers
