@@ -5,6 +5,7 @@ import '../../../services/shop_api_service.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/localization/language_provider.dart';
 import 'shop_details_modern_screen.dart';
 import 'cart_screen.dart';
 
@@ -93,6 +94,7 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
                 'id': categoryData['id']?.toString() ?? '1',
                 'name': categoryData['name'] ?? 'Category',
                 'displayName': categoryData['displayName'] ?? categoryData['name'],
+                'displayNameTamil': categoryData['displayNameTamil'],
                 'searchName': categoryData['name'] ?? 'Category', // Use name for API calls
                 'description': categoryData['description'] ?? '',
                 'productCount': categoryData['productCount'] ?? 0,
@@ -439,7 +441,12 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
         ? category['icon'] as IconData
         : _getIconFromString(category['icon']?.toString());
     final int productCount = category['productCount'] as int? ?? 0;
-    final String displayName = category['displayName']?.toString() ?? category['name']?.toString() ?? 'Category';
+    // listen: true (default) so this rebuilds live when the user toggles language
+    final isTamil = Provider.of<LanguageProvider>(context).currentLanguage == 'ta';
+    final tamilName = category['displayNameTamil']?.toString();
+    final String displayName = (isTamil && tamilName != null && tamilName.isNotEmpty)
+        ? tamilName
+        : (category['displayName']?.toString() ?? category['name']?.toString() ?? 'Category');
     final String description = category['description']?.toString() ?? '';
 
     return GestureDetector(

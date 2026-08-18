@@ -127,12 +127,12 @@ public class CustomerShopController {
         category.setId(String.valueOf(categoryName.hashCode())); // Simple ID generation
         category.setName(categoryName);
 
-        // Fetch actual category from database to get iconUrl (case-insensitive match)
+        // Fetch actual category from database to get iconUrl, Tamil name, etc. (case-insensitive match)
         Optional<ProductCategory> categoryEntity = categoryRepository.findByNameIgnoreCase(categoryName);
 
-        // Add Tamil translations for common categories
-        String displayName = getCategoryDisplayName(categoryName);
-        category.setDisplayName(displayName);
+        // Names come from the DB (product_categories.name / .name_tamil) — no hardcoded translations.
+        category.setDisplayName(categoryEntity.map(ProductCategory::getName).orElse(categoryName));
+        category.setDisplayNameTamil(categoryEntity.map(ProductCategory::getNameTamil).orElse(null));
         category.setDescription("Products in " + categoryName + " category");
 
         // Get actual product count for this category in this shop
@@ -150,25 +150,6 @@ public class CustomerShopController {
         });
 
         return category;
-    }
-
-    private String getCategoryDisplayName(String categoryName) {
-        switch (categoryName.toLowerCase()) {
-            case "grocery":
-                return "மளிகை / Grocery";
-            case "vegetables":
-                return "காய்கறிகள் / Vegetables";
-            case "fruits":
-                return "பழங்கள் / Fruits";
-            case "dairy":
-                return "பால் & முட்டை / Dairy";
-            case "medicine":
-                return "மருந்து / Medicine";
-            case "rice":
-                return "அரிசி & தானியங்கள் / Rice & Grains";
-            default:
-                return categoryName;
-        }
     }
 
     private String getCategoryIcon(String categoryName) {
