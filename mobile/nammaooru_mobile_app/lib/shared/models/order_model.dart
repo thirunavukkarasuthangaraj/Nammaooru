@@ -33,7 +33,9 @@ class OrderModel {
   final DateTime? estimatedDeliveryTime;
   final DateTime? actualDeliveryTime;
   final List<OrderStatusUpdate> statusHistory;
-  
+  final String? deliveryType; // e.g. HOME_DELIVERY, SELF_PICKUP
+  final bool assignedToDeliveryPartner;
+
   OrderModel({
     required this.id,
     required this.customerId,
@@ -59,6 +61,8 @@ class OrderModel {
     this.estimatedDeliveryTime,
     this.actualDeliveryTime,
     this.statusHistory = const [],
+    this.deliveryType,
+    this.assignedToDeliveryPartner = false,
   });
 
   OrderModel copyWith({
@@ -86,6 +90,8 @@ class OrderModel {
     DateTime? estimatedDeliveryTime,
     DateTime? actualDeliveryTime,
     List<OrderStatusUpdate>? statusHistory,
+    String? deliveryType,
+    bool? assignedToDeliveryPartner,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -112,16 +118,19 @@ class OrderModel {
       estimatedDeliveryTime: estimatedDeliveryTime ?? this.estimatedDeliveryTime,
       actualDeliveryTime: actualDeliveryTime ?? this.actualDeliveryTime,
       statusHistory: statusHistory ?? this.statusHistory,
+      deliveryType: deliveryType ?? this.deliveryType,
+      assignedToDeliveryPartner: assignedToDeliveryPartner ?? this.assignedToDeliveryPartner,
     );
   }
-  
+
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
-      id: json['id'] ?? '',
-      customerId: json['customerId'] ?? '',
+      // Backend sends numeric ids (Long) — stringify so this doesn't throw on real API responses
+      id: json['id']?.toString() ?? '',
+      customerId: json['customerId']?.toString() ?? '',
       customerName: json['customerName'] ?? '',
       customerPhone: json['customerPhone'] ?? '',
-      shopId: json['shopId'] ?? '',
+      shopId: json['shopId']?.toString() ?? '',
       shopName: json['shopName'] ?? '',
       deliveryPartnerId: json['deliveryPartnerId'],
       deliveryPartnerName: json['deliveryPartnerName'],
@@ -149,9 +158,11 @@ class OrderModel {
       statusHistory: (json['statusHistory'] as List? ?? [])
           .map((status) => OrderStatusUpdate.fromJson(status))
           .toList(),
+      deliveryType: json['deliveryType'],
+      assignedToDeliveryPartner: json['assignedToDeliveryPartner'] == true,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -178,26 +189,38 @@ class OrderModel {
       'estimatedDeliveryTime': estimatedDeliveryTime?.toIso8601String(),
       'actualDeliveryTime': actualDeliveryTime?.toIso8601String(),
       'statusHistory': statusHistory.map((status) => status.toJson()).toList(),
+      'deliveryType': deliveryType,
+      'assignedToDeliveryPartner': assignedToDeliveryPartner,
     };
   }
 
+  // Backend enum: PENDING, CONFIRMED, PREPARING, READY, READY_FOR_PICKUP,
+  // OUT_FOR_DELIVERY, DELIVERED, COMPLETED, CANCELLED, REFUNDED,
+  // SELF_PICKUP_COLLECTED, RETURNING_TO_SHOP, RETURNED_TO_SHOP
   static OrderStatus _statusFromString(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
         return OrderStatus.pending;
       case 'accepted':
+      case 'confirmed':
         return OrderStatus.accepted;
       case 'preparing':
         return OrderStatus.preparing;
+      case 'ready':
       case 'readyforpickup':
       case 'ready_for_pickup':
         return OrderStatus.readyForPickup;
       case 'outfordelivery':
       case 'out_for_delivery':
+      case 'returning_to_shop':
         return OrderStatus.outForDelivery;
       case 'delivered':
+      case 'completed':
+      case 'self_pickup_collected':
+      case 'returned_to_shop':
         return OrderStatus.delivered;
       case 'cancelled':
+      case 'refunded':
         return OrderStatus.cancelled;
       default:
         return OrderStatus.pending;

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ShopModel {
-  final String id;
+  final String id; // Numeric DB id — used by PUT /shops/{id}
+  final String shopId; // Business shop code (e.g. SHB76AAF72) — used by /shops/{shopId}/orders
   final String name;
   final String description;
   final String ownerId;
@@ -22,11 +23,13 @@ class ShopModel {
   final int estimatedDeliveryTime;
   final List<String> paymentMethods;
   final bool isActive;
+  final bool selfDeliveryEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
-  
+
   ShopModel({
     required this.id,
+    this.shopId = '',
     required this.name,
     required this.description,
     required this.ownerId,
@@ -47,13 +50,15 @@ class ShopModel {
     this.estimatedDeliveryTime = 30,
     this.paymentMethods = const [],
     this.isActive = true,
+    this.selfDeliveryEnabled = false,
     required this.createdAt,
     required this.updatedAt,
   });
-  
+
   factory ShopModel.fromJson(Map<String, dynamic> json) {
     return ShopModel(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
+      shopId: json['shopId']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       ownerId: json['ownerId'] ?? '',
@@ -75,6 +80,7 @@ class ShopModel {
       estimatedDeliveryTime: json['estimatedDeliveryTime'] ?? 30,
       paymentMethods: List<String>.from(json['paymentMethods'] ?? []),
       isActive: json['isActive'] ?? true,
+      selfDeliveryEnabled: json['selfDeliveryEnabled'] == true,
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
     );
@@ -83,6 +89,7 @@ class ShopModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'shopId': shopId,
       'name': name,
       'description': description,
       'ownerId': ownerId,
@@ -103,6 +110,7 @@ class ShopModel {
       'estimatedDeliveryTime': estimatedDeliveryTime,
       'paymentMethods': paymentMethods,
       'isActive': isActive,
+      'selfDeliveryEnabled': selfDeliveryEnabled,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };

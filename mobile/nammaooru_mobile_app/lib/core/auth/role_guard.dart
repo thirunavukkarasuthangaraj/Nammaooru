@@ -84,14 +84,20 @@ class RoleGuard {
       return userRole == 'CUSTOMER' || userRole == 'USER';
     }
 
+    if (path.startsWith('/shop-owner/')) {
+      return userRole == 'SHOP_OWNER';
+    }
+
     return true;
   }
-  
+
   static String _getHomeRouteForRole(String? userRole) {
     switch (userRole) {
       case 'CUSTOMER':
       case 'USER':  // USER role from backend maps to customer dashboard
         return '/customer/dashboard';
+      case 'SHOP_OWNER':
+        return '/shop-owner/dashboard';
       default:
         return '/login';
     }

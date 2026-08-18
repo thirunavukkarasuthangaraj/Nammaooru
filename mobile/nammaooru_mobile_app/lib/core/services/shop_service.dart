@@ -34,6 +34,23 @@ class ShopService {
     }
   }
 
+  /// Toggle self-delivery for the shop owner's own shop (owner delivers orders
+  /// themselves instead of a delivery partner being searched).
+  Future<void> updateSelfDelivery(String shopId, bool enabled) async {
+    try {
+      final response = await ApiClient.put(
+        '/shops/$shopId',
+        data: {'selfDeliveryEnabled': enabled},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}: Failed to update self-delivery setting');
+      }
+    } catch (e) {
+      throw Exception('Error updating self-delivery setting: $e');
+    }
+  }
+
   Future<ShopListResponse> getShops({
     int page = 0,
     int size = 20,

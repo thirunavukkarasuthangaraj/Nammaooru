@@ -28,7 +28,13 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
   final ShopService _shopService = ShopService();
   // Resolved from /shops/my-shop for the logged-in owner — never hardcode:
   // a fixed ID shows another shop's (usually empty) order list.
+  // _shopId is the business shop code (used by /shops/{shopId}/orders);
+  // _shopNumericId is the DB id (used by PUT /shops/{id}).
   String? _shopId;
+  String? _shopNumericId;
+  // True when this shop delivers orders itself (no delivery partner search)
+  bool _selfDeliveryEnabled = false;
+  bool _isUpdatingSelfDelivery = false;
 
   @override
   void initState() {
@@ -51,6 +57,8 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
       if (_shopId == null || _shopId!.isEmpty) {
         final shop = await _shopService.getMyShop();
         _shopId = shop.shopId;
+        _shopNumericId = shop.id.toString();
+        _selfDeliveryEnabled = shop.selfDeliveryEnabled;
         if (_shopId == null || _shopId!.isEmpty) {
           throw Exception('No shop linked to this account');
         }
@@ -153,6 +161,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
         children: [
           _buildTabBar(primaryColor),
           _buildStatsRow(),
+          _buildSelfDeliveryBanner(primaryColor),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -266,6 +275,73 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildSelfDeliveryBanner(Color primaryColor) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.delivery_dining, color: primaryColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Self Delivery',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  _selfDeliveryEnabled
+                      ? 'You deliver orders yourself — no delivery partner search'
+                      : 'Off — orders search for a delivery partner',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _selfDeliveryEnabled,
+            activeColor: primaryColor,
+            onChanged: _isUpdatingSelfDelivery ? null : _toggleSelfDelivery,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggleSelfDelivery(bool value) async {
+    if (_shopNumericId == null || _shopNumericId!.isEmpty) return;
+
+    setState(() => _isUpdatingSelfDelivery = true);
+    try {
+      await _shopService.updateSelfDelivery(_shopNumericId!, value);
+      setState(() {
+        _selfDeliveryEnabled = value;
+        _isUpdatingSelfDelivery = false;
+      });
+      Helpers.showSnackBar(
+        context,
+        value ? 'Self delivery turned on' : 'Self delivery turned off',
+      );
+    } catch (e) {
+      setState(() => _isUpdatingSelfDelivery = false);
+      print('Error updating self delivery: $e');
+      Helpers.showSnackBar(context, 'Failed to update self delivery: $e', isError: true);
+    }
   }
 
   Widget _buildOrdersList() {
@@ -522,6 +598,33 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
         );
 
       case OrderStatus.readyForPickup:
+        // Self-delivery shop: owner leaves with the order themselves, no driver search
+        if (_selfDeliveryEnabled) {
+          return Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _startSelfDelivery(order),
+                  icon: const Icon(Icons.delivery_dining, size: 18),
+                  label: const Text('Start Delivery'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF9800),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: () => _callCustomer(order),
+                icon: const Icon(Icons.phone),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          );
+        }
         return Row(
           children: [
             Expanded(
@@ -545,6 +648,21 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
         );
 
       case OrderStatus.outForDelivery:
+        // Self-delivery shop: owner marks delivered after handing over to the customer
+        if (_selfDeliveryEnabled) {
+          return SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _completeSelfDelivery(order),
+              icon: const Icon(Icons.check_circle, size: 18),
+              label: const Text('Mark Delivered'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          );
+        }
         return Text(
           'Out for delivery',
           style: TextStyle(
@@ -820,6 +938,67 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen>
     } catch (e) {
       print('Error marking order ready: $e');
       Helpers.showSnackBar(context, 'Failed to mark order ready: $e', isError: true);
+    }
+  }
+
+  // Self-delivery: shop owner leaves the shop with the order
+  Future<void> _startSelfDelivery(OrderModel order) async {
+    try {
+      final orderId = int.parse(order.id);
+      await _orderApiService.startSelfDelivery(orderId);
+
+      setState(() {
+        final index = _orders.indexWhere((o) => o.id == order.id);
+        if (index != -1) {
+          _orders[index] = order.copyWith(status: OrderStatus.outForDelivery);
+        }
+      });
+
+      Helpers.showSnackBar(context, 'Order is out for delivery');
+    } catch (e) {
+      print('Error starting self delivery: $e');
+      Helpers.showSnackBar(context, 'Failed to start delivery: $e', isError: true);
+    }
+  }
+
+  // Self-delivery: shop owner handed the order to the customer
+  Future<void> _completeSelfDelivery(OrderModel order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Delivered'),
+        content: Text('Confirm that order #${order.id} has been handed over to the customer?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Yes, Delivered'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final orderId = int.parse(order.id);
+      await _orderApiService.completeSelfDelivery(orderId);
+
+      setState(() {
+        final index = _orders.indexWhere((o) => o.id == order.id);
+        if (index != -1) {
+          _orders[index] = order.copyWith(status: OrderStatus.delivered);
+        }
+      });
+
+      Helpers.showSnackBar(context, 'Order delivered successfully');
+    } catch (e) {
+      print('Error completing self delivery: $e');
+      Helpers.showSnackBar(context, 'Failed to mark as delivered: $e', isError: true);
     }
   }
 

@@ -204,6 +204,40 @@ class OrderApiService {
     }
   }
 
+  // Self-delivery shop: owner leaves with the order (READY_FOR_PICKUP -> OUT_FOR_DELIVERY)
+  Future<Map<String, dynamic>> startSelfDelivery(int orderId) async {
+    try {
+      Logger.order('Starting self delivery for order: $orderId');
+
+      final response = await _apiService.post(
+        '/orders/$orderId/self-delivery/start',
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to start self delivery', 'ORDER', e);
+      rethrow;
+    }
+  }
+
+  // Self-delivery shop: owner handed the order to the customer (OUT_FOR_DELIVERY -> DELIVERED)
+  Future<Map<String, dynamic>> completeSelfDelivery(int orderId) async {
+    try {
+      Logger.order('Completing self delivery for order: $orderId');
+
+      final response = await _apiService.post(
+        '/orders/$orderId/self-delivery/complete',
+        includeAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to complete self delivery', 'ORDER', e);
+      rethrow;
+    }
+  }
+
   // Cancel Order
   Future<Map<String, dynamic>> cancelOrder({
     required int orderId,

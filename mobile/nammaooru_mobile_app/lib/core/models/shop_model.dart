@@ -29,6 +29,7 @@ class ShopModel {
   final bool isActive;
   final bool isVerified;
   final bool isFeatured;
+  final bool selfDeliveryEnabled;
   final double? rating;
   final int? totalOrders;
   final double? totalRevenue;
@@ -70,6 +71,7 @@ class ShopModel {
     required this.isActive,
     required this.isVerified,
     required this.isFeatured,
+    this.selfDeliveryEnabled = false,
     this.rating,
     this.totalOrders,
     this.totalRevenue,
@@ -113,6 +115,7 @@ class ShopModel {
       isActive: json['isActive'] ?? false,
       isVerified: json['isVerified'] ?? false,
       isFeatured: json['isFeatured'] ?? false,
+      selfDeliveryEnabled: json['selfDeliveryEnabled'] == true,
       rating: json['rating']?.toDouble(),
       totalOrders: json['totalOrders'],
       totalRevenue: json['totalRevenue']?.toDouble(),
@@ -159,6 +162,7 @@ class ShopModel {
       'isActive': isActive,
       'isVerified': isVerified,
       'isFeatured': isFeatured,
+      'selfDeliveryEnabled': selfDeliveryEnabled,
       'rating': rating,
       'totalOrders': totalOrders,
       'totalRevenue': totalRevenue,
