@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { ProductCategoryService } from '@core/services/product-category.service';
 import { environment } from '../../../../../environments/environment';
 import { SwalService } from '@core/services/swal.service';
@@ -9,6 +10,7 @@ import { finalize } from 'rxjs/operators';
 interface Category {
   id: number;
   name: string;
+  nameTamil?: string;
   description: string;
   productCount: number;
   isActive: boolean;
@@ -142,6 +144,9 @@ interface Category {
                 </div>
                 <div class="category-info">
                   <h3 class="category-name" [title]="category.name">{{ category.name }}</h3>
+                  <div class="category-name-tamil" *ngIf="category.nameTamil">
+                    {{ category.nameTamil }}
+                  </div>
                   <div class="category-meta">
                     <span class="meta-item">{{ category.productCount || 0 }} products</span>
                     <span class="meta-dot"></span>
@@ -243,11 +248,23 @@ interface Category {
             <!-- Category Details -->
             <div class="form-row">
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Category Name</mat-label>
-                <input matInput formControlName="name" placeholder="Enter category name">
+                <mat-label>Category Name (English)</mat-label>
+                <input matInput formControlName="name" placeholder="Enter category name in English">
                 <mat-icon matPrefix>category</mat-icon>
                 <mat-error *ngIf="quickAddForm.get('name')?.hasError('required')">
                   Category name is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Category Name (Tamil)</mat-label>
+                <input matInput formControlName="nameTamil" placeholder="தமிழில் வகைப் பெயரை உள்ளிடவும்">
+                <mat-icon matPrefix>translate</mat-icon>
+                <mat-hint>Used for display; filtering continues to use the English name</mat-hint>
+                <mat-error *ngIf="quickAddForm.get('nameTamil')?.hasError('maxlength')">
+                  Tamil name must be 100 characters or fewer
                 </mat-error>
               </mat-form-field>
             </div>
@@ -619,6 +636,16 @@ interface Category {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .category-name-tamil {
+      color: #546e7a;
+      font-size: 13px;
+      line-height: 1.35;
+      margin-bottom: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .category-meta {
@@ -1089,11 +1116,13 @@ export class CategoriesComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
+    private router: Router,
     private categoryService: ProductCategoryService,
     private swal: SwalService
   ) {
     this.quickAddForm = this.fb.group({
       name: ['', Validators.required],
+      nameTamil: ['', Validators.maxLength(100)],
       description: [''],
       icon: ['shopping_basket', Validators.required],
       color: ['#10b981', Validators.required]
@@ -1122,6 +1151,7 @@ export class CategoriesComponent implements OnInit {
           this.categories = categories.map((cat: any) => ({
             id: cat.id,
             name: cat.name,
+            nameTamil: cat.nameTamil || undefined,
             description: cat.description || '',
             productCount: cat.productCount || 0,
             isActive: cat.active !== false,
@@ -1203,10 +1233,12 @@ export class CategoriesComponent implements OnInit {
     this.loading = true;
     this.categoryService.updateCategory(category.id, {
       name: formData.name,
+      nameTamil: formData.nameTamil?.trim() || undefined,
       description: formData.description || ''
     } as any).subscribe({
       next: (response: any) => {
         category.name = response.name;
+        category.nameTamil = response.nameTamil || undefined;
         category.description = response.description || '';
 
         // A new image was picked - upload it as a second step, then finish
@@ -1243,6 +1275,7 @@ export class CategoriesComponent implements OnInit {
   private uploadCategoryWithImage(categoryData: any): void {
     const formData = new FormData();
     formData.append('name', categoryData.name);
+    formData.append('nameTamil', categoryData.nameTamil?.trim() || '');
     formData.append('description', categoryData.description || '');
     if (this.selectedImageFile) {
       formData.append('image', this.selectedImageFile);
@@ -1254,6 +1287,7 @@ export class CategoriesComponent implements OnInit {
         const newCategory: Category = {
           id: response.id,
           name: response.name,
+          nameTamil: response.nameTamil || undefined,
           description: response.description || '',
           productCount: 0,
           isActive: response.isActive !== false,
@@ -1351,6 +1385,7 @@ export class CategoriesComponent implements OnInit {
     this.editingCategory = category;
     this.quickAddForm.patchValue({
       name: category.name,
+      nameTamil: category.nameTamil || '',
       description: category.description || ''
     });
     // Show the category's current image as the starting preview
@@ -1360,14 +1395,14 @@ export class CategoriesComponent implements OnInit {
   }
 
   viewProducts(category: Category): void {
-    console.log('View products for category:', category);
-    // Navigate to products filtered by category
+    this.router.navigate(['/shop-owner/my-products'], { queryParams: { category: category.name } });
   }
 
   duplicateCategory(category: Category): void {
     // Create the copy through the API so it survives a refresh
     this.uploadCategoryWithImage({
       name: `${category.name} (Copy)`,
+      nameTamil: category.nameTamil || '',
       description: category.description || ''
     });
   }

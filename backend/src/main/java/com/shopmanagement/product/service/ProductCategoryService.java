@@ -184,6 +184,7 @@ public class ProductCategoryService {
         
         ProductCategory category = ProductCategory.builder()
                 .name(request.getName())
+                .nameTamil(request.getNameTamil())
                 .description(request.getDescription())
                 .slug(slug)
                 .parent(parent)
@@ -229,6 +230,7 @@ public class ProductCategoryService {
         
         // Update fields
         category.setName(request.getName());
+        category.setNameTamil(request.getNameTamil());
         category.setDescription(request.getDescription());
         category.setSlug(slug);
         category.setIsActive(request.getIsActive());

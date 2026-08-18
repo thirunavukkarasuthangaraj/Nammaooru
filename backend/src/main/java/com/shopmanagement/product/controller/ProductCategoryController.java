@@ -158,6 +158,7 @@ public class ProductCategoryController {
     @PostMapping(value = "/with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductCategoryResponse>> createCategoryWithImage(
             @RequestParam("name") String name,
+            @RequestParam(value = "nameTamil", required = false) String nameTamil,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "parentId", required = false) Long parentId,
             @RequestParam(value = "image", required = false) MultipartFile imageFile) {
@@ -168,6 +169,7 @@ public class ProductCategoryController {
             // Create category request
             ProductCategoryRequest request = ProductCategoryRequest.builder()
                     .name(name)
+                    .nameTamil(nameTamil)
                     .description(description)
                     .parentId(parentId)
                     .isActive(true)
