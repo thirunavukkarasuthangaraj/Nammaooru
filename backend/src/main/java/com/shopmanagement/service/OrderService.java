@@ -613,15 +613,20 @@ public class OrderService {
         // Track if push notification was sent successfully
         boolean pushNotificationSent = false;
 
+        // Self-delivery shops never get a driver assigned, so there is no later "driver assigned"
+        // event to notify the customer on - send the READY_FOR_PICKUP FCM immediately for them.
+        boolean readyForPickupNeedsImmediateFcm = status == Order.OrderStatus.READY_FOR_PICKUP && isSelfDeliveryShop(order);
+
         // Skip FCM for READY_FOR_PICKUP - customer will be notified when driver is actually assigned
         // This prevents sending "driver assigned" message before driver is actually assigned
-        if (status == Order.OrderStatus.READY_FOR_PICKUP) {
+        if (status == Order.OrderStatus.READY_FOR_PICKUP && !readyForPickupNeedsImmediateFcm) {
             log.info("⏭️ Skipping customer FCM for READY_FOR_PICKUP - will notify when driver assigned");
         }
 
         // Send push notification to customer for all status updates (try push first)
-        // Skip READY_FOR_PICKUP as it's handled by OrderAssignmentService when driver is actually assigned
-        if (status != Order.OrderStatus.READY_FOR_PICKUP) {
+        // Skip READY_FOR_PICKUP as it's handled by OrderAssignmentService when driver is actually assigned -
+        // except for self-delivery shops, which need it sent right away (see above).
+        if (status != Order.OrderStatus.READY_FOR_PICKUP || readyForPickupNeedsImmediateFcm) {
         try {
             log.info("🔔 Starting push notification process for order: {}", order.getOrderNumber());
 
