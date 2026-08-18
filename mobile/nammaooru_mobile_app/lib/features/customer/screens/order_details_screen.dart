@@ -855,28 +855,37 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     int added = 0;
     int unavailable = 0;
 
-    for (final item in order.items) {
-      try {
-        final productId = int.tryParse(item.productId);
-        if (productId == null) {
+    try {
+      // Fetch each item's current product data in parallel - sequential awaits here
+      // added up to minutes of a full-screen blocking spinner on multi-item orders.
+      final fetched = await Future.wait(order.items.map((item) async {
+        try {
+          final productId = int.tryParse(item.productId);
+          if (productId == null) return null;
+          final response =
+              await shopApiService.getShopProductById(productId).timeout(const Duration(seconds: 10));
+          final data = (response['data'] ?? response) as Map<String, dynamic>;
+          return MapEntry(ProductModel.fromJson(data), item.quantity);
+        } catch (e) {
+          return null;
+        }
+      }));
+
+      for (final entry in fetched) {
+        if (entry == null) {
           unavailable++;
           continue;
         }
-        final response = await shopApiService.getShopProductById(productId);
-        final data = (response['data'] ?? response) as Map<String, dynamic>;
-        final product = ProductModel.fromJson(data);
-        final ok = await cartProvider.addToCart(product, quantity: item.quantity, clearCartConfirmed: true);
+        final ok = await cartProvider.addToCart(entry.key, quantity: entry.value, clearCartConfirmed: true);
         if (ok) {
           added++;
         } else {
           unavailable++;
         }
-      } catch (e) {
-        unavailable++;
       }
+    } finally {
+      if (mounted) Navigator.pop(context); // always close the loading dialog
     }
-
-    if (mounted) Navigator.pop(context); // close loading dialog
 
     if (added == 0) {
       _showSnackBar('None of these items are available right now', Colors.red);
