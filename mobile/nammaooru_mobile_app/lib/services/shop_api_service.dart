@@ -338,10 +338,13 @@ class ShopApiService {
   }
 
   // Get Shop Product by ID
+  // NOTE: this hits /shop-products/{id}, which is restricted to SHOP_OWNER/ADMIN
+  // on the backend and always 403s for customer accounts. Kept as-is since nothing
+  // outside this class called it before; use getCustomerProductDetails for customer-facing code.
   Future<Map<String, dynamic>> getShopProductById(int productId) async {
     try {
       Logger.api('Fetching shop product: $productId');
-      
+
       final response = await _apiService.get(
         '/shop-products/$productId',
         includeAuth: false,
@@ -350,6 +353,23 @@ class ShopApiService {
       return response;
     } catch (e) {
       Logger.e('Failed to fetch shop product', 'SHOP', e);
+      rethrow;
+    }
+  }
+
+  // Get a single product's current details the way a customer is actually allowed to -
+  // no SHOP_OWNER/ADMIN role required, unlike getShopProductById above.
+  Future<Map<String, dynamic>> getCustomerProductDetails(int shopId, int productId) async {
+    try {
+      Logger.api('Fetching customer product details: shop $shopId, product $productId');
+
+      final response = await _apiService.get(
+        '/customer/shops/$shopId/products/$productId',
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to fetch customer product details', 'SHOP', e);
       rethrow;
     }
   }

@@ -727,9 +727,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       final fetched = await Future.wait(order.items.map((item) async {
         try {
           final productId = int.tryParse(item.productId);
-          if (productId == null) return null;
-          final response =
-              await shopApiService.getShopProductById(productId).timeout(const Duration(seconds: 10));
+          final shopId = int.tryParse(item.shopId);
+          if (productId == null || shopId == null) return null;
+          final response = await shopApiService
+              .getCustomerProductDetails(shopId, productId)
+              .timeout(const Duration(seconds: 10));
           final data = (response['data'] ?? response) as Map<String, dynamic>;
           return MapEntry(ProductModel.fromJson(data), item.quantity);
         } catch (e) {

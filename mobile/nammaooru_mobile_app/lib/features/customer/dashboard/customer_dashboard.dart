@@ -1751,10 +1751,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       final fetched = await Future.wait(rawItems.map((item) async {
         try {
           final productId = int.tryParse((item['productId'] ?? item['shopProductId'] ?? '').toString());
+          final shopId = int.tryParse((item['shopId'] ?? '').toString());
           final quantity = (item['quantity'] ?? 1) as int;
-          if (productId == null) return null;
-          final response =
-              await shopApiService.getShopProductById(productId).timeout(const Duration(seconds: 10));
+          if (productId == null || shopId == null) return null;
+          final response = await shopApiService
+              .getCustomerProductDetails(shopId, productId)
+              .timeout(const Duration(seconds: 10));
           final data = (response['data'] ?? response) as Map<String, dynamic>;
           return MapEntry(ProductModel.fromJson(data), quantity);
         } catch (e) {
