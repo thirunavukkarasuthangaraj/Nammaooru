@@ -74,7 +74,10 @@ public class OrderAssignmentRetryService {
             }
 
             // Filter to only unassigned orders (no accepted OrderAssignment)
+            // Self-delivery shops never get a delivery partner assignment by design -
+            // exclude them here or this job endlessly retries (and can wrongly auto-assign) their orders.
             List<Order> unassignedOrders = readyOrders.stream()
+                .filter(order -> !isSelfDeliveryShop(order))
                 .filter(order -> {
                     List<OrderAssignment> assignments = orderAssignmentRepository.findByOrderId(order.getId());
                     return assignments.stream().noneMatch(a ->
@@ -279,6 +282,11 @@ public class OrderAssignmentRetryService {
             }
             return false;
         });
+    }
+
+    // Self-delivery shops deliver orders themselves - never eligible for driver auto-assignment/retry
+    private boolean isSelfDeliveryShop(Order order) {
+        return order.getShop() != null && Boolean.TRUE.equals(order.getShop().getSelfDeliveryEnabled());
     }
 
     /**

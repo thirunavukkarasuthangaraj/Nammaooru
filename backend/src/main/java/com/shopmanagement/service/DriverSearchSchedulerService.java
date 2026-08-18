@@ -62,6 +62,15 @@ public class DriverSearchSchedulerService {
 
     private void processDriverSearch(Order order) {
         try {
+            // Self-delivery shops deliver their own orders - never search for/assign a driver,
+            // even if driverSearchStartedAt was set before self-delivery was turned on for this shop.
+            if (order.getShop() != null && Boolean.TRUE.equals(order.getShop().getSelfDeliveryEnabled())) {
+                log.info("Order {} belongs to a self-delivery shop - stopping driver search", order.getOrderNumber());
+                order.setDriverSearchCompleted(true);
+                orderRepository.save(order);
+                return;
+            }
+
             LocalDateTime searchStarted = order.getDriverSearchStartedAt();
             long minutesElapsed = ChronoUnit.MINUTES.between(searchStarted, LocalDateTime.now());
             int attempts = order.getDriverSearchAttempts() != null ? order.getDriverSearchAttempts() : 0;
