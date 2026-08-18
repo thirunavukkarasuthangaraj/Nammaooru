@@ -7,6 +7,9 @@ import '../../../core/services/order_service.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/language_provider.dart';
+import '../../../services/shop_api_service.dart';
+import '../../../shared/models/product_model.dart';
+import '../../../shared/providers/cart_provider.dart';
 import 'order_details_screen.dart';
 import '../orders/order_tracking_screen.dart';
 
@@ -682,16 +685,71 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   }
 
   Future<void> _reorderItems(Order order) async {
-    try {
-      final result = await _orderService.reorderItems(order.id);
+    if (order.items.isEmpty) {
+      _showSnackBar('This order has no items to reorder', Colors.red);
+      return;
+    }
 
-      if (result['success']) {
-        _showSnackBar('Items added to cart', Colors.green);
-      } else {
-        _showSnackBar(result['message'] ?? 'Failed to add items to cart', Colors.red);
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // All items in an order belong to the same shop - only need to check the first one.
+    if (cartProvider.items.isNotEmpty &&
+        cartProvider.items.first.product.shopId != order.items.first.shopId) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Replace Cart?'),
+          content: const Text(
+              'Your cart has items from a different shop. Reordering will clear it first. Continue?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Continue')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      cartProvider.clearCart();
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final shopApiService = ShopApiService();
+    int added = 0;
+    int unavailable = 0;
+
+    for (final item in order.items) {
+      try {
+        final productId = int.tryParse(item.productId);
+        if (productId == null) {
+          unavailable++;
+          continue;
+        }
+        final response = await shopApiService.getShopProductById(productId);
+        final data = (response['data'] ?? response) as Map<String, dynamic>;
+        final product = ProductModel.fromJson(data);
+        final ok = await cartProvider.addToCart(product, quantity: item.quantity, clearCartConfirmed: true);
+        if (ok) {
+          added++;
+        } else {
+          unavailable++;
+        }
+      } catch (e) {
+        unavailable++;
       }
-    } catch (e) {
-      _showSnackBar('Failed to add items to cart', Colors.red);
+    }
+
+    if (mounted) Navigator.pop(context); // close loading dialog
+
+    if (added == 0) {
+      _showSnackBar('None of these items are available right now', Colors.red);
+    } else if (unavailable > 0) {
+      _showSnackBar('Added $added item(s) to cart, $unavailable unavailable', Colors.orange);
+    } else {
+      _showSnackBar('Added $added item(s) to cart', Colors.green);
     }
   }
 }
