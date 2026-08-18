@@ -794,6 +794,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Future<void> _loadMarketplacePosts() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingMarketplace = true;
     });
@@ -1620,6 +1621,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Future<void> _loadFeaturedShops() async {
+    if (!mounted) return;
     setState(() => _isLoadingShops = true);
 
     try {
@@ -1689,7 +1691,113 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
   
+  Future<void> _reorderFromDashboard(dynamic orderId) async {
+    final id = orderId is int ? orderId : int.tryParse(orderId.toString());
+    if (id == null) {
+      Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final orderResponse = await _orderApi.getOrderById(id);
+      final orderData = (orderResponse['data'] ?? orderResponse) as Map<String, dynamic>;
+      final rawItems = (orderData['items'] ?? orderData['orderItems'] ?? []) as List<dynamic>;
+
+      if (rawItems.isEmpty) {
+        if (mounted) Navigator.pop(context);
+        Helpers.showSnackBar(context, 'This order has no items to reorder', isError: true);
+        return;
+      }
+
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final shopApiService = ShopApiService();
+
+      final firstShopId = (rawItems.first['shopId'] ?? '').toString();
+      if (cartProvider.items.isNotEmpty &&
+          cartProvider.items.first.product.shopId != firstShopId) {
+        if (mounted) Navigator.pop(context); // close loading before asking
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Replace Cart?'),
+            content: const Text(
+                'Your cart has items from a different shop. Reordering will clear it first. Continue?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Continue')),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+        cartProvider.clearCart();
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(child: CircularProgressIndicator()),
+          );
+        }
+      }
+
+      int added = 0;
+      int unavailable = 0;
+
+      final fetched = await Future.wait(rawItems.map((item) async {
+        try {
+          final productId = int.tryParse((item['productId'] ?? item['shopProductId'] ?? '').toString());
+          final quantity = (item['quantity'] ?? 1) as int;
+          if (productId == null) return null;
+          final response =
+              await shopApiService.getShopProductById(productId).timeout(const Duration(seconds: 10));
+          final data = (response['data'] ?? response) as Map<String, dynamic>;
+          return MapEntry(ProductModel.fromJson(data), quantity);
+        } catch (e) {
+          return null;
+        }
+      }));
+
+      for (final entry in fetched) {
+        if (entry == null) {
+          unavailable++;
+          continue;
+        }
+        final ok = await cartProvider.addToCart(entry.key, quantity: entry.value, clearCartConfirmed: true);
+        if (ok) {
+          added++;
+        } else {
+          unavailable++;
+        }
+      }
+
+      if (mounted) Navigator.pop(context); // close loading dialog
+
+      if (added == 0) {
+        Helpers.showSnackBar(context, 'None of these items are available right now', isError: true);
+        return;
+      }
+
+      Helpers.showSnackBar(
+        context,
+        unavailable > 0 ? 'Added $added item(s) to cart, $unavailable unavailable' : 'Added $added item(s) to cart',
+      );
+
+      if (mounted) {
+        context.push('/customer/cart');
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
+    }
+  }
+
   Future<void> _loadRecentOrders() async {
+    if (!mounted) return;
     setState(() => _isLoadingOrders = true);
 
     try {
@@ -3432,18 +3540,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               children: [
                 if (status.toUpperCase() == 'DELIVERED')
                   TextButton(
-                    onPressed: () async {
-                      try {
-                        await _orderApi.reorder(order['id']);
-                        Helpers.showSnackBar(context, 'Items added to cart');
-                        // Navigate to cart after adding items
-                        if (mounted) {
-                          context.push('/customer/cart');
-                        }
-                      } catch (e) {
-                        Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
-                      }
-                    },
+                    onPressed: () => _reorderFromDashboard(order['id']),
                     child: const Text(
                       'Reorder',
                       style: TextStyle(
