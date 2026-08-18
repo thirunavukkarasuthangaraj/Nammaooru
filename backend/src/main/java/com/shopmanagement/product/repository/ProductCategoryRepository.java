@@ -19,8 +19,10 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
     Optional<ProductCategory> findBySlug(String slug);
     Optional<ProductCategory> findByName(String name);
 
-    // Case-insensitive lookup for bulk import
-    @Query("SELECT c FROM ProductCategory c WHERE LOWER(c.name) = LOWER(:name)")
+    // Case-insensitive lookup for bulk import.
+    // Ordered + limited to 1 so a duplicate category name (e.g. two "VEGETABLES" rows)
+    // returns the oldest match instead of throwing IncorrectResultSizeDataAccessException.
+    @Query(value = "SELECT * FROM product_categories WHERE LOWER(name) = LOWER(:name) ORDER BY id ASC LIMIT 1", nativeQuery = true)
     Optional<ProductCategory> findByNameIgnoreCase(@Param("name") String name);
     List<ProductCategory> findByIsActiveTrue();
     List<ProductCategory> findByIsActiveTrueOrderBySortOrder();
