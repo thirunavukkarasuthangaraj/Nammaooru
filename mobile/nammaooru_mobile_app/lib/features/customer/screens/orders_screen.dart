@@ -741,7 +741,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                 .getCustomerProductDetails(shopId, productId)
                 .timeout(const Duration(seconds: 10));
             final data = (response['data'] ?? response) as Map<String, dynamic>;
-            return MapEntry(ProductModel.fromJson(data), item.quantity);
+            // This endpoint's response has no "shopDatabaseId" key (only "shopId", already
+            // numeric here), so ProductModel.fromJson leaves shopDatabaseId null - checkout
+            // requires it and rejects the item with "Invalid shop information" otherwise.
+            final product = ProductModel.fromJson(data).copyWith(shopDatabaseId: shopId);
+            return MapEntry(product, item.quantity);
           } catch (e) {
             return null;
           }
