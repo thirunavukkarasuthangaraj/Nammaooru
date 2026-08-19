@@ -54,7 +54,11 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
       });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 500), () => _search(query));
+    // A trailing/leading space reaching the geocoder changes match quality
+    // (e.g. "mittur " returns a bare village name with no address context,
+    // while "mittur" returns the full "Mittur, Mogilivaripalle, ..." result) -
+    // trim before it ever reaches the search, not just the length check above.
+    _debounce = Timer(const Duration(milliseconds: 500), () => _search(query.trim()));
   }
 
   Future<void> _search(String query) async {
