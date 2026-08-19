@@ -2564,19 +2564,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           });
         }
       } else {
+        // Surface the real underlying error (order_service.dart tucks it into
+        // 'error' but the generic 'message' hides it) so failures are debuggable
+        // from the UI alone instead of needing browser/device console access.
+        final baseMessage = result['message'] ?? 'Failed to place order';
+        final detail = result['error']?.toString();
+        final displayMessage = (detail != null && detail.isNotEmpty && detail != baseMessage)
+            ? '$baseMessage\n($detail)'
+            : baseMessage;
+        print('❌ Order placement failed: $result');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                result['message'] ?? 'Failed to place order',
+                displayMessage,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                maxLines: 2,
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
               backgroundColor: Colors.red,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               margin: const EdgeInsets.all(12),
               behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 6),
             ),
           );
         }
