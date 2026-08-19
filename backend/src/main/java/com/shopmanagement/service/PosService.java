@@ -88,31 +88,112 @@ public class PosService {
         // 2. Get or create walk-in customer
         Customer customer = getOrCreateWalkInCustomer(request, shop);
 
-        // 3. OPTIMIZED: Batch fetch all products at once
+        // 3-5. Process items, deduct stock, batch-save inventory updates
+        ItemProcessingResult processed = processOrderItems(request.getItems());
+        List<OrderItem> orderItems = processed.orderItems();
+        BigDecimal subtotal = processed.subtotal();
+
+        // 6. Calculate totals (no delivery fee, no tax for POS walk-in orders)
+        BigDecimal taxAmount = BigDecimal.ZERO; // No tax for walk-in orders
+        BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal totalAmount = subtotal.subtract(discountAmount);
+
+        // 7. Create order
+        Order order = Order.builder()
+                .customer(customer)
+                .shop(shop)
+                .orderType(Order.OrderType.WALK_IN)
+                .deliveryType(Order.DeliveryType.SELF_PICKUP)
+                .status(Order.OrderStatus.SELF_PICKUP_COLLECTED) // Immediate completion
+                .paymentStatus(Order.PaymentStatus.PAID) // Paid at counter
+                .paymentMethod(request.getPaymentMethod())
+                .subtotal(subtotal)
+                .taxAmount(taxAmount)
+                .deliveryFee(BigDecimal.ZERO)
+                .discountAmount(discountAmount)
+                .totalAmount(totalAmount)
+                .notes(request.getNotes())
+                .offlineOrderId(request.getOfflineOrderId() != null && !request.getOfflineOrderId().isBlank()
+                        ? request.getOfflineOrderId() : null)
+                .createdBy(getCurrentUsername())
+                .updatedBy(getCurrentUsername())
+                .build();
+
+        // Set order reference on items
+        for (OrderItem item : orderItems) {
+            item.setOrder(order);
+        }
+        order.setOrderItems(orderItems);
+
+        // 8. Save order
+        Order savedOrder = orderRepository.save(order);
+        log.info("POS order created: {} - Total: {}", savedOrder.getOrderNumber(), totalAmount);
+
+        return mapToResponse(savedOrder);
+    }
+
+    /**
+     * Append items to an already-created POS order instead of starting a new bill -
+     * covers "printed, then realized an item was missed" without minting a second
+     * order/bill number for the same customer visit. Deducts stock for the appended
+     * items only; items already on the order are untouched.
+     */
+    @Transactional
+    public OrderResponse addItemsToOrder(Long orderId, List<PosOrderItemRequest> newItems) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        if (newItems == null || newItems.isEmpty()) {
+            return mapToResponse(order);
+        }
+
+        ItemProcessingResult processed = processOrderItems(newItems);
+
+        for (OrderItem item : processed.orderItems()) {
+            item.setOrder(order);
+        }
+        order.getOrderItems().addAll(processed.orderItems());
+
+        BigDecimal newSubtotal = order.getSubtotal().add(processed.subtotal());
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        order.setSubtotal(newSubtotal);
+        order.setTotalAmount(newSubtotal.subtract(discountAmount));
+        order.setUpdatedBy(getCurrentUsername());
+
+        Order savedOrder = orderRepository.save(order);
+        log.info("Appended {} item(s) to POS order {} - new total: {}",
+                processed.orderItems().size(), savedOrder.getOrderNumber(), savedOrder.getTotalAmount());
+
+        return mapToResponse(savedOrder);
+    }
+
+    /**
+     * Shared item-processing for both a brand-new order and an append: validates
+     * products, builds OrderItems (custom items included), deducts and batch-saves
+     * stock for tracked products, and totals the subtotal.
+     */
+    private ItemProcessingResult processOrderItems(List<PosOrderItemRequest> items) {
         // Custom items (typed name + price at the counter) have null/negative IDs and no catalog row
-        List<Long> productIds = request.getItems().stream()
+        List<Long> productIds = items.stream()
                 .map(PosOrderItemRequest::getShopProductId)
                 .filter(id -> id != null && id > 0)
                 .toList();
         List<ShopProduct> shopProducts = shopProductRepository.findAllById(productIds);
 
-        // Create a map for O(1) lookup
         java.util.Map<Long, ShopProduct> productMap = shopProducts.stream()
                 .collect(java.util.stream.Collectors.toMap(ShopProduct::getId, p -> p));
 
-        // Validate all products exist
         for (Long productId : productIds) {
             if (!productMap.containsKey(productId)) {
                 throw new RuntimeException("Product not found: " + productId);
             }
         }
 
-        // 4. Process items and prepare inventory updates
         List<OrderItem> orderItems = new ArrayList<>();
         List<ShopProduct> productsToUpdate = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        for (PosOrderItemRequest itemRequest : request.getItems()) {
+        for (PosOrderItemRequest itemRequest : items) {
             Long requestedProductId = itemRequest.getShopProductId();
 
             // Custom item: no catalog product, billed with the typed name and price
@@ -204,50 +285,15 @@ public class PosService {
             subtotal = subtotal.add(itemTotal);
         }
 
-        // 5. BATCH save all inventory updates at once
         if (!productsToUpdate.isEmpty()) {
             shopProductRepository.saveAll(productsToUpdate);
             log.info("Batch updated stock for {} products", productsToUpdate.size());
         }
 
-        // 6. Calculate totals (no delivery fee, no tax for POS walk-in orders)
-        BigDecimal taxAmount = BigDecimal.ZERO; // No tax for walk-in orders
-        BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal totalAmount = subtotal.subtract(discountAmount);
-
-        // 7. Create order
-        Order order = Order.builder()
-                .customer(customer)
-                .shop(shop)
-                .orderType(Order.OrderType.WALK_IN)
-                .deliveryType(Order.DeliveryType.SELF_PICKUP)
-                .status(Order.OrderStatus.SELF_PICKUP_COLLECTED) // Immediate completion
-                .paymentStatus(Order.PaymentStatus.PAID) // Paid at counter
-                .paymentMethod(request.getPaymentMethod())
-                .subtotal(subtotal)
-                .taxAmount(taxAmount)
-                .deliveryFee(BigDecimal.ZERO)
-                .discountAmount(discountAmount)
-                .totalAmount(totalAmount)
-                .notes(request.getNotes())
-                .offlineOrderId(request.getOfflineOrderId() != null && !request.getOfflineOrderId().isBlank()
-                        ? request.getOfflineOrderId() : null)
-                .createdBy(getCurrentUsername())
-                .updatedBy(getCurrentUsername())
-                .build();
-
-        // Set order reference on items
-        for (OrderItem item : orderItems) {
-            item.setOrder(order);
-        }
-        order.setOrderItems(orderItems);
-
-        // 8. Save order
-        Order savedOrder = orderRepository.save(order);
-        log.info("POS order created: {} - Total: {}", savedOrder.getOrderNumber(), totalAmount);
-
-        return mapToResponse(savedOrder);
+        return new ItemProcessingResult(orderItems, subtotal);
     }
+
+    private record ItemProcessingResult(List<OrderItem> orderItems, BigDecimal subtotal) {}
 
     /**
      * Sync multiple offline orders

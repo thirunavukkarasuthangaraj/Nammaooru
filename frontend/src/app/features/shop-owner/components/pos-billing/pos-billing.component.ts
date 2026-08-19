@@ -220,6 +220,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Last bill created - needed to send it via WhatsApp/email
   lastOrder: any = null;
+  // Quantity already billed on lastOrder per cart line, so a re-print after
+  // adding a missed item appends only the new/increased quantity to the SAME
+  // order instead of creating a brand-new bill. Cleared on resetCart().
+  private billedQuantities = new WeakMap<CartItem, number>();
   sendingWhatsAppBill: boolean = false;
   sendingEmailBill: boolean = false;
   sharingOwnWhatsApp: boolean = false;
@@ -878,33 +882,63 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Store the handler reference so we can remove it on destroy
     this.barcodeKeyHandler = (event: KeyboardEvent) => {
-      // Ignore if typing in an input field (search box, barcode input, etc.)
       const target = event.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      // The main search box already has its own scan handling via onQuickSearchEnter
+      // (ngModel + keyup.enter), so let it work normally - don't double-handle here.
+      if (target.classList?.contains('quick-search-input')) {
         return;
       }
 
       const currentTime = Date.now();
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const gapMs = currentTime - lastKeyTime;
+      lastKeyTime = currentTime;
+
+      // Enter key completes the barcode (need at least 5 chars for valid barcode).
+      // NOTE: on 'keypress', event.key for Enter is the literal string "Enter", not
+      // a single character - it must never be appended to the buffer (a previous
+      // version did `buffer += event.key` unconditionally, which appended the word
+      // "Enter" and then only sliced off the trailing "r", leaving every scanned
+      // barcode ending in garbage "Ente" and never matching a real product - this
+      // is why scans silently failed as "not found").
+      if (event.key === 'Enter') {
+        if (buffer.length > 5) {
+          const barcode = buffer;
+          buffer = '';
+
+          // A scan landed while focus was sitting in some other field (qty, customer
+          // name, notes, etc.) - it would otherwise silently type the barcode digits
+          // into that field instead of adding a product, which looks like "scan
+          // stopped working". Redirect it: clear what got typed and process the scan.
+          if (isInput) {
+            const el = target as HTMLInputElement | HTMLTextAreaElement;
+            const before = el.value.slice(0, Math.max(0, el.value.length - barcode.length));
+            this.ngZone.run(() => {
+              el.value = before;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              this.handleBarcodeScan(barcode);
+            });
+            return;
+          }
+
+          event.preventDefault();
+          // Re-enter Angular only for an actual scan (see runOutsideAngular below)
+          this.ngZone.run(() => this.handleBarcodeScan(barcode));
+        } else {
+          buffer = '';
+        }
+        return;
+      }
+
+      // Only accumulate single printable characters (ignore other multi-char key
+      // names like "Shift", "Tab", "Backspace", etc.)
+      if (event.key.length !== 1) {
+        return;
+      }
 
       // If typing very fast (< 30ms between keys), it's likely a scanner
       // Human typing is typically > 50ms between keys
-      if (currentTime - lastKeyTime < 30) {
-        buffer += event.key;
-      } else {
-        // Reset buffer if there's a pause
-        buffer = event.key;
-      }
-
-      lastKeyTime = currentTime;
-
-      // Enter key completes the barcode (need at least 5 chars for valid barcode)
-      if (event.key === 'Enter' && buffer.length > 5) {
-        event.preventDefault();
-        const barcode = buffer.slice(0, -1); // Remove Enter
-        // Re-enter Angular only for an actual scan (see runOutsideAngular below)
-        this.ngZone.run(() => this.handleBarcodeScan(barcode));
-        buffer = '';
-      }
+      buffer = gapMs < 30 ? buffer + event.key : event.key;
     };
 
     // Listen outside Angular's zone: this handler fires on EVERY keypress on the
@@ -1866,13 +1900,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.calculateTotals();
 
     // In Quick Bill mode, clear search to show empty state (user scans next item)
-    // In Browse mode, keep showing all products sorted with cart items first
+    // In Browse mode, keep showing the same list - re-sorting the whole catalog
+    // (up to ~10k products) after every single scan was the actual cause of the
+    // "app gets slow while scanning" complaint. The cart badge on each row already
+    // reflects membership via a Set lookup, so skipping the re-sort here doesn't
+    // lose any information - it just stops floating items to the top on every add.
     if (this.activeTab === 'quick' && !this.browseProductsByDefault) {
       this.searchTerm = '';
       this.filteredProducts = [];
     } else {
       this.searchTerm = '';
-      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
     }
   }
 
@@ -2312,6 +2349,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.customerEmail = '';
     this.orderNotes = '';
     this.lastOrder = null;
+    this.billedQuantities = new WeakMap<CartItem, number>();
     // In Quick Bill mode, keep products list empty
     // In Browse mode, show all products
     if (this.activeTab !== 'quick') {
@@ -2510,11 +2548,31 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     console.log('Creating POS order for shopId:', this.shopId);
-    this.swal.loading('Creating bill...');
+
+    // A real (synced) order already exists for this cart session — only the
+    // item/quantity added since that print needs to reach the server; append
+    // it to the SAME bill instead of minting a new bill number. Cleared only
+    // by Clear Cart / New Bill (resetCart() nulls lastOrder + billedQuantities).
+    const isAppend = !!this.lastOrder?.id;
+    const deltaPairs: Array<{ item: CartItem; quantity: number }> = [];
+    if (isAppend) {
+      for (const item of this.cart) {
+        const billedQty = this.billedQuantities.get(item) || 0;
+        const delta = item.quantity - billedQty;
+        if (delta > 0) deltaPairs.push({ item, quantity: delta });
+      }
+      if (deltaPairs.length === 0) {
+        // Nothing new since the last print - just reprint, no server call needed
+        this.printReceipt(this.lastOrder);
+        return;
+      }
+    }
+
+    this.swal.loading(isAppend ? 'Adding item to bill...' : 'Creating bill...');
 
     try {
       // Resolve any negative temp IDs to real server IDs (for offline-created products that have synced)
-      const resolvedItems = await this.resolveCartProductIds();
+      let resolvedItems = await this.resolveCartProductIds(isAppend ? deltaPairs : undefined);
 
       // Check if any items still have negative IDs (not yet synced).
       // Custom items (null ID) are fine - the server bills them without a product.
@@ -2524,29 +2582,35 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         console.log('Found unsynced products in cart, attempting sync...');
         await this.syncService.syncPendingProductCreations();
         // Re-resolve after sync
-        const reResolvedItems = await this.resolveCartProductIds();
+        const reResolvedItems = await this.resolveCartProductIds(isAppend ? deltaPairs : undefined);
         const stillUnsynced = reResolvedItems.filter(item => item.shopProductId !== null && item.shopProductId < 0);
         if (stillUnsynced.length > 0) {
           console.warn('Some products still have temp IDs after sync:', stillUnsynced);
         }
-        resolvedItems.length = 0;
-        resolvedItems.push(...reResolvedItems);
+        resolvedItems = reResolvedItems;
       }
 
-      const orderData = {
-        items: resolvedItems,
-        paymentMethod: this.selectedPaymentMethod,
-        customerName: this.customerName || undefined,
-        customerPhone: this.customerPhone || undefined,
-        customerEmail: this.customerEmail || undefined,
-        notes: this.orderNotes || undefined,
-        subtotal: this.subtotal,
-        taxAmount: this.taxAmount,
-        discountAmount: this.billDiscount > 0 ? this.billDiscount : undefined,
-        totalAmount: this.totalAmount
-      };
+      let result: { success: boolean; order?: any; offline?: boolean };
 
-      const result = await this.syncService.createPosOrder(orderData, this.shopId, this.shopName);
+      if (isAppend) {
+        const appendResult = await this.syncService.addItemsToOrder(this.lastOrder.id, resolvedItems);
+        result = { success: appendResult.success, order: appendResult.order, offline: false };
+      } else {
+        const orderData = {
+          items: resolvedItems,
+          paymentMethod: this.selectedPaymentMethod,
+          customerName: this.customerName || undefined,
+          customerPhone: this.customerPhone || undefined,
+          customerEmail: this.customerEmail || undefined,
+          notes: this.orderNotes || undefined,
+          subtotal: this.subtotal,
+          taxAmount: this.taxAmount,
+          discountAmount: this.billDiscount > 0 ? this.billDiscount : undefined,
+          totalAmount: this.totalAmount
+        };
+
+        result = await this.syncService.createPosOrder(orderData, this.shopId, this.shopName);
+      }
 
       this.swal.close();
 
@@ -2555,13 +2619,21 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
         // Use toast notification instead of modal (doesn't block print)
         this.swal.toast(
-          `Bill Created - ₹${this.totalAmount.toFixed(0)}${offlineMsg}`,
+          isAppend
+            ? `Item added to Bill #${result.order?.orderNumber || ''} - ₹${this.totalAmount.toFixed(0)}`
+            : `Bill Created - ₹${this.totalAmount.toFixed(0)}${offlineMsg}`,
           'success'
         );
 
-        // Remember the created order so it can be sent via WhatsApp afterwards.
+        // Remember the created/updated order so it can be sent via WhatsApp afterwards.
         // Offline orders don't have a server id yet, so WhatsApp send stays disabled until synced.
         this.lastOrder = result.order;
+
+        // Mark everything currently in the cart as billed up to its current
+        // quantity, so the next print only sends whatever gets added after this.
+        for (const item of this.cart) {
+          this.billedQuantities.set(item, item.quantity);
+        }
 
         // Bill is saved — drop the backup so a refresh can't restore an
         // already-billed cart and cause double billing. If the owner keeps
@@ -2574,8 +2646,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         // Auto-send the bill (WhatsApp/email) if enabled in bill settings
         this.autoSendBillAfterPrint();
 
-        // Update local stock immediately (no need to reload all products)
-        await this.updateLocalStockAfterBill();
+        // Update local stock immediately (no need to reload all products) —
+        // an append must only deduct the newly-added quantity, not the whole cart
+        await this.updateLocalStockAfterBill(isAppend ? deltaPairs : undefined);
 
         // Don't clear cart - allow adding more products and reprinting
         // User can click "New Bill" when they want to start fresh
@@ -3835,11 +3908,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Resolve cart product IDs - convert negative temp IDs to real server IDs by looking up in cache
    */
-  private async resolveCartProductIds(): Promise<Array<{ shopProductId: number | null; quantity: number; unitPrice: number; productName: string }>> {
+  private async resolveCartProductIds(
+    pairs?: Array<{ item: CartItem; quantity: number }>
+  ): Promise<Array<{ shopProductId: number | null; quantity: number; unitPrice: number; productName: string }>> {
     // Refresh products from cache to get latest IDs after sync
     const cachedProducts = await this.offlineStorage.getProducts();
 
-    return this.cart.map(item => {
+    const source = pairs ?? this.cart.map(item => ({ item, quantity: item.quantity }));
+
+    return source.map(({ item, quantity }) => {
       let resolvedId: number | null = item.product.id;
 
       // Weight lines: the server's quantity is a whole number, so a 250g sale is
@@ -3859,7 +3936,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       if (item.product.sku === 'CUSTOM') {
         return {
           shopProductId: null,
-          quantity: item.quantity,
+          quantity,
           unitPrice: item.unitPrice,
           productName: item.product.name
         };
@@ -3894,7 +3971,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
       return {
         shopProductId: resolvedId,
-        quantity: item.quantity,
+        quantity,
         unitPrice: item.unitPrice,
         productName: item.product.name
       };
@@ -3904,17 +3981,19 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   /**
    * Update local stock after creating a bill (fast - no server reload needed)
    */
-  private async updateLocalStockAfterBill(): Promise<void> {
+  private async updateLocalStockAfterBill(pairs?: Array<{ item: CartItem; quantity: number }>): Promise<void> {
     // Track only the products whose stock actually changed so we persist just those,
     // instead of rewriting the entire ~2500-product IndexedDB store on every sale.
     const changedProducts: CachedProduct[] = [];
 
-    // Deduct stock for each cart item locally
-    for (const cartItem of this.cart) {
+    // Deduct stock for each billed item locally - defaults to the whole cart, but an
+    // append (only the newly added quantity) must pass its own delta pairs, or the
+    // items already deducted on the first print would be deducted again here.
+    const source = pairs ?? this.cart.map(item => ({ item, quantity: item.quantity }));
+    for (const { item: cartItem, quantity: quantitySold } of source) {
       // Weight lines are billed without a product link — no stock movement
       if (cartItem.weightGrams) continue;
       const productId = cartItem.product.id;
-      const quantitySold = cartItem.quantity;
 
       // Update in products array
       const productIndex = this.products.findIndex(p => p.id === productId);

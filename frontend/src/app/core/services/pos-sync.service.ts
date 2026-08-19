@@ -407,6 +407,21 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
+   * Append items to an already-created (and synced) POS order instead of starting
+   * a new bill - used when the cashier prints, then adds an item that was missed.
+   * Only works online against a real server order id; offline/append is not
+   * supported here, callers should fall back to createPosOrder in that case.
+   */
+  async addItemsToOrder(orderId: number, items: any[]): Promise<{ success: boolean; order?: any }> {
+    const response = await this.http.put<{ data: any }>(
+      `${this.apiUrl}/pos/orders/${orderId}/items`,
+      items
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+
+    return { success: true, order: response?.data };
+  }
+
+  /**
    * Search customers previously billed at this shop (POS customer autocomplete)
    */
   async searchCustomers(shopId: number, query: string, size: number = 10): Promise<any[]> {
