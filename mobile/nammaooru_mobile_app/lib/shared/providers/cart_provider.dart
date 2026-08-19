@@ -305,8 +305,10 @@ class CartProvider with ChangeNotifier {
     try {
       final response = await _cartService.getCart();
       if (response['success'] == true) {
-        final cartData = response['data']['cart'] as Map<String, dynamic>;
-        final backendCart = CoreCart.Cart.fromJson(cartData);
+        // CartService.getCart() already parses the response into a Cart object
+        // before returning it as 'data' - it is not raw JSON, so indexing into
+        // it with ['cart'] or re-parsing via Cart.fromJson fails at runtime.
+        final backendCart = response['data'] as CoreCart.Cart;
         
         if (kDebugMode) {
           print('Loaded cart from backend: ${backendCart.items.length} items');

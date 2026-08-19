@@ -104,6 +104,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   final _shopApi = ShopApiService();
   final _orderApi = OrderApiService();
+  bool _isReordering = false;
   final _promoService = PromoCodeService();
   final _marketplaceService = MarketplaceService();
   final _featureConfigService = FeatureConfigService();
@@ -1698,6 +1699,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       return;
     }
 
+    // Guard against double-tap: without this, rapid repeated taps stack up
+    // multiple loading dialogs, and each one's Navigator.pop() at the end can
+    // pop past the dialogs into the screen underneath once they're all done.
+    if (_isReordering) return;
+    _isReordering = true;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1710,7 +1717,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       final rawItems = (orderData['items'] ?? orderData['orderItems'] ?? []) as List<dynamic>;
 
       if (rawItems.isEmpty) {
-        if (mounted) Navigator.pop(context);
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
         Helpers.showSnackBar(context, 'This order has no items to reorder', isError: true);
         return;
       }
@@ -1721,7 +1728,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       final firstShopId = (rawItems.first['shopId'] ?? '').toString();
       if (cartProvider.items.isNotEmpty &&
           cartProvider.items.first.product.shopId != firstShopId) {
-        if (mounted) Navigator.pop(context); // close loading before asking
+        if (mounted) Navigator.of(context, rootNavigator: true).pop(); // close loading before asking
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -1777,7 +1784,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
       }
 
-      if (mounted) Navigator.pop(context); // close loading dialog
+      if (mounted) Navigator.of(context, rootNavigator: true).pop(); // close loading dialog
 
       if (added == 0) {
         Helpers.showSnackBar(context, 'None of these items are available right now', isError: true);
@@ -1793,8 +1800,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         context.push('/customer/cart');
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      // showDialog defaults to the root navigator; a plain Navigator.pop(context)
+      // resolves to the nearest (nested/shell) navigator instead and, if this
+      // page is the only one on that stack, pops the page itself and crashes
+      // go_router ("popped the last page off of the stack"). Must match roots.
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
       Helpers.showSnackBar(context, 'Failed to reorder', isError: true);
+    } finally {
+      _isReordering = false;
     }
   }
 

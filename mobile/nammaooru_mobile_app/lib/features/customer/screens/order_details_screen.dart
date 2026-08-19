@@ -23,6 +23,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Order? _order;
   bool _isLoading = false;
   String? _error;
+  bool _isReordering = false;
 
   @override
   void initState() {
@@ -824,84 +825,98 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       return;
     }
 
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-
-    // All items in an order belong to the same shop - only need to check the first one.
-    if (cartProvider.items.isNotEmpty &&
-        cartProvider.items.first.product.shopId != order.items.first.shopId) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Replace Cart?'),
-          content: const Text(
-              'Your cart has items from a different shop. Reordering will clear it first. Continue?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Continue')),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-      cartProvider.clearCart();
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final shopApiService = ShopApiService();
-    int added = 0;
-    int unavailable = 0;
+    // Guard against double-tap: without this, rapid repeated taps stack up
+    // multiple loading dialogs, and each one's Navigator.pop() at the end can
+    // pop past the dialogs into the screen underneath once they're all done.
+    if (_isReordering) return;
+    _isReordering = true;
 
     try {
-      // Fetch each item's current product data in parallel - sequential awaits here
-      // added up to minutes of a full-screen blocking spinner on multi-item orders.
-      final fetched = await Future.wait(order.items.map((item) async {
-        try {
-          final productId = int.tryParse(item.productId);
-          final shopId = int.tryParse(item.shopId);
-          if (productId == null || shopId == null) return null;
-          final response = await shopApiService
-              .getCustomerProductDetails(shopId, productId)
-              .timeout(const Duration(seconds: 10));
-          final data = (response['data'] ?? response) as Map<String, dynamic>;
-          return MapEntry(ProductModel.fromJson(data), item.quantity);
-        } catch (e) {
-          return null;
-        }
-      }));
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-      for (final entry in fetched) {
-        if (entry == null) {
-          unavailable++;
-          continue;
+      // All items in an order belong to the same shop - only need to check the first one.
+      if (cartProvider.items.isNotEmpty &&
+          cartProvider.items.first.product.shopId != order.items.first.shopId) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Replace Cart?'),
+            content: const Text(
+                'Your cart has items from a different shop. Reordering will clear it first. Continue?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Continue')),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+        cartProvider.clearCart();
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final shopApiService = ShopApiService();
+      int added = 0;
+      int unavailable = 0;
+
+      try {
+        // Fetch each item's current product data in parallel - sequential awaits here
+        // added up to minutes of a full-screen blocking spinner on multi-item orders.
+        final fetched = await Future.wait(order.items.map((item) async {
+          try {
+            final productId = int.tryParse(item.productId);
+            final shopId = int.tryParse(item.shopId);
+            if (productId == null || shopId == null) return null;
+            final response = await shopApiService
+                .getCustomerProductDetails(shopId, productId)
+                .timeout(const Duration(seconds: 10));
+            final data = (response['data'] ?? response) as Map<String, dynamic>;
+            return MapEntry(ProductModel.fromJson(data), item.quantity);
+          } catch (e) {
+            return null;
+          }
+        }));
+
+        for (final entry in fetched) {
+          if (entry == null) {
+            unavailable++;
+            continue;
+          }
+          final ok = await cartProvider.addToCart(entry.key, quantity: entry.value, clearCartConfirmed: true);
+          if (ok) {
+            added++;
+          } else {
+            unavailable++;
+          }
         }
-        final ok = await cartProvider.addToCart(entry.key, quantity: entry.value, clearCartConfirmed: true);
-        if (ok) {
-          added++;
-        } else {
-          unavailable++;
-        }
+      } finally {
+        // showDialog defaults to the root navigator; a plain Navigator.pop(context)
+        // resolves to the nearest (nested/shell) navigator instead and, if this
+        // page is the only one on that stack, pops the page itself and crashes
+        // go_router ("popped the last page off of the stack"). Must match roots.
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (added == 0) {
+        _showSnackBar('None of these items are available right now', Colors.red);
+        return;
+      }
+
+      if (unavailable > 0) {
+        _showSnackBar('Added $added item(s) to cart, $unavailable unavailable', Colors.orange);
+      } else {
+        _showSnackBar('Added $added item(s) to cart', Colors.green);
+      }
+
+      if (mounted) {
+        context.push('/customer/cart');
       }
     } finally {
-      if (mounted) Navigator.pop(context); // always close the loading dialog
-    }
-
-    if (added == 0) {
-      _showSnackBar('None of these items are available right now', Colors.red);
-      return;
-    }
-
-    if (unavailable > 0) {
-      _showSnackBar('Added $added item(s) to cart, $unavailable unavailable', Colors.orange);
-    } else {
-      _showSnackBar('Added $added item(s) to cart', Colors.green);
-    }
-
-    if (mounted) {
-      context.push('/customer/cart');
+      _isReordering = false;
     }
   }
 }
