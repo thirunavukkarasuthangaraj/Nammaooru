@@ -1,7 +1,7 @@
 name: nammaooru_mobile_app
 description: Namma Ooru Connect - Hyperlocal Community Platform (Flutter Mobile App)
 publish_to: 'none'
-version: 1.2.55+88
+version: 1.2.56+89
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
