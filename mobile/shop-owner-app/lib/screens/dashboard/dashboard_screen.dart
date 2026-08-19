@@ -207,7 +207,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                     slivers: [
                       // Header
                       SliverAppBar(
-                        expandedHeight: 100,
+                        expandedHeight: 110,
                         floating: false,
                         pinned: true,
                         backgroundColor: const Color(0xFF2E7D32),
@@ -222,7 +222,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                             ),
                             child: SafeArea(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+                                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.end,
@@ -242,6 +242,8 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                                         fontSize: 22,
                                         fontWeight: FontWeight.bold,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),

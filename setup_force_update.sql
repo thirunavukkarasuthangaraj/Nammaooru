@@ -30,11 +30,11 @@ INSERT INTO app_version (
 VALUES (
     'CUSTOMER_APP',
     'ANDROID',
-    '1.2.55',
-    '1.2.55',
+    '1.2.56',
+    '1.2.54',
     'https://play.google.com/store/apps/details?id=com.nammaooru.app',
-    true,
-    'Version 1.2.55: Shop category fixes, bug fixes, and performance improvements.',
+    false,
+    'Version 1.2.56: Bug fixes and performance improvements.',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 )

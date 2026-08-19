@@ -359,7 +359,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           // Category Filter with Images
           if (_categories.isNotEmpty)
             Container(
-              height: 100,
+              height: 108,
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
@@ -390,6 +390,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     print('  📦 Using fallback icon');
                   }
 
+                  // Rotating palette so each category gets a distinct, colorful badge
+                  // (matches the gradient category tiles in the customer app)
+                  const palette = [
+                    Color(0xFF43A047), // green
+                    Color(0xFFFB8C00), // orange
+                    Color(0xFF1E88E5), // blue
+                    Color(0xFF8E24AA), // purple
+                    Color(0xFFE53935), // red
+                    Color(0xFF00897B), // teal
+                    Color(0xFFFDD835), // yellow
+                    Color(0xFF6D4C41), // brown
+                  ];
+                  final badgeColor = categoryId == null
+                      ? AppTheme.primary
+                      : palette[index % palette.length];
+
                   return GestureDetector(
                     onTap: () {
                       setState(() {
@@ -398,60 +414,59 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       });
                     },
                     child: Container(
-                      width: 85,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppTheme.primary.withOpacity(0.15)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: isSelected
-                            ? Border.all(color: AppTheme.primary, width: 2)
-                            : Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
-                      ),
+                      width: 76,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Category Image/Icon/Emoji
+                          // Category Image/Icon/Emoji — colorful gradient badge,
+                          // ring highlight when selected
                           Container(
-                            width: 50,
-                            height: 50,
+                            width: 58,
+                            height: 58,
+                            padding: EdgeInsets.all(isSelected ? 3 : 0),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: isSelected
-                                  ? AppTheme.primary.withOpacity(0.1)
-                                  : Colors.grey.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                              border: isSelected
+                                  ? Border.all(color: badgeColor, width: 2.5)
+                                  : null,
                             ),
-                            child: hasImage
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [badgeColor, badgeColor.withOpacity(0.7)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: badgeColor.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: hasImage
+                                ? ClipOval(
                                     child: Image.network(
                                       AppConfig.getImageUrl(iconUrl),
-                                      width: 50,
-                                      height: 50,
+                                      width: 58,
+                                      height: 58,
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) {
-                                        print('  ❌ Image load error for $categoryName: $error');
-                                        return Center(
-                                          child: Icon(
-                                            Icons.category,
-                                            size: 28,
-                                            color: isSelected ? Colors.green.shade700 : Colors.grey.shade500,
-                                          ),
+                                        return const Center(
+                                          child: Icon(Icons.category, size: 26, color: Colors.white),
                                         );
                                       },
                                       loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null) {
-                                          print('  ✅ Image loaded for $categoryName');
-                                          return child;
-                                        }
+                                        if (loadingProgress == null) return child;
                                         return const Center(
                                           child: SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                           ),
                                         );
                                       },
@@ -461,26 +476,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 ? Center(
                                     child: Text(
                                       iconUrl,
-                                      style: TextStyle(fontSize: 28),
+                                      style: const TextStyle(fontSize: 26),
                                     ),
                                   )
-                                : Center(
-                                    child: Icon(
-                                      Icons.category,
-                                      size: 28,
-                                      color: isSelected ? Colors.green.shade700 : Colors.grey.shade500,
-                                    ),
+                                : const Center(
+                                    child: Icon(Icons.category, size: 26, color: Colors.white),
                                   ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           // Category Name
                           Flexible(
                             child: Text(
                               displayName,
                               style: TextStyle(
-                                color: isSelected ? AppTheme.primary : Colors.grey[800],
+                                color: isSelected ? badgeColor : Colors.grey[800],
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 9,
+                                fontSize: 11,
                                 height: 1.1,
                               ),
                               textAlign: TextAlign.center,

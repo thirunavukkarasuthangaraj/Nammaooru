@@ -13,8 +13,14 @@ import '../../widgets/verify_pickup_otp_dialog.dart';
 class OrderDetailsScreen extends StatelessWidget {
   final String orderId;
   final Map<String, dynamic>? orderData;
+  final bool selfDeliveryEnabled;
 
-  const OrderDetailsScreen({super.key, required this.orderId, this.orderData});
+  const OrderDetailsScreen({
+    super.key,
+    required this.orderId,
+    this.orderData,
+    this.selfDeliveryEnabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +166,7 @@ class OrderDetailsScreen extends StatelessWidget {
           // Status Header Banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -173,42 +179,47 @@ class OrderDetailsScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                // Status Icon
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getStatusIcon(status),
-                    color: statusColor,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                // Status Icon + Badge, side by side to save vertical space
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.2),
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    _getStatusText(status),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      child: Icon(
+                        _getStatusIcon(status),
+                        color: statusColor,
+                        size: 26,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    // Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _getStatusText(status),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 // Delivery Type Badge
@@ -1520,7 +1531,7 @@ class OrderDetailsScreen extends StatelessWidget {
                 ),
               ),
             ],
-            if (order.status == 'READY_FOR_PICKUP') ...[
+            if (order.status == 'READY_FOR_PICKUP' || order.status == 'READY') ...[
               if (order.deliveryType == 'SELF_PICKUP') ...[
                 // Self-pickup handover button
                 SizedBox(
@@ -1529,6 +1540,21 @@ class OrderDetailsScreen extends StatelessWidget {
                     onPressed: () => _handoverSelfPickup(context, order, orderProvider),
                     icon: const Icon(Icons.how_to_reg),
                     label: const Text('Handover to Customer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ] else if (selfDeliveryEnabled) ...[
+                // Self-delivery shop: owner leaves with the order, no OTP needed
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startSelfDelivery(context, order, orderProvider),
+                    icon: const Icon(Icons.directions_bike),
+                    label: const Text('Start Delivery (Self)'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
@@ -1604,6 +1630,24 @@ class OrderDetailsScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ],
+            if (order.status == 'OUT_FOR_DELIVERY' &&
+                order.deliveryType != 'SELF_PICKUP' &&
+                selfDeliveryEnabled) ...[
+              // Self-delivery shop: owner handed the order to the customer, no OTP needed
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _completeSelfDelivery(context, order, orderProvider),
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Mark as Delivered'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
             ],
             // Returning to shop notification
             if (order.status == 'RETURNING_TO_SHOP') ...[
@@ -2033,7 +2077,8 @@ class OrderDetailsScreen extends StatelessWidget {
       );
 
       // For home delivery orders, auto-assign to delivery partner
-      if (order.deliveryType != 'SELF_PICKUP') {
+      // (skip entirely for self-delivery shops - the owner delivers it themselves, no OTP needed)
+      if (order.deliveryType != 'SELF_PICKUP' && !selfDeliveryEnabled) {
         // Show loading dialog for assignment
         showDialog(
           context: context,
@@ -2263,6 +2308,132 @@ class OrderDetailsScreen extends StatelessWidget {
             ),
           );
         }
+      }
+    }
+  }
+
+  void _startSelfDelivery(BuildContext context, Order order, OrderProvider orderProvider) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start Delivery'),
+        content: const Text('Confirm you are leaving the shop with this order?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Yes, Start'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await ApiService.startSelfDelivery(order.id);
+      if (context.mounted) Navigator.pop(context);
+
+      if (response.success && context.mounted) {
+        await orderProvider.loadOrders();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Delivery started!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start delivery: ${response.error ?? "Unknown error"}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  void _completeSelfDelivery(BuildContext context, Order order, OrderProvider orderProvider) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Delivered'),
+        content: const Text('Confirm that this order has been handed over to the customer?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Yes, Delivered'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await ApiService.completeSelfDelivery(order.id);
+      if (context.mounted) Navigator.pop(context);
+
+      if (response.success && context.mounted) {
+        await orderProvider.loadOrders();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Order delivered!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to mark delivered: ${response.error ?? "Unknown error"}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
+        );
       }
     }
   }

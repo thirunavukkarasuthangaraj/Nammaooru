@@ -461,6 +461,7 @@ class OrderCard extends StatelessWidget {
   final List<dynamic>? items; // Add items parameter
   final String? deliveryType; // Add delivery type
   final bool isLoading; // Add loading state
+  final bool selfDeliveryEnabled; // Shop delivers HOME_DELIVERY orders itself, no delivery partner
   final VoidCallback? onTap;
   final VoidCallback? onAccept;
   final VoidCallback? onReject;
@@ -472,6 +473,7 @@ class OrderCard extends StatelessWidget {
   final VoidCallback? onVerifyPickupOTP; // For HOME_DELIVERY orders at READY_FOR_PICKUP
   final VoidCallback? onRetryDriverSearch; // For retrying driver search when no driver found
   final VoidCallback? onAddItem; // For adding items to PENDING/CONFIRMED/PREPARING orders
+  final VoidCallback? onStartSelfDelivery; // Self-delivery: owner leaves with the order
   final DateTime? driverSearchStartedAt; // When driver search started
   final bool? driverSearchCompleted; // Whether driver search completed
 
@@ -486,6 +488,7 @@ class OrderCard extends StatelessWidget {
     this.items, // Add items parameter
     this.deliveryType, // Add delivery type
     this.isLoading = false, // Default to false
+    this.selfDeliveryEnabled = false,
     this.onTap,
     this.onAccept,
     this.onReject,
@@ -497,6 +500,7 @@ class OrderCard extends StatelessWidget {
     this.onVerifyPickupOTP,
     this.onRetryDriverSearch,
     this.onAddItem,
+    this.onStartSelfDelivery,
     this.driverSearchStartedAt,
     this.driverSearchCompleted,
   }) : super(key: key);
@@ -728,6 +732,14 @@ class OrderCard extends StatelessWidget {
             backgroundColor: AppTheme.success,
             textColor: AppTheme.textWhite,
           );
+        } else if (!isSelfPickupReady && selfDeliveryEnabled && onStartSelfDelivery != null) {
+          // Self-delivery shop: owner leaves with the order themselves, no driver search
+          return _buildActionButton(
+            label: 'Start Delivery',
+            onPressed: onStartSelfDelivery!,
+            backgroundColor: Colors.orange,
+            textColor: AppTheme.textWhite,
+          );
         } else if (!isSelfPickupReady) {
           // HOME_DELIVERY at READY: Show "Find Driver" and "Cancel" buttons
           return Row(
@@ -764,6 +776,14 @@ class OrderCard extends StatelessWidget {
             backgroundColor: AppTheme.success,
             textColor: AppTheme.textWhite,
           );
+        } else if (!isSelfPickup && selfDeliveryEnabled && onStartSelfDelivery != null) {
+          // Self-delivery shop: owner leaves with the order themselves, no driver search
+          return _buildActionButton(
+            label: 'Start Delivery',
+            onPressed: onStartSelfDelivery!,
+            backgroundColor: Colors.orange,
+            textColor: AppTheme.textWhite,
+          );
         } else if (!isSelfPickup && onVerifyPickupOTP != null) {
           // HOME_DELIVERY with driver assigned: Show "Verify Pickup OTP" button
           return _buildActionButton(
@@ -783,9 +803,20 @@ class OrderCard extends StatelessWidget {
         break;
 
       case 'out for delivery':
-        // OUT_FOR_DELIVERY orders can only be delivered by the driver
-        // Shop owners should NOT have a button to mark as delivered
-        // This prevents bypassing the driver delivery flow
+        // Self-delivery shop: owner marks delivered after handing over to the customer.
+        // Otherwise, OUT_FOR_DELIVERY orders can only be delivered by the driver —
+        // shop owners should NOT have a button to mark as delivered, to avoid
+        // bypassing the driver delivery flow.
+        if (selfDeliveryEnabled &&
+            deliveryType?.toUpperCase() != 'SELF_PICKUP' &&
+            onMarkDelivered != null) {
+          return _buildActionButton(
+            label: 'Mark Delivered',
+            onPressed: onMarkDelivered!,
+            backgroundColor: AppTheme.success,
+            textColor: AppTheme.textWhite,
+          );
+        }
         break;
 
       case 'delivered':

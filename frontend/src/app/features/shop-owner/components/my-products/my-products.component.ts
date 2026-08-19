@@ -203,6 +203,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const stock = params['stock'];
       this.stockFilter = stock === 'out' || stock === 'low' ? stock : '';
+      const category = params['category'];
+      if (category) {
+        this.selectedCategory = category;
+        this.categoryFilterText = category;
+      }
       if (this.products.length > 0) {
         this.applyFilters();
       }

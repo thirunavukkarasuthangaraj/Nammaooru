@@ -39,6 +39,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   int _previousPendingCount = 0;
   Set<String> _updatingOrders = {}; // Track orders being updated
 
+  // Self-delivery: shop delivers HOME_DELIVERY orders itself, no delivery partner search
+  bool _selfDeliveryEnabled = false;
+  String? _shopNumericId;
+  bool _isUpdatingSelfDelivery = false;
+
   // RETURNS tab placed second for easy visibility
   final List<String> _statusFilters = ['ALL', 'RETURNS', 'SELF_PICKUP', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
 
@@ -48,7 +53,102 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     _tabController = TabController(length: _statusFilters.length, vsync: this);
     _scrollController = ScrollController()..addListener(_onScroll);
     _fetchOrders();
+    _loadShopSelfDeliveryStatus();
     _startPolling();
+  }
+
+  Future<void> _loadShopSelfDeliveryStatus() async {
+    try {
+      final response = await ApiService.getMyShop();
+      if (response.isSuccess && response.data?['data'] != null) {
+        final shopData = response.data['data'];
+        if (mounted) {
+          setState(() {
+            _shopNumericId = shopData['id']?.toString();
+            _selfDeliveryEnabled = shopData['selfDeliveryEnabled'] == true;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading self-delivery status: $e');
+    }
+  }
+
+  Future<void> _toggleSelfDelivery(bool value) async {
+    if (_shopNumericId == null || _shopNumericId!.isEmpty) return;
+
+    setState(() => _isUpdatingSelfDelivery = true);
+    try {
+      final response = await ApiService.updateSelfDelivery(_shopNumericId!, value);
+      if (response.isSuccess) {
+        if (mounted) {
+          setState(() {
+            _selfDeliveryEnabled = value;
+            _isUpdatingSelfDelivery = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isUpdatingSelfDelivery = false);
+      }
+    } catch (e) {
+      print('Error updating self delivery: $e');
+      if (mounted) setState(() => _isUpdatingSelfDelivery = false);
+    }
+  }
+
+  Future<void> _startSelfDelivery(dynamic order) async {
+    final orderId = order['id']?.toString() ?? '';
+    if (orderId.isEmpty) return;
+
+    setState(() => _updatingOrders.add(orderId));
+    try {
+      final response = await ApiService.startSelfDelivery(orderId);
+      if (response.isSuccess) {
+        await _fetchOrders(silent: true);
+      }
+    } catch (e) {
+      print('Error starting self delivery: $e');
+    } finally {
+      if (mounted) setState(() => _updatingOrders.remove(orderId));
+    }
+  }
+
+  Future<void> _completeSelfDelivery(dynamic order) async {
+    final orderId = order['id']?.toString() ?? '';
+    if (orderId.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Delivered'),
+        content: const Text('Confirm that this order has been handed over to the customer?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, foregroundColor: Colors.white),
+            child: const Text('Yes, Delivered'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _updatingOrders.add(orderId));
+    try {
+      final response = await ApiService.completeSelfDelivery(orderId);
+      if (response.isSuccess) {
+        await _fetchOrders(silent: true);
+      }
+    } catch (e) {
+      print('Error completing self delivery: $e');
+    } finally {
+      if (mounted) setState(() => _updatingOrders.remove(orderId));
+    }
   }
 
   @override
@@ -1437,6 +1537,24 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
             elevation: 0,
             actions: [
               IconButton(
+                icon: _isUpdatingSelfDelivery
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Icon(
+                        Icons.delivery_dining,
+                        color: _selfDeliveryEnabled ? Colors.white : Colors.white54,
+                      ),
+                tooltip: _selfDeliveryEnabled
+                    ? 'Self Delivery: ON — tap to turn off'
+                    : 'Self Delivery: OFF — tap to turn on',
+                onPressed: (_isUpdatingSelfDelivery || _shopNumericId == null)
+                    ? null
+                    : () => _toggleSelfDelivery(!_selfDeliveryEnabled),
+              ),
+              IconButton(
                 icon: Icon(
                   _startDate != null || _endDate != null ? Icons.filter_alt : Icons.filter_alt_outlined,
                   color: Colors.white,
@@ -1530,6 +1648,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                           items: order['items'] as List?, // Pass items to show product details
                           deliveryType: deliveryType, // Pass delivery type
                           isLoading: isUpdating, // Pass loading state
+                          selfDeliveryEnabled: _selfDeliveryEnabled,
                           driverSearchStartedAt: order['driverSearchStartedAt'] != null
                               ? DateTime.tryParse(order['driverSearchStartedAt'])
                               : null,
@@ -1542,6 +1661,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                               builder: (context) => OrderDetailsScreen(
                                 orderId: order['id']?.toString() ?? order['orderNumber'] ?? '',
                                 orderData: order,
+                                selfDeliveryEnabled: _selfDeliveryEnabled,
                               ),
                             ),
                           );
@@ -1579,9 +1699,16 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                             ? () => _showAddItemDialog(order)
                             : null,
 
-                          // OUT_FOR_DELIVERY status: No buttons (only driver can deliver)
-                          // Shop owners cannot mark HOME_DELIVERY orders as delivered
-                          onMarkDelivered: null,
+                          // Self-delivery shop: owner leaves with the order (READY/READY_FOR_PICKUP -> OUT_FOR_DELIVERY)
+                          onStartSelfDelivery: ((orderStatus == 'READY_FOR_PICKUP' || orderStatus == 'READY') && deliveryType == 'HOME_DELIVERY' && _selfDeliveryEnabled)
+                              ? () => _startSelfDelivery(order)
+                              : null,
+
+                          // OUT_FOR_DELIVERY status: only a self-delivery shop can mark delivered here
+                          // (otherwise only the driver can deliver, so no button is shown)
+                          onMarkDelivered: (orderStatus == 'OUT_FOR_DELIVERY' && deliveryType == 'HOME_DELIVERY' && _selfDeliveryEnabled)
+                              ? () => _completeSelfDelivery(order)
+                              : null,
                         ),
                       );
                     },

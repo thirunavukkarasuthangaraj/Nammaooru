@@ -100,7 +100,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text('Analytics & Reports', style: AppTheme.h5),
+        title: Text('Analytics & Reports', style: AppTheme.h5.copyWith(color: Colors.white)),
+        backgroundColor: AppTheme.primaryDark,
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           Container(

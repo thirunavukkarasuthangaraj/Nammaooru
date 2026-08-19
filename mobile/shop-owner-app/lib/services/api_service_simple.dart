@@ -335,6 +335,59 @@ class ApiService {
     }
   }
 
+  // Self-delivery shop: owner leaves with the order (READY_FOR_PICKUP -> OUT_FOR_DELIVERY)
+  static Future<ApiResponse> startSelfDelivery(String orderId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/orders/$orderId/self-delivery/start'),
+            headers: headers,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Self-delivery shop: owner handed the order to the customer (OUT_FOR_DELIVERY -> DELIVERED)
+  static Future<ApiResponse> completeSelfDelivery(String orderId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/orders/$orderId/self-delivery/complete'),
+            headers: headers,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Toggle self-delivery for this shop (owner delivers orders themselves,
+  // no delivery partner is searched). shopId here is the numeric DB id.
+  static Future<ApiResponse> updateSelfDelivery(String shopNumericId, bool enabled) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/shops/$shopNumericId'),
+            headers: headers,
+            body: json.encode({'selfDeliveryEnabled': enabled}),
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   // Handover self-pickup order to customer
   static Future<ApiResponse> handoverSelfPickup(String orderId) async {
     try {

@@ -442,6 +442,54 @@ class ApiService {
     }
   }
 
+  // Self-delivery shop: owner leaves with the order (READY_FOR_PICKUP -> OUT_FOR_DELIVERY)
+  static Future<ApiResponse> startSelfDelivery(String orderId) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'orderId': orderId,
+        'newStatus': 'OUT_FOR_DELIVERY',
+      });
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/self-delivery/start'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  // Self-delivery shop: owner handed the order to the customer (OUT_FOR_DELIVERY -> DELIVERED)
+  static Future<ApiResponse> completeSelfDelivery(String orderId) async {
+    if (_useMockData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return ApiResponse.success({
+        'orderId': orderId,
+        'newStatus': 'DELIVERED',
+      });
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl${ApiEndpoints.orders}/$orderId/self-delivery/complete'),
+            headers: _authHeaders,
+          )
+          .timeout(timeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   // Handover self-pickup order to customer
   static Future<ApiResponse> handoverSelfPickup(String orderId) async {
     if (_useMockData) {
