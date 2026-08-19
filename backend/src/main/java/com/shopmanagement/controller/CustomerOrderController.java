@@ -195,8 +195,12 @@ public class CustomerOrderController {
             });
             return ResponseUtil.error(errorMsg.toString());
         } catch (RuntimeException e) {
-            log.error("Error creating customer order: {}", e.getMessage(), e);
-            return ResponseUtil.error("Failed to create order: " + e.getMessage());
+            // These are expected business-rule rejections (delivery radius, shop not found,
+            // stock unavailable, etc.) - not server failures. They were previously returned
+            // as HTTP 500 via ResponseUtil.error(), which made client-correctable errors
+            // (e.g. "delivers only within 10km") look like a server crash. Use 400 instead.
+            log.error("Order rejected: {}", e.getMessage(), e);
+            return ResponseUtil.badRequest("Failed to create order: " + e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error creating customer order", e);
             return ResponseUtil.error("Failed to create order. Please try again later.");
