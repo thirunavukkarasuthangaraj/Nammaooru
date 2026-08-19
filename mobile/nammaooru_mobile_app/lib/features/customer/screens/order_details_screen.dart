@@ -917,7 +917,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       }
 
       if (mounted) {
-        context.push('/customer/cart');
+        context.go('/customer/cart'); // switch the bottom nav tab, not stack a new page
       }
     } finally {
       _isReordering = false;

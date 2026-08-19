@@ -773,10 +773,17 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
       if (added == 0) {
         _showSnackBar('None of these items are available right now', Colors.red);
-      } else if (unavailable > 0) {
+        return;
+      }
+
+      if (unavailable > 0) {
         _showSnackBar('Added $added item(s) to cart, $unavailable unavailable', Colors.orange);
       } else {
         _showSnackBar('Added $added item(s) to cart', Colors.green);
+      }
+
+      if (mounted) {
+        context.go('/customer/cart'); // switch the bottom nav tab, not stack a new page
       }
     } finally {
       _isReordering = false;

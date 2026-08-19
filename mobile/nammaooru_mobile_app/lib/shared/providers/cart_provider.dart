@@ -65,7 +65,14 @@ class CartProvider with ChangeNotifier {
 
   CartProvider() {
     _loadCartFromStorage();
-    loadCartFromBackend();
+    // Only pull the backend's cart on a genuinely empty local cart (fresh
+    // install/new device). The backend sync on addToCart is fire-and-forget
+    // with no retry, so it can drift out of sync with local storage - blindly
+    // overwriting a non-empty local cart with it on every app start would
+    // silently drop items whenever a past sync had failed.
+    if (_items.isEmpty) {
+      loadCartFromBackend();
+    }
   }
 
   Future<bool> addToCart(ProductModel product, {int quantity = 1, bool clearCartConfirmed = false}) async {

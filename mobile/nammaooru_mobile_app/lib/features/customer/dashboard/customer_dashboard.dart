@@ -1801,7 +1801,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       );
 
       if (mounted) {
-        context.push('/customer/cart');
+        context.go('/customer/cart'); // switch the bottom nav tab, not stack a new page
       }
     } catch (e) {
       // showDialog defaults to the root navigator; a plain Navigator.pop(context)
