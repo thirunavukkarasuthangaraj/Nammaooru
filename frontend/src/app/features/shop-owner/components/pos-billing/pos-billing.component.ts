@@ -1636,6 +1636,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.removeFromCart(item);
       return;
     }
+    // Same reasoning as updateQuantity: reducing a weight line that was
+    // already printed/billed would desync the next reprint from what the
+    // server order actually charged - break the link, next Print starts fresh.
+    if (deltaGrams < 0 && (this.billedQuantities.get(item) || 0) > 0) {
+      this.lastOrder = null;
+      this.billedQuantities = new WeakMap<CartItem, number>();
+    }
     item.weightGrams = newGrams;
     const total = Math.round(item.pricePerKg * newGrams / 10) / 100;
     item.unitPrice = total;
@@ -2273,6 +2280,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
+    // Reducing a quantity that was already printed/billed would make the next
+    // reprint (built from the live cart) show less than what the server order
+    // actually charged - stop treating this as the same bill and let the next
+    // Print start a fresh, honest order for whatever remains.
+    if ((this.billedQuantities.get(item) || 0) > newQty) {
+      this.lastOrder = null;
+      this.billedQuantities = new WeakMap<CartItem, number>();
+    }
+
     item.quantity = newQty;
     item.total = item.quantity * item.unitPrice;
     this.calculateTotals();
@@ -2284,6 +2300,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   removeFromCart(item: CartItem): void {
     const index = this.cart.indexOf(item);
     if (index > -1) {
+      // Removing an item that was already printed/billed breaks the link to
+      // that order (its reprint would no longer match what was actually
+      // charged) - stop appending to it, next Print starts a fresh bill.
+      if ((this.billedQuantities.get(item) || 0) > 0) {
+        this.lastOrder = null;
+        this.billedQuantities = new WeakMap<CartItem, number>();
+      }
+
       this.cart.splice(index, 1);
       this.calculateTotals();
       // In Quick Bill mode, keep products list empty (user scans next item)
