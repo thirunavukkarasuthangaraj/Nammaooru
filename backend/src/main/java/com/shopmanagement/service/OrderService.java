@@ -1291,8 +1291,20 @@ public class OrderService {
 
         // Send push notification to customer for rejection
         try {
-            if (rejectedOrder.getCustomer() != null && rejectedOrder.getCustomer().getEmail() != null) {
-                User customerUser = userRepository.findByEmail(rejectedOrder.getCustomer().getEmail()).orElse(null);
+            if (rejectedOrder.getCustomer() != null) {
+                // Match by mobile first, then email: the customer record's email can drift
+                // from the login account's email (typo, guest-checkout email, or even
+                // coincidentally matching an unrelated account's email in test data), so a
+                // combined OR query can return multiple rows and blow up with
+                // NonUniqueResultException. Two sequential single-field lookups avoid that.
+                String customerMobile = rejectedOrder.getCustomer().getMobileNumber();
+                String customerEmail = rejectedOrder.getCustomer().getEmail();
+                User customerUser = customerMobile != null
+                        ? userRepository.findByMobileNumber(customerMobile).orElse(null)
+                        : null;
+                if (customerUser == null && customerEmail != null) {
+                    customerUser = userRepository.findByEmail(customerEmail).orElse(null);
+                }
                 if (customerUser != null) {
                     List<String> fcmTokens = getFcmTokensForUser(customerUser.getId());
                     if (!fcmTokens.isEmpty()) {
