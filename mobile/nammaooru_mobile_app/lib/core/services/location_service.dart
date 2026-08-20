@@ -46,7 +46,7 @@ class LocationService {
   }
 
   // Use your Google Maps API key from env config
-  static const String _googleApiKey = 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U';
+  static const String _googleApiKey = 'AIzaSyAnAf-HWVsvKdYuzY7gMMiqTfyahKJSd1I';
 
   /// Human-readable label for the manually selected location, shown in the
   /// "Deliver to" bar (e.g. the village name the user searched for).
@@ -87,10 +87,7 @@ class LocationService {
     return [];
   }
 
-  // Google geocoding is parked while its billing is disabled — every call
-  // was a guaranteed dead round-trip that slowed each search. Flip back on
-  // when the key works again.
-  static const bool _googleGeocodingEnabled = false;
+  static const bool _googleGeocodingEnabled = true;
 
   /// Hard cap per provider so one slow geocoder can't hang the search sheet
   static const Duration _providerTimeout = Duration(seconds: 4);

@@ -8,9 +8,12 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/services/location_service.dart';
 import '../../../services/shop_api_service.dart';
 
-/// Bottom sheet that lets the customer search any village/town in India and
-/// use it as the "deliver to" location (e.g. ordering groceries for parents
-/// in their native village while living in Bangalore/Chennai).
+/// Panel that lets the customer search any village/town in India and use it
+/// as the "deliver to" location (e.g. ordering groceries for parents in
+/// their native village while living in Bangalore/Chennai).
+///
+/// Opens from the top of the screen (not a bottom sheet) so it sits right
+/// under the app bar where the "deliver to" control lives.
 ///
 /// Pops with `{'name': ..., 'latitude': ..., 'longitude': ...}` for a picked
 /// place, `{'useCurrentLocation': true}` for the near-me option, or null when
@@ -19,11 +22,27 @@ class LocationSearchSheet extends StatefulWidget {
   const LocationSearchSheet({super.key});
 
   static Future<Map<String, dynamic>?> show(BuildContext context) {
-    return showModalBottomSheet<Map<String, dynamic>>(
+    return showGeneralDialog<Map<String, dynamic>>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const LocationSearchSheet(),
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return const Align(
+          alignment: Alignment.topCenter,
+          child: LocationSearchSheet(),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, -1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: child,
+        );
+      },
     );
   }
 
@@ -58,7 +77,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     // (e.g. "mittur " returns a bare village name with no address context,
     // while "mittur" returns the full "Mittur, Mogilivaripalle, ..." result) -
     // trim before it ever reaches the search, not just the length check above.
-    _debounce = Timer(const Duration(milliseconds: 500), () => _search(query.trim()));
+    _debounce = Timer(const Duration(milliseconds: 300), () => _search(query.trim()));
   }
 
   Future<void> _search(String query) async {
@@ -72,6 +91,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     final lookups = await Future.wait<List<Map<String, dynamic>>>([
       ShopApiService()
           .searchShopLocations(query)
+          .timeout(const Duration(seconds: 3), onTimeout: () => <Map<String, dynamic>>[])
           .catchError((_) => <Map<String, dynamic>>[]),
       LocationService.instance
           .searchPlaces(query, languageCode: languageCode)
@@ -97,34 +117,38 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     });
   }
 
+  void _select(Map<String, dynamic> result) {
+    // Clear the list before popping so the closing animation carries an
+    // empty panel off-screen instead of the full suggestion list.
+    setState(() {
+      _results = [];
+      _hasSearched = false;
+    });
+    Navigator.pop(context, result);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    return Container(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    return Material(
+      color: Colors.transparent,
       child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(top: 12, bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
+        bottom: false,
+        child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(maxHeight: screenHeight * 0.75),
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 context.loc?.translate('deliver_to_which_place') ?? 'Deliver to which place?',
@@ -196,7 +220,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                   color: Color(0xFF2E7D32),
                 ),
               ),
-              onTap: () => Navigator.pop(context, {'useCurrentLocation': true}),
+              onTap: () => _select({'useCurrentLocation': true}),
             ),
             if (_results.isNotEmpty)
               Flexible(
@@ -217,7 +241,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      onTap: () => Navigator.pop(context, place),
+                      onTap: () => _select(place),
                     );
                   },
                 ),
@@ -232,6 +256,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
               ),
             const SizedBox(height: 8),
           ],
+        ),
         ),
       ),
     );

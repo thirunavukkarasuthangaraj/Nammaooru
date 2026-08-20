@@ -21,12 +21,10 @@ import '../screens/shop_listing_screen.dart';
 import '../screens/shop_details_screen.dart';
 // import '../screens/shop_details_modern_screen.dart';
 import '../screens/location_picker_screen.dart';
-import '../screens/google_maps_location_picker_screen.dart';
 import '../screens/notifications_screen.dart';
-import '../screens/address_management_screen.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
-import '../widgets/address_selection_dialog.dart';
+import '../widgets/deliver_to_picker.dart';
 import '../../../shared/widgets/platform_promos_carousel.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../../../services/version_service.dart';
@@ -275,281 +273,24 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     if (_isLocationPickerOpen) return;
 
     _isLocationPickerOpen = true;
-
     try {
-      // Check if user is authenticated
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      if (!authProvider.isAuthenticated) {
-        // Show login prompt for guests
-        final shouldLogin = await _showLocationLoginPrompt();
-        if (shouldLogin == true) {
-          context.go('/register');
-        }
-        return;
-      }
-
-      // User is logged in - proceed with location picker
-      // First check if user has saved addresses
-      final savedAddresses = await AddressService.instance.getSavedAddresses();
-
-      if (savedAddresses.isNotEmpty) {
-        // Show address selection dialog if addresses exist
-        await showDialog(
-          context: context,
-          builder: (context) => AddressSelectionDialog(
-            currentLocation: _selectedLocation,
-            onLocationSelected: (selectedLocation) {
-              if (selectedLocation != _selectedLocation) {
-                setState(() {
-                  _selectedLocation = selectedLocation;
-                });
-
-                // Show confirmation
-                Helpers.showSnackBar(
-                  context,
-                  'Delivery address updated',
-                );
-
-                // Reload shops around the newly chosen location
-                _loadFeaturedShops();
-              }
-            },
-          ),
-        );
-      } else {
-        // If no saved addresses, show choice dialog (Enter Manually vs Select from Map)
-        await _showAddAddressOptionsDialog();
-      }
+      await DeliverToPicker.show(
+        context,
+        currentLocation: _selectedLocation,
+        onLocationSelected: (selectedLocation) {
+          setState(() {
+            _selectedLocation = selectedLocation;
+          });
+          // Reload shops around the newly chosen location
+          _loadFeaturedShops();
+        },
+        onAddressBookUpdated: _getCurrentLocationOnStartup,
+      );
     } finally {
       _isLocationPickerOpen = false;
     }
   }
 
-  Future<void> _showAddAddressOptionsDialog() async {
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: VillageTheme.primaryGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.add_location_alt, color: VillageTheme.primaryGreen, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Add Delivery Address',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: Colors.black54),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Choose how you want to add your delivery address:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                // Option 1: Enter Manually
-                InkWell(
-                  onTap: () async {
-                    Navigator.of(context).pop(); // Close options dialog
-                    await Future.delayed(const Duration(milliseconds: 100));
-                    if (mounted) {
-                      // Navigate to Address Management and auto-open manual form
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddressManagementScreen(autoOpenManualForm: true),
-                        ),
-                      );
-                      if (result != null) {
-                        await AddressService.instance.getSavedAddresses();
-                        // Reload current location
-                        _getCurrentLocationOnStartup();
-                      }
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: VillageTheme.primaryGreen, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: VillageTheme.primaryGreen.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: VillageTheme.primaryGreen.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.edit_note, color: VillageTheme.primaryGreen, size: 32),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Enter Manually',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Type your address details',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.arrow_forward_ios, color: VillageTheme.primaryGreen, size: 16),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Option 2: Select from Map
-                InkWell(
-                  onTap: () async {
-                    Navigator.of(context).pop();
-                    final selectedLocation = await Navigator.push<String>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GoogleMapsLocationPickerScreen(
-                          currentLocation: _selectedLocation,
-                        ),
-                      ),
-                    );
-
-                    if (selectedLocation != null && selectedLocation != _selectedLocation) {
-                      setState(() {
-                        _selectedLocation = selectedLocation;
-                      });
-
-                      // Show confirmation
-                      Helpers.showSnackBar(
-                        context,
-                        'Location updated to $selectedLocation',
-                      );
-
-                      // Reload addresses to update the list
-                      await AddressService.instance.getSavedAddresses();
-
-                      // Reload shops around the newly chosen location
-                      _loadFeaturedShops();
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.green, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.map, color: Colors.green, size: 32),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    'Select from Map',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Icon(Icons.star, color: Colors.amber, size: 16),
-                                ],
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Pinpoint your exact location',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.arrow_forward_ios, color: Colors.green, size: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-  
   Future<void> _loadDashboardData() async {
     await Future.wait([
       _loadFeaturedShops(),
@@ -3572,72 +3313,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Future<bool?> _showLocationLoginPrompt() {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.location_on, color: VillageTheme.primaryGreen, size: 24),
-            const SizedBox(width: 8),
-            const Text(
-              'Login Required',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Please login to save and manage your delivery addresses.',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: VillageTheme.primaryGreen, size: 16),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'You can still browse with your current location',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(fontSize: 14)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: VillageTheme.primaryGreen,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Login / Sign Up', style: TextStyle(fontSize: 14)),
-          ),
-        ],
       ),
     );
   }

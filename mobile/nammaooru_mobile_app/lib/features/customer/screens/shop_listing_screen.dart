@@ -11,7 +11,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../widgets/location_search_sheet.dart';
+import '../widgets/deliver_to_picker.dart';
 import 'shop_details_screen.dart';
 
 class ShopListingScreen extends StatefulWidget {
@@ -156,26 +156,32 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     }
   }
 
-  /// Open the place search sheet and reload shops for the chosen location.
+  /// Open the same "Deliver to" address picker used on the dashboard
+  /// (saved addresses, manual entry, or map pin) and reload shops for
+  /// whichever location the customer picks.
   Future<void> _openLocationSearch() async {
-    final result = await LocationSearchSheet.show(context);
-    if (result == null || !mounted) return;
+    final currentLabel = LocationService.isManualLocation
+        ? (LocationService.manualLocationLabel ??
+            (context.loc?.translate('selected_location') ?? 'Selected location'))
+        : (context.loc?.translate('near_me') ?? 'Near me');
 
+    await DeliverToPicker.show(
+      context,
+      currentLocation: currentLabel,
+      onLocationSelected: (selectedLocation) {
+        // AddressSelectionDialog / GoogleMapsLocationPickerScreen already
+        // called LocationService.setManualPosition with the chosen coords.
+        LocationService.manualLocationLabel = selectedLocation;
+        _reloadShopsForManualLocation();
+      },
+    );
+  }
+
+  Future<void> _reloadShopsForManualLocation() async {
+    if (!LocationService.hasCachedPosition) return;
     setState(() => _isLoading = true);
     try {
-      if (result['useCurrentLocation'] == true) {
-        LocationService.clearManualPosition();
-        final position = await LocationService.instance.getCurrentPosition();
-        if (position?.latitude != null && position?.longitude != null) {
-          await _loadNearbyShops(position!.latitude!, position.longitude!);
-        }
-      } else {
-        final latitude = result['latitude'] as double;
-        final longitude = result['longitude'] as double;
-        LocationService.setManualPosition(latitude, longitude);
-        LocationService.manualLocationLabel = result['name'] as String?;
-        await _loadNearbyShops(latitude, longitude);
-      }
+      await _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
     } catch (e) {
       if (mounted) {
         Helpers.showSnackBar(context, 'Failed to load shops: $e', isError: true);

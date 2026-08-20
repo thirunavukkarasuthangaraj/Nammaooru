@@ -312,15 +312,25 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
+          onTap: () async {
             // Use the address's coordinates for shop searches when available;
-            // without coordinates the app keeps using GPS as before
+            // otherwise forward-geocode the city/state so the shop search
+            // doesn't silently keep using the previous (stale) position.
             if (address.latitude != null && address.longitude != null) {
               LocationService.setManualPosition(address.latitude!, address.longitude!);
+            } else {
+              final results = await LocationService.instance
+                  .searchPlaces('${address.city}, ${address.state}');
+              if (results.isNotEmpty) {
+                LocationService.setManualPosition(
+                  results.first['latitude'] as double,
+                  results.first['longitude'] as double,
+                );
+              }
             }
             final locationString = '${address.addressLine1}, ${address.city}';
             widget.onLocationSelected(locationString);
-            Navigator.of(context).pop();
+            if (context.mounted) Navigator.of(context).pop();
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
