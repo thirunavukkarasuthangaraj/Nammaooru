@@ -1422,6 +1422,111 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * "Add Cart Again": load all of this order's items into the POS billing cart
+   * so the same purchase can be billed again. The handoff goes through
+   * localStorage because the POS screen loads its product cache asynchronously —
+   * it matches the items back to cached products there.
+   */
+  addToCartAgain(order: ShopOwnerOrder): void {
+    const items = (order.items || [])
+      .map((it: any) => ({
+        shopProductId: it.shopProductId || null,
+        name: it.productName || it.name || '',
+        quantity: it.quantity || 1
+      }))
+      .filter(it => it.shopProductId || it.name);
+
+    if (items.length === 0) {
+      this.swal.warning('No Items', 'This order has no items to add to the cart');
+      return;
+    }
+
+    localStorage.setItem('pos_readd_order', JSON.stringify({
+      shopId: order.shopId || this.shopId,
+      orderNumber: order.orderNumber,
+      items,
+      savedAt: Date.now()
+    }));
+    this.router.navigate(['/shop-owner/pos-billing']);
+  }
+
+  /**
+   * Send the order's bill to the customer on WhatsApp. The server renders the
+   * bill (image + PDF fallback) and delivers it through the WhatsApp Cloud API —
+   * same endpoint the POS billing screen uses, works for any order type.
+   */
+  async sendBillOnWhatsApp(order: ShopOwnerOrder): Promise<void> {
+    if (!order?.id) {
+      this.swal.warning('Not Synced Yet', 'This bill was saved offline and needs to sync before it can be sent on WhatsApp');
+      return;
+    }
+
+    // The shared walk-in customer's number (90000 + shop id) is a placeholder,
+    // not a real phone — ask for the actual number instead of sending to it
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    let phone = order.customerPhone && !isWalkInPlaceholder(order.customerPhone) ? order.customerPhone : '';
+    if (!phone) {
+      const { value } = await this.swal.prompt(
+        'Customer Phone Number',
+        'Enter the customer\'s WhatsApp number to send the bill',
+        'tel'
+      );
+      if (!value) return;
+      phone = value;
+    }
+
+    // "Walk-in Customer" is the placeholder's name, not the real person's
+    const name = order.customerName && !/walk-?in/i.test(order.customerName) ? order.customerName : '';
+
+    this.swal.loading('Sending bill on WhatsApp...');
+    try {
+      await this.posSyncService.sendWhatsAppBill(order.id, phone, name);
+      this.swal.close();
+      this.swal.toast('Bill sent on WhatsApp', 'success');
+    } catch (error: any) {
+      this.swal.close();
+      const message = error?.error?.message || error?.message || 'Failed to send bill on WhatsApp';
+      this.swal.error('Error', message);
+    }
+  }
+
+  /**
+   * Send the order's bill to the customer by email as a PDF.
+   */
+  async sendBillOnEmail(order: ShopOwnerOrder): Promise<void> {
+    if (!order?.id) {
+      this.swal.warning('Not Synced Yet', 'This bill was saved offline and needs to sync before it can be emailed');
+      return;
+    }
+
+    // POS-created customers get a placeholder <phone>@pos.local address — never a real inbox
+    const isPlaceholderEmail = (e: string) => (e || '').endsWith('@pos.local');
+    let email = order.customerEmail && !isPlaceholderEmail(order.customerEmail) ? order.customerEmail : '';
+    if (!email) {
+      const { value } = await this.swal.prompt(
+        'Customer Email',
+        'Enter the customer\'s email address to send the bill',
+        'email'
+      );
+      if (!value) return;
+      email = value;
+    }
+
+    const name = order.customerName && !/walk-?in/i.test(order.customerName) ? order.customerName : '';
+
+    this.swal.loading('Sending bill by email...');
+    try {
+      await this.posSyncService.sendEmailBill(order.id, email, name);
+      this.swal.close();
+      this.swal.toast('Bill sent by email', 'success');
+    } catch (error: any) {
+      this.swal.close();
+      const message = error?.error?.message || error?.message || 'Failed to send bill by email';
+      this.swal.error('Error', message);
+    }
+  }
+
+  /**
    * Escape HTML special characters so order/customer/product values (which
    * can originate from end-user input via the mobile app) can never inject
    * markup/script into the receipt - this HTML goes through document.write(),

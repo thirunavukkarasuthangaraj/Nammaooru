@@ -682,6 +682,36 @@ $white: #ffffff;
       color: $white;
     }
   }
+
+  &.btn-whatsapp {
+    background: rgba(#25D366, 0.12);
+    color: #128C7E;
+
+    &:hover {
+      background: #25D366;
+      color: $white;
+    }
+  }
+
+  &.btn-email {
+    background: rgba($accent-color, 0.1);
+    color: $accent-color;
+
+    &:hover {
+      background: $accent-color;
+      color: $white;
+    }
+  }
+
+  &.btn-addcart {
+    background: rgba($success-color, 0.1);
+    color: $success-color;
+
+    &:hover {
+      background: $success-color;
+      color: $white;
+    }
+  }
 }
 
 .btn-details {
@@ -1204,6 +1234,33 @@ $white: #ffffff;
 
     &:hover {
       background: darken($primary-lighter, 5%);
+    }
+  }
+
+  &.btn-whatsapp-modal {
+    background: #25D366;
+    color: $white;
+
+    &:hover {
+      background: #128C7E;
+    }
+  }
+
+  &.btn-email-modal {
+    background: $accent-color;
+    color: $white;
+
+    &:hover {
+      background: darken($accent-color, 8%);
+    }
+  }
+
+  &.btn-addcart-modal {
+    background: $success-color;
+    color: $white;
+
+    &:hover {
+      background: darken($success-color, 8%);
     }
   }
 

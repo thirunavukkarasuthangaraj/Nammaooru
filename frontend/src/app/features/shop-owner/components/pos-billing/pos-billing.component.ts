@@ -252,6 +252,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly POS_IMAGES_CACHED_KEY = 'pos_images_last_cached';
   // In-progress bill survives page refreshes (PWA auto-update reloads, accidental F5)
   private readonly POS_CART_BACKUP_KEY = 'pos_cart_backup';
+  // One-shot handoff from Order Management's "Add Cart Again" button
+  private readonly POS_READD_ORDER_KEY = 'pos_readd_order';
   private readonly IMAGE_CACHE_VALIDITY_MS = 60 * 60 * 1000; // 1 hour
   // Image caching used to start the moment POS opened, and its ~2500 IndexedDB
   // lookups + downloads competed with the search box — the freeze owners felt.
@@ -502,7 +504,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.initSyncStatus();
     this.initSearch();
     this.initBarcodeScanner();
-    this.loadProducts().then(() => this.restoreCartBackup());
+    this.loadProducts().then(() => {
+      // Order Management handoff first: when it fills the cart, the refresh
+      // backup restore below skips itself (it never overwrites a non-empty cart)
+      this.applyReAddOrder();
+      this.restoreCartBackup();
+    });
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
 
     // Check if products were added while away - force reload from IndexedDB
@@ -2460,6 +2467,79 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     } catch (e) {
       // Quota exceeded or storage unavailable — losing the backup is acceptable
       console.warn('Failed to save cart backup:', e);
+    }
+  }
+
+  /**
+   * "Add Cart Again" handoff from the Order Management screen: rebuild the cart
+   * from a past order's items. Runs after products are cached so each item can
+   * be matched to a live product (by shop product id, falling back to name).
+   * Weight-sold items (unit 'kg') need the weight picker, so they are reported
+   * for manual adding instead of being guessed.
+   */
+  private applyReAddOrder(): void {
+    let handoff: any = null;
+    try {
+      const raw = localStorage.getItem(this.POS_READD_ORDER_KEY);
+      if (!raw) return;
+      localStorage.removeItem(this.POS_READD_ORDER_KEY);  // one-shot
+      handoff = JSON.parse(raw);
+    } catch (e) {
+      console.warn('Failed to read re-add order handoff:', e);
+      return;
+    }
+
+    if (!handoff?.items?.length) return;
+    // Stale handoff (>10 min old) or another shop's order — ignore
+    if (Date.now() - (handoff.savedAt || 0) > 10 * 60 * 1000) return;
+    if (handoff.shopId && this.shopId && handoff.shopId !== this.shopId) return;
+
+    const skipped: string[] = [];
+    for (const it of handoff.items) {
+      const product = this.products.find(p => it.shopProductId && p.id === it.shopProductId)
+        || this.products.find(p => it.name && p.name === it.name);
+      if (!product || this.isWeightProduct(product)) {
+        skipped.push(it.name || `#${it.shopProductId}`);
+        continue;
+      }
+
+      // Bill at the CURRENT price/stock, not the old order's; clamp to stock
+      let qty = Math.max(1, Math.round(it.quantity || 1));
+      if (product.trackInventory && product.stock < qty) {
+        if (product.stock <= 0) {
+          skipped.push(product.name);
+          continue;
+        }
+        qty = product.stock;
+      }
+
+      const existing = this.cart.find(item => item.product.id === product.id);
+      const mrp = product.originalPrice || product.price;
+      if (existing) {
+        existing.quantity += qty;
+        existing.total = existing.quantity * existing.unitPrice;
+      } else {
+        this.cart.unshift({
+          product,
+          quantity: qty,
+          unitPrice: product.price,
+          mrp,
+          total: qty * product.price,
+          discount: mrp - product.price
+        });
+      }
+    }
+
+    this.calculateTotals();
+    this.saveCartBackup();
+
+    const added = this.cart.length;
+    if (added > 0) {
+      this.swal.toast(`Order ${handoff.orderNumber || ''} loaded: ${added} item${added > 1 ? 's' : ''} added to cart`, 'success');
+    }
+    if (skipped.length > 0) {
+      this.swal.warning('Some Items Not Added',
+        `Add these manually (out of stock, weight-based, or no longer in the catalog): ${skipped.join(', ')}`);
     }
   }
 

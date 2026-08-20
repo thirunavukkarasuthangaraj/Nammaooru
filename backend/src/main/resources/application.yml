@@ -252,10 +252,10 @@ msg91:
   api:
     base-url: ${MSG91_API_URL:https://control.msg91.com/api/v5}
 
-# WhatsApp provider switch: "msg91" (via MSG91 relay) or "meta" (direct Meta Cloud API).
+# WhatsApp provider switch: "meta" (direct Meta Cloud API, default) or "msg91" (MSG91 relay).
 # MSG91 config above stays intact so it can be re-enabled by switching back.
 whatsapp:
-  provider: ${WHATSAPP_PROVIDER:msg91}
+  provider: ${WHATSAPP_PROVIDER:meta}
   meta:
     phone-number-id: ${META_WA_PHONE_NUMBER_ID:}
     access-token: ${META_WA_ACCESS_TOKEN:}

@@ -244,6 +244,19 @@
                   <span>Print</span>
                 </button>
 
+                <!-- Send bill to the customer (WhatsApp Cloud API / email) -->
+                <button *ngIf="order.id" class="btn-action btn-whatsapp btn-labeled" (click)="sendBillOnWhatsApp(order)" title="Send Bill on WhatsApp">
+                  <span>WhatsApp</span>
+                </button>
+                <button *ngIf="order.id" class="btn-action btn-email btn-labeled" (click)="sendBillOnEmail(order)" title="Send Bill by Email">
+                  <span>Email</span>
+                </button>
+
+                <!-- Re-add all order items to the POS billing cart -->
+                <button class="btn-action btn-addcart btn-labeled" (click)="addToCartAgain(order)" title="Add all items to the POS cart again">
+                  <span>Add Cart</span>
+                </button>
+
                 <!-- View Details -->
                 <button class="btn-details" (click)="showOrderDetailsModal(order)" title="View Details">
                   Details
@@ -414,6 +427,21 @@
         <button class="btn-modal btn-print-modal" (click)="printOrderSmall(selectedOrder.id)">
           <mat-icon>print</mat-icon>
           Print Receipt
+        </button>
+
+        <button *ngIf="selectedOrder.id" class="btn-modal btn-whatsapp-modal" (click)="sendBillOnWhatsApp(selectedOrder)">
+          <mat-icon>chat</mat-icon>
+          Send WhatsApp
+        </button>
+
+        <button *ngIf="selectedOrder.id" class="btn-modal btn-email-modal" (click)="sendBillOnEmail(selectedOrder)">
+          <mat-icon>email</mat-icon>
+          Send Email
+        </button>
+
+        <button class="btn-modal btn-addcart-modal" (click)="addToCartAgain(selectedOrder)">
+          <mat-icon>add_shopping_cart</mat-icon>
+          Add Cart Again
         </button>
 
         <ng-container *ngIf="selectedOrder.status === 'PENDING'">

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, switchMap, map } from 'rxjs/operators';
@@ -45,6 +45,7 @@ export interface ShopOwnerOrder {
 
 export interface OrderItem {
   id: number;
+  shopProductId?: number;
   name: string;
   productName: string;
   productNameTamil?: string;
@@ -102,6 +103,7 @@ export class ShopOwnerOrderService {
             ...order,
             items: (order.orderItems || []).map((item: any) => ({
               id: item.id,
+              shopProductId: item.shopProductId,
               name: item.productName,
               productName: item.productName,
               quantity: item.quantity,
@@ -134,7 +136,7 @@ export class ShopOwnerOrderService {
       );
   }
 
-  // Server-side paginated fetch — returns the page of orders plus the true totals from the backend
+  // Server-side paginated fetch â€” returns the page of orders plus the true totals from the backend
   getShopOrdersPage(shopId: string | number, page: number = 0, size: number = 20): Observable<{ orders: ShopOwnerOrder[]; totalItems: number; totalPages: number }> {
     const params = new HttpParams()
       .set('page', page.toString())
@@ -148,6 +150,7 @@ export class ShopOwnerOrderService {
             ...order,
             items: (order.orderItems || []).map((item: any) => ({
               id: item.id,
+              shopProductId: item.shopProductId,
               name: item.productName,
               productName: item.productName,
               quantity: item.quantity,
@@ -463,6 +466,7 @@ export class ShopOwnerOrderService {
       ...order,
       items: (order.orderItems || order.items || []).map((item: any) => ({
         id: item.id,
+        shopProductId: item.shopProductId,
         name: item.productName,
         productName: item.productName,
         quantity: item.quantity,
