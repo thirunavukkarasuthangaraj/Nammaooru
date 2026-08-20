@@ -2530,6 +2530,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
+    // The original order's customer comes along so the re-bill can be sent
+    // on WhatsApp/email without retyping their details
+    if (!this.customerName && handoff.customerName) this.customerName = handoff.customerName;
+    if (!this.customerPhone && handoff.customerPhone) this.customerPhone = handoff.customerPhone;
+    if (!this.customerEmail && handoff.customerEmail) this.customerEmail = handoff.customerEmail;
+
     this.calculateTotals();
     this.saveCartBackup();
 

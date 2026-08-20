@@ -1,6 +1,6 @@
 {
   "name": "shop-management-frontend",
-  "version": "1.0.472",
+  "version": "1.0.473",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

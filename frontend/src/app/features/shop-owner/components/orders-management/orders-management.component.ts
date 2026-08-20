@@ -1499,9 +1499,16 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Carry the customer too (skipping the walk-in placeholders) so the new
+    // bill can be WhatsApp/email-sent without retyping their details
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    const isPlaceholderEmail = (e: string) => (e || '').endsWith('@pos.local');
     localStorage.setItem('pos_readd_order', JSON.stringify({
       shopId: order.shopId || this.shopId,
       orderNumber: order.orderNumber,
+      customerName: order.customerName && !/walk-?in/i.test(order.customerName) ? order.customerName : '',
+      customerPhone: order.customerPhone && !isWalkInPlaceholder(order.customerPhone) ? order.customerPhone : '',
+      customerEmail: order.customerEmail && !isPlaceholderEmail(order.customerEmail) ? order.customerEmail : '',
       items,
       savedAt: Date.now()
     }));
