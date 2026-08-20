@@ -514,7 +514,11 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.orders = [...unsyncedOnly, ...serverOrders].sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    this.updateOrderLists();
+    // Never reset the infinite scroll here: this runs on the 30s background
+    // poll too, and collapsing back to 20 rows yanked the owner to the top of
+    // the list mid-scroll (worst while the print dialog was open). Only filter
+    // changes reset scroll.
+    this.updateOrderLists(false);
   }
 
   loadOrders(): void {
@@ -2613,6 +2617,13 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   getPagedOrders(): ShopOwnerOrder[] {
     // Infinite scroll - return orders up to displayedCount
     return this.filteredOrders.slice(0, this.displayedCount);
+  }
+
+  // Server refreshes return NEW order objects every poll; tracking by order
+  // number stops *ngFor from tearing down and rebuilding every row (which
+  // also disturbed the table's scroll position)
+  trackByOrder(index: number, order: ShopOwnerOrder): string | number {
+    return order.orderNumber || order.id;
   }
 
   // Infinite scroll handler
