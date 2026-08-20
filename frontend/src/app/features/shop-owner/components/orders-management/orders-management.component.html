@@ -244,6 +244,11 @@
                   <span>Print</span>
                 </button>
 
+                <!-- Print receipt + send bill (WhatsApp/email) in one click -->
+                <button *ngIf="order.id" class="btn-action btn-printsend btn-labeled" (click)="printAndSendBill(order)" title="Print receipt and send bill on WhatsApp/email">
+                  <span>Print+Send</span>
+                </button>
+
                 <!-- Send bill to the customer (WhatsApp Cloud API / email) -->
                 <button *ngIf="order.id" class="btn-action btn-whatsapp btn-labeled" (click)="sendBillOnWhatsApp(order)" title="Send Bill on WhatsApp">
                   <span>WhatsApp</span>
@@ -427,6 +432,11 @@
         <button class="btn-modal btn-print-modal" (click)="printOrderSmall(selectedOrder.id)">
           <mat-icon>print</mat-icon>
           Print Receipt
+        </button>
+
+        <button *ngIf="selectedOrder.id" class="btn-modal btn-printsend-modal" (click)="printAndSendBill(selectedOrder)">
+          <mat-icon>send</mat-icon>
+          Print & Send
         </button>
 
         <button *ngIf="selectedOrder.id" class="btn-modal btn-whatsapp-modal" (click)="sendBillOnWhatsApp(selectedOrder)">

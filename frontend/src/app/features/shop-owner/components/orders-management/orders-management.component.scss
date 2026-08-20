@@ -712,6 +712,16 @@ $white: #ffffff;
       color: $white;
     }
   }
+
+  &.btn-printsend {
+    background: rgba(#9C27B0, 0.1);
+    color: #9C27B0;
+
+    &:hover {
+      background: #9C27B0;
+      color: $white;
+    }
+  }
 }
 
 .btn-details {
@@ -1261,6 +1271,15 @@ $white: #ffffff;
 
     &:hover {
       background: darken($success-color, 8%);
+    }
+  }
+
+  &.btn-printsend-modal {
+    background: #9C27B0;
+    color: $white;
+
+    &:hover {
+      background: darken(#9C27B0, 8%);
     }
   }
 

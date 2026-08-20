@@ -1422,6 +1422,60 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * One-click "Print & Send": print the receipt, then send the bill on
+   * WhatsApp and by email — the button version of POS billing's
+   * auto-send-on-print. Prints always; sends only where a real contact
+   * exists (prompting once for a phone when it's missing).
+   */
+  async printAndSendBill(order: ShopOwnerOrder): Promise<void> {
+    if (!order?.id) {
+      this.swal.warning('Not Synced Yet', 'This bill was saved offline and needs to sync before it can be sent');
+      return;
+    }
+
+    this.printOrderSmall(order.id);
+
+    // The shared walk-in placeholders are not real contacts — never send to them
+    const isWalkInPlaceholder = (p: string) => /^90000\d{5}$/.test(p || '');
+    let phone = order.customerPhone && !isWalkInPlaceholder(order.customerPhone) ? order.customerPhone : '';
+    if (!phone) {
+      const { value } = await this.swal.prompt(
+        'Customer Phone Number',
+        'Enter the customer\'s WhatsApp number to send the bill (Cancel to skip WhatsApp)',
+        'tel'
+      );
+      phone = value || '';
+    }
+
+    const isPlaceholderEmail = (e: string) => (e || '').endsWith('@pos.local');
+    const email = order.customerEmail && !isPlaceholderEmail(order.customerEmail) ? order.customerEmail : '';
+    const name = order.customerName && !/walk-?in/i.test(order.customerName) ? order.customerName : '';
+
+    if (!phone && !email) {
+      this.swal.toast('No customer phone or email on this order — bill printed only', 'info');
+      return;
+    }
+
+    if (phone) {
+      try {
+        await this.posSyncService.sendWhatsAppBill(order.id, phone, name);
+        this.swal.toast('Bill sent on WhatsApp', 'success');
+      } catch (error: any) {
+        this.swal.error('WhatsApp Failed', error?.error?.message || error?.message || 'Failed to send bill on WhatsApp');
+      }
+    }
+
+    if (email) {
+      try {
+        await this.posSyncService.sendEmailBill(order.id, email, name);
+        this.swal.toast('Bill sent by email', 'success');
+      } catch (error: any) {
+        this.swal.error('Email Failed', error?.error?.message || error?.message || 'Failed to send bill by email');
+      }
+    }
+  }
+
+  /**
    * "Add Cart Again": load all of this order's items into the POS billing cart
    * so the same purchase can be billed again. The handoff goes through
    * localStorage because the POS screen loads its product cache asynchronously —
