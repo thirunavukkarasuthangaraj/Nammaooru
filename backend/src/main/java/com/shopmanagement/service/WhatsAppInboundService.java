@@ -74,6 +74,14 @@ public class WhatsAppInboundService {
     @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
     private String apiBaseUrl;
 
+    /**
+     * Product photos sent before the list. Default 0: full-size image messages
+     * flood the chat and bury the tappable list (tested 2026-08-21); compact
+     * image cards need the Catalogue instead.
+     */
+    @Value("${whatsapp.order.photo-count:0}")
+    private int photoCount;
+
     @Transactional
     public void processWebhook(JsonNode root) {
         try {
@@ -333,10 +341,10 @@ public class WhatsAppInboundService {
             return false;
         }
 
-        // Product photos first (top 3 with an image), then the tappable list.
+        // Optional product photos before the tappable list (off by default).
         int photosSent = 0;
         for (ShopProduct sp : products) {
-            if (photosSent >= 3) break;
+            if (photosSent >= photoCount) break;
             String imageUrl = sp.getPrimaryShopImageUrl();
             if (imageUrl == null || imageUrl.isBlank()) continue;
             if (imageUrl.startsWith("/")) {
