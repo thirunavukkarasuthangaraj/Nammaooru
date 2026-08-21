@@ -70,6 +70,14 @@ public class WhatsAppInboundService {
     @Value("${whatsapp.order.shop-id:}")
     private String configuredShopId;
 
+    /**
+     * Meta Commerce Catalogue id connected to the WABA. When set, search
+     * replies become multi-product messages (image thumbnails + native
+     * quantity selector + cart); when blank, the plain text list is used.
+     */
+    @Value("${whatsapp.order.catalog-id:}")
+    private String catalogId;
+
     /** Public base for /uploads/... product images (Meta fetches them from here). */
     @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
     private String apiBaseUrl;
@@ -172,6 +180,25 @@ public class WhatsAppInboundService {
         }
 
         int qty = parsePickedQty(rowId);
+
+        // qty 0 = the customer picked a product without typing an amount —
+        // ask "how many?" with a tappable 1..10 list before adding to cart.
+        if (qty == 0) {
+            saveRow(waMessageId, from, profileName, "interactive", "[qty? " + title + "]", "PROCESSED", message);
+            BigDecimal unit = lookupPrice(rowId);
+            String spPart = rowId.split(":")[1];
+            List<Map<String, String>> rows = new ArrayList<>();
+            for (int n = 1; n <= 10; n++) {
+                rows.add(Map.of(
+                        "id", "sp:" + spPart + ":q:" + n,
+                        "title", String.valueOf(n),
+                        "description", "₹" + unit.multiply(BigDecimal.valueOf(n)).stripTrailingZeros().toPlainString()));
+            }
+            whatsAppNotificationService.sendInteractiveList(from,
+                    "*Namma Ooru Delivery* 🛵\n" + title + " — எத்தனை வேண்டும்?\nHow many do you need?",
+                    "Select quantity", rows);
+            return;
+        }
         BigDecimal unitPrice = lookupPrice(rowId);
         BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
 
@@ -368,6 +395,7 @@ public class WhatsAppInboundService {
         }
 
         int qty = 1;
+        boolean qtyTyped = false;
         String text = body.toLowerCase();
         Matcher m = QTY_PATTERN.matcher(text);
         if (m.find() && !m.group().isBlank()) {
@@ -375,6 +403,7 @@ public class WhatsAppInboundService {
             double n = Double.parseDouble(m.group(1));
             // grams/ml describe pack size, not count
             qty = List.of("g", "gm", "gram", "grams", "ml").contains(unit) ? 1 : Math.max(1, (int) Math.round(n));
+            qtyTyped = true;
             text = text.replace(m.group(), " ");
         }
         String keyword = text.replaceAll("\\b(order|please|pls|need|want|send|and|the|for|venum|vennum)\\b", " ")
@@ -409,10 +438,28 @@ public class WhatsAppInboundService {
             }
         }
 
+        // With a connected catalogue, reply with a multi-product message:
+        // image thumbnails, native quantity selector and cart — the customer
+        // sends their cart back as an "order" webhook handled above.
+        if (catalogId != null && !catalogId.isBlank()) {
+            List<String> retailerIds = new ArrayList<>();
+            for (ShopProduct sp : products) {
+                retailerIds.add("sp" + sp.getId());
+            }
+            return whatsAppNotificationService.sendProductList(from,
+                    "Namma Ooru Delivery 🛵",
+                    "எங்களிடம் உள்ளவை — தேர்வு செய்து cart-ல் சேர்க்கவும் 👇\n"
+                            + "Matching \"" + keyword + "\" — tap, choose quantity, add to cart:",
+                    catalogId, retailerIds);
+        }
+
+        // qty stays 0 when the customer didn't type an amount, which makes the
+        // pick handler ask "how many?" before adding to the cart.
+        int pickQty = qtyTyped ? qty : 0;
         List<Map<String, String>> rows = new ArrayList<>();
         for (ShopProduct sp : products) {
             rows.add(Map.of(
-                    "id", "sp:" + sp.getId() + ":q:" + qty,
+                    "id", "sp:" + sp.getId() + ":q:" + pickQty,
                     "title", sp.getDisplayName(),
                     "description", "₹" + sp.getPrice().stripTrailingZeros().toPlainString()
                             + (qty > 1 ? "  ×  " + qty : "")));

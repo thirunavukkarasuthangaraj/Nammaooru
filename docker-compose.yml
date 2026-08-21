@@ -68,6 +68,8 @@ services:
       - META_WA_WEBHOOK_VERIFY_TOKEN=${META_WA_WEBHOOK_VERIFY_TOKEN}
       # Shop whose catalog the WhatsApp order bot suggests from (needed when >1 active shop)
       - WHATSAPP_ORDER_SHOP_ID=${WHATSAPP_ORDER_SHOP_ID:-}
+      # Meta Commerce Catalogue id connected to the WABA (enables image product lists + native cart)
+      - WHATSAPP_ORDER_CATALOG_ID=${WHATSAPP_ORDER_CATALOG_ID:-}
       # Gemini AI API Keys
       - GEMINI_ENABLED=${GEMINI_ENABLED:-true}
       - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}

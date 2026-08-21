@@ -603,6 +603,69 @@ public class WhatsAppNotificationService {
     }
 
     /**
+     * Send a multi-product message from the connected Commerce Catalogue:
+     * product rows show image thumbnail + name + price, and tapping opens the
+     * native product page with quantity selector and Add to cart. retailerIds
+     * are the catalogue retailer ids (our feed uses "sp{shopProductId}").
+     */
+    public boolean sendProductList(String mobileNumber, String headerText, String bodyText,
+                                   String catalogIdValue, List<String> retailerIds) {
+        if (!"meta".equalsIgnoreCase(whatsappProvider)) {
+            return false;
+        }
+        if (metaPhoneNumberId == null || metaPhoneNumberId.isBlank()
+                || metaAccessToken == null || metaAccessToken.isBlank()) {
+            return false;
+        }
+        try {
+            String url = String.format("https://graph.facebook.com/%s/%s/messages",
+                    metaApiVersion, metaPhoneNumberId);
+            if (metaAppSecret != null && !metaAppSecret.isBlank()) {
+                url += "?appsecret_proof=" + computeAppSecretProof(metaAccessToken, metaAppSecret);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(metaAccessToken);
+
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (String retailerId : retailerIds) {
+                if (items.size() >= 30) break;  // WhatsApp hard limit
+                items.add(Map.of("product_retailer_id", retailerId));
+            }
+
+            Map<String, Object> interactive = new HashMap<>();
+            interactive.put("type", "product_list");
+            interactive.put("header", Map.of("type", "text", "text", truncate(headerText, 60)));
+            interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
+            interactive.put("action", Map.of(
+                    "catalog_id", catalogIdValue,
+                    "sections", List.of(Map.of("title", "Products", "product_items", items))));
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("messaging_product", "whatsapp");
+            requestBody.put("to", formatMobileNumber(mobileNumber));
+            requestBody.put("type", "interactive");
+            requestBody.put("interactive", interactive);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers), String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("WhatsApp product list ({} items) sent to {}", items.size(), mobileNumber);
+                return true;
+            }
+            log.error("Meta Cloud API product list failed ({}): {}", response.getStatusCode(), response.getBody());
+            return false;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("Meta Cloud API product list failed ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return false;
+        } catch (Exception e) {
+            log.error("Error sending WhatsApp product list", e);
+            return false;
+        }
+    }
+
+    /**
      * Send a free-form image message (photo with caption) via the Meta Cloud
      * API — used by the order bot to show product photos inside the 24h
      * service window. Meta downloads the image from the public link.
