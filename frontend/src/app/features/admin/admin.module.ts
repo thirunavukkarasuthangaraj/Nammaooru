@@ -66,6 +66,7 @@ import { ContactViewsComponent } from './components/contact-views/contact-views.
 import { LocalShopsManagementComponent } from './components/local-shops-management/local-shops-management.component';
 import { LocalShopsReportedComponent } from './components/local-shops-reported/local-shops-reported.component';
 import { PaymentCollectManagementComponent } from './components/payment-collect-management/payment-collect-management.component';
+import { WhatsAppInboxComponent } from './components/whatsapp-inbox/whatsapp-inbox.component';
 import { MatTabsModule } from '@angular/material/tabs';
 
 @NgModule({
@@ -109,7 +110,8 @@ import { MatTabsModule } from '@angular/material/tabs';
     ContactViewsComponent,
     LocalShopsManagementComponent,
     LocalShopsReportedComponent,
-    PaymentCollectManagementComponent
+    PaymentCollectManagementComponent,
+    WhatsAppInboxComponent
   ],
   imports: [
     CommonModule,
@@ -300,6 +302,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'payment-collect',
         component: PaymentCollectManagementComponent
+      },
+      {
+        path: 'whatsapp-inbox',
+        component: WhatsAppInboxComponent
       }
     ])
   ]

@@ -422,6 +422,56 @@ public class WhatsAppNotificationService {
     }
 
     /**
+     * Send a free-form (non-template) text message via the Meta Cloud API.
+     * Only allowed inside the 24h customer-service window, i.e. as a REPLY to a
+     * message the customer sent us — used by the inbound-order webhook to
+     * acknowledge received orders. Meta provider only.
+     */
+    public boolean sendTextMessage(String mobileNumber, String text) {
+        if (!"meta".equalsIgnoreCase(whatsappProvider)) {
+            log.warn("Free-form WhatsApp text requires the meta provider; current provider is {}", whatsappProvider);
+            return false;
+        }
+        if (metaPhoneNumberId == null || metaPhoneNumberId.isBlank()
+                || metaAccessToken == null || metaAccessToken.isBlank()) {
+            log.error("Meta WhatsApp Cloud API not configured: set whatsapp.meta.phone-number-id and whatsapp.meta.access-token");
+            return false;
+        }
+        try {
+            String url = String.format("https://graph.facebook.com/%s/%s/messages",
+                    metaApiVersion, metaPhoneNumberId);
+            if (metaAppSecret != null && !metaAppSecret.isBlank()) {
+                url += "?appsecret_proof=" + computeAppSecretProof(metaAccessToken, metaAppSecret);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(metaAccessToken);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("messaging_product", "whatsapp");
+            requestBody.put("to", formatMobileNumber(mobileNumber));
+            requestBody.put("type", "text");
+            requestBody.put("text", Map.of("preview_url", false, "body", text));
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers), String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("WhatsApp free-form text sent to {}", mobileNumber);
+                return true;
+            }
+            log.error("Meta Cloud API text send failed ({}): {}", response.getStatusCode(), response.getBody());
+            return false;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("Meta Cloud API text send failed ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return false;
+        } catch (Exception e) {
+            log.error("Error sending free-form WhatsApp text", e);
+            return false;
+        }
+    }
+
+    /**
      * Generic WhatsApp template sender. Routes to the configured provider:
      * MSG91 (default) or Meta WhatsApp Cloud API (whatsapp.provider=meta).
      */

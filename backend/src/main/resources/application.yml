@@ -262,6 +262,9 @@ whatsapp:
     api-version: ${META_WA_API_VERSION:v21.0}
     template-language: ${META_WA_TEMPLATE_LANGUAGE:en}
     app-secret: ${META_WA_APP_SECRET:}
+    # Shared secret for the inbound webhook handshake (any random string; must
+    # match the "Verify token" entered in Meta app -> WhatsApp -> Configuration)
+    webhook-verify-token: ${META_WA_WEBHOOK_VERIFY_TOKEN:}
   template:
     shop-offer: ${META_WA_OFFER_TEMPLATE:shop_offer}
     shop-offer-image: ${META_WA_OFFER_IMAGE_TEMPLATE:shop_offer_image}

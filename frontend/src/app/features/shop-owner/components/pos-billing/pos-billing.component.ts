@@ -2489,13 +2489,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    if (!handoff?.items?.length) return;
+    // Customer-only handoffs (empty items) come from the admin WhatsApp inbox:
+    // the customer is prefilled and staff add products while reading the order text
+    const hasCustomer = !!(handoff?.customerPhone || handoff?.customerName);
+    if (!handoff?.items?.length && !hasCustomer) return;
     // Stale handoff (>10 min old) or another shop's order — ignore
     if (Date.now() - (handoff.savedAt || 0) > 10 * 60 * 1000) return;
     if (handoff.shopId && this.shopId && handoff.shopId !== this.shopId) return;
 
     const skipped: string[] = [];
-    for (const it of handoff.items) {
+    for (const it of handoff.items || []) {
       const product = this.products.find(p => it.shopProductId && p.id === it.shopProductId)
         || this.products.find(p => it.name && p.name === it.name);
       if (!product || this.isWeightProduct(product)) {
@@ -2542,6 +2545,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const added = this.cart.length;
     if (added > 0) {
       this.swal.toast(`Order ${handoff.orderNumber || ''} loaded: ${added} item${added > 1 ? 's' : ''} added to cart`, 'success');
+    } else if (hasCustomer && handoff.whatsappOrderText) {
+      // WhatsApp order: leave the customer's message on screen so staff can
+      // add the products they asked for
+      this.swal.info(
+        `WhatsApp order from ${handoff.customerName || handoff.customerPhone}`,
+        handoff.whatsappOrderText
+      );
+    } else if (hasCustomer) {
+      this.swal.toast(`Customer ${handoff.customerName || handoff.customerPhone} loaded`, 'success');
     }
     if (skipped.length > 0) {
       this.swal.warning('Some Items Not Added',

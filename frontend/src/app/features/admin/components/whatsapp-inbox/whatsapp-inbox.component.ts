@@ -1,0 +1,141 @@
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { SwalService } from '../../../../core/services/swal.service';
+import { WhatsAppInboxService, WhatsAppInboxMessage } from '../../services/whatsapp-inbox.service';
+
+/**
+ * Inbox of customer messages sent to the business WhatsApp number (orders
+ * typed as chat messages, received via the Meta webhook). Staff read the
+ * order text, open POS with the customer prefilled, and mark it processed.
+ */
+@Component({
+  selector: 'app-whatsapp-inbox',
+  templateUrl: './whatsapp-inbox.component.html',
+  styleUrls: ['./whatsapp-inbox.component.css']
+})
+export class WhatsAppInboxComponent implements OnInit, OnDestroy {
+  messages: WhatsAppInboxMessage[] = [];
+  loading = true;
+  currentPage = 0;
+  totalPages = 0;
+  totalItems = 0;
+  pageSize = 20;
+  newCount = 0;
+
+  /** '' = all */
+  filterStatus: string = 'NEW';
+
+  displayedColumns = ['receivedAt', 'customer', 'body', 'status', 'actions'];
+
+  // New orders should appear without the admin pressing refresh
+  private refreshTimer: any = null;
+  private readonly REFRESH_MS = 30000;
+
+  constructor(
+    private inboxService: WhatsAppInboxService,
+    private router: Router,
+    private swal: SwalService
+  ) {}
+
+  ngOnInit(): void {
+    this.load();
+    this.refreshTimer = setInterval(() => this.load(true), this.REFRESH_MS);
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+    }
+  }
+
+  load(background: boolean = false): void {
+    if (!background) {
+      this.loading = true;
+    }
+    this.inboxService.list(this.filterStatus, this.currentPage, this.pageSize).subscribe({
+      next: (page) => {
+        this.messages = page?.content || [];
+        this.totalPages = page?.totalPages || 0;
+        this.totalItems = page?.totalElements || 0;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error loading WhatsApp inbox:', err);
+        this.loading = false;
+        if (!background) {
+          this.swal.toast('Failed to load WhatsApp messages', 'error');
+        }
+      }
+    });
+    this.inboxService.summary().subscribe({
+      next: (s) => this.newCount = s.newCount,
+      error: () => {}
+    });
+  }
+
+  onFilterChange(status: string): void {
+    this.filterStatus = status;
+    this.currentPage = 0;
+    this.load();
+  }
+
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    this.load();
+  }
+
+  /**
+   * Open POS billing with this customer prefilled (same one-shot localStorage
+   * handoff Order Management's "Add Cart Again" uses; items stay empty — staff
+   * add products while reading the order text).
+   */
+  createBill(message: WhatsAppInboxMessage): void {
+    localStorage.setItem('pos_readd_order', JSON.stringify({
+      customerName: message.profileName || '',
+      customerPhone: this.toLocalNumber(message.fromNumber),
+      items: [],
+      whatsappOrderText: message.body || '',
+      savedAt: Date.now()
+    }));
+    this.router.navigate(['/shop-owner/pos-billing']);
+  }
+
+  markProcessed(message: WhatsAppInboxMessage): void {
+    this.inboxService.markProcessed(message.id).subscribe({
+      next: () => {
+        this.swal.toast('Marked as processed', 'success');
+        this.load();
+      },
+      error: (err) => {
+        console.error('Error marking processed:', err);
+        this.swal.toast('Failed to update message', 'error');
+      }
+    });
+  }
+
+  copyText(message: WhatsAppInboxMessage): void {
+    navigator.clipboard.writeText(message.body || '').then(() => {
+      this.swal.toast('Order text copied', 'success');
+    });
+  }
+
+  /** Meta sends "9163742..." — POS expects the 10-digit local number */
+  toLocalNumber(from: string): string {
+    const digits = (from || '').replace(/\D/g, '');
+    return digits.length === 12 && digits.startsWith('91') ? digits.substring(2) : digits;
+  }
+
+  formatDate(dateStr: string | null): string {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  getPages(): number[] {
+    return Array.from({ length: this.totalPages }, (_, i) => i);
+  }
+}

@@ -107,6 +107,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Order Management',
       items: [
         { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null },
+        { title: 'WhatsApp Orders', icon: 'chat', route: '/admin/whatsapp-inbox', badge: null },
         { title: 'Order Issues', icon: 'report_problem', route: '/orders/issues', badge: null }
       ]
     },
@@ -209,7 +210,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Order Management',
       items: [
-        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null }
+        { title: 'All Orders', icon: 'receipt_long', route: '/orders', badge: null },
+        { title: 'WhatsApp Orders', icon: 'chat', route: '/admin/whatsapp-inbox', badge: null }
       ]
     },
     {

@@ -63,6 +63,9 @@ services:
       - META_WA_PHONE_NUMBER_ID=${META_WA_PHONE_NUMBER_ID}
       - META_WA_ACCESS_TOKEN=${META_WA_ACCESS_TOKEN}
       - META_WA_API_VERSION=${META_WA_API_VERSION:-v21.0}
+      - META_WA_APP_SECRET=${META_WA_APP_SECRET}
+      # Inbound webhook handshake secret (same value entered in Meta app -> WhatsApp -> Configuration)
+      - META_WA_WEBHOOK_VERIFY_TOKEN=${META_WA_WEBHOOK_VERIFY_TOKEN}
       # Gemini AI API Keys
       - GEMINI_ENABLED=${GEMINI_ENABLED:-true}
       - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
