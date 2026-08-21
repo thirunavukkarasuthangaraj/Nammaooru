@@ -2548,6 +2548,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const added = this.cart.length;
     if (added > 0) {
       this.swal.toast(`Order ${handoff.orderNumber || ''} loaded: ${added} item${added > 1 ? 's' : ''} added to cart`, 'success');
+      // WhatsApp order lines the inbox couldn't match to a product — remind
+      // staff to add them by hand so half the order isn't silently dropped
+      if (handoff.whatsappUnmatchedText) {
+        this.swal.info('Add these manually', handoff.whatsappUnmatchedText);
+      }
     } else if (hasCustomer && handoff.whatsappOrderText) {
       // WhatsApp order: leave the customer's message on screen so staff can
       // add the products they asked for

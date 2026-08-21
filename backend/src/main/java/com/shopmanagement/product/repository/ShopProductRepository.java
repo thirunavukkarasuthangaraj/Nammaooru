@@ -74,6 +74,13 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
            "LOWER(COALESCE(sp.masterProduct.nameTamil, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<ShopProduct> searchProductsInShop(@Param("shop") Shop shop, @Param("search") String search, Pageable pageable);
 
+    // WhatsApp order bot: available products whose English/Tamil name matches
+    // the customer's typed keyword (e.g. "rice" -> all rice products)
+    @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop.id = :shopId AND sp.isAvailable = true AND " +
+           "(LOWER(COALESCE(sp.customName, sp.masterProduct.name)) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(sp.masterProduct.nameTamil, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<ShopProduct> searchAvailableByShopIdAndName(@Param("shopId") Long shopId, @Param("search") String search, Pageable pageable);
+
     // Category-based queries through master product
     @Query("SELECT sp FROM ShopProduct sp WHERE sp.shop = :shop AND sp.masterProduct.category.id = :categoryId AND sp.isAvailable = true")
     Page<ShopProduct> findByShopAndCategory(@Param("shop") Shop shop, @Param("categoryId") Long categoryId, Pageable pageable);

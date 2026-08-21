@@ -66,6 +66,30 @@
         <th mat-header-cell *matHeaderCellDef>Order / Message</th>
         <td mat-cell *matCellDef="let m">
           <div class="message-body">{{ m.body || '[' + m.messageType + ']' }}</div>
+          <button *ngIf="products.length && m.body" class="suggest-toggle" (click)="toggleSuggest(m)">
+            <mat-icon>lightbulb</mat-icon>
+            {{ expandedId === m.id ? 'Hide suggestions' : 'Suggest products' }}
+          </button>
+          <div class="suggest-panel" *ngIf="expandedId === m.id">
+            <div class="suggest-line" *ngFor="let line of suggestionsFor(m)">
+              <span class="line-raw">{{ line.raw }}</span>
+              <ng-container *ngIf="line.options.length; else nomatch">
+                <button *ngFor="let p of line.options" class="chip"
+                        [class.chip-selected]="line.selected?.id === p.id"
+                        (click)="selectOption(line, p)">
+                  {{ p.name }} · ₹{{ p.price }}
+                  <span *ngIf="line.selected?.id === p.id && line.qty > 1"> × {{ line.qty }}</span>
+                </button>
+              </ng-container>
+              <ng-template #nomatch>
+                <span class="no-match">no match — add manually in POS</span>
+              </ng-template>
+            </div>
+            <button mat-raised-button color="primary" class="add-all-btn" (click)="addAllToCartAndBill(m)">
+              <mat-icon>shopping_cart</mat-icon>
+              Add to cart & bill
+            </button>
+          </div>
         </td>
       </ng-container>
 

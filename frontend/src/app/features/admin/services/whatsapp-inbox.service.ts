@@ -23,6 +23,13 @@ export interface ShopOption {
   name: string;
 }
 
+export interface SuggestProduct {
+  id: number;
+  name: string;
+  nameTamil: string;
+  price: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -55,6 +62,29 @@ export class WhatsAppInboxService {
       shopId: shop?.id ?? null,
       shopName: shop?.name ?? null
     });
+  }
+
+  /**
+   * The logged-in shop owner's products, for order-text suggestions.
+   * Same endpoint POS billing loads its catalog from; returns [] for
+   * admins without a shop.
+   */
+  getMyProducts(): Observable<SuggestProduct[]> {
+    return this.http.get<any>(`${environment.apiUrl}/shop-products/my-products`, {
+      params: new HttpParams().set('page', 0).set('size', 500)
+    }).pipe(
+      map(res => {
+        const content = res?.data?.content || (Array.isArray(res?.data) ? res.data : []);
+        return content
+          .filter((p: any) => p.isAvailable !== false && p.status !== 'INACTIVE')
+          .map((p: any) => ({
+            id: p.id,
+            name: p.displayName || p.customName || p.name || 'Unknown',
+            nameTamil: p.nameTamil || p.displayNameTamil || '',
+            price: p.price || 0
+          }));
+      })
+    );
   }
 
   /** Active shops for the assign dropdown. */

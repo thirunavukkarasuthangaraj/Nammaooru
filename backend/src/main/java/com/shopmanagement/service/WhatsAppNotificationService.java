@@ -472,6 +472,82 @@ public class WhatsAppNotificationService {
     }
 
     /**
+     * Send an interactive list message (tappable product picker) via the Meta
+     * Cloud API. Allowed as a reply within the 24h service window. Each row:
+     * id (returned verbatim in the list_reply webhook), title (max 24 chars),
+     * description (max 72 chars). Max 10 rows; extras are dropped.
+     */
+    public boolean sendInteractiveList(String mobileNumber, String bodyText, String buttonText,
+                                       List<Map<String, String>> rows) {
+        if (!"meta".equalsIgnoreCase(whatsappProvider)) {
+            log.warn("Interactive WhatsApp list requires the meta provider; current provider is {}", whatsappProvider);
+            return false;
+        }
+        if (metaPhoneNumberId == null || metaPhoneNumberId.isBlank()
+                || metaAccessToken == null || metaAccessToken.isBlank()) {
+            log.error("Meta WhatsApp Cloud API not configured: set whatsapp.meta.phone-number-id and whatsapp.meta.access-token");
+            return false;
+        }
+        try {
+            String url = String.format("https://graph.facebook.com/%s/%s/messages",
+                    metaApiVersion, metaPhoneNumberId);
+            if (metaAppSecret != null && !metaAppSecret.isBlank()) {
+                url += "?appsecret_proof=" + computeAppSecretProof(metaAccessToken, metaAppSecret);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(metaAccessToken);
+
+            List<Map<String, Object>> listRows = new ArrayList<>();
+            for (Map<String, String> row : rows) {
+                if (listRows.size() >= 10) break;  // WhatsApp hard limit
+                Map<String, Object> r = new HashMap<>();
+                r.put("id", truncate(row.get("id"), 200));
+                r.put("title", truncate(row.get("title"), 24));
+                String description = row.get("description");
+                if (description != null && !description.isBlank()) {
+                    r.put("description", truncate(description, 72));
+                }
+                listRows.add(r);
+            }
+
+            Map<String, Object> interactive = new HashMap<>();
+            interactive.put("type", "list");
+            interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
+            interactive.put("action", Map.of(
+                    "button", truncate(buttonText, 20),
+                    "sections", List.of(Map.of("rows", listRows))));
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("messaging_product", "whatsapp");
+            requestBody.put("to", formatMobileNumber(mobileNumber));
+            requestBody.put("type", "interactive");
+            requestBody.put("interactive", interactive);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers), String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("WhatsApp interactive list sent to {} ({} rows)", mobileNumber, listRows.size());
+                return true;
+            }
+            log.error("Meta Cloud API interactive send failed ({}): {}", response.getStatusCode(), response.getBody());
+            return false;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("Meta Cloud API interactive send failed ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return false;
+        } catch (Exception e) {
+            log.error("Error sending WhatsApp interactive list", e);
+            return false;
+        }
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) return "";
+        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
+    }
+
+    /**
      * Generic WhatsApp template sender. Routes to the configured provider:
      * MSG91 (default) or Meta WhatsApp Cloud API (whatsapp.provider=meta).
      */

@@ -9,7 +9,16 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { SwalService } from '../../../../core/services/swal.service';
-import { WhatsAppInboxService, WhatsAppInboxMessage, ShopOption } from '../../services/whatsapp-inbox.service';
+import { WhatsAppInboxService, WhatsAppInboxMessage, ShopOption, SuggestProduct } from '../../services/whatsapp-inbox.service';
+
+/** One line of the customer's order text, matched against shop products. */
+interface ParsedLine {
+  raw: string;
+  qty: number;
+  keyword: string;
+  options: SuggestProduct[];
+  selected: SuggestProduct | null;
+}
 
 /**
  * Inbox of customer messages sent to the business WhatsApp number (orders
@@ -39,6 +48,10 @@ import { WhatsAppInboxService, WhatsAppInboxMessage, ShopOption } from '../../se
 export class WhatsAppInboxComponent implements OnInit, OnDestroy {
   messages: WhatsAppInboxMessage[] = [];
   shops: ShopOption[] = [];
+  /** Shop catalog for order-text suggestions (empty for admins without a shop). */
+  products: SuggestProduct[] = [];
+  expandedId: number | null = null;
+  suggestMap: { [messageId: number]: ParsedLine[] } = {};
   loading = true;
   currentPage = 0;
   totalPages = 0;
@@ -66,6 +79,10 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
     this.inboxService.getShops().subscribe({
       next: (shops) => this.shops = shops,
       error: (err) => console.error('Error loading shops:', err)
+    });
+    this.inboxService.getMyProducts().subscribe({
+      next: (products) => this.products = products,
+      error: () => this.products = []  // admin without a shop — no suggestions
     });
     this.refreshTimer = setInterval(() => this.load(true), this.REFRESH_MS);
   }
@@ -144,6 +161,127 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
       savedAt: Date.now()
     }));
     this.router.navigate(['/shop-owner/pos-billing']);
+  }
+
+  /** Toggle the suggestion panel for a message, computing matches on first open. */
+  toggleSuggest(message: WhatsAppInboxMessage): void {
+    if (this.expandedId === message.id) {
+      this.expandedId = null;
+      return;
+    }
+    this.expandedId = message.id;
+    if (!this.suggestMap[message.id]) {
+      this.suggestMap[message.id] = this.parseOrderText(message.body || '');
+    }
+  }
+
+  suggestionsFor(message: WhatsAppInboxMessage): ParsedLine[] {
+    return this.suggestMap[message.id] || [];
+  }
+
+  selectOption(line: ParsedLine, product: SuggestProduct): void {
+    line.selected = line.selected?.id === product.id ? null : product;
+  }
+
+  /**
+   * Open POS with the selected suggestions already in the cart (plus the
+   * customer). Unmatched lines travel along so POS can remind staff to add
+   * them manually.
+   */
+  addAllToCartAndBill(message: WhatsAppInboxMessage): void {
+    const lines = this.suggestionsFor(message);
+    const items = lines
+      .filter(l => l.selected)
+      .map(l => ({
+        shopProductId: l.selected!.id,
+        name: l.selected!.name,
+        quantity: Math.max(1, Math.round(l.qty))
+      }));
+    if (items.length === 0) {
+      this.createBill(message);
+      return;
+    }
+    const unmatched = lines.filter(l => !l.selected).map(l => l.raw);
+    localStorage.setItem('pos_readd_order', JSON.stringify({
+      shopId: message.shopId || undefined,
+      customerName: message.profileName || '',
+      customerPhone: this.toLocalNumber(message.fromNumber),
+      items,
+      whatsappOrderText: message.body || '',
+      whatsappUnmatchedText: unmatched.join('\n'),
+      savedAt: Date.now()
+    }));
+    this.router.navigate(['/shop-owner/pos-billing']);
+  }
+
+  /** Split the order text into lines and fuzzy-match each against the catalog. */
+  private parseOrderText(body: string): ParsedLine[] {
+    return body
+      .split(/\r?\n|,/)
+      .map(raw => raw.trim())
+      .filter(raw => raw.length > 0)
+      .map(raw => {
+        const { qty, keyword } = this.extractQtyAndKeyword(raw);
+        const options = this.matchProducts(keyword);
+        return { raw, qty, keyword, options, selected: options[0] || null };
+      });
+  }
+
+  /** "2kg Onion" -> qty 2, keyword "onion"; "250g rava" -> qty 1 (one pack). */
+  private extractQtyAndKeyword(raw: string): { qty: number; keyword: string } {
+    let text = raw.toLowerCase();
+    let qty = 1;
+    const m = text.match(/(\d+(?:\.\d+)?)\s*(kg|kgs|gm|g|gram|grams|l|lt|ltr|litre|liter|ml|pc|pcs|piece|pieces|pkt|packet|dozen)?/);
+    if (m) {
+      const n = parseFloat(m[1]);
+      const unit = (m[2] || '').toLowerCase();
+      // grams/ml describe pack size, not count; everything else is a count
+      qty = ['g', 'gm', 'gram', 'grams', 'ml'].includes(unit) ? 1 : (n || 1);
+      text = text.replace(m[0], ' ');
+    }
+    const fillers = ['order', 'please', 'pls', 'need', 'want', 'send', 'and', 'the', 'for', 'venum', 'vennum'];
+    const keyword = text
+      .split(/[^a-z஀-௿0-9]+/)
+      .filter(w => w.length > 1 && !fillers.includes(w))
+      .join(' ')
+      .trim();
+    return { qty, keyword };
+  }
+
+  /** Top 3 catalog products matching the keyword (English + Tamil, typo-tolerant). */
+  private matchProducts(keyword: string): SuggestProduct[] {
+    if (!keyword) return [];
+    const tokens = keyword.split(/\s+/).filter(t => t.length > 1);
+    if (tokens.length === 0) return [];
+    const scored = this.products
+      .map(p => {
+        const prodText = `${p.name} ${p.nameTamil}`.toLowerCase();
+        const prodWords = prodText.split(/[^a-z஀-௿0-9]+/).filter(w => w.length > 1);
+        let score = 0;
+        for (const token of tokens) {
+          if (prodWords.includes(token)) score += 3;
+          else if (prodText.includes(token)) score += 2;
+          else if (token.length >= 4 && prodWords.some(w => this.editDistanceAtMost1(token, w))) score += 1;
+        }
+        return { p, score };
+      })
+      .filter(s => s.score > 0)
+      .sort((a, b) => b.score - a.score || a.p.name.length - b.p.name.length);
+    return scored.slice(0, 3).map(s => s.p);
+  }
+
+  /** True when a and b differ by at most one edit (catches "suger" vs "sugar"). */
+  private editDistanceAtMost1(a: string, b: string): boolean {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    if (a === b) return true;
+    const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+    let i = 0, j = 0, edits = 0;
+    while (i < shorter.length && j < longer.length) {
+      if (shorter[i] === longer[j]) { i++; j++; continue; }
+      if (++edits > 1) return false;
+      if (shorter.length === longer.length) { i++; j++; } else { j++; }
+    }
+    return edits + (longer.length - j) + (shorter.length - i) <= 1;
   }
 
   markProcessed(message: WhatsAppInboxMessage): void {
