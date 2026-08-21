@@ -55,6 +55,10 @@ public class WhatsAppInboundService {
     @Value("${whatsapp.order.shop-id:}")
     private String configuredShopId;
 
+    /** Public base for /uploads/... product images (Meta fetches them from here). */
+    @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
+    private String apiBaseUrl;
+
     /**
      * Walk the webhook payload (entry[].changes[].value.messages[]) and persist
      * every new customer message. Status/delivery-receipt callbacks (value.statuses)
@@ -185,10 +189,25 @@ public class WhatsAppInboundService {
             return false;
         }
 
+        // Product photos first (top 3 with an image) so the customer sees what
+        // they're choosing, then the tappable list to actually pick.
+        int photosSent = 0;
+        for (ShopProduct sp : products) {
+            if (photosSent >= 3) break;
+            String imageUrl = sp.getPrimaryShopImageUrl();
+            if (imageUrl == null || imageUrl.isBlank()) continue;
+            if (imageUrl.startsWith("/")) {
+                imageUrl = apiBaseUrl + imageUrl;
+            }
+            String caption = sp.getDisplayName() + " — ₹" + sp.getPrice().stripTrailingZeros().toPlainString();
+            if (whatsAppNotificationService.sendImageMessage(from, imageUrl, caption)) {
+                photosSent++;
+            }
+        }
+
         List<Map<String, String>> rows = new ArrayList<>();
         for (ShopProduct sp : products) {
-            String name = sp.getCustomName() != null && !sp.getCustomName().isBlank()
-                    ? sp.getCustomName() : sp.getMasterProduct().getName();
+            String name = sp.getDisplayName();
             rows.add(Map.of(
                     "id", "sp:" + sp.getId() + ":q:" + qty,
                     "title", name,
