@@ -9,6 +9,8 @@ import com.shopmanagement.product.service.ProductImageService;
 import com.shopmanagement.product.service.ShopProductService;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +54,16 @@ public class ShopOwnerProductController {
     private final ShopProductService shopProductService;
     private final ShopService shopService;
     private final ProductImageService productImageService;
+
+    private static final HttpClient IMAGE_HTTP_CLIENT = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(10))
+            // Bing's async results endpoint only responds with tiles when the
+            // session carries cookies from a prior page load
+            .cookieHandler(new java.net.CookieManager())
+            .build();
+
+    private static final long MAX_DOWNLOAD_IMAGE_BYTES = 8L * 1024 * 1024;
 
     @GetMapping("/my-products")
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
@@ -737,6 +763,236 @@ public class ShopOwnerProductController {
             return ResponseEntity.badRequest().body(ApiResponse.error(
                     "Error uploading image: " + e.getMessage()
             ));
+        }
+    }
+
+    /**
+     * Search product images by scraping Bing Images (no API key required).
+     * Returns [{label, thumb, url}] for the bulk-edit image picker.
+     */
+    @GetMapping("/image-search")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<List<Map<String, String>>>> searchProductImages(@RequestParam("q") String query) {
+        try {
+            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String browserUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
+
+            // Warm-up page load: sets the cookies the async endpoint requires
+            HttpRequest warmup = HttpRequest.newBuilder(
+                            URI.create("https://www.bing.com/images/search?q=" + encodedQuery + "&mkt=en-IN"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("User-Agent", browserUa)
+                    .header("Accept", "text/html")
+                    .header("Accept-Language", "en-IN,en;q=0.9")
+                    .GET()
+                    .build();
+            IMAGE_HTTP_CLIENT.send(warmup, HttpResponse.BodyHandlers.discarding());
+
+            String url = "https://www.bing.com/images/async?q=" + encodedQuery
+                    + "&first=0&count=30&mkt=en-IN&mmasync=1";
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("User-Agent", browserUa)
+                    .header("Accept", "text/html")
+                    .header("Accept-Language", "en-IN,en;q=0.9")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = IMAGE_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                log.error("Bing image search failed with status {}", response.statusCode());
+                return ResponseEntity.badRequest().body(ApiResponse.error("Image search failed, try again later"));
+            }
+
+            // Each result tile carries an m="{...}" attribute with HTML-escaped JSON
+            // containing murl (full image), turl (thumbnail) and t (title)
+            ObjectMapper mapper = new ObjectMapper();
+            List<Map<String, String>> preferred = new ArrayList<>();
+            List<Map<String, String>> others = new ArrayList<>();
+            java.util.Set<String> seenUrls = new java.util.HashSet<>();
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("m=\"(\\{[^\"]+\\})\"")
+                    .matcher(response.body());
+            while (matcher.find() && preferred.size() < 9) {
+                String json = matcher.group(1)
+                        .replace("&quot;", "\"")
+                        .replace("&amp;", "&")
+                        .replace("&#39;", "'");
+                try {
+                    JsonNode node = mapper.readTree(json);
+                    String imageUrl = node.path("murl").asText("");
+                    if (imageUrl.isEmpty() || !seenUrls.add(imageUrl)) {
+                        continue;
+                    }
+                    Map<String, String> entry = Map.of(
+                            "label", node.path("t").asText(""),
+                            "thumb", node.path("turl").asText(imageUrl),
+                            "url", imageUrl
+                    );
+                    // Prefer jpg/jpeg/png over webp/gif/etc.
+                    String lower = imageUrl.toLowerCase();
+                    if (lower.matches(".*\\.(jpe?g|png)([?#].*)?$")) {
+                        preferred.add(entry);
+                    } else if (others.size() < 9) {
+                        others.add(entry);
+                    }
+                } catch (Exception ignore) {
+                    // not a result tile — skip
+                }
+            }
+            List<Map<String, String>> results = new ArrayList<>(preferred);
+            for (Map<String, String> entry : others) {
+                if (results.size() >= 9) {
+                    break;
+                }
+                results.add(entry);
+            }
+
+            if (results.isEmpty()) {
+                log.warn("Bing image search returned no parseable results for '{}'", query);
+            }
+            return ResponseEntity.ok(ApiResponse.success(results, "Images found"));
+        } catch (Exception e) {
+            log.error("Error searching images for '{}': {}", query, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(ApiResponse.error("Image search failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Download an image from a URL (picked in the image search dialog)
+     * and store it as the product image via the normal upload pipeline.
+     */
+    @PostMapping("/{productId}/image-from-url")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadProductImageFromUrl(
+            @PathVariable Long productId,
+            @RequestBody Map<String, String> body) {
+
+        String sourceUrl = body != null ? body.get("url") : null;
+        if (sourceUrl == null || !(sourceUrl.startsWith("http://") || sourceUrl.startsWith("https://"))) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("A valid image URL is required"));
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+            if (currentShop == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("No shop found for current user"));
+            }
+
+            URI uri = URI.create(sourceUrl);
+            // Block SSRF against internal hosts
+            InetAddress address = InetAddress.getByName(uri.getHost());
+            if (address.isLoopbackAddress() || address.isSiteLocalAddress()
+                    || address.isLinkLocalAddress() || address.isAnyLocalAddress()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("URL not allowed"));
+            }
+
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                    .timeout(Duration.ofSeconds(15))
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+                    .header("Accept", "image/*,*/*;q=0.8")
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> response = IMAGE_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (response.statusCode() != 200 || response.body() == null || response.body().length == 0) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "Could not download image (HTTP " + response.statusCode() + ")"));
+            }
+            byte[] bytes = response.body();
+            if (bytes.length > MAX_DOWNLOAD_IMAGE_BYTES) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Image is too large (max 8MB)"));
+            }
+
+            String contentType = response.headers().firstValue("Content-Type").orElse("image/jpeg");
+            int semicolon = contentType.indexOf(';');
+            if (semicolon > 0) {
+                contentType = contentType.substring(0, semicolon).trim();
+            }
+            if (!contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("URL is not an image"));
+            }
+            String extension = switch (contentType) {
+                case "image/png" -> "png";
+                case "image/webp" -> "webp";
+                case "image/gif" -> "gif";
+                default -> "jpg";
+            };
+
+            MultipartFile file = new DownloadedImageFile(bytes, "product-" + productId + "." + extension, contentType);
+            List<ProductImageResponse> images = productImageService.uploadShopProductImages(
+                    currentShop.getId(), productId, new MultipartFile[]{file}, null);
+
+            if (images.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Failed to save image"));
+            }
+
+            String imageUrl = images.get(0).getImageUrl();
+            log.info("Image downloaded from URL and saved for product {}: {}", productId, imageUrl);
+            return ResponseEntity.ok(ApiResponse.success(Map.of("imageUrl", imageUrl), "Image saved successfully"));
+
+        } catch (Exception e) {
+            log.error("Error downloading image from URL for product {}: {}", productId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(ApiResponse.error("Error downloading image: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * In-memory MultipartFile wrapper for images downloaded from a URL,
+     * so they flow through the same upload pipeline as browser uploads.
+     */
+    private static class DownloadedImageFile implements MultipartFile {
+        private final byte[] content;
+        private final String filename;
+        private final String contentType;
+
+        DownloadedImageFile(byte[] content, String filename, String contentType) {
+            this.content = content;
+            this.filename = filename;
+            this.contentType = contentType;
+        }
+
+        @Override
+        public String getName() {
+            return "file";
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            return filename;
+        }
+
+        @Override
+        public String getContentType() {
+            return contentType;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return content.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return content.length;
+        }
+
+        @Override
+        public byte[] getBytes() {
+            return content;
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return new ByteArrayInputStream(content);
+        }
+
+        @Override
+        public void transferTo(File dest) throws IOException {
+            Files.write(dest.toPath(), content);
         }
     }
 

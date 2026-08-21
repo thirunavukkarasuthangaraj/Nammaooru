@@ -959,6 +959,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           const blob = await item.getType(type);
           const ext = type.split('/')[1] || 'png';
           const file = new File([blob], `pasted-image.${ext}`, { type });
+          if (this.imageSuggestProduct === product) {
+            this.closeImageSuggestions();
+          }
           await this.uploadImageFile(file, product);
           return;
         }
@@ -995,6 +998,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       .replace(/\(.*?\)/g, ' ')
       .replace(/[஀-௿]+/g, ' ')
       .replace(/\bRS\.?\s*\d+\b/gi, ' ')
+      .replace(/\b\d+\s*RS\b/gi, ' ')
+      .replace(/[+_]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -1005,57 +1010,35 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     return `https://www.bigbasket.com/ps/?q=${searchQuery}`;
   }
 
-  // --- In-screen image suggestions (Open Food Facts, free & no API key) ---
+  // --- In-screen image suggestions (Google image search via backend) ---
   imageSuggestProduct: BulkEditProduct | null = null;
   imageSuggestions: ImageSuggestion[] = [];
   loadingSuggestions = false;
+  suggestError: string | null = null;
   downloadingSuggestionUrl: string | null = null;
 
   async openImageSuggestions(product: BulkEditProduct): Promise<void> {
     this.imageSuggestProduct = product;
     this.imageSuggestions = [];
+    this.suggestError = null;
     this.loadingSuggestions = true;
 
-    const suggestions: ImageSuggestion[] = [];
-    const seen = new Set<string>();
-    const add = (label: string, url?: string, thumb?: string) => {
-      if (!url || seen.has(url)) return;
-      seen.add(url);
-      suggestions.push({ label: label || 'Product image', url, thumb: thumb || url });
-    };
-
+    const query = this.cleanProductName(product.customName) || product.customName;
     try {
-      // 1. Exact match by barcode — most accurate
-      const barcodes = [product.barcode1, product.barcode2, product.barcode3]
-        .filter((b): b is string => !!b && /^\d{8,14}$/.test(b));
-      await Promise.all(barcodes.map(async code => {
-        try {
-          const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,image_front_url,image_front_small_url`);
-          const data = await res.json();
-          const p = data?.product;
-          if (p?.image_front_url) {
-            add(`✓ ${p.product_name || 'Exact barcode match'}`, p.image_front_url, p.image_front_small_url);
-          }
-        } catch { /* barcode not found — fine */ }
-      }));
-
-      // 2. Search by cleaned product name
-      const query = this.cleanProductName(product.customName);
-      if (query) {
-        const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=12`);
-        const data = await res.json();
-        for (const p of (data?.products || [])) {
-          if (p?.image_front_url) {
-            add([p.brands, p.product_name].filter(Boolean).join(' — '), p.image_front_url, p.image_front_small_url);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Image suggestion search failed:', error);
-    } finally {
-      // Only apply if the dialog is still open for this product
+      const response: any = await this.http.get(
+        `${this.apiUrl}/shop-products/image-search`,
+        { params: { q: query } }
+      ).toPromise();
       if (this.imageSuggestProduct === product) {
-        this.imageSuggestions = suggestions;
+        this.imageSuggestions = response?.data || [];
+      }
+    } catch (error: any) {
+      console.error('Image search failed:', error);
+      if (this.imageSuggestProduct === product) {
+        this.suggestError = error?.error?.message || 'Image search failed — try again';
+      }
+    } finally {
+      if (this.imageSuggestProduct === product) {
         this.loadingSuggestions = false;
       }
     }
@@ -1066,16 +1049,21 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     if (!product) return;
     this.downloadingSuggestionUrl = suggestion.url;
     try {
-      const res = await fetch(suggestion.url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-      const file = new File([blob], `product-${product.id}.${ext}`, { type: blob.type || 'image/jpeg' });
+      const response: any = await this.http.post(
+        `${this.apiUrl}/shop-products/${product.id}/image-from-url`,
+        { url: suggestion.url }
+      ).toPromise();
+      const imageUrl = response?.data?.imageUrl || response?.imageUrl;
+      if (imageUrl) {
+        product.imageUrl = imageUrl;
+      } else {
+        this.loadProducts(true);
+      }
       this.closeImageSuggestions();
-      await this.uploadImageFile(file, product);
-    } catch (error) {
+      this.swalService.toast('Image updated successfully', 'success');
+    } catch (error: any) {
       console.error('Failed to download suggested image:', error);
-      this.swalService.toast('Could not download this image — try another one', 'error');
+      this.swalService.toast(error?.error?.message || 'Could not download this image — try another one', 'error');
     } finally {
       this.downloadingSuggestionUrl = null;
     }
@@ -1084,6 +1072,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   closeImageSuggestions(): void {
     this.imageSuggestProduct = null;
     this.imageSuggestions = [];
+    this.suggestError = null;
     this.loadingSuggestions = false;
   }
 

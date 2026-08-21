@@ -127,7 +127,9 @@
 
             <!-- Image (with Menu) -->
             <td class="col-image">
+              <!-- Has image: menu with options -->
               <div class="product-image clickable"
+                   *ngIf="product.imageUrl"
                    [matMenuTriggerFor]="imageMenu"
                    [class.uploading]="isUploadingImage(product)"
                    matTooltip="Click for options, or drop an image here"
@@ -136,6 +138,21 @@
                 <img [appOfflineImg]="product.imageUrl" [fallback]="'assets/images/product-placeholder.svg'" [alt]="product.customName">
                 <div class="image-overlay">
                   <mat-icon *ngIf="!isUploadingImage(product)">more_vert</mat-icon>
+                  <mat-spinner *ngIf="isUploadingImage(product)" diameter="20"></mat-spinner>
+                </div>
+              </div>
+
+              <!-- No image yet: click opens image search directly -->
+              <div class="product-image clickable"
+                   *ngIf="!product.imageUrl"
+                   [class.uploading]="isUploadingImage(product)"
+                   matTooltip="Click to find an image"
+                   (click)="openImageSuggestions(product)"
+                   (dragover)="onImageDragOver($event)"
+                   (drop)="onImageDrop($event, product)">
+                <img src="assets/images/product-placeholder.svg" [alt]="product.customName">
+                <div class="image-overlay">
+                  <mat-icon *ngIf="!isUploadingImage(product)">image_search</mat-icon>
                   <mat-spinner *ngIf="isUploadingImage(product)" diameter="20"></mat-spinner>
                 </div>
               </div>
@@ -399,11 +416,17 @@
 
       <div class="suggest-empty" *ngIf="!loadingSuggestions && !imageSuggestions.length">
         <mat-icon>image_not_supported</mat-icon>
-        <p>No images found for this product.</p>
+        <p>{{ suggestError || 'No images found for this product.' }}</p>
         <a [href]="getImageSearchUrl(imageSuggestProduct)" target="_blank" rel="noopener">
           Search on BigBasket instead
         </a>
-        <p class="suggest-hint">Right-click the photo there → "Copy image", then click the product photo here → "Paste Image"</p>
+        <p class="suggest-hint">Copy an image in any tab, then paste it here:</p>
+        <button type="button"
+                class="suggest-download-btn"
+                (click)="pasteImageFromClipboard(imageSuggestProduct)">
+          <mat-icon>content_paste</mat-icon>
+          Paste Copied Image
+        </button>
       </div>
     </div>
   </div>
