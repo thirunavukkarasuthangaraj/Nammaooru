@@ -549,6 +549,16 @@ public class WhatsAppNotificationService {
      */
     public boolean sendInteractiveButtons(String mobileNumber, String bodyText,
                                           Map<String, String> buttons) {
+        return sendInteractiveButtons(mobileNumber, null, bodyText, buttons);
+    }
+
+    /**
+     * Same as {@link #sendInteractiveButtons(String, String, Map)} but with an
+     * optional image header — one self-contained card (photo + text + up to 3
+     * tap targets) in a single message, no Commerce Catalogue required.
+     */
+    public boolean sendInteractiveButtons(String mobileNumber, String headerImageUrl, String bodyText,
+                                          Map<String, String> buttons) {
         if (!"meta".equalsIgnoreCase(whatsappProvider)) {
             return false;
         }
@@ -577,6 +587,9 @@ public class WhatsAppNotificationService {
 
             Map<String, Object> interactive = new HashMap<>();
             interactive.put("type", "button");
+            if (headerImageUrl != null && !headerImageUrl.isBlank()) {
+                interactive.put("header", Map.of("type", "image", "image", Map.of("link", headerImageUrl)));
+            }
             interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
             interactive.put("action", Map.of("buttons", buttonList));
 

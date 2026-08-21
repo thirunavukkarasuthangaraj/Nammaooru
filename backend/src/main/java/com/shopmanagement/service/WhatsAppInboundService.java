@@ -222,6 +222,25 @@ public class WhatsAppInboundService {
         return whatsAppNotificationService.sendInteractiveButtons(from, summary, buttons);
     }
 
+    /** "Add 1"/"Add 2" tapped directly on a product card — id "add:{spId}:{qty}". */
+    private void handleQuickAdd(String waMessageId, String from, String profileName,
+                                String buttonId, JsonNode message) {
+        String[] parts = buttonId.split(":");
+        Long spId = Long.valueOf(parts[1]);
+        int qty = Math.max(1, Integer.parseInt(parts[2]));
+        BigDecimal unitPrice = shopProductRepository.findById(spId).map(ShopProduct::getPrice).orElse(BigDecimal.ZERO);
+        String name = shopProductRepository.findById(spId).map(ShopProduct::getDisplayName).orElse("Item");
+        BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
+
+        String body = "✔ " + name + (qty > 1 ? " × " + qty : "")
+                + " — ₹" + lineTotal.stripTrailingZeros().toPlainString();
+        WhatsAppIncomingMessage saved = saveRow(waMessageId, from, profileName, "interactive", body, "CART", message);
+        if (sendCartSummary(from)) {
+            saved.setAutoReplied(true);
+            repository.save(saved);
+        }
+    }
+
     /** Customer tapped an entry in the remove list — drop that cart row. */
     private void handleRemovePick(String waMessageId, String from, String profileName,
                                   String rowId, JsonNode message) {
@@ -249,6 +268,34 @@ public class WhatsAppInboundService {
 
     private void handleButtonReply(String waMessageId, String from, String profileName, JsonNode message) {
         String buttonId = message.path("interactive").path("button_reply").path("id").asText("");
+
+        // Quick-add from a product card: "add:{shopProductId}:{qty}"
+        if (buttonId.startsWith("add:")) {
+            handleQuickAdd(waMessageId, from, profileName, buttonId, message);
+            return;
+        }
+
+        // "Other options" on a product card: "opts:{keyword}" -> plain list of alternatives
+        if (buttonId.startsWith("opts:")) {
+            saveRow(waMessageId, from, profileName, "interactive", "[other options]", "PROCESSED", message);
+            String keyword = buttonId.substring(5);
+            Long shopId = resolveShopId();
+            if (shopId != null) {
+                List<ShopProduct> products = shopProductRepository
+                        .searchAvailableByShopIdAndName(shopId, keyword, PageRequest.of(0, 10)).getContent();
+                List<Map<String, String>> rows = new ArrayList<>();
+                for (ShopProduct sp : products) {
+                    rows.add(Map.of(
+                            "id", "sp:" + sp.getId() + ":q:0",
+                            "title", sp.getDisplayName(),
+                            "description", "₹" + sp.getPrice().stripTrailingZeros().toPlainString()));
+                }
+                whatsAppNotificationService.sendInteractiveList(from,
+                        "*Namma Ooru Delivery* 🛵\n\"" + keyword + "\" க்கான மற்ற பொருட்கள் 👇\nOther options for \"" + keyword + "\":",
+                        "View products", rows);
+            }
+            return;
+        }
 
         if ("confirm_order".equals(buttonId)) {
             List<WhatsAppIncomingMessage> cart = cartRows(from);
@@ -453,21 +500,29 @@ public class WhatsAppInboundService {
                     catalogId, retailerIds);
         }
 
-        // qty stays 0 when the customer didn't type an amount, which makes the
-        // pick handler ask "how many?" before adding to the cart.
-        int pickQty = qtyTyped ? qty : 0;
-        List<Map<String, String>> rows = new ArrayList<>();
-        for (ShopProduct sp : products) {
-            rows.add(Map.of(
-                    "id", "sp:" + sp.getId() + ":q:" + pickQty,
-                    "title", sp.getDisplayName(),
-                    "description", "₹" + sp.getPrice().stripTrailingZeros().toPlainString()
-                            + (qty > 1 ? "  ×  " + qty : "")));
+        // No catalogue configured: ONE self-contained card for the best match —
+        // photo + name + price + quick "Add" buttons — no separate list needed
+        // for the common case. "Other options" only appears when there are
+        // genuine alternatives, and reveals the plain text list on demand.
+        ShopProduct top = products.get(0);
+        String imageUrl = top.getPrimaryShopImageUrl();
+        if (imageUrl != null && !imageUrl.isBlank() && imageUrl.startsWith("/")) {
+            imageUrl = apiBaseUrl + imageUrl;
         }
-        String bodyText = "*Namma Ooru Delivery* 🛵\n"
-                + "எங்களிடம் உள்ளவை — தேர்வு செய்யுங்கள் 👇\n"
-                + "We have these matching \"" + keyword + "\" — tap to choose:";
-        return whatsAppNotificationService.sendInteractiveList(from, bodyText, "View products", rows);
+        String priceText = "₹" + top.getPrice().stripTrailingZeros().toPlainString();
+        String cardBody = "*" + top.getDisplayName() + "*\n" + priceText;
+
+        Map<String, String> cardButtons = new LinkedHashMap<>();
+        if (qtyTyped) {
+            cardButtons.put("add:" + top.getId() + ":" + qty, "➕ Add " + qty);
+        } else {
+            cardButtons.put("add:" + top.getId() + ":1", "➕ Add 1");
+            cardButtons.put("add:" + top.getId() + ":2", "➕ Add 2");
+        }
+        if (products.size() > 1) {
+            cardButtons.put("opts:" + keyword, "🔎 Other options");
+        }
+        return whatsAppNotificationService.sendInteractiveButtons(from, imageUrl, cardBody, cardButtons);
     }
 
     // ---------- helpers ----------
