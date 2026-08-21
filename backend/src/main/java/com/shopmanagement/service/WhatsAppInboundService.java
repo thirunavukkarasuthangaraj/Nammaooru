@@ -14,22 +14,31 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Processes inbound WhatsApp webhook payloads from the Meta Cloud API:
- * stores each customer message (order text) for the admin inbox, and answers
- * inside the free 24h service window. Short one-line queries ("rice",
- * "2kg onion") get a tappable product-list reply from the shop catalog; the
- * customer's tap comes back as a list_reply and is stored as a confirmed
- * product order. Everything else gets the generic acknowledgement.
+ * Processes inbound WhatsApp webhook payloads from the Meta Cloud API and
+ * runs the order bot inside the free 24h service window:
+ *
+ *   customer: "atta"            -> product photos + tappable list   (row: PROCESSED)
+ *   customer: taps a product    -> cart row + summary with total and
+ *                                  [Confirm order] [Add more]       (row: CART)
+ *   customer: taps Confirm      -> ONE consolidated NEW inbox row
+ *                                  "CONFIRMED ORDER ..." and the cart
+ *                                  rows become PROCESSED
+ *
+ * Anything the bot can't handle (multi-line lists, no product match, media)
+ * stays a NEW row with the generic acknowledgement so staff pick it up.
+ * The webhook must always answer 200 or Meta keeps retrying the payload.
  */
 @Service
 @RequiredArgsConstructor
@@ -46,6 +55,12 @@ public class WhatsAppInboundService {
             "(\\d+(?:\\.\\d+)?)\\s*(kg|kgs|gm|g|gram|grams|l|lt|ltr|litre|liter|ml|pc|pcs|piece|pieces|pkt|packet|dozen)?",
             Pattern.CASE_INSENSITIVE);
 
+    /** Cart row body: "✔ Elite Atta 5kg × 2 — ₹580" (qty part optional). */
+    private static final Pattern CART_LINE = Pattern.compile("^✔ (.+?)(?: × (\\d+))? — ₹([\\d.]+)$");
+
+    /** Cart rows older than this no longer count towards the running order. */
+    private static final int CART_WINDOW_HOURS = 24;
+
     private final WhatsAppIncomingMessageRepository repository;
     private final WhatsAppNotificationService whatsAppNotificationService;
     private final ShopProductRepository shopProductRepository;
@@ -59,12 +74,6 @@ public class WhatsAppInboundService {
     @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
     private String apiBaseUrl;
 
-    /**
-     * Walk the webhook payload (entry[].changes[].value.messages[]) and persist
-     * every new customer message. Status/delivery-receipt callbacks (value.statuses)
-     * carry no customer content and are ignored. Never throws: the webhook must
-     * always answer 200 or Meta keeps retrying the same payload.
-     */
     @Transactional
     public void processWebhook(JsonNode root) {
         try {
@@ -96,66 +105,202 @@ public class WhatsAppInboundService {
         }
 
         String type = message.path("type").asText("unknown");
-        String body = extractBody(message, type);
+        JsonNode interactive = message.path("interactive");
 
-        // A tap on our product list comes back as interactive/list_reply with the
-        // row id we sent ("sp:{shopProductId}:q:{qty}") — store it as a confirmed
-        // product order so staff can bill it without guessing.
-        boolean isProductPick = "interactive".equals(type)
-                && message.path("interactive").has("list_reply");
-        if (isProductPick) {
-            JsonNode reply = message.path("interactive").path("list_reply");
-            String title = reply.path("title").asText("");
-            int qty = parsePickedQty(reply.path("id").asText(""));
-            body = "✔ ORDER: " + title + (qty > 1 ? " × " + qty : "");
-        }
-
-        LocalDateTime receivedAt = null;
-        long epochSeconds = message.path("timestamp").asLong(0);
-        if (epochSeconds > 0) {
-            receivedAt = LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), ZoneId.systemDefault());
-        }
-
-        WhatsAppIncomingMessage saved = repository.save(WhatsAppIncomingMessage.builder()
-                .waMessageId(waMessageId)
-                .fromNumber(from)
-                .profileName(profileName)
-                .messageType(type)
-                .body(body)
-                .receivedAt(receivedAt)
-                .build());
-        log.info("Stored incoming WhatsApp {} message {} from {}", type, saved.getId(), from);
-
-        // Reply inside the free 24h window. Failure here is non-fatal — the
-        // message is already in the inbox for staff to handle.
         try {
-            boolean replied;
-            if (isProductPick) {
-                replied = whatsAppNotificationService.sendTextMessage(from,
-                        "*Namma Ooru Delivery* 🛵\n✔ " + body.replace("✔ ORDER: ", "")
-                        + " சேர்க்கப்பட்டது!\nAdded to your order. We will confirm the total shortly.");
+            if (interactive.has("list_reply")) {
+                handleProductPick(waMessageId, from, profileName, message);
+            } else if (interactive.has("button_reply")) {
+                handleButtonReply(waMessageId, from, profileName, message);
             } else {
-                replied = trySuggestProducts(from, type, body)
-                        || whatsAppNotificationService.sendTextMessage(from, AUTO_REPLY);
-            }
-            if (replied) {
-                saved.setAutoReplied(true);
-                repository.save(saved);
+                handleRegularMessage(waMessageId, from, profileName, message, type);
             }
         } catch (Exception e) {
-            log.error("Auto-reply to {} failed", from, e);
+            // Never lose the message: store it as NEW for staff even when the
+            // bot flow blows up mid-way.
+            log.error("Order-bot handling failed for {} from {}", waMessageId, from, e);
+            if (!repository.existsByWaMessageId(waMessageId)) {
+                saveRow(waMessageId, from, profileName, type, extractBody(message, type), "NEW", message);
+            }
         }
     }
 
-    /**
-     * For short single-line queries, reply with a tappable list of matching
-     * products from the shop catalog. Returns false (caller sends the generic
-     * acknowledgement) for multi-line lists, no keyword, or no matches.
-     */
-    private boolean trySuggestProducts(String from, String type, String body) {
-        if (!"text".equals(type) || body == null || body.contains("\n")) {
-            return false;
+    // ---------- regular text / media ----------
+
+    private void handleRegularMessage(String waMessageId, String from, String profileName,
+                                      JsonNode message, String type) {
+        String body = extractBody(message, type);
+
+        // Short single-line text -> try the product picker
+        if ("text".equals(type) && body != null && !body.contains("\n")
+                && trySuggestProducts(from, body)) {
+            // Bot answered the query; keep it out of the staff "New" tab
+            WhatsAppIncomingMessage saved = saveRow(waMessageId, from, profileName, type, body, "PROCESSED", message);
+            saved.setAutoReplied(true);
+            repository.save(saved);
+            return;
         }
+
+        WhatsAppIncomingMessage saved = saveRow(waMessageId, from, profileName, type, body, "NEW", message);
+        if (whatsAppNotificationService.sendTextMessage(from, AUTO_REPLY)) {
+            saved.setAutoReplied(true);
+            repository.save(saved);
+        }
+    }
+
+    // ---------- product pick (list_reply) ----------
+
+    private void handleProductPick(String waMessageId, String from, String profileName, JsonNode message) {
+        JsonNode reply = message.path("interactive").path("list_reply");
+        String title = reply.path("title").asText("");
+        String rowId = reply.path("id").asText("");
+
+        // Tap on the "remove item" list: id "rm:{cartRowDbId}"
+        if (rowId.startsWith("rm:")) {
+            handleRemovePick(waMessageId, from, profileName, rowId, message);
+            return;
+        }
+
+        int qty = parsePickedQty(rowId);
+        BigDecimal unitPrice = lookupPrice(rowId);
+        BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
+
+        String body = "✔ " + title + (qty > 1 ? " × " + qty : "")
+                + " — ₹" + lineTotal.stripTrailingZeros().toPlainString();
+        WhatsAppIncomingMessage saved = saveRow(waMessageId, from, profileName, "interactive", body, "CART", message);
+
+        if (sendCartSummary(from)) {
+            saved.setAutoReplied(true);
+            repository.save(saved);
+        }
+    }
+
+    /** The running order + Confirm / Add more / Remove buttons. */
+    private boolean sendCartSummary(String from) {
+        String summary = buildCartSummary(from);
+        Map<String, String> buttons = new LinkedHashMap<>();
+        buttons.put("confirm_order", "✅ Confirm order");
+        buttons.put("add_more", "➕ Add more");
+        buttons.put("remove_item", "🗑 Remove item");
+        return whatsAppNotificationService.sendInteractiveButtons(from, summary, buttons);
+    }
+
+    /** Customer tapped an entry in the remove list — drop that cart row. */
+    private void handleRemovePick(String waMessageId, String from, String profileName,
+                                  String rowId, JsonNode message) {
+        saveRow(waMessageId, from, profileName, "interactive", "[removed item]", "PROCESSED", message);
+        try {
+            Long cartRowId = Long.valueOf(rowId.substring(3));
+            repository.findById(cartRowId)
+                    .filter(row -> from.equals(row.getFromNumber()) && "CART".equals(row.getStatus()))
+                    .ifPresent(row -> {
+                        row.setStatus("REMOVED");
+                        repository.save(row);
+                    });
+        } catch (NumberFormatException ignored) {
+        }
+        if (cartRows(from).isEmpty()) {
+            whatsAppNotificationService.sendTextMessage(from,
+                    "*Namma Ooru Delivery* 🛵\nஉங்கள் ஆர்டர் காலியாக உள்ளது.\n"
+                    + "Item removed. Type a product name to add again 👇");
+        } else {
+            sendCartSummary(from);
+        }
+    }
+
+    // ---------- confirm / add-more buttons ----------
+
+    private void handleButtonReply(String waMessageId, String from, String profileName, JsonNode message) {
+        String buttonId = message.path("interactive").path("button_reply").path("id").asText("");
+
+        if ("confirm_order".equals(buttonId)) {
+            List<WhatsAppIncomingMessage> cart = cartRows(from);
+            if (cart.isEmpty()) {
+                saveRow(waMessageId, from, profileName, "interactive", "[confirm with empty cart]", "PROCESSED", message);
+                whatsAppNotificationService.sendTextMessage(from,
+                        "*Namma Ooru Delivery* 🛵\nஉங்கள் ஆர்டரில் பொருட்கள் இல்லை.\n"
+                        + "Type a product name (e.g. rice) to start your order 👇");
+                return;
+            }
+
+            StringBuilder orderBody = new StringBuilder();
+            BigDecimal total = BigDecimal.ZERO;
+            for (WhatsAppIncomingMessage row : cart) {
+                Matcher m = CART_LINE.matcher(row.getBody() == null ? "" : row.getBody());
+                if (m.matches()) {
+                    total = total.add(new BigDecimal(m.group(3)));
+                    orderBody.append(m.group(1))
+                            .append(m.group(2) != null ? " × " + m.group(2) : "")
+                            .append(" — ₹").append(m.group(3)).append('\n');
+                }
+                row.setStatus("PROCESSED");
+            }
+            repository.saveAll(cart);
+
+            String consolidated = "✅ CONFIRMED ORDER — ₹" + total.stripTrailingZeros().toPlainString()
+                    + "\n" + orderBody.toString().trim();
+            // The confirm tap's own message id anchors the consolidated row, so
+            // Meta retries can never create the order twice.
+            WhatsAppIncomingMessage orderRow =
+                    saveRow(waMessageId, from, profileName, "order", consolidated, "NEW", message);
+
+            // Receipt-style confirmation: the customer sees the final cart
+            boolean replied = whatsAppNotificationService.sendTextMessage(from,
+                    "*Namma Ooru Delivery* 🛵\n"
+                    + "உங்கள் ஆர்டர் உறுதி செய்யப்பட்டது ✅\n"
+                    + "*Your confirmed order:*\n"
+                    + orderBody.toString().trim() + "\n"
+                    + "*மொத்தம் / Total: ₹" + total.stripTrailingZeros().toPlainString() + "*\n"
+                    + "We will deliver soon 🛵 நன்றி!");
+            if (replied) {
+                orderRow.setAutoReplied(true);
+                repository.save(orderRow);
+            }
+            return;
+        }
+
+        if ("remove_item".equals(buttonId)) {
+            List<WhatsAppIncomingMessage> cart = cartRows(from);
+            saveRow(waMessageId, from, profileName, "interactive", "[remove item]", "PROCESSED", message);
+            if (cart.isEmpty()) {
+                whatsAppNotificationService.sendTextMessage(from,
+                        "*Namma Ooru Delivery* 🛵\nஉங்கள் ஆர்டர் காலியாக உள்ளது.\n"
+                        + "Nothing to remove — type a product name to start 👇");
+                return;
+            }
+            List<Map<String, String>> rows = new ArrayList<>();
+            for (WhatsAppIncomingMessage row : cart) {
+                if (rows.size() >= 10) break;  // WhatsApp list limit
+                Matcher m = CART_LINE.matcher(row.getBody() == null ? "" : row.getBody());
+                if (m.matches()) {
+                    rows.add(Map.of(
+                            "id", "rm:" + row.getId(),
+                            "title", m.group(1) + (m.group(2) != null ? " × " + m.group(2) : ""),
+                            "description", "₹" + m.group(3)));
+                }
+            }
+            whatsAppNotificationService.sendInteractiveList(from,
+                    "*Namma Ooru Delivery* 🛵\nநீக்க வேண்டிய பொருளை தேர்வு செய்யுங்கள் 👇\n"
+                    + "Tap the item you want to remove:",
+                    "Remove item", rows);
+            return;
+        }
+
+        // "add_more" (or any other button): nudge for the next item
+        saveRow(waMessageId, from, profileName, "interactive", "[add more]", "PROCESSED", message);
+        whatsAppNotificationService.sendTextMessage(from,
+                "*Namma Ooru Delivery* 🛵\nஅடுத்த பொருளின் பெயரை அனுப்புங்கள் 👇\n"
+                + "Type the next item name (e.g. rice, sugar, oil)");
+    }
+
+    // ---------- product suggestions ----------
+
+    /**
+     * For short single-line queries, send product photos + a tappable list of
+     * matching products. Returns false (caller stores NEW + generic ack) when
+     * there is no usable keyword or no match.
+     */
+    private boolean trySuggestProducts(String from, String body) {
         Long shopId = resolveShopId();
         if (shopId == null) {
             return false;
@@ -181,7 +326,6 @@ public class WhatsAppInboundService {
         List<ShopProduct> products = shopProductRepository
                 .searchAvailableByShopIdAndName(shopId, keyword, PageRequest.of(0, 10)).getContent();
         if (products.isEmpty() && keyword.contains(" ")) {
-            // Multi-word keyword found nothing — retry with the first word alone
             products = shopProductRepository
                     .searchAvailableByShopIdAndName(shopId, keyword.split(" ")[0], PageRequest.of(0, 10)).getContent();
         }
@@ -189,8 +333,7 @@ public class WhatsAppInboundService {
             return false;
         }
 
-        // Product photos first (top 3 with an image) so the customer sees what
-        // they're choosing, then the tappable list to actually pick.
+        // Product photos first (top 3 with an image), then the tappable list.
         int photosSent = 0;
         for (ShopProduct sp : products) {
             if (photosSent >= 3) break;
@@ -207,10 +350,9 @@ public class WhatsAppInboundService {
 
         List<Map<String, String>> rows = new ArrayList<>();
         for (ShopProduct sp : products) {
-            String name = sp.getDisplayName();
             rows.add(Map.of(
                     "id", "sp:" + sp.getId() + ":q:" + qty,
-                    "title", name,
+                    "title", sp.getDisplayName(),
                     "description", "₹" + sp.getPrice().stripTrailingZeros().toPlainString()
                             + (qty > 1 ? "  ×  " + qty : "")));
         }
@@ -220,6 +362,53 @@ public class WhatsAppInboundService {
         return whatsAppNotificationService.sendInteractiveList(from, bodyText, "View products", rows);
     }
 
+    // ---------- helpers ----------
+
+    private WhatsAppIncomingMessage saveRow(String waMessageId, String from, String profileName,
+                                            String type, String body, String status, JsonNode message) {
+        LocalDateTime receivedAt = null;
+        long epochSeconds = message.path("timestamp").asLong(0);
+        if (epochSeconds > 0) {
+            receivedAt = LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), ZoneId.systemDefault());
+        }
+        WhatsAppIncomingMessage saved = repository.save(WhatsAppIncomingMessage.builder()
+                .waMessageId(waMessageId)
+                .fromNumber(from)
+                .profileName(profileName)
+                .messageType(type)
+                .body(body)
+                .status(status)
+                .receivedAt(receivedAt)
+                .build());
+        log.info("Stored incoming WhatsApp {} message {} from {} as {}", type, saved.getId(), from, status);
+        return saved;
+    }
+
+    /** This customer's unconfirmed picks from the last CART_WINDOW_HOURS. */
+    private List<WhatsAppIncomingMessage> cartRows(String from) {
+        return repository.findByFromNumberAndStatusAndCreatedAtAfterOrderByCreatedAtAsc(
+                from, "CART", LocalDateTime.now().minusHours(CART_WINDOW_HOURS));
+    }
+
+    /** Numbered summary of the cart with a grand total, for the buttons message. */
+    private String buildCartSummary(String from) {
+        List<WhatsAppIncomingMessage> cart = cartRows(from);
+        StringBuilder sb = new StringBuilder("*Namma Ooru Delivery* 🛵\nஉங்கள் ஆர்டர் / Your order:\n");
+        BigDecimal total = BigDecimal.ZERO;
+        int i = 1;
+        for (WhatsAppIncomingMessage row : cart) {
+            Matcher m = CART_LINE.matcher(row.getBody() == null ? "" : row.getBody());
+            if (m.matches()) {
+                total = total.add(new BigDecimal(m.group(3)));
+                sb.append(i++).append(". ").append(m.group(1))
+                        .append(m.group(2) != null ? " × " + m.group(2) : "")
+                        .append(" — ₹").append(m.group(3)).append('\n');
+            }
+        }
+        sb.append("மொத்தம் / Total: ₹").append(total.stripTrailingZeros().toPlainString());
+        return sb.toString();
+    }
+
     /** Row id format "sp:{shopProductId}:q:{qty}". */
     private int parsePickedQty(String rowId) {
         try {
@@ -227,6 +416,18 @@ public class WhatsAppInboundService {
             return parts.length >= 4 ? Math.max(1, Integer.parseInt(parts[3])) : 1;
         } catch (Exception e) {
             return 1;
+        }
+    }
+
+    private BigDecimal lookupPrice(String rowId) {
+        try {
+            String[] parts = rowId.split(":");
+            Long spId = Long.valueOf(parts[1]);
+            return shopProductRepository.findById(spId)
+                    .map(ShopProduct::getPrice)
+                    .orElse(BigDecimal.ZERO);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
         }
     }
 

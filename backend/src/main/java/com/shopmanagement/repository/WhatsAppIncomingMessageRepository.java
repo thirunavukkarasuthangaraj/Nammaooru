@@ -16,4 +16,8 @@ public interface WhatsAppIncomingMessageRepository extends JpaRepository<WhatsAp
     Page<WhatsAppIncomingMessage> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     long countByStatus(String status);
+
+    /** The order-bot cart: this customer's recent rows in a given status. */
+    java.util.List<WhatsAppIncomingMessage> findByFromNumberAndStatusAndCreatedAtAfterOrderByCreatedAtAsc(
+            String fromNumber, String status, java.time.LocalDateTime after);
 }

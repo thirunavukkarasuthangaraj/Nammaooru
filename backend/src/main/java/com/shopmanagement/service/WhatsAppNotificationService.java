@@ -543,6 +543,66 @@ public class WhatsAppNotificationService {
     }
 
     /**
+     * Send an interactive reply-buttons message (max 3 buttons) via the Meta
+     * Cloud API — used by the order bot for "Confirm order / Add more".
+     * buttons: id -> title (title max 20 chars). Insertion order preserved.
+     */
+    public boolean sendInteractiveButtons(String mobileNumber, String bodyText,
+                                          Map<String, String> buttons) {
+        if (!"meta".equalsIgnoreCase(whatsappProvider)) {
+            return false;
+        }
+        if (metaPhoneNumberId == null || metaPhoneNumberId.isBlank()
+                || metaAccessToken == null || metaAccessToken.isBlank()) {
+            return false;
+        }
+        try {
+            String url = String.format("https://graph.facebook.com/%s/%s/messages",
+                    metaApiVersion, metaPhoneNumberId);
+            if (metaAppSecret != null && !metaAppSecret.isBlank()) {
+                url += "?appsecret_proof=" + computeAppSecretProof(metaAccessToken, metaAppSecret);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(metaAccessToken);
+
+            List<Map<String, Object>> buttonList = new ArrayList<>();
+            for (Map.Entry<String, String> b : buttons.entrySet()) {
+                if (buttonList.size() >= 3) break;  // WhatsApp hard limit
+                buttonList.add(Map.of(
+                        "type", "reply",
+                        "reply", Map.of("id", b.getKey(), "title", truncate(b.getValue(), 20))));
+            }
+
+            Map<String, Object> interactive = new HashMap<>();
+            interactive.put("type", "button");
+            interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
+            interactive.put("action", Map.of("buttons", buttonList));
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("messaging_product", "whatsapp");
+            requestBody.put("to", formatMobileNumber(mobileNumber));
+            requestBody.put("type", "interactive");
+            requestBody.put("interactive", interactive);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers), String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return true;
+            }
+            log.error("Meta Cloud API buttons send failed ({}): {}", response.getStatusCode(), response.getBody());
+            return false;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("Meta Cloud API buttons send failed ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return false;
+        } catch (Exception e) {
+            log.error("Error sending WhatsApp interactive buttons", e);
+            return false;
+        }
+    }
+
+    /**
      * Send a free-form image message (photo with caption) via the Meta Cloud
      * API — used by the order bot to show product photos inside the 24h
      * service window. Meta downloads the image from the public link.
