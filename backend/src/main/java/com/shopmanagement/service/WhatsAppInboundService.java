@@ -120,6 +120,8 @@ public class WhatsAppInboundService {
                 handleProductPick(waMessageId, from, profileName, message);
             } else if (interactive.has("button_reply")) {
                 handleButtonReply(waMessageId, from, profileName, message);
+            } else if ("order".equals(type)) {
+                handleCatalogOrder(waMessageId, from, profileName, message);
             } else {
                 handleRegularMessage(waMessageId, from, profileName, message, type);
             }
@@ -299,6 +301,57 @@ public class WhatsAppInboundService {
         whatsAppNotificationService.sendTextMessage(from,
                 "*Namma Ooru Delivery* 🛵\nஅடுத்த பொருளின் பெயரை அனுப்புங்கள் 👇\n"
                 + "Type the next item name (e.g. rice, sugar, oil)");
+    }
+
+    // ---------- catalogue cart order ----------
+
+    /**
+     * The customer sent their WhatsApp Catalogue cart (message type "order"):
+     * product_items[] with product_retailer_id ("sp{shopProductId}" from our
+     * feed), quantity and item_price. Becomes ONE consolidated NEW inbox row.
+     */
+    private void handleCatalogOrder(String waMessageId, String from, String profileName, JsonNode message) {
+        JsonNode order = message.path("order");
+        StringBuilder lines = new StringBuilder();
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (JsonNode item : order.path("product_items")) {
+            String retailerId = item.path("product_retailer_id").asText("");
+            int qty = Math.max(1, item.path("quantity").asInt(1));
+            BigDecimal price = new BigDecimal(item.path("item_price").asText("0"));
+
+            String name = retailerId;
+            if (retailerId.startsWith("sp")) {
+                try {
+                    name = shopProductRepository.findById(Long.valueOf(retailerId.substring(2)))
+                            .map(ShopProduct::getDisplayName)
+                            .orElse(retailerId);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
+            total = total.add(lineTotal);
+            lines.append(name)
+                    .append(qty > 1 ? " × " + qty : "")
+                    .append(" — ₹").append(lineTotal.stripTrailingZeros().toPlainString())
+                    .append('\n');
+        }
+
+        String body = "✅ CONFIRMED ORDER (catalogue cart) — ₹" + total.stripTrailingZeros().toPlainString()
+                + "\n" + lines.toString().trim();
+        WhatsAppIncomingMessage orderRow =
+                saveRow(waMessageId, from, profileName, "order", body, "NEW", message);
+
+        boolean replied = whatsAppNotificationService.sendTextMessage(from,
+                "*Namma Ooru Delivery* 🛵\n"
+                + "உங்கள் ஆர்டர் கிடைத்தது ✅\n"
+                + lines.toString().trim() + "\n"
+                + "*மொத்தம் / Total: ₹" + total.stripTrailingZeros().toPlainString() + "*\n"
+                + "We will confirm and deliver soon 🛵 நன்றி!");
+        if (replied) {
+            orderRow.setAutoReplied(true);
+            repository.save(orderRow);
+        }
     }
 
     // ---------- product suggestions ----------
