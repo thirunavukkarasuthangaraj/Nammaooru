@@ -500,29 +500,37 @@ public class WhatsAppInboundService {
                     catalogId, retailerIds);
         }
 
-        // No catalogue configured: ONE self-contained card for the best match —
-        // photo + name + price + quick "Add" buttons — no separate list needed
-        // for the common case. "Other options" only appears when there are
-        // genuine alternatives, and reveals the plain text list on demand.
-        ShopProduct top = products.get(0);
-        String imageUrl = top.getPrimaryShopImageUrl();
-        if (imageUrl != null && !imageUrl.isBlank() && imageUrl.startsWith("/")) {
-            imageUrl = apiBaseUrl + imageUrl;
-        }
-        String priceText = "₹" + top.getPrice().stripTrailingZeros().toPlainString();
-        String cardBody = "*" + top.getDisplayName() + "*\n" + priceText;
+        // No catalogue configured: up to 3 separate, self-contained cards —
+        // each its own bubble with photo + name + price + quick "Add" buttons.
+        // Every card is directly tappable (unlike plain photo messages), so
+        // the customer sees multiple real options with images at once.
+        int cardLimit = Math.min(3, products.size());
+        boolean anySent = false;
+        for (int i = 0; i < cardLimit; i++) {
+            ShopProduct sp = products.get(i);
+            String imageUrl = sp.getPrimaryShopImageUrl();
+            if (imageUrl != null && !imageUrl.isBlank() && imageUrl.startsWith("/")) {
+                imageUrl = apiBaseUrl + imageUrl;
+            }
+            String cardBody = "*" + sp.getDisplayName() + "*\n₹" + sp.getPrice().stripTrailingZeros().toPlainString();
 
-        Map<String, String> cardButtons = new LinkedHashMap<>();
-        if (qtyTyped) {
-            cardButtons.put("add:" + top.getId() + ":" + qty, "➕ Add " + qty);
-        } else {
-            cardButtons.put("add:" + top.getId() + ":1", "➕ Add 1");
-            cardButtons.put("add:" + top.getId() + ":2", "➕ Add 2");
+            Map<String, String> cardButtons = new LinkedHashMap<>();
+            if (qtyTyped) {
+                cardButtons.put("add:" + sp.getId() + ":" + qty, "➕ Add " + qty);
+            } else {
+                cardButtons.put("add:" + sp.getId() + ":1", "➕ Add 1");
+                cardButtons.put("add:" + sp.getId() + ":2", "➕ Add 2");
+            }
+            // Last card gets "More options" when the catalog has extra matches
+            // beyond the 3 shown, so nothing is hidden from the customer.
+            if (i == cardLimit - 1 && products.size() > cardLimit) {
+                cardButtons.put("opts:" + keyword, "🔎 More options");
+            }
+            if (whatsAppNotificationService.sendInteractiveButtons(from, imageUrl, cardBody, cardButtons)) {
+                anySent = true;
+            }
         }
-        if (products.size() > 1) {
-            cardButtons.put("opts:" + keyword, "🔎 Other options");
-        }
-        return whatsAppNotificationService.sendInteractiveButtons(from, imageUrl, cardBody, cardButtons);
+        return anySent;
     }
 
     // ---------- helpers ----------
