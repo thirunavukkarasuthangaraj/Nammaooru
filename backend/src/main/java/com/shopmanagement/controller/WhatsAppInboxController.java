@@ -11,13 +11,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * Admin inbox for customer messages received on the business WhatsApp number
- * (orders sent as chat messages). Staff review NEW messages and mark them
- * PROCESSED once converted to a POS bill. /api/admin/** already requires
- * ADMIN or SUPER_ADMIN in SecurityConfig.
+ * Inbox of customer messages received on the business WhatsApp number
+ * (orders sent as chat messages). Staff review NEW messages, optionally
+ * assign them to the shop that will fulfil them, and mark them PROCESSED
+ * once converted to a POS bill.
+ *
+ * Mapped under both /api/admin (ADMIN, SUPER_ADMIN) and /api/shop-owner
+ * (also SHOP_OWNER) so shop owners can work the same inbox.
  */
 @RestController
-@RequestMapping("/api/admin/whatsapp-inbox")
+@RequestMapping({"/api/admin/whatsapp-inbox", "/api/shop-owner/whatsapp-inbox"})
 @RequiredArgsConstructor
 public class WhatsAppInboxController {
 
@@ -47,6 +50,22 @@ public class WhatsAppInboxController {
         return repository.findById(id)
                 .map(message -> {
                     message.setStatus("PROCESSED");
+                    return ResponseEntity.ok(repository.save(message));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Assign (or reassign) the order to a shop. Body: {shopId, shopName}. */
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<WhatsAppIncomingMessage> assignShop(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        return repository.findById(id)
+                .map(message -> {
+                    Object shopId = body.get("shopId");
+                    message.setShopId(shopId != null ? Long.valueOf(String.valueOf(shopId)) : null);
+                    Object shopName = body.get("shopName");
+                    message.setShopName(shopName != null ? String.valueOf(shopName) : null);
                     return ResponseEntity.ok(repository.save(message));
                 })
                 .orElse(ResponseEntity.notFound().build());

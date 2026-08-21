@@ -110,8 +110,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ContactViewsComponent,
     LocalShopsManagementComponent,
     LocalShopsReportedComponent,
-    PaymentCollectManagementComponent,
-    WhatsAppInboxComponent
+    PaymentCollectManagementComponent
   ],
   imports: [
     CommonModule,

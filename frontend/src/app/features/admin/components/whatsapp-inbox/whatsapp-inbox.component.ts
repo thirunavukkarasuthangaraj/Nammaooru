@@ -1,20 +1,44 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { MatTableModule } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSelectModule } from '@angular/material/select';
 import { SwalService } from '../../../../core/services/swal.service';
-import { WhatsAppInboxService, WhatsAppInboxMessage } from '../../services/whatsapp-inbox.service';
+import { WhatsAppInboxService, WhatsAppInboxMessage, ShopOption } from '../../services/whatsapp-inbox.service';
 
 /**
  * Inbox of customer messages sent to the business WhatsApp number (orders
  * typed as chat messages, received via the Meta webhook). Staff read the
- * order text, open POS with the customer prefilled, and mark it processed.
+ * order text, assign it to the shop that will fulfil it, open POS with the
+ * customer prefilled, and mark it processed.
+ *
+ * Standalone so both the admin (/admin/whatsapp-inbox) and shop-owner
+ * (/shop-owner/whatsapp-inbox) routes can mount the same screen.
  */
 @Component({
   selector: 'app-whatsapp-inbox',
   templateUrl: './whatsapp-inbox.component.html',
-  styleUrls: ['./whatsapp-inbox.component.css']
+  styleUrls: ['./whatsapp-inbox.component.css'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatTableModule,
+    MatButtonModule,
+    MatIconModule,
+    MatButtonToggleModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    MatSelectModule
+  ]
 })
 export class WhatsAppInboxComponent implements OnInit, OnDestroy {
   messages: WhatsAppInboxMessage[] = [];
+  shops: ShopOption[] = [];
   loading = true;
   currentPage = 0;
   totalPages = 0;
@@ -25,7 +49,7 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
   /** '' = all */
   filterStatus: string = 'NEW';
 
-  displayedColumns = ['receivedAt', 'customer', 'body', 'status', 'actions'];
+  displayedColumns = ['receivedAt', 'customer', 'body', 'shop', 'status', 'actions'];
 
   // New orders should appear without the admin pressing refresh
   private refreshTimer: any = null;
@@ -39,6 +63,10 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.load();
+    this.inboxService.getShops().subscribe({
+      next: (shops) => this.shops = shops,
+      error: (err) => console.error('Error loading shops:', err)
+    });
     this.refreshTimer = setInterval(() => this.load(true), this.REFRESH_MS);
   }
 
@@ -84,13 +112,31 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
     this.load();
   }
 
+  /** Assign (or clear, shopId=null) the shop that will fulfil this order. */
+  assignShop(message: WhatsAppInboxMessage, shopId: number | null): void {
+    const shop = this.shops.find(s => s.id === shopId) || null;
+    this.inboxService.assignShop(message.id, shop).subscribe({
+      next: (updated) => {
+        message.shopId = updated.shopId;
+        message.shopName = updated.shopName;
+        this.swal.toast(shop ? `Assigned to ${shop.name}` : 'Assignment cleared', 'success');
+      },
+      error: (err) => {
+        console.error('Error assigning shop:', err);
+        this.swal.toast('Failed to assign shop', 'error');
+      }
+    });
+  }
+
   /**
    * Open POS billing with this customer prefilled (same one-shot localStorage
    * handoff Order Management's "Add Cart Again" uses; items stay empty — staff
-   * add products while reading the order text).
+   * add products while reading the order text). The assigned shopId rides
+   * along so the bill lands under the right shop.
    */
   createBill(message: WhatsAppInboxMessage): void {
     localStorage.setItem('pos_readd_order', JSON.stringify({
+      shopId: message.shopId || undefined,
       customerName: message.profileName || '',
       customerPhone: this.toLocalNumber(message.fromNumber),
       items: [],

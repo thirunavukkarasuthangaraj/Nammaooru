@@ -52,6 +52,14 @@ public class WhatsAppIncomingMessage {
     @Builder.Default
     private Boolean autoReplied = false;
 
+    /** Shop this order was assigned to (null until staff assign it). */
+    @Column(name = "shop_id")
+    private Long shopId;
+
+    /** Denormalized shop name so the inbox list needs no join. */
+    @Column(name = "shop_name")
+    private String shopName;
+
     /** Timestamp from the Meta payload (when the customer sent it). */
     @Column(name = "received_at")
     private LocalDateTime receivedAt;

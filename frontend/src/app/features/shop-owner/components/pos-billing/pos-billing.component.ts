@@ -2493,9 +2493,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // the customer is prefilled and staff add products while reading the order text
     const hasCustomer = !!(handoff?.customerPhone || handoff?.customerName);
     if (!handoff?.items?.length && !hasCustomer) return;
-    // Stale handoff (>10 min old) or another shop's order — ignore
+    // Stale handoff (>10 min old) or another shop's order — ignore. WhatsApp
+    // orders are exempt from the shop check: the assigning admin may bill from
+    // a different shop's POS, and the customer/order text is still wanted.
     if (Date.now() - (handoff.savedAt || 0) > 10 * 60 * 1000) return;
-    if (handoff.shopId && this.shopId && handoff.shopId !== this.shopId) return;
+    if (handoff.shopId && this.shopId && handoff.shopId !== this.shopId
+        && !handoff.whatsappOrderText) return;
 
     const skipped: string[] = [];
     for (const it of handoff.items || []) {

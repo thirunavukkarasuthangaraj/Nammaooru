@@ -338,6 +338,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       category: 'Orders',
       items: [
         { title: 'Order Management', icon: 'list_alt', route: '/shop-owner/orders-management', badge: null },
+        { title: 'WhatsApp Orders', icon: 'chat', route: '/shop-owner/whatsapp-inbox', badge: null },
         { title: 'Customers', icon: 'people', route: '/shop-owner/customers', badge: null },
         { title: 'Notifications', icon: 'notifications_active', route: '/shop-owner/notifications', badge: null }
       ]

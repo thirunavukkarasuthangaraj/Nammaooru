@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface WhatsAppInboxMessage {
@@ -12,15 +12,24 @@ export interface WhatsAppInboxMessage {
   body: string | null;
   status: 'NEW' | 'PROCESSED';
   autoReplied: boolean;
+  shopId: number | null;
+  shopName: string | null;
   receivedAt: string | null;
   createdAt: string;
+}
+
+export interface ShopOption {
+  id: number;
+  name: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class WhatsAppInboxService {
-  private apiUrl = `${environment.apiUrl}/admin/whatsapp-inbox`;
+  // /shop-owner path is accessible to SUPER_ADMIN, ADMIN and SHOP_OWNER,
+  // so one URL serves both the admin and the shop-owner screens
+  private apiUrl = `${environment.apiUrl}/shop-owner/whatsapp-inbox`;
 
   constructor(private http: HttpClient) {}
 
@@ -39,5 +48,21 @@ export class WhatsAppInboxService {
 
   markProcessed(id: number): Observable<WhatsAppInboxMessage> {
     return this.http.put<WhatsAppInboxMessage>(`${this.apiUrl}/${id}/processed`, {});
+  }
+
+  assignShop(id: number, shop: ShopOption | null): Observable<WhatsAppInboxMessage> {
+    return this.http.put<WhatsAppInboxMessage>(`${this.apiUrl}/${id}/assign`, {
+      shopId: shop?.id ?? null,
+      shopName: shop?.name ?? null
+    });
+  }
+
+  /** Active shops for the assign dropdown. */
+  getShops(): Observable<ShopOption[]> {
+    return this.http.get<any>(`${environment.apiUrl}/shops/active`, {
+      params: new HttpParams().set('page', 0).set('size', 200)
+    }).pipe(
+      map(res => (res?.data?.content || []).map((s: any) => ({ id: s.id, name: s.name })))
+    );
   }
 }

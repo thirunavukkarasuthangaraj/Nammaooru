@@ -52,6 +52,11 @@ const routes: Routes = [
     component: OrdersManagementComponent
   },
   {
+    path: 'whatsapp-inbox',
+    loadComponent: () => import('../admin/components/whatsapp-inbox/whatsapp-inbox.component')
+      .then(m => m.WhatsAppInboxComponent)
+  },
+  {
     path: 'delivery-management',
     component: DeliveryManagementComponent
   },
