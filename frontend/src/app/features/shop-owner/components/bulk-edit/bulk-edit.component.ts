@@ -46,6 +46,12 @@ interface BulkEditProduct {
   };
 }
 
+interface ImageSuggestion {
+  label: string;
+  thumb: string;
+  url: string;
+}
+
 @Component({
   selector: 'app-bulk-edit',
   templateUrl: './bulk-edit.component.html',
@@ -887,13 +893,16 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   async onImageSelected(event: Event, product: BulkEditProduct): Promise<void> {
     const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) {
+    const file = input.files?.[0];
+    input.value = ''; // Reset file input
+    if (!file) {
       this.uploadingImageFor = null;
       return;
     }
+    await this.uploadImageFile(file, product);
+  }
 
-    const file = input.files[0];
-
+  private async uploadImageFile(file: File, product: BulkEditProduct): Promise<void> {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       this.swalService.toast('Please select an image file', 'warning');
@@ -907,6 +916,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       this.uploadingImageFor = null;
       return;
     }
+
+    this.uploadingImageFor = product.id;
 
     try {
       const formData = new FormData();
@@ -931,7 +942,45 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       this.swalService.toast(error?.error?.message || 'Failed to upload image', 'error');
     } finally {
       this.uploadingImageFor = null;
-      input.value = ''; // Reset file input
+    }
+  }
+
+  // Paste image copied from another tab (e.g. BigBasket: right-click photo -> Copy image)
+  async pasteImageFromClipboard(product: BulkEditProduct): Promise<void> {
+    if (!navigator.clipboard?.read) {
+      this.swalService.toast('Clipboard paste not supported in this browser', 'warning');
+      return;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find(t => t.startsWith('image/'));
+        if (type) {
+          const blob = await item.getType(type);
+          const ext = type.split('/')[1] || 'png';
+          const file = new File([blob], `pasted-image.${ext}`, { type });
+          await this.uploadImageFile(file, product);
+          return;
+        }
+      }
+      this.swalService.toast('No image in clipboard. On BigBasket, right-click the photo and choose "Copy image" first', 'warning');
+    } catch (error) {
+      console.error('Clipboard read failed:', error);
+      this.swalService.toast('Clipboard access blocked. Allow clipboard permission for this site and try again', 'warning');
+    }
+  }
+
+  onImageDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  async onImageDrop(event: DragEvent, product: BulkEditProduct): Promise<void> {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      await this.uploadImageFile(file, product);
+    } else {
+      this.swalService.toast('Drop an image file here, or use Copy image + Paste Image for photos from another tab', 'warning');
     }
   }
 
@@ -939,10 +988,103 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     return this.uploadingImageFor === product.id;
   }
 
-  // Get Google Image search URL for product
+  // Strip parentheticals, Tamil text and local price-pack markers like "RS5"
+  // that won't match external catalogs
+  private cleanProductName(name: string): string {
+    return (name || '')
+      .replace(/\(.*?\)/g, ' ')
+      .replace(/[஀-௿]+/g, ' ')
+      .replace(/\bRS\.?\s*\d+\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Get BigBasket search URL for product (fallback when no suggestions found)
   getImageSearchUrl(product: BulkEditProduct): string {
-    const searchQuery = encodeURIComponent(product.customName + ' product');
-    return `https://www.google.com/search?q=${searchQuery}&udm=2`;
+    const searchQuery = encodeURIComponent(this.cleanProductName(product.customName) || product.customName);
+    return `https://www.bigbasket.com/ps/?q=${searchQuery}`;
+  }
+
+  // --- In-screen image suggestions (Open Food Facts, free & no API key) ---
+  imageSuggestProduct: BulkEditProduct | null = null;
+  imageSuggestions: ImageSuggestion[] = [];
+  loadingSuggestions = false;
+  downloadingSuggestionUrl: string | null = null;
+
+  async openImageSuggestions(product: BulkEditProduct): Promise<void> {
+    this.imageSuggestProduct = product;
+    this.imageSuggestions = [];
+    this.loadingSuggestions = true;
+
+    const suggestions: ImageSuggestion[] = [];
+    const seen = new Set<string>();
+    const add = (label: string, url?: string, thumb?: string) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      suggestions.push({ label: label || 'Product image', url, thumb: thumb || url });
+    };
+
+    try {
+      // 1. Exact match by barcode — most accurate
+      const barcodes = [product.barcode1, product.barcode2, product.barcode3]
+        .filter((b): b is string => !!b && /^\d{8,14}$/.test(b));
+      await Promise.all(barcodes.map(async code => {
+        try {
+          const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,image_front_url,image_front_small_url`);
+          const data = await res.json();
+          const p = data?.product;
+          if (p?.image_front_url) {
+            add(`✓ ${p.product_name || 'Exact barcode match'}`, p.image_front_url, p.image_front_small_url);
+          }
+        } catch { /* barcode not found — fine */ }
+      }));
+
+      // 2. Search by cleaned product name
+      const query = this.cleanProductName(product.customName);
+      if (query) {
+        const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=12`);
+        const data = await res.json();
+        for (const p of (data?.products || [])) {
+          if (p?.image_front_url) {
+            add([p.brands, p.product_name].filter(Boolean).join(' — '), p.image_front_url, p.image_front_small_url);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Image suggestion search failed:', error);
+    } finally {
+      // Only apply if the dialog is still open for this product
+      if (this.imageSuggestProduct === product) {
+        this.imageSuggestions = suggestions;
+        this.loadingSuggestions = false;
+      }
+    }
+  }
+
+  async useSuggestedImage(suggestion: ImageSuggestion): Promise<void> {
+    const product = this.imageSuggestProduct;
+    if (!product) return;
+    this.downloadingSuggestionUrl = suggestion.url;
+    try {
+      const res = await fetch(suggestion.url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+      const file = new File([blob], `product-${product.id}.${ext}`, { type: blob.type || 'image/jpeg' });
+      this.closeImageSuggestions();
+      await this.uploadImageFile(file, product);
+    } catch (error) {
+      console.error('Failed to download suggested image:', error);
+      this.swalService.toast('Could not download this image — try another one', 'error');
+    } finally {
+      this.downloadingSuggestionUrl = null;
+    }
+  }
+
+  closeImageSuggestions(): void {
+    this.imageSuggestProduct = null;
+    this.imageSuggestions = [];
+    this.loadingSuggestions = false;
   }
 
   // Get Google Translate URL (English to Tamil)

@@ -130,7 +130,9 @@
               <div class="product-image clickable"
                    [matMenuTriggerFor]="imageMenu"
                    [class.uploading]="isUploadingImage(product)"
-                   matTooltip="Click for options">
+                   matTooltip="Click for options, or drop an image here"
+                   (dragover)="onImageDragOver($event)"
+                   (drop)="onImageDrop($event, product)">
                 <img [appOfflineImg]="product.imageUrl" [fallback]="'assets/images/product-placeholder.svg'" [alt]="product.customName">
                 <div class="image-overlay">
                   <mat-icon *ngIf="!isUploadingImage(product)">more_vert</mat-icon>
@@ -140,6 +142,10 @@
 
               <!-- Image Options Menu -->
               <mat-menu #imageMenu="matMenu">
+                <button mat-menu-item (click)="pasteImageFromClipboard(product)">
+                  <mat-icon>content_paste</mat-icon>
+                  <span>Paste Image</span>
+                </button>
                 <button mat-menu-item (click)="triggerImageUpload(product, imageInput)">
                   <mat-icon>add_photo_alternate</mat-icon>
                   <span>Change Image</span>
@@ -167,12 +173,12 @@
                        [value]="product.customName"
                        (change)="onProductNameChange(product, $any($event.target).value)"
                        required>
-                <a class="image-search-link"
-                   [href]="getImageSearchUrl(product)"
-                   target="_blank"
-                   matTooltip="Search image for this product">
+                <button type="button"
+                        class="image-search-link"
+                        (click)="openImageSuggestions(product)"
+                        matTooltip="Find image for this product">
                   <mat-icon>image_search</mat-icon>
-                </a>
+                </button>
               </div>
             </td>
 
@@ -358,5 +364,47 @@
       <span class="legend-color invalid"></span>
       Invalid value (red border)
     </span>
+  </div>
+</div>
+
+<!-- Image Suggestions Modal -->
+<div class="image-suggest-overlay" *ngIf="imageSuggestProduct" (click)="closeImageSuggestions()">
+  <div class="image-suggest-dialog" (click)="$event.stopPropagation()">
+    <div class="image-suggest-header">
+      <h3>Images for "{{ imageSuggestProduct.customName }}"</h3>
+      <button type="button" class="suggest-close-btn" (click)="closeImageSuggestions()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="image-suggest-body">
+      <div class="suggest-loading" *ngIf="loadingSuggestions">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span>Searching images...</span>
+      </div>
+
+      <div class="suggest-grid" *ngIf="!loadingSuggestions && imageSuggestions.length">
+        <div class="suggest-card" *ngFor="let s of imageSuggestions">
+          <img [src]="s.thumb" [alt]="s.label" loading="lazy">
+          <div class="suggest-label" [matTooltip]="s.label">{{ s.label }}</div>
+          <button type="button"
+                  class="suggest-download-btn"
+                  [disabled]="downloadingSuggestionUrl === s.url"
+                  (click)="useSuggestedImage(s)">
+            <mat-icon>download</mat-icon>
+            {{ downloadingSuggestionUrl === s.url ? 'Downloading...' : 'Download' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="suggest-empty" *ngIf="!loadingSuggestions && !imageSuggestions.length">
+        <mat-icon>image_not_supported</mat-icon>
+        <p>No images found for this product.</p>
+        <a [href]="getImageSearchUrl(imageSuggestProduct)" target="_blank" rel="noopener">
+          Search on BigBasket instead
+        </a>
+        <p class="suggest-hint">Right-click the photo there → "Copy image", then click the product photo here → "Paste Image"</p>
+      </div>
+    </div>
   </div>
 </div>
