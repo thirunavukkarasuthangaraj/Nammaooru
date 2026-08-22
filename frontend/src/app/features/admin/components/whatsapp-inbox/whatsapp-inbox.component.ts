@@ -153,6 +153,7 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
    */
   createBill(message: WhatsAppInboxMessage): void {
     localStorage.setItem('pos_readd_order', JSON.stringify({
+      replaceCart: true,
       shopId: message.shopId || undefined,
       customerName: message.profileName || '',
       customerPhone: this.toLocalNumber(message.fromNumber),
@@ -203,6 +204,7 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
     }
     const unmatched = lines.filter(l => !l.selected).map(l => l.raw);
     localStorage.setItem('pos_readd_order', JSON.stringify({
+      replaceCart: true,
       shopId: message.shopId || undefined,
       customerName: message.profileName || '',
       customerPhone: this.toLocalNumber(message.fromNumber),
@@ -219,7 +221,8 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
     return body
       .split(/\r?\n|,/)
       .map(raw => raw.trim())
-      .filter(raw => raw.length > 0)
+      // The confirmation heading and its total are not product lines.
+      .filter(raw => raw.length > 0 && !/confirmed\s+order/i.test(raw))
       .map(raw => {
         const { qty, keyword } = this.extractQtyAndKeyword(raw);
         const options = this.matchProducts(keyword);
@@ -231,14 +234,17 @@ export class WhatsAppInboxComponent implements OnInit, OnDestroy {
   private extractQtyAndKeyword(raw: string): { qty: number; keyword: string } {
     let text = raw.toLowerCase();
     let qty = 1;
-    const m = text.match(/(\d+(?:\.\d+)?)\s*(kg|kgs|gm|g|gram|grams|l|lt|ltr|litre|liter|ml|pc|pcs|piece|pieces|pkt|packet|dozen)?/);
-    if (m) {
-      const n = parseFloat(m[1]);
-      const unit = (m[2] || '').toLowerCase();
-      // grams/ml describe pack size, not count; everything else is a count
-      qty = ['g', 'gm', 'gram', 'grams', 'ml'].includes(unit) ? 1 : (n || 1);
-      text = text.replace(m[0], ' ');
+    // Prefer an explicit multiplier. Numbers embedded in names/pack sizes
+    // (RS20, 500g, 85ml, 20rs) must never become the cart quantity.
+    const multiplier = text.match(/[x×]\s*(\d+(?:\.\d+)?)(?=\s|$|[—-])/i);
+    const leadingCount = text.match(/^\s*(\d+(?:\.\d+)?)\s*(?:x|×|pcs?|pieces?|pkts?|packets?)\b/i);
+    const quantityMatch = multiplier || leadingCount;
+    if (quantityMatch) {
+      qty = parseFloat(quantityMatch[1]) || 1;
+      text = text.replace(quantityMatch[0], ' ');
     }
+    // The trailing amount is metadata from the confirmed order, not search text.
+    text = text.replace(/\s*[—-]\s*₹\s*\d+(?:\.\d+)?\s*$/, ' ');
     const fillers = ['order', 'please', 'pls', 'need', 'want', 'send', 'and', 'the', 'for', 'venum', 'vennum'];
     const keyword = text
       .split(/[^a-z஀-௿0-9]+/)

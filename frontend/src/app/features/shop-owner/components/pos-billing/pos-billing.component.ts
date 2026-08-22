@@ -2500,6 +2500,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     if (handoff.shopId && this.shopId && handoff.shopId !== this.shopId
         && !handoff.whatsappOrderText) return;
 
+    // A WhatsApp order is a new sale. Do not mix it with an unfinished cart
+    // restored from localStorage or with cart state retained by route reuse.
+    if (handoff.replaceCart) {
+      this.cart = [];
+      localStorage.removeItem(this.POS_CART_BACKUP_KEY);
+    }
+
     const skipped: string[] = [];
     for (const it of handoff.items || []) {
       const product = this.products.find(p => it.shopProductId && p.id === it.shopProductId)

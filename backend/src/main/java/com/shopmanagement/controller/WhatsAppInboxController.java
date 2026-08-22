@@ -24,6 +24,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WhatsAppInboxController {
 
+    private static final String ORDER_MESSAGE_TYPE = "order";
+
     private final WhatsAppIncomingMessageRepository repository;
 
     @GetMapping
@@ -33,16 +35,18 @@ public class WhatsAppInboxController {
             @RequestParam(defaultValue = "20") int size) {
         PageRequest pageable = PageRequest.of(page, size);
         Page<WhatsAppIncomingMessage> result = (status == null || status.isBlank())
-                ? repository.findAllByOrderByCreatedAtDesc(pageable)
-                : repository.findByStatusOrderByCreatedAtDesc(status, pageable);
+                ? repository.findByMessageTypeOrderByCreatedAtDesc(ORDER_MESSAGE_TYPE, pageable)
+                : repository.findByMessageTypeAndStatusOrderByCreatedAtDesc(
+                        ORDER_MESSAGE_TYPE, status, pageable);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/summary")
     public ResponseEntity<Map<String, Long>> summary() {
         return ResponseEntity.ok(Map.of(
-                "newCount", repository.countByStatus("NEW"),
-                "processedCount", repository.countByStatus("PROCESSED")));
+                "newCount", repository.countByMessageTypeAndStatus(ORDER_MESSAGE_TYPE, "NEW"),
+                "processedCount", repository.countByMessageTypeAndStatus(
+                        ORDER_MESSAGE_TYPE, "PROCESSED")));
     }
 
     @PutMapping("/{id}/processed")

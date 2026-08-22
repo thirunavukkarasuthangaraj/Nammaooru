@@ -17,6 +17,14 @@ public interface WhatsAppIncomingMessageRepository extends JpaRepository<WhatsAp
 
     long countByStatus(String status);
 
+    /** Only completed orders belong in the staff inbox; conversation/cart rows stay hidden. */
+    Page<WhatsAppIncomingMessage> findByMessageTypeOrderByCreatedAtDesc(String messageType, Pageable pageable);
+
+    Page<WhatsAppIncomingMessage> findByMessageTypeAndStatusOrderByCreatedAtDesc(
+            String messageType, String status, Pageable pageable);
+
+    long countByMessageTypeAndStatus(String messageType, String status);
+
     /** The order-bot cart: this customer's recent rows in a given status. */
     java.util.List<WhatsAppIncomingMessage> findByFromNumberAndStatusAndCreatedAtAfterOrderByCreatedAtAsc(
             String fromNumber, String status, java.time.LocalDateTime after);
