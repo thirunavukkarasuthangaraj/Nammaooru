@@ -317,9 +317,7 @@ public class WhatsAppInboundService {
                             .append(m.group(2) != null ? " × " + m.group(2) : "")
                             .append(" — ₹").append(m.group(3)).append('\n');
                 }
-                row.setStatus("PROCESSED");
             }
-            repository.saveAll(cart);
 
             String consolidated = "✅ CONFIRMED ORDER — ₹" + total.stripTrailingZeros().toPlainString()
                     + "\n" + orderBody.toString().trim();
@@ -327,6 +325,7 @@ public class WhatsAppInboundService {
             // Meta retries can never create the order twice.
             WhatsAppIncomingMessage orderRow =
                     saveRow(waMessageId, from, profileName, "order", consolidated, "NEW", message);
+            deleteTemporaryOrderRows(from);
 
             // Receipt-style confirmation: the customer sees the final cart
             boolean replied = whatsAppNotificationService.sendTextMessage(from,
@@ -415,6 +414,7 @@ public class WhatsAppInboundService {
                 + "\n" + lines.toString().trim();
         WhatsAppIncomingMessage orderRow =
                 saveRow(waMessageId, from, profileName, "order", body, "NEW", message);
+        deleteTemporaryOrderRows(from);
 
         boolean replied = whatsAppNotificationService.sendTextMessage(from,
                 "*Namma Ooru Delivery* 🛵\n"
@@ -471,7 +471,7 @@ public class WhatsAppInboundService {
         }
 
         // Optional product photos before the tappable list (off by default).
-        int photosSent = 0;
+        int photosSent = photoCount; // disable separate photo bubbles
         for (ShopProduct sp : products) {
             if (photosSent >= photoCount) break;
             String imageUrl = sp.getPrimaryShopImageUrl();
@@ -504,7 +504,7 @@ public class WhatsAppInboundService {
         // each its own bubble with photo + name + price + quick "Add" buttons.
         // Every card is directly tappable (unlike plain photo messages), so
         // the customer sees multiple real options with images at once.
-        int cardLimit = Math.min(3, products.size());
+        int cardLimit = 0; // legacy image cards disabled; use one compact list below
         boolean anySent = false;
         for (int i = 0; i < cardLimit; i++) {
             ShopProduct sp = products.get(i);
@@ -530,7 +530,18 @@ public class WhatsAppInboundService {
                 anySent = true;
             }
         }
-        return anySent;
+        List<Map<String, String>> compactRows = new ArrayList<>();
+        for (ShopProduct sp : products) {
+            if (compactRows.size() >= 10) break;
+            compactRows.add(Map.of(
+                    "id", "sp:" + sp.getId() + ":q:" + (qtyTyped ? qty : 0),
+                    "title", sp.getDisplayName(),
+                    "description", "Rs." + sp.getPrice().stripTrailingZeros().toPlainString()));
+        }
+        return whatsAppNotificationService.sendInteractiveList(from,
+                "*Namma Ooru Delivery*\nMatching \"" + keyword + "\" - select one product. "
+                        + "Choose quantity, then use Add more to search the next item:",
+                "View products", compactRows);
     }
 
     // ---------- helpers ----------
@@ -559,6 +570,18 @@ public class WhatsAppInboundService {
     private List<WhatsAppIncomingMessage> cartRows(String from) {
         return repository.findByFromNumberAndStatusAndCreatedAtAfterOrderByCreatedAtAsc(
                 from, "CART", LocalDateTime.now().minusHours(CART_WINDOW_HOURS));
+    }
+
+    /** Keep confirmed orders; discard this customer's recent temporary bot/cart rows. */
+    private void deleteTemporaryOrderRows(String from) {
+        List<WhatsAppIncomingMessage> temporaryRows =
+                repository.findByFromNumberAndMessageTypeNotAndCreatedAtAfter(
+                        from, "order", LocalDateTime.now().minusHours(CART_WINDOW_HOURS));
+        if (!temporaryRows.isEmpty()) {
+            repository.deleteAll(temporaryRows);
+            log.info("Deleted {} temporary WhatsApp rows for confirmed order from {}",
+                    temporaryRows.size(), from);
+        }
     }
 
     /** Numbered summary of the cart with a grand total, for the buttons message. */

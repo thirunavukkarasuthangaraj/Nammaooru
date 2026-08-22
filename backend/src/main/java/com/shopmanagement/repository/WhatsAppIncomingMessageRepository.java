@@ -28,4 +28,8 @@ public interface WhatsAppIncomingMessageRepository extends JpaRepository<WhatsAp
     /** The order-bot cart: this customer's recent rows in a given status. */
     java.util.List<WhatsAppIncomingMessage> findByFromNumberAndStatusAndCreatedAtAfterOrderByCreatedAtAsc(
             String fromNumber, String status, java.time.LocalDateTime after);
+
+    /** Temporary bot/cart rows associated with a recently completed order. */
+    java.util.List<WhatsAppIncomingMessage> findByFromNumberAndMessageTypeNotAndCreatedAtAfter(
+            String fromNumber, String messageType, java.time.LocalDateTime after);
 }

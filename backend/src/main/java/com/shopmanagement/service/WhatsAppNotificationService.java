@@ -89,6 +89,9 @@ public class WhatsAppNotificationService {
     @Value("${whatsapp.meta.api-version:v21.0}")
     private String metaApiVersion;
 
+    @Value("${app.customer.play-store-url:https://play.google.com/store/apps/details?id=com.nammaooru.app}")
+    private String customerPlayStoreUrl;
+
     @Value("${whatsapp.meta.template-language:en}")
     private String metaTemplateLanguage;
 
@@ -452,7 +455,7 @@ public class WhatsAppNotificationService {
             requestBody.put("messaging_product", "whatsapp");
             requestBody.put("to", formatMobileNumber(mobileNumber));
             requestBody.put("type", "text");
-            requestBody.put("text", Map.of("preview_url", false, "body", text));
+            requestBody.put("text", Map.of("preview_url", false, "body", withAppFooter(text, 4096)));
 
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,
                     new HttpEntity<>(requestBody, headers), String.class);
@@ -514,7 +517,7 @@ public class WhatsAppNotificationService {
 
             Map<String, Object> interactive = new HashMap<>();
             interactive.put("type", "list");
-            interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
+            interactive.put("body", Map.of("text", withAppFooter(bodyText, 1024)));
             interactive.put("action", Map.of(
                     "button", truncate(buttonText, 20),
                     "sections", List.of(Map.of("rows", listRows))));
@@ -590,7 +593,7 @@ public class WhatsAppNotificationService {
             if (headerImageUrl != null && !headerImageUrl.isBlank()) {
                 interactive.put("header", Map.of("type", "image", "image", Map.of("link", headerImageUrl)));
             }
-            interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
+            interactive.put("body", Map.of("text", withAppFooter(bodyText, 1024)));
             interactive.put("action", Map.of("buttons", buttonList));
 
             Map<String, Object> requestBody = new HashMap<>();
@@ -650,7 +653,7 @@ public class WhatsAppNotificationService {
             Map<String, Object> interactive = new HashMap<>();
             interactive.put("type", "product_list");
             interactive.put("header", Map.of("type", "text", "text", truncate(headerText, 60)));
-            interactive.put("body", Map.of("text", truncate(bodyText, 1024)));
+            interactive.put("body", Map.of("text", withAppFooter(bodyText, 1024)));
             interactive.put("action", Map.of(
                     "catalog_id", catalogIdValue,
                     "sections", List.of(Map.of("title", "Products", "product_items", items))));
@@ -728,6 +731,19 @@ public class WhatsAppNotificationService {
             log.error("Error sending WhatsApp image message", e);
             return false;
         }
+    }
+
+    /** Add one consistent app link while reserving space for WhatsApp's body limit. */
+    private String withAppFooter(String text, int max) {
+        if (customerPlayStoreUrl == null || customerPlayStoreUrl.isBlank()) {
+            return truncate(text, max);
+        }
+        String footer = "\n\nContinue shopping in the Namma Ooru app:\n"
+                + customerPlayStoreUrl.trim();
+        if (footer.length() >= max) {
+            return truncate(text, max);
+        }
+        return truncate(text, max - footer.length()) + footer;
     }
 
     private static String truncate(String value, int max) {
