@@ -149,6 +149,16 @@ public class WhatsAppInboundService {
                                       JsonNode message, String type) {
         String body = extractBody(message, type);
 
+        // A greeting starts the shopping journey; it is not an order and must
+        // not create inbox/database clutter.
+        if ("text".equals(type) && isGreeting(body)) {
+            String customer = profileName == null || profileName.isBlank() ? "" : " " + profileName.trim();
+            whatsAppNotificationService.sendTextMessage(from,
+                    "*Vanakkam" + customer + "!* Welcome to Namma Ooru Delivery.\n"
+                    + "What would you like today? Type a product name, for example: *rice*, *oil*, or *sugar*.");
+            return;
+        }
+
         // Short single-line text -> try the product picker
         if ("text".equals(type) && body != null && !body.contains("\n")
                 && trySuggestProducts(from, body)) {
@@ -545,6 +555,12 @@ public class WhatsAppInboundService {
     }
 
     // ---------- helpers ----------
+
+    private boolean isGreeting(String body) {
+        if (body == null) return false;
+        String greeting = body.trim().toLowerCase();
+        return greeting.matches("hi+|hello+|hey+|vanakkam|வணக்கம்");
+    }
 
     private WhatsAppIncomingMessage saveRow(String waMessageId, String from, String profileName,
                                             String type, String body, String status, JsonNode message) {
