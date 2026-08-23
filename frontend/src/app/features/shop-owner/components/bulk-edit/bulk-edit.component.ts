@@ -1020,9 +1020,6 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   downloadingSuggestionUrl: string | null = null;
 
   async openImageSuggestions(product: BulkEditProduct): Promise<void> {
-    window.open(this.getImageSearchUrl(product), '_blank', 'noopener,noreferrer');
-    return;
-
     this.imageSuggestProduct = product;
     this.imageSuggestions = [];
     this.suggestError = null;
