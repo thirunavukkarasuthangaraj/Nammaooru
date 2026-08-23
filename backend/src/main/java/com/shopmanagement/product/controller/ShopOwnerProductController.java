@@ -778,7 +778,9 @@ public class ShopOwnerProductController {
             if (trimmedQuery.isEmpty()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Product name is required"));
             }
-            String searchQuery = "\"" + trimmedQuery + "\" grocery product packaging India";
+            String searchQuery = trimmedQuery
+                    + " grocery supermarket food product packet India"
+                    + " -music -album -song -vinyl -record";
             String encodedQuery = URLEncoder.encode(searchQuery, StandardCharsets.UTF_8);
             String browserUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 
@@ -794,7 +796,7 @@ public class ShopOwnerProductController {
             IMAGE_HTTP_CLIENT.send(warmup, HttpResponse.BodyHandlers.discarding());
 
             String url = "https://www.bing.com/images/async?q=" + encodedQuery
-                    + "&first=0&count=30&mkt=en-IN&mmasync=1";
+                    + "&first=0&count=100&mkt=en-IN&mmasync=1";
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(10))
                     .header("User-Agent", browserUa)
@@ -813,7 +815,6 @@ public class ShopOwnerProductController {
             // containing murl (full image), turl (thumbnail) and t (title)
             ObjectMapper mapper = new ObjectMapper();
             List<Map<String, String>> relevant = new ArrayList<>();
-            List<Map<String, String>> exactSearchFallback = new ArrayList<>();
             Map<String, Integer> relevanceScores = new java.util.HashMap<>();
             java.util.Set<String> seenUrls = new java.util.HashSet<>();
             List<String> queryTokens = imageSearchTokens(trimmedQuery);
@@ -837,9 +838,6 @@ public class ShopOwnerProductController {
                             "thumb", node.path("turl").asText(imageUrl),
                             "url", imageUrl
                     );
-                    if (exactSearchFallback.size() < 12) {
-                        exactSearchFallback.add(entry);
-                    }
                     int relevance = imageSearchRelevance(queryTokens, label, imageUrl);
                     if (relevance < 0) {
                         continue;
@@ -859,11 +857,6 @@ public class ShopOwnerProductController {
             relevant.sort((left, right) -> Integer.compare(
                     relevanceScores.getOrDefault(right.get("url"), 0),
                     relevanceScores.getOrDefault(left.get("url"), 0)));
-            if (relevant.isEmpty()) {
-                // Bing sometimes omits meaningful titles/URLs even when its exact-name
-                // search is relevant. In that case, retain results from the exact query.
-                relevant.addAll(exactSearchFallback);
-            }
             List<Map<String, String>> results = new ArrayList<>(
                     relevant.subList(0, Math.min(9, relevant.size())));
 
