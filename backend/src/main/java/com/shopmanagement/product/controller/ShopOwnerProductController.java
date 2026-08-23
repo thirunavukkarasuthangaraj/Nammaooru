@@ -767,7 +767,7 @@ public class ShopOwnerProductController {
     }
 
     /**
-     * Search product images by scraping Bing Images (no API key required).
+     * Search product images through DuckDuckGo Images (no API key required).
      * Returns [{label, thumb, url}] for the bulk-edit image picker.
      */
     @GetMapping("/image-search")
@@ -784,58 +784,63 @@ public class ShopOwnerProductController {
             String encodedQuery = URLEncoder.encode(searchQuery, StandardCharsets.UTF_8);
             String browserUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 
-            // Warm-up page load: sets the cookies the async endpoint requires
-            HttpRequest warmup = HttpRequest.newBuilder(
-                            URI.create("https://www.bing.com/images/search?q=" + encodedQuery + "&mkt=en-IN"))
+            String searchPageUrl = "https://duckduckgo.com/?q=" + encodedQuery
+                    + "&iax=images&ia=images";
+            HttpRequest tokenRequest = HttpRequest.newBuilder(URI.create(searchPageUrl))
                     .timeout(Duration.ofSeconds(10))
                     .header("User-Agent", browserUa)
                     .header("Accept", "text/html")
                     .header("Accept-Language", "en-IN,en;q=0.9")
                     .GET()
                     .build();
-            IMAGE_HTTP_CLIENT.send(warmup, HttpResponse.BodyHandlers.discarding());
+            HttpResponse<String> tokenResponse = IMAGE_HTTP_CLIENT.send(
+                    tokenRequest, HttpResponse.BodyHandlers.ofString());
+            java.util.regex.Matcher tokenMatcher = java.util.regex.Pattern
+                    .compile("vqd=\\\"([0-9-]+)\\\"")
+                    .matcher(tokenResponse.body());
+            if (tokenResponse.statusCode() != 200 || !tokenMatcher.find()) {
+                log.error("DuckDuckGo image search token request failed with status {}",
+                        tokenResponse.statusCode());
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "Image search failed, try again later"));
+            }
 
-            String url = "https://www.bing.com/images/async?q=" + encodedQuery
-                    + "&first=0&count=100&mkt=en-IN&mmasync=1";
+            String url = "https://duckduckgo.com/i.js?l=in-en&o=json&q=" + encodedQuery
+                    + "&vqd=" + tokenMatcher.group(1) + "&f=,,,&p=1";
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(10))
                     .header("User-Agent", browserUa)
-                    .header("Accept", "text/html")
+                    .header("Accept", "application/json")
                     .header("Accept-Language", "en-IN,en;q=0.9")
+                    .header("Referer", searchPageUrl)
                     .GET()
                     .build();
             HttpResponse<String> response = IMAGE_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                log.error("Bing image search failed with status {}", response.statusCode());
+                log.error("DuckDuckGo image search failed with status {}", response.statusCode());
                 return ResponseEntity.badRequest().body(ApiResponse.error("Image search failed, try again later"));
             }
 
-            // Each result tile carries an m="{...}" attribute with HTML-escaped JSON
-            // containing murl (full image), turl (thumbnail) and t (title)
             ObjectMapper mapper = new ObjectMapper();
             List<Map<String, String>> relevant = new ArrayList<>();
             Map<String, Integer> relevanceScores = new java.util.HashMap<>();
             java.util.Set<String> seenUrls = new java.util.HashSet<>();
             List<String> queryTokens = imageSearchTokens(trimmedQuery);
-            java.util.regex.Matcher matcher = java.util.regex.Pattern
-                    .compile("m=\"(\\{[^\"]+\\})\"")
-                    .matcher(response.body());
-            while (matcher.find() && relevant.size() < 30) {
-                String json = matcher.group(1)
-                        .replace("&quot;", "\"")
-                        .replace("&amp;", "&")
-                        .replace("&#39;", "'");
+            JsonNode searchResults = mapper.readTree(response.body()).path("results");
+            for (JsonNode node : searchResults) {
+                if (relevant.size() >= 40) {
+                    break;
+                }
                 try {
-                    JsonNode node = mapper.readTree(json);
-                    String imageUrl = node.path("murl").asText("");
+                    String imageUrl = node.path("image").asText("");
                     if (imageUrl.isEmpty() || !seenUrls.add(imageUrl)) {
                         continue;
                     }
-                    String label = node.path("t").asText("");
+                    String label = node.path("title").asText("");
                     Map<String, String> entry = Map.of(
                             "label", label,
-                            "thumb", node.path("turl").asText(imageUrl),
+                            "thumb", node.path("thumbnail").asText(imageUrl),
                             "url", imageUrl
                     );
                     int relevance = imageSearchRelevance(queryTokens, label, imageUrl);
@@ -858,10 +863,10 @@ public class ShopOwnerProductController {
                     relevanceScores.getOrDefault(right.get("url"), 0),
                     relevanceScores.getOrDefault(left.get("url"), 0)));
             List<Map<String, String>> results = new ArrayList<>(
-                    relevant.subList(0, Math.min(9, relevant.size())));
+                    relevant.subList(0, Math.min(20, relevant.size())));
 
             if (results.isEmpty()) {
-                log.warn("Bing image search returned no parseable results for '{}'", query);
+                log.warn("DuckDuckGo image search returned no relevant results for '{}'", query);
             }
             return ResponseEntity.ok(ApiResponse.success(results, "Images found"));
         } catch (Exception e) {
