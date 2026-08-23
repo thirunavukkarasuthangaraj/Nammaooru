@@ -999,6 +999,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       .replace(/[஀-௿]+/g, ' ')
       .replace(/\bRS\.?\s*\d+\b/gi, ' ')
       .replace(/\b\d+\s*RS\b/gi, ' ')
+      .replace(/\b\d+(?:\.\d+)?\s*(?:kg|kgs|g|gm|gms|mg|l|ltr|litre|litres|ml|pcs?|pieces?)\b/gi, ' ')
+      .replace(/\b(?:packet|pack|pouch|bottle|box|jar|tin|can)\b/gi, ' ')
       .replace(/[+_]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
