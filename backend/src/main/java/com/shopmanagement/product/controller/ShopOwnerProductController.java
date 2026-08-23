@@ -774,7 +774,12 @@ public class ShopOwnerProductController {
     @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<List<Map<String, String>>>> searchProductImages(@RequestParam("q") String query) {
         try {
-            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String trimmedQuery = query == null ? "" : query.trim();
+            if (trimmedQuery.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Product name is required"));
+            }
+            String searchQuery = trimmedQuery + " supermarket product pack";
+            String encodedQuery = URLEncoder.encode(searchQuery, StandardCharsets.UTF_8);
             String browserUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 
             // Warm-up page load: sets the cookies the async endpoint requires
@@ -807,13 +812,14 @@ public class ShopOwnerProductController {
             // Each result tile carries an m="{...}" attribute with HTML-escaped JSON
             // containing murl (full image), turl (thumbnail) and t (title)
             ObjectMapper mapper = new ObjectMapper();
-            List<Map<String, String>> preferred = new ArrayList<>();
-            List<Map<String, String>> others = new ArrayList<>();
+            List<Map<String, String>> relevant = new ArrayList<>();
+            Map<String, Integer> relevanceScores = new java.util.HashMap<>();
             java.util.Set<String> seenUrls = new java.util.HashSet<>();
+            List<String> queryTokens = imageSearchTokens(trimmedQuery);
             java.util.regex.Matcher matcher = java.util.regex.Pattern
                     .compile("m=\"(\\{[^\"]+\\})\"")
                     .matcher(response.body());
-            while (matcher.find() && preferred.size() < 9) {
+            while (matcher.find() && relevant.size() < 30) {
                 String json = matcher.group(1)
                         .replace("&quot;", "\"")
                         .replace("&amp;", "&")
@@ -824,29 +830,33 @@ public class ShopOwnerProductController {
                     if (imageUrl.isEmpty() || !seenUrls.add(imageUrl)) {
                         continue;
                     }
+                    String label = node.path("t").asText("");
+                    int relevance = imageSearchRelevance(queryTokens, label, imageUrl);
+                    if (relevance < 0) {
+                        continue;
+                    }
                     Map<String, String> entry = Map.of(
-                            "label", node.path("t").asText(""),
+                            "label", label,
                             "thumb", node.path("turl").asText(imageUrl),
                             "url", imageUrl
                     );
-                    // Prefer jpg/jpeg/png over webp/gif/etc.
+                    // Relevance is primary; common product-image formats are
+                    // only a small tie-breaker.
                     String lower = imageUrl.toLowerCase();
                     if (lower.matches(".*\\.(jpe?g|png)([?#].*)?$")) {
-                        preferred.add(entry);
-                    } else if (others.size() < 9) {
-                        others.add(entry);
+                        relevance += 1;
                     }
+                    relevant.add(entry);
+                    relevanceScores.put(imageUrl, relevance);
                 } catch (Exception ignore) {
                     // not a result tile — skip
                 }
             }
-            List<Map<String, String>> results = new ArrayList<>(preferred);
-            for (Map<String, String> entry : others) {
-                if (results.size() >= 9) {
-                    break;
-                }
-                results.add(entry);
-            }
+            relevant.sort((left, right) -> Integer.compare(
+                    relevanceScores.getOrDefault(right.get("url"), 0),
+                    relevanceScores.getOrDefault(left.get("url"), 0)));
+            List<Map<String, String>> results = new ArrayList<>(
+                    relevant.subList(0, Math.min(9, relevant.size())));
 
             if (results.isEmpty()) {
                 log.warn("Bing image search returned no parseable results for '{}'", query);
@@ -856,6 +866,58 @@ public class ShopOwnerProductController {
             log.error("Error searching images for '{}': {}", query, e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Image search failed: " + e.getMessage()));
         }
+    }
+
+    private static List<String> imageSearchTokens(String query) {
+        java.util.Set<String> stopWords = java.util.Set.of(
+                "and", "the", "with", "for", "from", "new", "pack", "product");
+        List<String> tokens = new ArrayList<>();
+        for (String token : normalizeImageSearchText(query).split(" ")) {
+            if (token.length() >= 2
+                    && !stopWords.contains(token)
+                    && !token.matches("\\d+(ml|l|g|kg|gm|pcs|pc)")) {
+                tokens.add(token);
+            }
+        }
+        return tokens;
+    }
+
+    private static int imageSearchRelevance(
+            List<String> queryTokens, String label, String imageUrl) {
+        if (queryTokens.isEmpty()) {
+            return -1;
+        }
+
+        String candidate = normalizeImageSearchText(label + " " + imageUrl);
+        int matched = 0;
+        int score = 0;
+        for (String token : queryTokens) {
+            if (candidate.contains(token)) {
+                matched++;
+                score += token.length() >= 5 ? 3 : 1;
+            }
+        }
+
+        int minimumMatches = queryTokens.size() >= 3 ? 2 : 1;
+        if (matched < minimumMatches) {
+            return -1;
+        }
+
+        // Give a strong boost when the first two meaningful name terms occur
+        // together, which normally represents the brand (e.g. "head shoulders").
+        if (queryTokens.size() >= 2
+                && candidate.contains(queryTokens.get(0) + " " + queryTokens.get(1))) {
+            score += 6;
+        }
+        return score;
+    }
+
+    private static String normalizeImageSearchText(String value) {
+        return (value == null ? "" : value)
+                .toLowerCase(java.util.Locale.ROOT)
+                .replace("&", " and ")
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
     }
 
     /**
