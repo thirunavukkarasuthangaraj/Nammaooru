@@ -7,6 +7,7 @@ import { ShopOwnerOrderService, ShopOwnerOrder } from '../../services/shop-owner
 import { ShopOwnerProductService, ShopProduct } from '../../services/shop-owner-product.service';
 import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
 import { PosSyncService } from '../../../../core/services/pos-sync.service';
+import { ReceiptTemplateService } from '../../../../core/services/receipt-template.service';
 import { AssignmentService } from '../../services/assignment.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -131,7 +132,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     private webSocketService: WebSocketService,
     private ngZone: NgZone,
     private offlineStorage: OfflineStorageService,
-    private posSyncService: PosSyncService
+    private posSyncService: PosSyncService,
+    private receiptTemplate: ReceiptTemplateService
   ) {}
 
   ngOnInit(): void {
@@ -1592,202 +1594,54 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Escape HTML special characters so order/customer/product values (which
-   * can originate from end-user input via the mobile app) can never inject
-   * markup/script into the receipt - this HTML goes through document.write(),
-   * not Angular's DOM sanitizer, so it needs manual escaping.
+   * Read the shop owner's saved receipt template/settings (same key POS Billing
+   * and Bill Settings use) so this screen's Print button honors the chosen
+   * template instead of a hardcoded layout.
    */
-  private escapeHtml(value: any): string {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+  private loadPosBillSettings(): any {
+    const saved = localStorage.getItem('pos_bill_settings');
+    if (!saved) return {};
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse saved bill settings:', e);
+      return {};
+    }
   }
 
   generateSmallPrintContent(order: ShopOwnerOrder): string {
-    const itemsHtml = order.items.map(item => {
+    const billSettings = this.loadPosBillSettings();
+    const shopNameFallback = order.shopName || localStorage.getItem('shop_name') || 'NammaOoru';
+    const totalAmount = order.totalAmount || 0;
+
+    const items = (order.items || []).map(item => {
       const unitPrice = item.price || item.unitPrice || 0;
       const totalPrice = item.total || item.totalPrice || (item.quantity * unitPrice) || 0;
-      const englishName = this.escapeHtml(item.name || item.productName || '');
-      const tamilName = this.escapeHtml(item.productNameTamil || '');
-      // Show Tamil name below English name if available
-      const nameHtml = tamilName
-        ? `${englishName}<br><span style="font-size: 8px; color: #333;">${tamilName}</span>`
-        : englishName;
-      return `
-        <tr>
-          <td style="font-size: 9px; padding: 2px 0; font-weight: 600; word-wrap: break-word; max-width: 60px;">${nameHtml}</td>
-          <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 600; white-space: nowrap;">${unitPrice}</td>
-          <td style="font-size: 9px; text-align: center; padding: 2px 0; font-weight: 700; white-space: nowrap;">${item.quantity}</td>
-          <td style="font-size: 9px; text-align: right; padding: 2px 0; font-weight: 700; white-space: nowrap;">${totalPrice}</td>
-        </tr>
-      `;
-    }).join('');
+      return {
+        name: item.name || item.productName || '',
+        nameTamil: item.productNameTamil || '',
+        mrp: unitPrice,
+        rate: unitPrice,
+        quantity: item.quantity,
+        total: totalPrice
+      };
+    });
 
-    // Get shop name from order or localStorage
-    const shopName = this.escapeHtml(order.shopName || localStorage.getItem('shop_name') || 'NammaOoru');
-    const orderNumber = this.escapeHtml(order.orderNumber || '');
-    const customerName = this.escapeHtml(order.customerName || '');
-    const customerPhoneDisplay = this.escapeHtml(this.displayPhone(order.customerPhone));
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Receipt - ${orderNumber}</title>
-        <style>
-          @page {
-            size: 58mm auto;
-            margin: 1mm;
-          }
-          @media print {
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-          }
-          body {
-            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: 11px;
-            width: 180px;
-            max-width: 180px;
-            margin: 0 auto;
-            padding: 8px;
-            line-height: 1.3;
-          }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .divider {
-            border-top: 1px dashed #000;
-            margin: 6px 0;
-          }
-          .divider-solid {
-            border-top: 1px solid #000;
-            margin: 6px 0;
-          }
-          table { width: 100%; border-collapse: collapse; }
-          .total-row {
-            font-weight: bold;
-            font-size: 14px;
-            border-top: 1px solid #000;
-            padding-top: 6px;
-            margin-top: 6px;
-          }
-          .shop-name {
-            font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 3px;
-          }
-          .order-number {
-            font-size: 12px;
-            font-weight: 700;
-            background: #000;
-            color: #fff;
-            padding: 4px 8px;
-            display: inline-block;
-            border-radius: 3px;
-            margin: 4px 0;
-          }
-          .customer-name {
-            font-size: 12px;
-            font-weight: 700;
-          }
-          .customer-phone {
-            font-size: 10px;
-            color: #333;
-          }
-          .item-header th {
-            font-size: 10px;
-            padding: 4px 0;
-            border-bottom: 1px solid #000;
-            text-transform: uppercase;
-            font-weight: 700;
-          }
-          .payment-badge {
-            font-size: 10px;
-            font-weight: 700;
-            padding: 4px 8px;
-            background: #f0f0f0;
-            border-radius: 3px;
-            display: inline-block;
-            margin: 4px 0;
-          }
-          .footer-text {
-            font-size: 9px;
-            color: #666;
-            margin-top: 6px;
-          }
-          .flex-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="center shop-name">${shopName}</div>
-        <div class="center" style="font-size: 9px; color: #666;">Order Receipt</div>
-        <div class="divider"></div>
-
-        <div class="center">
-          <div class="order-number">#${orderNumber}</div>
-        </div>
-        <div style="font-size: 9px; text-align: center; margin-bottom: 4px;">
-          ${new Date(order.createdAt).toLocaleDateString('en-IN', {timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric'})} | ${new Date(order.createdAt).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute:'2-digit', hour12: true})}
-        </div>
-        <div class="divider"></div>
-
-        <div style="margin-bottom: 4px;">
-          <div class="customer-name">${customerName}</div>
-          <div class="customer-phone">${customerPhoneDisplay}</div>
-        </div>
-        <div class="divider"></div>
-
-        <table>
-          <thead>
-            <tr class="item-header">
-              <th style="text-align: left;">ITEM</th>
-              <th style="text-align: right;">RATE</th>
-              <th style="text-align: center;">QTY</th>
-              <th style="text-align: right;">AMT</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
-        <div class="divider-solid"></div>
-
-        <div class="flex-row" style="font-size: 10px; padding: 4px 0;">
-          <span style="font-weight: 600;">Items: ${order.items?.length || 0}</span>
-          <span style="font-weight: 700;">₹${order.totalAmount || 0}</span>
-        </div>
-
-        <div class="flex-row" style="border-top: 1px solid #000; padding-top: 6px; margin-top: 4px;">
-          <span style="font-size: 14px; font-weight: 700;">TOTAL</span>
-          <span style="font-size: 16px; font-weight: 700;">₹${order.totalAmount || 0}</span>
-        </div>
-
-        <div class="divider"></div>
-        <div class="center">
-          <span class="payment-badge">
-            ${order.paymentMethod === 'CASH_ON_DELIVERY' ? '💵 CASH ON DELIVERY' : '✓ PAID ONLINE'}
-          </span>
-        </div>
-        <div class="divider"></div>
-
-        <div class="center footer-text">
-          Thank you for your order!<br>
-          Printed: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}
-        </div>
-      </body>
-      </html>
-    `;
+    return this.receiptTemplate.generateReceiptHtml(billSettings, {
+      orderRef: order.orderNumber || '',
+      items,
+      subtotal: totalAmount,
+      totalMrp: totalAmount,
+      totalDiscount: 0,
+      billDiscount: 0,
+      totalAmount,
+      paymentLabel: order.paymentMethod === 'CASH_ON_DELIVERY' ? 'CASH' : 'PAID ONLINE',
+      customerName: order.customerName || '',
+      customerPhone: this.displayPhone(order.customerPhone) || '',
+      qrCodeDataUrl: '',
+      shopNameFallback,
+      includePrintButton: false
+    });
   }
 
   generatePrintContent(order: ShopOwnerOrder): string {

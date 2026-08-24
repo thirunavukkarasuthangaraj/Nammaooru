@@ -1118,37 +1118,48 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private async loadProductsFromServer(): Promise<void> {
     const pageSize = 500;
     const rawProducts: any[] = [];
-    let page = 0;
-    let totalPages = 1;
+
+    const fetchPage = (page: number) =>
+      this.http.get<any>(
+        `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}`
+      ).pipe(takeUntil(this.destroy$)).toPromise();
+
+    const renderProgress = () => {
+      const mappedSoFar = rawProducts.map((p: any) => this.mapProduct(p));
+      this.products = mappedSoFar.filter(p => p.isAvailable !== false && (p as any).status !== 'INACTIVE');
+      this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+    };
 
     try {
-      while (page < totalPages) {
-        const response: any = await this.http.get<any>(
-          `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}`
-        ).pipe(takeUntil(this.destroy$)).toPromise();
+      // Fetch page 0 first to learn totalPages, then fetch every remaining page
+      // in parallel instead of one-at-a-time - a multi-page catalog used to take
+      // (pages x per-page latency) sequentially, which is what stretched a fresh
+      // login/refresh into ~30s of "not found" barcode scans while it loaded.
+      const first: any = await fetchPage(0);
+      const firstData = first?.data;
+      let totalPages = 1;
+      if (firstData?.content) {
+        rawProducts.push(...firstData.content);
+        totalPages = firstData.totalPages || 1;
+      } else if (Array.isArray(firstData)) {
+        rawProducts.push(...firstData);
+        totalPages = 1;
+      }
+      renderProgress();
 
-        const data = response?.data;
-        let content: any[] = [];
-        if (data?.content) {
-          content = data.content;
-          totalPages = data.totalPages || 1;
-        } else if (Array.isArray(data)) {
-          content = data;
-          totalPages = 1;
-        }
-        if (content.length === 0) break;
-        rawProducts.push(...content);
-
-        // Progressive render: show products as they arrive so user doesn't see a frozen spinner
-        const mappedSoFar = rawProducts.map((p: any) => this.mapProduct(p));
-        this.products = mappedSoFar.filter(p => p.isAvailable !== false && (p as any).status !== 'INACTIVE');
-        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-
-        page++;
-        if (page > 200) {
+      if (totalPages > 1) {
+        const maxPage = Math.min(totalPages, 200);
+        if (totalPages > 200) {
           console.warn('loadProductsFromServer: page guard hit (200) — stopping');
-          break;
         }
+        const remainingPages = Array.from({ length: maxPage - 1 }, (_, i) => i + 1);
+        const responses = await Promise.all(remainingPages.map(fetchPage));
+        for (const response of responses) {
+          const data = (response as any)?.data;
+          const content: any[] = data?.content || (Array.isArray(data) ? data : []);
+          rawProducts.push(...content);
+        }
+        renderProgress();
       }
 
       // Extract shopId from first product if not set
@@ -1164,7 +1175,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
       this.isLoading = false;
       if (this.shopId) this.posProductCache.set(this.shopId, this.products);
-      console.log(`Loaded ${this.products.length} active products across ${page} page(s) (${allProducts.length} total)`);
+      console.log(`Loaded ${this.products.length} active products across ${totalPages} page(s) (${allProducts.length} total)`);
 
       // Save ALL products (including inactive) to IndexedDB for offline use
       await this.offlineStorage.saveProducts(allProducts, this.shopId);
@@ -1506,6 +1517,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   onQuickSearchEnter(): void {
     if (!this.searchTerm.trim()) return;
 
+    if (this.isLoading) {
+      this.swal.toast('Products still loading, please wait...', 'info');
+      return;
+    }
+
     // Check for exact barcode/SKU match
     const exactMatch = this.products.find(p =>
       p.barcode === this.searchTerm ||
@@ -1809,6 +1825,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.lastScannedBarcode = barcode;
     this.lastScanTime = now;
 
+    // Product list is still loading (fresh login/refresh) — a scan right now would
+    // wrongly show "Not Found" just because the catalog isn't in memory yet.
+    if (this.isLoading) {
+      this.swal.toast('Products still loading, please wait...', 'info');
+      this.playBeep(false);
+      return;
+    }
+
     // Find in loaded products by barcode, barcode1, barcode2, barcode3, or SKU.
     // O(n) lookup over in-memory IndexedDB-backed list — instant for up to ~10k products.
     const product = this.products.find(p =>
@@ -1842,6 +1866,12 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   onBarcodeSubmit(): void {
     const barcode = this.barcodeBuffer.trim();
     if (!barcode) return;
+
+    if (this.isLoading) {
+      this.swal.toast('Products still loading, please wait...', 'info');
+      this.barcodeBuffer = '';
+      return;
+    }
 
     // Find exact barcode match (same as Quick Bill)
     const exactMatch = this.products.find(p =>

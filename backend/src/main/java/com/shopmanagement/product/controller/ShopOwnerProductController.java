@@ -7,10 +7,12 @@ import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.service.ProductImageService;
 import com.shopmanagement.product.service.ShopProductService;
+import com.shopmanagement.config.ShopPaymentGateFilter;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,7 +77,8 @@ public class ShopOwnerProductController {
             @RequestParam(defaultValue = "100") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection,
-            @RequestParam(required = false) Long updatedAfter) {
+            @RequestParam(required = false) Long updatedAfter,
+            HttpServletRequest request) {
 
         log.info("Fetching my products for current user - search: {}, page: {}, size: {}, updatedAfter: {}", search, page, size, updatedAfter);
 
@@ -93,7 +96,13 @@ public class ShopOwnerProductController {
         String currentUsername = authentication.getName();
 
         try {
-            Shop currentShop = shopService.getShopByOwner(currentUsername);
+            // ShopPaymentGateFilter already resolved this user's shop for this request
+            // (every /api/shop-products/** call runs it) - reuse it instead of paying
+            // for the same findByCreatedBy/findByOwnerEmail lookup a second time.
+            Object resolvedShop = request.getAttribute(ShopPaymentGateFilter.RESOLVED_SHOP_ATTRIBUTE);
+            Shop currentShop = resolvedShop instanceof Shop
+                    ? (Shop) resolvedShop
+                    : shopService.getShopByOwner(currentUsername);
 
             if (currentShop == null) {
                 log.warn("No shop found for user: {}", currentUsername);
@@ -741,6 +750,10 @@ public class ShopOwnerProductController {
                 ));
             }
 
+            // Replace, don't accumulate: remember old images, delete them after the new one saves
+            List<ProductImageResponse> oldImages = productImageService.getShopProductImages(
+                    currentShop.getId(), productId);
+
             // Upload the image using ProductImageService
             MultipartFile[] files = new MultipartFile[]{file};
             List<ProductImageResponse> images = productImageService.uploadShopProductImages(
@@ -749,6 +762,8 @@ public class ShopOwnerProductController {
             if (images.isEmpty()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Failed to upload image"));
             }
+
+            deleteOldImages(oldImages, productId);
 
             String imageUrl = images.get(0).getImageUrl();
             log.info("Image uploaded successfully for product {}: {}", productId, imageUrl);
@@ -991,6 +1006,10 @@ public class ShopOwnerProductController {
                 default -> "jpg";
             };
 
+            // Replace, don't accumulate: remember old images, delete them after the new one saves
+            List<ProductImageResponse> oldImages = productImageService.getShopProductImages(
+                    currentShop.getId(), productId);
+
             MultipartFile file = new DownloadedImageFile(bytes, "product-" + productId + "." + extension, contentType);
             List<ProductImageResponse> images = productImageService.uploadShopProductImages(
                     currentShop.getId(), productId, new MultipartFile[]{file}, null);
@@ -999,6 +1018,8 @@ public class ShopOwnerProductController {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Failed to save image"));
             }
 
+            deleteOldImages(oldImages, productId);
+
             String imageUrl = images.get(0).getImageUrl();
             log.info("Image downloaded from URL and saved for product {}: {}", productId, imageUrl);
             return ResponseEntity.ok(ApiResponse.success(Map.of("imageUrl", imageUrl), "Image saved successfully"));
@@ -1006,6 +1027,21 @@ public class ShopOwnerProductController {
         } catch (Exception e) {
             log.error("Error downloading image from URL for product {}: {}", productId, e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Error downloading image: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Delete a product's previous images (disk + DB) after a replacement
+     * uploaded successfully, so unused files don't accumulate on the server.
+     */
+    private void deleteOldImages(List<ProductImageResponse> oldImages, Long productId) {
+        for (ProductImageResponse oldImage : oldImages) {
+            try {
+                productImageService.deleteProductImage(oldImage.getId());
+            } catch (Exception ex) {
+                log.warn("Could not delete old image {} for product {}: {}",
+                        oldImage.getId(), productId, ex.getMessage());
+            }
         }
     }
 

@@ -43,6 +43,12 @@ public class ShopPaymentGateFilter extends OncePerRequestFilter {
             "/api/shops/" // already permitAll in SecurityConfig; blocking it here is noise, not security
     );
 
+    /**
+     * Request attribute key controllers can read to reuse the shop this filter already
+     * resolved, instead of re-querying ShopService.getShopByOwner themselves.
+     */
+    public static final String RESOLVED_SHOP_ATTRIBUTE = "com.shopmanagement.resolvedShop";
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -64,6 +70,9 @@ public class ShopPaymentGateFilter extends OncePerRequestFilter {
         }
 
         Shop shop = shopService.getShopByOwner(auth.getName());
+        if (shop != null) {
+            request.setAttribute(RESOLVED_SHOP_ATTRIBUTE, shop);
+        }
         if (shop == null || shopPaymentCollectService.isCurrentlyPaid(shop.getId())) {
             filterChain.doFilter(request, response);
             return;
