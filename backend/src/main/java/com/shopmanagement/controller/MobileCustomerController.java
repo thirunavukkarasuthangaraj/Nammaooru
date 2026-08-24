@@ -380,9 +380,27 @@ public class MobileCustomerController {
     /**
      * Returns Gemini AI config for mobile app (keys, model, url).
      * This avoids hardcoding API keys in the mobile app source code.
+     * Requires a logged-in customer session — this previously had no auth
+     * check at all and leaked live API keys to anyone who called it.
      */
     @GetMapping("/ai-config")
-    public ResponseEntity<Map<String, Object>> getAiConfig() {
+    public ResponseEntity<Map<String, Object>> getAiConfig(
+            @RequestHeader("Authorization") String authHeader) {
+        String token = extractTokenFromHeader(authHeader);
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Invalid authorization header",
+                        "errorCode", "INVALID_TOKEN"
+                    ));
+        }
+
+        Map<String, Object> profile = customerService.getMobileCustomerProfile(token);
+        if (!Boolean.TRUE.equals(profile.get("success"))) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(profile);
+        }
+
         return ResponseEntity.ok(Map.of(
             "statusCode", "0000",
             "data", Map.of(
