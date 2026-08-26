@@ -1057,7 +1057,7 @@ public class ShopService {
                         ? orderItem.getShopProduct().getMasterProduct().getDescription()
                         : null)
                 .productSku(orderItem.getShopProduct() != null && orderItem.getShopProduct().getMasterProduct() != null
-                        ? orderItem.getShopProduct().getMasterProduct().getSku()
+                        ? com.shopmanagement.common.util.SkuUtil.displaySku(orderItem.getShopProduct().getMasterProduct().getSku())
                         : null)
                 .productImageUrl(orderItem.getShopProduct() != null && orderItem.getShopProduct().getMasterProduct() != null
                         ? orderItem.getShopProduct().getMasterProduct().getPrimaryImageUrl()

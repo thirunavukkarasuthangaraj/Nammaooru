@@ -432,6 +432,17 @@ export class PosSyncService implements OnDestroy {
   }
 
   /**
+   * Update a customer's name/phone from the shop owner's customer list
+   */
+  async updateCustomer(shopId: number, customerId: number, name: string, phone: string): Promise<any> {
+    const response: any = await this.http.put(
+      `${this.apiUrl}/pos/customers/${shopId}/${customerId}`,
+      { name, phone }
+    ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
+    return response?.data || {};
+  }
+
+  /**
    * Send a WhatsApp offer to selected customers of this shop
    */
   async sendOfferToCustomers(shopId: number, customerIds: number[], offerText: string, imageUrl?: string): Promise<any> {

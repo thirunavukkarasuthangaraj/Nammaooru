@@ -668,6 +668,70 @@ public class PosService {
     }
 
     /**
+     * Update a customer's name/phone from the shop owner's customer list.
+     * Only allowed for customers who have actually been billed at this shop,
+     * and never for the shared walk-in placeholder.
+     */
+    @Transactional
+    public Map<String, Object> updateShopCustomer(Long shopId, Long customerId, String name, String phone) {
+        String newName = name == null ? "" : name.trim();
+        String newPhone = phone == null ? "" : phone.trim();
+        if (newName.isEmpty()) {
+            throw new RuntimeException("Customer name is required");
+        }
+        if (!newPhone.matches("[6-9]\\d{9}")) {
+            throw new RuntimeException("Enter a valid 10-digit mobile number");
+        }
+        if (newPhone.matches("90000\\d{5}")) {
+            throw new RuntimeException("This number range is reserved for walk-in bills");
+        }
+        if (!orderRepository.existsByShopIdAndCustomerId(shopId, customerId)) {
+            throw new RuntimeException("Customer not found for this shop");
+        }
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        if (customer.getMobileNumber() != null && customer.getMobileNumber().matches("90000\\d{5}")) {
+            throw new RuntimeException("The walk-in customer cannot be edited");
+        }
+
+        if (!newPhone.equals(customer.getMobileNumber())) {
+            customerRepository.findFirstByMobileNumberOrderByIdAsc(newPhone)
+                    .filter(existing -> !existing.getId().equals(customerId))
+                    .ifPresent(existing -> {
+                        throw new RuntimeException("Another customer already uses this mobile number");
+                    });
+            customer.setMobileNumber(newPhone);
+            // Keep the "<phone>@pos.local" placeholder in step with the number so a
+            // future POS bill for the old number doesn't collide on the email column
+            String placeholderEmail = newPhone + "@pos.local";
+            if (customer.getEmail() != null && customer.getEmail().endsWith("@pos.local")
+                    && !customerRepository.existsByEmail(placeholderEmail)) {
+                customer.setEmail(placeholderEmail);
+            }
+        }
+
+        // Store the name so the customer list round-trips it exactly: the last word
+        // becomes the surname; single-word names keep the "POS" placeholder surname
+        // that the list display hides
+        int lastSpace = newName.lastIndexOf(' ');
+        if (lastSpace > 0) {
+            customer.setFirstName(newName.substring(0, lastSpace).trim());
+            customer.setLastName(newName.substring(lastSpace + 1).trim());
+        } else {
+            customer.setFirstName(newName);
+            customer.setLastName("POS");
+        }
+        customerRepository.save(customer);
+        log.info("Shop {} updated customer {} ({} / {})", shopId, customerId, newName, newPhone);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("customerId", customer.getId());
+        result.put("customerName", newName);
+        result.put("customerPhone", customer.getMobileNumber());
+        return result;
+    }
+
+    /**
      * A customer's full purchase history at this shop, most recent first, with line items.
      */
     @Transactional(readOnly = true)

@@ -41,6 +41,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find orders by customer and status
     Page<Order> findByCustomerIdAndStatus(Long customerId, Order.OrderStatus status, Pageable pageable);
     
+    // Whether this customer has ever been billed at this shop (guards shop-scoped customer edits)
+    boolean existsByShopIdAndCustomerId(Long shopId, Long customerId);
+
     // Search customers previously billed at a shop, by mobile number or name (for POS autocomplete)
     @Query("SELECT c.id, c.mobileNumber, c.firstName, c.lastName, COUNT(o), MAX(o.createdAt), SUM(o.totalAmount), c.email " +
            "FROM Order o JOIN o.customer c " +

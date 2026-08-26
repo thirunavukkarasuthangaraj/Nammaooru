@@ -259,8 +259,12 @@ public class ShopProductService {
         // SKU on every save, and blindly re-applying it here would stomp the fresh
         // unique SKU a category-change clone (above) just generated for itself,
         // colliding with the original master product's still-unchanged SKU.
+        // The API strips the internal "-COPY" clone suffix from SKUs it serves, so
+        // the frontend echoing that stripped SKU back is also "no change" - renaming
+        // the clone to the stripped code would collide with the original's SKU.
         if (request.getSku() != null && !request.getSku().trim().isEmpty()
-                && !request.getSku().trim().equals(preCloneSku)) {
+                && !request.getSku().trim().equals(preCloneSku)
+                && !request.getSku().trim().equals(com.shopmanagement.common.util.SkuUtil.displaySku(preCloneSku))) {
             masterProduct.setSku(request.getSku().trim());
             masterProductUpdated = true;
             log.debug("Updating master product SKU to: {}", request.getSku());

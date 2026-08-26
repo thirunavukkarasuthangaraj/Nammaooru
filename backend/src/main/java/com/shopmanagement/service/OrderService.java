@@ -199,7 +199,7 @@ public class OrderService {
                             .specialInstructions(itemRequest.getSpecialInstructions())
                             .productName(shopProduct.getMasterProduct().getName())
                             .productDescription(shopProduct.getMasterProduct().getDescription())
-                            .productSku(shopProduct.getMasterProduct().getSku())
+                            .productSku(com.shopmanagement.common.util.SkuUtil.displaySku(shopProduct.getMasterProduct().getSku()))
                             .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
                             .build();
                 })
@@ -1800,7 +1800,7 @@ public class OrderService {
                             .totalPrice(itemTotal)
                             .productName(itemRequest.getProductName())
                             .productDescription(shopProduct.getMasterProduct().getDescription())
-                            .productSku(shopProduct.getMasterProduct().getSku())
+                            .productSku(com.shopmanagement.common.util.SkuUtil.displaySku(shopProduct.getMasterProduct().getSku()))
                             .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
                             .build();
                 })
@@ -2367,7 +2367,7 @@ public class OrderService {
                     .specialInstructions(request.getSpecialInstructions())
                     .productName(shopProduct.getMasterProduct().getName())
                     .productDescription(shopProduct.getMasterProduct().getDescription())
-                    .productSku(shopProduct.getMasterProduct().getSku())
+                    .productSku(com.shopmanagement.common.util.SkuUtil.displaySku(shopProduct.getMasterProduct().getSku()))
                     .productImageUrl(shopProduct.getMasterProduct().getPrimaryImageUrl())
                     .addedByShopOwner(true) // Mark as added by shop owner (not in original customer order)
                     .build();

@@ -207,6 +207,37 @@ interface CustomerOrder {
             </div>
           </div>
 
+          <!-- Edit customer modal -->
+          <div class="offer-modal-backdrop" *ngIf="editingCustomer" (click)="closeEdit()">
+            <div class="offer-modal" (click)="$event.stopPropagation()">
+              <div class="offer-modal-header">
+                <mat-icon class="edit-icon">edit</mat-icon>
+                <span>Edit Customer</span>
+                <button mat-icon-button (click)="closeEdit()" [disabled]="savingEdit" aria-label="Close edit">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              <div class="edit-form">
+                <mat-form-field appearance="outline">
+                  <mat-label>Customer name</mat-label>
+                  <input matInput [(ngModel)]="editName" maxlength="100">
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Mobile number</mat-label>
+                  <input matInput [(ngModel)]="editPhone" maxlength="10" inputmode="numeric"
+                         placeholder="10-digit mobile number">
+                </mat-form-field>
+                <div class="offer-confirm-actions">
+                  <button mat-stroked-button (click)="closeEdit()" [disabled]="savingEdit">Cancel</button>
+                  <button mat-raised-button color="primary" (click)="saveEdit()" [disabled]="savingEdit">
+                    <mat-icon>save</mat-icon>
+                    {{ savingEdit ? 'Saving...' : 'Save' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div *ngIf="!loading && dataSource.data.length === 0" class="empty-state">
             <mat-icon>person_search</mat-icon>
             <p>No customers yet. Customers appear here automatically when you add their phone number on a bill.</p>
@@ -272,6 +303,18 @@ interface CustomerOrder {
                 <td mat-cell *matCellDef="let customer">
                   <span *ngIf="customer.lastOrderDate">{{ customer.lastOrderDate | date:'mediumDate' }}</span>
                   <span *ngIf="!customer.lastOrderDate" class="no-orders">-</span>
+                </td>
+              </ng-container>
+
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let customer" (click)="$event.stopPropagation()">
+                  <button mat-icon-button *ngIf="!isWalkIn(customer)"
+                          matTooltip="Edit name / number"
+                          (click)="openEdit(customer)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
                 </td>
               </ng-container>
 
@@ -633,6 +676,19 @@ interface CustomerOrder {
       gap: 12px;
     }
 
+    .edit-icon {
+      color: #3b82f6 !important;
+    }
+
+    .edit-form {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      mat-form-field { width: 100%; }
+    }
+
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -814,7 +870,7 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   dataSource = new MatTableDataSource<ShopCustomer>();
-  displayedColumns = ['select', 'name', 'phone', 'totalOrders', 'totalSpent', 'averageOrderValue', 'lastOrderDate'];
+  displayedColumns = ['select', 'name', 'phone', 'totalOrders', 'totalSpent', 'averageOrderValue', 'lastOrderDate', 'actions'];
   loading = false;
   searchText = '';
   inactiveDays = 0;
@@ -829,6 +885,12 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
   now = new Date();
 
   customers: ShopCustomer[] = [];
+
+  // Edit customer modal
+  editingCustomer: ShopCustomer | null = null;
+  editName = '';
+  editPhone = '';
+  savingEdit = false;
 
   // Purchase history panel
   selectedCustomer: ShopCustomer | null = null;
@@ -1036,6 +1098,55 @@ export class CustomerManagementComponent implements OnInit, AfterViewInit {
       this.swal.toast(message, 'error');
     } finally {
       this.sendingOffer = false;
+    }
+  }
+
+  openEdit(customer: ShopCustomer): void {
+    if (this.isWalkIn(customer)) {
+      return;
+    }
+    this.editingCustomer = customer;
+    this.editName = customer.name || '';
+    this.editPhone = customer.phone || '';
+  }
+
+  closeEdit(): void {
+    if (!this.savingEdit) {
+      this.editingCustomer = null;
+    }
+  }
+
+  async saveEdit(): Promise<void> {
+    if (!this.editingCustomer || this.savingEdit) {
+      return;
+    }
+    const name = this.editName.trim();
+    const phone = this.editPhone.trim();
+    if (!name) {
+      this.swal.toast('Customer name is required', 'warning');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      this.swal.toast('Enter a valid 10-digit mobile number', 'warning');
+      return;
+    }
+    this.savingEdit = true;
+    try {
+      const shopId = this.resolveShopId();
+      const result = await this.syncService.updateCustomer(
+        shopId, this.editingCustomer.customerId, name, phone
+      );
+      // Rows in the table reference the same objects as this.customers
+      this.editingCustomer.name = result.customerName || name;
+      this.editingCustomer.phone = result.customerPhone || phone;
+      this.editingCustomer = null;
+      this.swal.toast('Customer updated', 'success');
+    } catch (error: any) {
+      console.error('Error updating customer:', error);
+      const message = error?.error?.message || 'Failed to update customer';
+      this.swal.toast(message, 'error');
+    } finally {
+      this.savingEdit = false;
     }
   }
 

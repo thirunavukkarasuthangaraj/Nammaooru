@@ -142,6 +142,21 @@ public class PosController {
     }
 
     /**
+     * Update a customer's name/phone from the shop owner's customer list.
+     */
+    @PutMapping("/customers/{shopId}/{customerId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateShopCustomer(
+            @PathVariable Long shopId,
+            @PathVariable Long customerId,
+            @RequestBody Map<String, String> body) {
+        log.info("Updating customer {} for shop {}", customerId, shopId);
+        Map<String, Object> result = posService.updateShopCustomer(
+                shopId, customerId, body.get("name"), body.get("phone"));
+        return ResponseUtil.success(result, "Customer updated");
+    }
+
+    /**
      * Send a WhatsApp offer to selected customers of this shop (marketing template).
      */
     @PostMapping("/customers/{shopId}/send-offer")
@@ -220,7 +235,7 @@ public class PosController {
                     ? product.getCustomName()
                     : masterProduct.getName());
             data.put("nameTamil", masterProduct.getNameTamil());
-            data.put("sku", masterProduct.getSku());
+            data.put("sku", com.shopmanagement.common.util.SkuUtil.displaySku(masterProduct.getSku()));
             data.put("barcode", masterProduct.getBarcode());
             data.put("image", masterProduct.getPrimaryImageUrl());
             data.put("categoryId", masterProduct.getCategory() != null

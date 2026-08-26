@@ -144,7 +144,7 @@ public interface ProductMapper {
     default String getSku(ShopProduct shopProduct) {
         if (shopProduct == null) return null;
         if (shopProduct.getMasterProduct() != null) {
-            return shopProduct.getMasterProduct().getSku();
+            return com.shopmanagement.common.util.SkuUtil.displaySku(shopProduct.getMasterProduct().getSku());
         }
         return null;
     }
