@@ -113,8 +113,10 @@ public interface MasterProductRepository extends JpaRepository<MasterProduct, Lo
     @Query("SELECT p FROM MasterProduct p JOIN p.category c ORDER BY c.sortOrder ASC, p.name ASC")
     Page<MasterProduct> findAllOrderedByCategoryPriority(Pageable pageable);
 
-    // Suggestions - lightweight search for autocomplete
-    @Query(value = "SELECT * FROM master_products p WHERE p.status = 'ACTIVE' AND (" +
+    // Suggestions - lightweight search for autocomplete.
+    // Excludes shop-exclusive clones (is_global = false, internal "-COPY" SKUs).
+    @Query(value = "SELECT * FROM master_products p WHERE p.status = 'ACTIVE' " +
+           "AND COALESCE(p.is_global, TRUE) = TRUE AND (" +
            "LOWER(p.name) LIKE :pattern OR " +
            "LOWER(p.name_tamil) LIKE :pattern OR " +
            "LOWER(p.sku) LIKE :pattern OR " +

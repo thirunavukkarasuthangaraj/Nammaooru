@@ -691,7 +691,11 @@ public class ShopProductService {
         
         // Only show active products
         spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), MasterProduct.ProductStatus.ACTIVE));
-        
+
+        // Never offer another shop's exclusive clone (isGlobal=false, internal
+        // "-COPY" SKU from a category change) - it's not part of the shared catalog
+        spec = spec.and((root, query, cb) -> cb.isTrue(cb.coalesce(root.get("isGlobal"), true)));
+
         Page<MasterProduct> masterProducts = masterProductRepository.findAll(spec, pageable);
 
         // Fetch images for all products to avoid lazy loading issues
