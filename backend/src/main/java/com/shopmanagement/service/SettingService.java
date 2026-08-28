@@ -501,6 +501,12 @@ public class SettingService {
         createDefaultSettingIfNotExists("voice.assistant.enabled", "false",
                 "Enable conversational voice AI assistant in the mobile app", "SYSTEM", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
 
+        // OTP delivery channel for login + forgot-password OTP.
+        // Values: sms | whatsapp | both (WhatsApp uses the approved zero-cost "updates" template).
+        createDefaultSettingIfNotExists("otp.delivery.channel", "sms",
+                "OTP delivery channel for login & forgot password: sms, whatsapp, or both (WhatsApp first, SMS fallback)",
+                "OTP", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     

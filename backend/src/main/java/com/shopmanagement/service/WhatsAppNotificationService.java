@@ -43,6 +43,12 @@ public class WhatsAppNotificationService {
     // Template IDs for different message types
     @Value("${msg91.template.otp:YOUR_OTP_TEMPLATE_ID}")
     private String otpTemplateId;
+
+    // Approved WhatsApp OTP template ("updates"): a single body variable holds the
+    // code -> "Use the code {{1}} for complete process". Reused for both login and
+    // password-reset OTPs. Zero SMS/DLT cost, so it can replace the SMS OTP.
+    @Value("${whatsapp.template.otp:updates}")
+    private String otpWhatsAppTemplateName;
     
     @Value("${msg91.template.order-confirmation:YOUR_ORDER_CONFIRMATION_TEMPLATE_ID}")
     private String orderConfirmationTemplateId;
@@ -209,6 +215,32 @@ public class WhatsAppNotificationService {
         return response;
     }
     
+    /**
+     * Send a pre-generated OTP code via the approved "updates" WhatsApp template.
+     * The template has a single body variable ({{1}}) which receives the code.
+     * Returns false if WhatsApp is disabled or the send fails, so callers can
+     * fall back to SMS. Works with either provider (msg91 or meta) — routing is
+     * handled by {@link #sendWhatsAppMessage}.
+     */
+    public boolean sendOtpViaWhatsApp(String mobileNumber, String otp) {
+        if (!whatsappEnabled) {
+            log.info("WhatsApp disabled. Would send OTP {} to {} via '{}' template",
+                    otp, mobileNumber, otpWhatsAppTemplateName);
+            return false;
+        }
+        try {
+            // LinkedHashMap: single body param maps to {{1}}. The Meta path first
+            // tries parameter_name then retries positionally, so named/positional
+            // templates both work.
+            Map<String, Object> templateData = new java.util.LinkedHashMap<>();
+            templateData.put("code", otp);
+            return sendWhatsAppMessage(mobileNumber, otpWhatsAppTemplateName, templateData, "otp");
+        } catch (Exception e) {
+            log.error("Error sending OTP via WhatsApp to {}", mobileNumber, e);
+            return false;
+        }
+    }
+
     /**
      * Verify OTP
      */

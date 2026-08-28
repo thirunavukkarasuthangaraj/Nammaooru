@@ -269,6 +269,8 @@ whatsapp:
     shop-offer: ${META_WA_OFFER_TEMPLATE:shop_offer}
     shop-offer-image: ${META_WA_OFFER_IMAGE_TEMPLATE:shop_offer_image}
     bill-receipt-image: ${META_WA_BILL_RECEIPT_IMAGE_TEMPLATE:pos_bill_image}
+    # Approved OTP template ("updates"): single body variable = the code.
+    otp: ${META_WA_OTP_TEMPLATE:updates}
 
 # SMS Configuration
 sms:
@@ -278,6 +280,15 @@ sms:
     api-key: ${MSG91_AUTH_KEY:}
     sender-id: ${MSG91_SENDER_ID:NAMMAO}
     provider: MSG91
+
+# OTP delivery channel for login + forgot-password:
+#   sms      -> SMS only (legacy DLT route) -- current default
+#   whatsapp -> WhatsApp only (zero cost via the "updates" template)
+#   both     -> WhatsApp first, SMS fallback if WhatsApp fails
+# Switch to "whatsapp" (or "both") before the DLT SMS licence expires.
+otp:
+  delivery:
+    channel: ${OTP_DELIVERY_CHANNEL:sms}
 
 # Mobile OTP Configuration
 mobile:

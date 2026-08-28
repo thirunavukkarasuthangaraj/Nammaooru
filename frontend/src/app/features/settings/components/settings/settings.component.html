@@ -36,7 +36,13 @@
                   </div>
                   <div class="setting-control">
                     <mat-slide-toggle *ngIf="isToggleSetting(setting.key)" [formControlName]="setting.key"></mat-slide-toggle>
-                    <mat-form-field *ngIf="!isToggleSetting(setting.key)" appearance="outline" class="setting-field">
+                    <mat-form-field *ngIf="isChannelSetting(setting.key)" appearance="outline" class="setting-field">
+                      <mat-label>Channel</mat-label>
+                      <mat-select [formControlName]="setting.key">
+                        <mat-option *ngFor="let opt of channelOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field *ngIf="!isToggleSetting(setting.key) && !isChannelSetting(setting.key)" appearance="outline" class="setting-field">
                       <mat-label>{{ getSettingDisplayName(setting.key) }}</mat-label>
                       <input matInput [formControlName]="setting.key">
                     </mat-form-field>

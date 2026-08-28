@@ -25,8 +25,23 @@ public class MobileOtpService {
     private final MobileOtpRepository otpRepository;
     private final EmailService emailService;
     private final SmsService smsService;
+    private final WhatsAppNotificationService whatsAppNotificationService;
+    private final SettingService settingService;
     private final com.shopmanagement.repository.CustomerRepository customerRepository;
-    
+
+    // DB setting key edited from the admin System Settings screen. Read live on
+    // every OTP so a channel change takes effect without a restart.
+    private static final String OTP_CHANNEL_SETTING_KEY = "otp.delivery.channel";
+
+    // OTP delivery channel toggle (fallback default when the DB setting is absent):
+    //   sms      -> SMS only (legacy DLT route) -- current default
+    //   whatsapp -> WhatsApp only (zero cost via the approved "updates" template)
+    //   both     -> try WhatsApp first, fall back to SMS if WhatsApp fails
+    // Default "sms" keeps today's behavior; switch to "whatsapp" (or "both") from
+    // the admin screen before the DLT SMS licence expires (Oct).
+    @Value("${otp.delivery.channel:sms}")
+    private String otpDeliveryChannelDefault;
+
     @Value("${mobile.otp.expiry-minutes:10}")
     private int otpExpiryMinutes;
     
@@ -77,10 +92,12 @@ public class MobileOtpService {
             // Save OTP
             MobileOtp savedOtp = otpRepository.save(otp);
 
-            // Send OTP via SMS (async)
-            smsService.sendOtpSms(request.getMobileNumber(), otpCode, otpExpiryMinutes);
+            // Send OTP over the configured channel (WhatsApp / SMS / both)
+            boolean isForgotPassword = purpose == MobileOtp.OtpPurpose.FORGOT_PASSWORD;
+            dispatchOtp(request.getMobileNumber(), otpCode, isForgotPassword);
 
-            log.info("OTP generated and sent successfully via SMS for mobile: {}", request.getMobileNumber());
+            log.info("OTP generated and sent successfully (channel={}) for mobile: {}",
+                    resolveChannel(), request.getMobileNumber());
 
             return Map.of(
                 "success", true,
@@ -480,21 +497,79 @@ public class MobileOtpService {
     }
 
     /**
-     * Send OTP via SMS without creating a new OTP record.
-     * Used for password reset where OTP is already stored in PasswordResetOtp table.
+     * Send a pre-generated OTP without creating a new OTP record, using the
+     * configured delivery channel (WhatsApp / SMS / both). Used for password
+     * reset where the OTP is already stored in the PasswordResetOtp table.
+     * (Kept the sendOtpViaSms name for the existing caller; it now honors the
+     * otp.delivery.channel toggle rather than always using SMS.)
      */
     public void sendOtpViaSms(String mobileNumber, String otp, String purpose) {
-        log.info("Sending pre-generated OTP via SMS to: {} for purpose: {}", mobileNumber, purpose);
+        log.info("Sending pre-generated OTP to: {} for purpose: {} (channel={})",
+                mobileNumber, purpose, resolveChannel());
+        boolean isForgotPassword = "PASSWORD_RESET".equalsIgnoreCase(purpose)
+                || "FORGOT_PASSWORD".equalsIgnoreCase(purpose);
+        dispatchOtp(mobileNumber, otp, isForgotPassword);
+    }
+
+    /**
+     * Deliver an OTP code over the channel selected by {@code otp.delivery.channel}.
+     * "both" uses SMS only as a fallback when the WhatsApp send does not succeed,
+     * so a working WhatsApp send never also costs an SMS.
+     */
+    private void dispatchOtp(String mobileNumber, String otpCode, boolean isForgotPassword) {
+        String channel = resolveChannel();
+
+        if ("sms".equals(channel)) {
+            sendOtpSms(mobileNumber, otpCode, isForgotPassword);
+            return;
+        }
+
+        boolean whatsappSent = false;
         try {
-            if ("PASSWORD_RESET".equalsIgnoreCase(purpose) || "FORGOT_PASSWORD".equalsIgnoreCase(purpose)) {
-                smsService.sendForgotPasswordOtpSms(mobileNumber, otp, otpExpiryMinutes);
-            } else {
-                smsService.sendOtpSms(mobileNumber, otp, otpExpiryMinutes);
-            }
-            log.info("OTP sent successfully via SMS to: {}", mobileNumber);
+            whatsappSent = whatsAppNotificationService.sendOtpViaWhatsApp(mobileNumber, otpCode);
         } catch (Exception e) {
-            log.error("Failed to send OTP via SMS to: {}", mobileNumber, e);
-            throw new RuntimeException("Failed to send OTP via SMS: " + e.getMessage(), e);
+            log.error("WhatsApp OTP send failed for {}: {}", mobileNumber, e.getMessage());
+        }
+
+        if (whatsappSent) {
+            log.info("OTP delivered via WhatsApp to: {}", mobileNumber);
+            return;
+        }
+
+        // WhatsApp did not go through. Fall back to SMS for "both"; for
+        // "whatsapp" only, log the failure so it is visible.
+        if ("both".equals(channel)) {
+            log.info("WhatsApp OTP not sent to {}, falling back to SMS", mobileNumber);
+            sendOtpSms(mobileNumber, otpCode, isForgotPassword);
+        } else {
+            log.error("WhatsApp OTP could not be delivered to {} (channel=whatsapp, no SMS fallback)",
+                    mobileNumber);
+        }
+    }
+
+    /**
+     * Current OTP delivery channel, read live from the admin-editable DB setting
+     * {@code otp.delivery.channel}, falling back to the application.yml default.
+     * Normalized to lowercase; unknown values are treated as "sms" by dispatchOtp.
+     */
+    private String resolveChannel() {
+        String value;
+        try {
+            value = settingService.getSettingValue(OTP_CHANNEL_SETTING_KEY, otpDeliveryChannelDefault);
+        } catch (Exception e) {
+            log.warn("Could not read {} setting, using default '{}': {}",
+                    OTP_CHANNEL_SETTING_KEY, otpDeliveryChannelDefault, e.getMessage());
+            value = otpDeliveryChannelDefault;
+        }
+        return (value == null || value.isBlank()) ? "sms" : value.trim().toLowerCase();
+    }
+
+    /** Send the OTP via the correct DLT SMS template for the purpose. */
+    private void sendOtpSms(String mobileNumber, String otpCode, boolean isForgotPassword) {
+        if (isForgotPassword) {
+            smsService.sendForgotPasswordOtpSms(mobileNumber, otpCode, otpExpiryMinutes);
+        } else {
+            smsService.sendOtpSms(mobileNumber, otpCode, otpExpiryMinutes);
         }
     }
 }

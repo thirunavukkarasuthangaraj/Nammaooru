@@ -32,6 +32,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
   // Service area setting keys to hide from generic tabs
   private readonly SA_KEYS = ['service.area.enabled', 'service.area.center.latitude', 'service.area.center.longitude', 'service.area.radius.km'];
 
+  // OTP delivery channel: rendered as a dropdown instead of a free-text field
+  readonly channelOptions = [
+    { value: 'sms', label: 'SMS only' },
+    { value: 'whatsapp', label: 'WhatsApp only' },
+    { value: 'both', label: 'WhatsApp first, SMS fallback' }
+  ];
+
   constructor(
     private fb: FormBuilder,
     private swal: SwalService,
@@ -459,6 +466,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   isToggleSetting(key: string): boolean {
     return key.includes('enabled') || key.includes('active');
+  }
+
+  isChannelSetting(key: string): boolean {
+    return key === 'otp.delivery.channel';
   }
 
   getSettingDisplayName(key: string): string {
