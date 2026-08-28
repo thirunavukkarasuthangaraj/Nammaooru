@@ -113,6 +113,29 @@
     </form>
   </div>
 
+  <!-- Test WhatsApp OTP (temporary helper) -->
+  <mat-card class="quick-actions-card">
+    <mat-card-header>
+      <mat-card-title>Test WhatsApp OTP</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p style="color:#666;font-size:14px;margin:0 0 12px 0;">
+        Sends the approved "updates" template with a random code to any number, so you can verify
+        the message and sender display name. Use a number that hasn't chatted with this business to see the new name.
+      </p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <mat-form-field appearance="outline" style="min-width:220px;">
+          <mat-label>Mobile number (10 digits)</mat-label>
+          <input matInput [(ngModel)]="testMobile" [ngModelOptions]="{standalone:true}" maxlength="10" placeholder="9876543210">
+        </mat-form-field>
+        <button mat-raised-button color="primary" (click)="sendTestOtp()" [disabled]="testSending">
+          <mat-icon>send</mat-icon>
+          {{ testSending ? 'Sending...' : 'Send test OTP' }}
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <!-- Quick Actions -->
   <mat-card class="quick-actions-card">
     <mat-card-header>

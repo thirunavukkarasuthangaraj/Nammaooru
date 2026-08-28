@@ -90,6 +90,22 @@ export class SettingsService {
     );
   }
 
+  /** Send a one-off test WhatsApp OTP (the "updates" template) to any number. */
+  testWhatsAppOtp(mobileNumber: string): Observable<string> {
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/otp/test-whatsapp`, { mobileNumber }).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return apiResponse.message || 'Test OTP sent';
+      }),
+      catchError(error => {
+        console.error('Error sending test WhatsApp OTP:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   getSettingsByCategory(category: string): Observable<Setting[]> {
     return this.http.get<any>(`${this.API_URL}/category/${category}`).pipe(
       map(response => {

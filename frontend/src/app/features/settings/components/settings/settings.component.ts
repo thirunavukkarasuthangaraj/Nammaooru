@@ -39,6 +39,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     { value: 'both', label: 'WhatsApp first, SMS fallback' }
   ];
 
+  // Test WhatsApp OTP tool (temporary helper)
+  testMobile = '';
+  testSending = false;
+
   constructor(
     private fb: FormBuilder,
     private swal: SwalService,
@@ -470,6 +474,25 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   isChannelSetting(key: string): boolean {
     return key === 'otp.delivery.channel';
+  }
+
+  sendTestOtp(): void {
+    const mobile = (this.testMobile || '').trim();
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
+      this.swal.toast('Enter a valid 10-digit mobile number', 'warning');
+      return;
+    }
+    this.testSending = true;
+    this.settingsService.testWhatsAppOtp(mobile).subscribe({
+      next: (msg) => {
+        this.testSending = false;
+        this.swal.toast(msg || 'Test WhatsApp OTP sent', 'success');
+      },
+      error: (err) => {
+        this.testSending = false;
+        this.swal.toast(err?.message || 'Failed to send test OTP', 'error');
+      }
+    });
   }
 
   getSettingDisplayName(key: string): string {

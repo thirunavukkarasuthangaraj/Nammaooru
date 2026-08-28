@@ -6,6 +6,7 @@ import com.shopmanagement.dto.setting.SettingRequest;
 import com.shopmanagement.dto.setting.SettingResponse;
 import com.shopmanagement.entity.Setting;
 import com.shopmanagement.service.SettingService;
+import com.shopmanagement.service.WhatsAppNotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,29 @@ import java.util.Map;
 public class SettingController {
     
     private final SettingService settingService;
-    
+    private final WhatsAppNotificationService whatsAppNotificationService;
+
+    /**
+     * Admin utility: send a one-off WhatsApp OTP (the approved "updates" template)
+     * to any number so the template + sender display name can be verified without
+     * going through the full login flow. Temporary test helper.
+     */
+    @PostMapping("/otp/test-whatsapp")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> testWhatsAppOtp(@RequestBody Map<String, String> body) {
+        String mobileNumber = body.get("mobileNumber");
+        if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
+            return ResponseUtil.error("Mobile number is required");
+        }
+        String code = String.valueOf(100000 + new java.security.SecureRandom().nextInt(900000));
+        boolean sent = whatsAppNotificationService.sendOtpViaWhatsApp(mobileNumber.trim(), code);
+        log.info("Test WhatsApp OTP to {}: sent={}", mobileNumber, sent);
+        Map<String, Object> data = Map.of("sent", sent, "mobileNumber", mobileNumber.trim());
+        return sent
+                ? ResponseUtil.success(data, "Test WhatsApp OTP sent (code: " + code + ")")
+                : ResponseUtil.error("WhatsApp send failed. Check that whatsapp.enabled=true and Meta credentials are set.");
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<SettingResponse> createSetting(@Valid @RequestBody SettingRequest request) {
