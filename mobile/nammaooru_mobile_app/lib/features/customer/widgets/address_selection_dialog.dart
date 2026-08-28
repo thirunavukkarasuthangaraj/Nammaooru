@@ -48,7 +48,8 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
       builder: (BuildContext dialogContext) {
         return Dialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -62,7 +63,8 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                         color: VillageTheme.primaryGreen.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.add_location_alt, color: VillageTheme.primaryGreen, size: 24),
+                      child: Icon(Icons.add_location_alt,
+                          color: VillageTheme.primaryGreen, size: 24),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -95,16 +97,21 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                 // Option 1: Enter Manually (Only option for now)
                 InkWell(
                   onTap: () async {
-                    Navigator.of(dialogContext).pop(); // Close the options dialog
+                    Navigator.of(dialogContext)
+                        .pop(); // Close the options dialog
                     // Small delay to ensure dialog is closed
                     await Future.delayed(const Duration(milliseconds: 100));
                     if (context.mounted) {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AddressManagementScreen(autoOpenManualForm: true),
+                          builder: (context) => const AddressManagementScreen(
+                              autoOpenManualForm: true),
                         ),
                       );
+                      if (mounted) {
+                        await _loadSavedAddresses();
+                      }
                     }
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -112,7 +119,8 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border.all(color: VillageTheme.primaryGreen, width: 2),
+                      border: Border.all(
+                          color: VillageTheme.primaryGreen, width: 2),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
@@ -130,7 +138,8 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                             color: VillageTheme.primaryGreen.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.edit_note, color: VillageTheme.primaryGreen, size: 32),
+                          child: Icon(Icons.edit_note,
+                              color: VillageTheme.primaryGreen, size: 32),
                         ),
                         const SizedBox(width: 16),
                         const Expanded(
@@ -156,14 +165,91 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                             ],
                           ),
                         ),
-                        Icon(Icons.arrow_forward_ios, color: VillageTheme.primaryGreen, size: 16),
+                        Icon(Icons.arrow_forward_ios,
+                            color: VillageTheme.primaryGreen, size: 16),
                       ],
                     ),
                   ),
                 ),
-                // Map option hidden for now - will be enabled later
-                // const SizedBox(height: 12),
-                // InkWell(...),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(dialogContext).pop();
+                    await Future<void>.delayed(
+                        const Duration(milliseconds: 150));
+                    if (!context.mounted) return;
+
+                    final selectedLocation = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GoogleMapsLocationPickerScreen(
+                          currentLocation: widget.currentLocation,
+                        ),
+                      ),
+                    );
+
+                    if (selectedLocation != null && context.mounted) {
+                      widget.onLocationSelected(selectedLocation);
+                      await _loadSavedAddresses();
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(
+                          color: VillageTheme.primaryGreen, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: VillageTheme.primaryGreen.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: VillageTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.map,
+                              color: VillageTheme.primaryGreen, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Select from Map',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Pinpoint and save your exact location',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios,
+                            color: VillageTheme.primaryGreen, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -228,22 +314,12 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
 
             const SizedBox(height: 16),
 
-            // Add New Address Button - Directly open manual form (map option hidden)
+            // Add New Address Button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  // Directly navigate to address management with auto-open form
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddressManagementScreen(autoOpenManualForm: true),
-                    ),
-                  );
-                  // After returning, close this dialog
-                  if (mounted) {
-                    Navigator.of(context).pop();
-                  }
+                  await _showAddAddressOptionsDialog(context);
                 },
                 icon: const Icon(Icons.edit_note),
                 label: const Text('Add New Address'),
@@ -317,7 +393,8 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
             // otherwise forward-geocode the city/state so the shop search
             // doesn't silently keep using the previous (stale) position.
             if (address.latitude != null && address.longitude != null) {
-              LocationService.setManualPosition(address.latitude!, address.longitude!);
+              LocationService.setManualPosition(
+                  address.latitude!, address.longitude!);
             } else {
               final results = await LocationService.instance
                   .searchPlaces('${address.city}, ${address.state}');
@@ -336,10 +413,13 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDefault ? VillageTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+              color: isDefault
+                  ? VillageTheme.primaryGreen.withOpacity(0.1)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isDefault ? VillageTheme.primaryGreen : Colors.grey[300]!,
+                color:
+                    isDefault ? VillageTheme.primaryGreen : Colors.grey[300]!,
                 width: isDefault ? 2 : 1,
               ),
               boxShadow: [
@@ -358,20 +438,25 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                     Icon(
                       _getAddressTypeIcon(address.addressType),
                       size: 18,
-                      color: isDefault ? VillageTheme.primaryGreen : Colors.grey[600],
+                      color: isDefault
+                          ? VillageTheme.primaryGreen
+                          : Colors.grey[600],
                     ),
                     const SizedBox(width: 8),
                     Text(
                       address.addressType,
                       style: VillageTheme.labelText.copyWith(
-                        color: isDefault ? VillageTheme.primaryGreen : Colors.grey[700],
+                        color: isDefault
+                            ? VillageTheme.primaryGreen
+                            : Colors.grey[700],
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (isDefault) ...[
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: VillageTheme.primaryGreen,
                           borderRadius: BorderRadius.circular(12),
@@ -390,7 +475,9 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  address.addressLine1.isNotEmpty ? address.addressLine1 : 'Address Line 1',
+                  address.addressLine1.isNotEmpty
+                      ? address.addressLine1
+                      : 'Address Line 1',
                   style: VillageTheme.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600,
                     color: isDefault ? VillageTheme.primaryGreen : Colors.black,
@@ -401,7 +488,9 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                   Text(
                     address.addressLine2,
                     style: VillageTheme.bodyMedium.copyWith(
-                      color: isDefault ? VillageTheme.primaryGreen.withOpacity(0.8) : Colors.grey[600],
+                      color: isDefault
+                          ? VillageTheme.primaryGreen.withOpacity(0.8)
+                          : Colors.grey[600],
                     ),
                   ),
                 ],
@@ -409,7 +498,9 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                 Text(
                   '${address.city}, ${address.state}',
                   style: VillageTheme.bodyMedium.copyWith(
-                    color: isDefault ? VillageTheme.primaryGreen.withOpacity(0.8) : Colors.grey[600],
+                    color: isDefault
+                        ? VillageTheme.primaryGreen.withOpacity(0.8)
+                        : Colors.grey[600],
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -431,14 +522,18 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                       Icon(
                         Icons.pin_drop,
                         size: 14,
-                        color: isDefault ? VillageTheme.primaryGreen : Colors.grey[500],
+                        color: isDefault
+                            ? VillageTheme.primaryGreen
+                            : Colors.grey[500],
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'Pincode: ${address.pincode}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDefault ? VillageTheme.primaryGreen : Colors.grey[500],
+                          color: isDefault
+                              ? VillageTheme.primaryGreen
+                              : Colors.grey[500],
                           fontWeight: FontWeight.w500,
                         ),
                       ),

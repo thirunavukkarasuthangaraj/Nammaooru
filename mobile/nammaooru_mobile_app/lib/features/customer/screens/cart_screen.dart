@@ -680,8 +680,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _proceedToCheckout() {
-    Navigator.push(
-      context,
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (context) => const CheckoutScreen(),
       ),

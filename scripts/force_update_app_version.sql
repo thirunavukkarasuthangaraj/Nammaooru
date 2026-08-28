@@ -18,19 +18,19 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM app_version WHERE app_name = 'CUSTOMER_APP' AND platform = 'ANDROID') THEN
         UPDATE app_version
-        SET current_version = '1.2.28',
-            minimum_version = '1.2.28',
+        SET current_version = '1.2.59',
+            minimum_version = '1.2.59',
             is_mandatory = true,
             update_url = 'https://play.google.com/store/apps/details?id=com.nammaooru.app',
-            release_notes = 'Edit/Delete for all posts, image upload fix',
+            release_notes = 'Product details, description display, and cart quantity fixes',
             updated_at = NOW()
         WHERE app_name = 'CUSTOMER_APP' AND platform = 'ANDROID';
         RAISE NOTICE 'UPDATED existing CUSTOMER_APP ANDROID record';
     ELSE
         INSERT INTO app_version (app_name, platform, current_version, minimum_version, update_url, is_mandatory, release_notes, created_at, updated_at)
-        VALUES ('CUSTOMER_APP', 'ANDROID', '1.2.28', '1.2.28',
+        VALUES ('CUSTOMER_APP', 'ANDROID', '1.2.59', '1.2.59',
                 'https://play.google.com/store/apps/details?id=com.nammaooru.app',
-                true, 'Edit/Delete for all posts, image upload fix',
+                true, 'Product details, description display, and cart quantity fixes',
                 NOW(), NOW());
         RAISE NOTICE 'INSERTED new CUSTOMER_APP ANDROID record';
     END IF;

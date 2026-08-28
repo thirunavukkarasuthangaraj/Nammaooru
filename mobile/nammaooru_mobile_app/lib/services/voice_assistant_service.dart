@@ -223,6 +223,8 @@ class VoiceAssistantService {
 
   Timer? _manualListenTimeout;
 
+  bool _sttFinalReceived = false;
+
   /// Start listening via device STT (user tapped mic).
   /// Auto-stops ~3s after the user goes quiet, hard cap 15s — the old
   /// 30s/60s windows made recording feel like it never ended.
@@ -230,6 +232,7 @@ class VoiceAssistantService {
     final ready = await _initStt();
     if (!ready) return false;
     _sttText = '';
+    _sttFinalReceived = false;
     _sttListening = true;
     await _stt.listen(
       onResult: (r) {
@@ -237,6 +240,7 @@ class VoiceAssistantService {
           _sttText = r.recognizedWords;
           onStateChanged?.call(); // live partial text in the UI
         }
+        if (r.finalResult) _sttFinalReceived = true;
       },
       localeId: 'ta-IN',
       listenMode: stt.ListenMode.dictation,
@@ -270,7 +274,12 @@ class VoiceAssistantService {
       // also fire onManualListenEnded for a user-initiated stop
       _sttListening = false;
       if (_stt.isListening) await _stt.stop();
-      await Future.delayed(const Duration(milliseconds: 300)); // let final result settle
+      // Wait for the engine's final (corrected) transcript instead of a
+      // blind fixed delay — finalization latency varies by device/network,
+      // so 300ms sometimes read stale/partial text before it arrived.
+      for (int i = 0; i < 20 && !_sttFinalReceived && !_stopped; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
     }
 
     _setState(AgentState.processing);

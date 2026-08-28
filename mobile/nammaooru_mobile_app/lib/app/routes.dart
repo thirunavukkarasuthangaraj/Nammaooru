@@ -37,6 +37,8 @@ import '../features/shop_owner/orders/order_processing_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 import 'package:provider/provider.dart';
 import '../shared/providers/feature_config_provider.dart';
+import '../shared/providers/cart_provider.dart';
+import '../core/theme/village_theme.dart';
 
 /// Closes the keyboard whenever a screen is pushed or popped so a
 /// text field's focus never carries over to the next screen
@@ -249,8 +251,6 @@ class CustomerShell extends StatefulWidget {
 }
 
 class _CustomerShellState extends State<CustomerShell> {
-  int _currentIndex = 0;
-
   // All possible nav items in order: Home is always shown
   static const List<_NavItem> _allNavItems = [
     _NavItem(key: 'nav_home', label: 'Home', icon: Icons.home, route: '/customer/dashboard', alwaysShow: true),
@@ -261,34 +261,48 @@ class _CustomerShellState extends State<CustomerShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<FeatureConfigProvider>(
-      builder: (context, featureConfig, _) {
+    return Consumer2<FeatureConfigProvider, CartProvider>(
+      builder: (context, featureConfig, cartProvider, _) {
         final visibleItems = _allNavItems
             .where((item) => item.alwaysShow || featureConfig.isVisible(item.key))
             .toList();
 
-        // Clamp _currentIndex so it never exceeds the visible list
-        final safeIndex = _currentIndex.clamp(0, visibleItems.length - 1);
+        final path = GoRouterState.of(context).uri.path;
+        var selectedIndex = 0;
+        for (var i = 0; i < visibleItems.length; i++) {
+          final route = visibleItems[i].route;
+          if (route == '/customer/dashboard') continue;
+          if (path == route || path.startsWith('$route/')) {
+            selectedIndex = i;
+            break;
+          }
+        }
+        if (selectedIndex >= visibleItems.length) selectedIndex = 0;
 
-        // Hide bottom nav entirely if only Home is left (< 2 items)
         final showBottomNav = visibleItems.length >= 2;
 
         return Scaffold(
           body: widget.child,
           bottomNavigationBar: showBottomNav
               ? BottomNavigationBar(
-                  currentIndex: safeIndex,
+                  currentIndex: selectedIndex,
                   onTap: (index) {
-                    setState(() => _currentIndex = index);
                     context.go(visibleItems[index].route);
                   },
-                  items: visibleItems
-                      .map((item) => BottomNavigationBarItem(
-                            icon: Icon(item.icon),
-                            label: item.label,
-                          ))
-                      .toList(),
                   type: BottomNavigationBarType.fixed,
+                  selectedItemColor: VillageTheme.primaryGreen,
+                  unselectedItemColor: Colors.black54,
+                  items: visibleItems.map((item) {
+                    final badge = item.key == 'nav_cart' ? cartProvider.itemCount : 0;
+                    return BottomNavigationBarItem(
+                      icon: Badge(
+                        isLabelVisible: badge > 0,
+                        label: Text('$badge'),
+                        child: Icon(item.icon),
+                      ),
+                      label: item.label,
+                    );
+                  }).toList(),
                 )
               : null,
         );

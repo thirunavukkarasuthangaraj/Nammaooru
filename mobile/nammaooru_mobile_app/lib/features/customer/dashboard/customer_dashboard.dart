@@ -1674,13 +1674,20 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const SizedBox(height: 8),
-                                  _buildUnifiedOffersCarousel(),
-                                  const SizedBox(height: 12),
+                                  if (_promos.isNotEmpty || _combos.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    _buildUnifiedOffersCarousel(),
+                                    const SizedBox(height: 16),
+                                  ] else
+                                    const SizedBox(height: 12),
                                   _buildServiceCategories(),
-                                  // Featured Shops — controlled by section_featured_shops
-                                  if (featureConfig.isVisible('section_featured_shops')) ...[
-                                    const SizedBox(height: 24),
+                                  const SizedBox(height: 16),
+                                  _buildHomeSearchBar(),
+                                  const SizedBox(height: 20),
+                                  _buildNearbyOnHome(),
+                                  if (featureConfig.isVisible('section_featured_shops') &&
+                                      (_isLoadingShops || _featuredShops.isNotEmpty)) ...[
+                                    const SizedBox(height: 8),
                                     _buildFeaturedShops(),
                                   ],
                                   // Recent Orders — controlled by section_recent_orders
@@ -1811,6 +1818,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                                 letterSpacing: 0.3,
                               ),
                               overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              languageProvider.getText(
+                                'Serving Thirupattur zone',
+                                'திருப்பத்தூர் பகுதிக்கு சேவை',
+                              ),
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         );
@@ -2261,7 +2280,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
-      childAspectRatio: 1.45,
+      childAspectRatio: 1.25,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
       children: List.generate(4, (index) => Container(
@@ -2336,11 +2355,26 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Consumer<LanguageProvider>(
+          builder: (context, lang, _) {
+            return Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 10),
+              child: Text(
+                lang.getText('Services', 'சேவைகள்'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            );
+          },
+        ),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
-          childAspectRatio: 1.45,
+          childAspectRatio: 1.25,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           children: _dynamicFeatures.map((feature) {
@@ -2379,6 +2413,142 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  Widget _buildHomeSearchBar() {
+    return Consumer<LanguageProvider>(
+      builder: (context, lang, _) {
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          child: InkWell(
+            onTap: () => context.push('/customer/shops'),
+            borderRadius: BorderRadius.circular(28),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: Colors.grey.shade600, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      lang.getText('Search shops...', 'கடைகளைத் தேடுங்கள்...'),
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                    ),
+                  ),
+                  Icon(Icons.mic_none, color: Colors.grey.shade500, size: 22),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNearbyOnHome() {
+    return Consumer<LanguageProvider>(
+      builder: (context, lang, _) {
+        final shops = _featuredShops.where((s) => s['isActive'] != false).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    lang.getText('Nearby shops', 'அருகிலுள்ள கடைகள்'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/customer/shops'),
+                  child: Text(
+                    lang.getText('See all', 'அனைத்தும்'),
+                    style: const TextStyle(
+                      color: VillageTheme.primaryGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_isLoadingShops)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: LoadingWidget()),
+              )
+            else if (shops.isEmpty)
+              Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => context.push('/customer/shops'),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: VillageTheme.primaryGreen.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.storefront, color: VillageTheme.primaryGreen),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                lang.getText('Browse local shops', 'உள்ளூர் கடைகளைப் பார்க்க'),
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                lang.getText('Grocery from shops near you', 'அருகிலுள்ள கடைகளில் மளிகை'),
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 188,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: shops.length,
+                  itemBuilder: (context, index) => _buildShopCard(shops[index]),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildModernCategoryTile({
     required IconData icon,
     required String title,
@@ -2389,68 +2559,80 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }) {
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
-    // Each module tile carries a soft tint of its own color with a centered
-    // icon-on-white chip — colorful but flat, like the reference grocery app.
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Color.alphaBlend(
-              color.withValues(alpha: 0.09), const Color(0xFFF7F9FA)),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon on a white chip so the tint frames it
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: hasImage
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Image.network(
-                          ImageUrlHelper.getFullImageUrl(imageUrl),
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 28),
-                        ),
-                      )
-                    : Icon(icon, color: color, size: 28),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
-                  letterSpacing: 0.1,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-              if (subtitle.isNotEmpty)
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  maxLines: 1,
+                  child: hasImage
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            ImageUrlHelper.getFullImageUrl(imageUrl),
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 26),
+                          ),
+                        )
+                      : Icon(icon, color: color, size: 26),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                 ),
-            ],
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

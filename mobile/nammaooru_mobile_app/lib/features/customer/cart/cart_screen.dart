@@ -670,19 +670,18 @@ class _CartScreenState extends State<CartScreen> {
     final issues = cartProvider.getCheckoutIssues();
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: SafeArea(
-        child: Column(
+      child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!canCheckout && issues.isNotEmpty)
@@ -780,7 +779,6 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -914,8 +912,7 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     // User is logged in and shop is open, proceed to checkout
-    Navigator.push(
-      context,
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (context) => const CheckoutScreen(),
       ),

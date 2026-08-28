@@ -500,7 +500,9 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                         sliver: SliverGrid(
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            childAspectRatio: 0.65,
+                            // Give the product details enough vertical room for
+                            // long names to wrap instead of being cut off early.
+                            childAspectRatio: 0.58,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
                           ),
@@ -1125,7 +1127,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                                   color: Colors.black87,
                                   height: 1.2,
                                 ),
-                                maxLines: 2,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               );
                             },

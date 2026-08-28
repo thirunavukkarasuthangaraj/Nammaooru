@@ -392,8 +392,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     if (checkoutPushed) {
       // Voice stays FULLY paused while checkout is on top — previously the
       // assistant said "என்ன வேணும்?" over the checkout page here.
-      await Navigator.push(
-        context,
+      await Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(builder: (_) => const CheckoutScreen()),
       );
       if (!mounted) return;

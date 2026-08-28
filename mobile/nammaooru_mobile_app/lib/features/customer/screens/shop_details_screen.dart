@@ -103,7 +103,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     // Determine duration: combos (30 sec) vs promos (10 sec)
     final isCombo = _currentCouponPage < _combos.length;
-    final duration = isCombo ? const Duration(seconds: 30) : const Duration(seconds: 10);
+    final duration =
+        isCombo ? const Duration(seconds: 30) : const Duration(seconds: 10);
 
     _couponAutoSlideTimer = Timer(duration, () {
       if (_couponPageController.hasClients && totalItems > 0) {
@@ -525,7 +526,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           // Parse color from hex
           Color categoryColor = VillageTheme.primaryGreen;
           try {
-            categoryColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+            categoryColor =
+                Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
           } catch (e) {
             categoryColor = VillageTheme.primaryGreen;
           }
@@ -535,7 +537,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               setState(() {
                 _selectedCategory = categoryId;
                 // If "All Items" is selected (categoryId is null), set categoryName to null to show all products
-                _selectedCategoryName = categoryId == null ? null : categoryName;
+                _selectedCategoryName =
+                    categoryId == null ? null : categoryName;
                 _filterProducts(); // Apply filter immediately without API call
               });
             },
@@ -577,8 +580,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                     isSelected);
                               },
                             )
-                          : _buildCategoryPlaceholder(categoryName ?? 'Category',
-                              categoryColor, isSelected),
+                          : _buildCategoryPlaceholder(
+                              categoryName ?? 'Category',
+                              categoryColor,
+                              isSelected),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -588,7 +593,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       displayName,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.grey[800],
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w600,
                         fontSize: 10,
                         height: 1.1,
                       ),
@@ -841,8 +847,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       controller: _scrollController,
       slivers: [
         // Shop Closed Banner
-        if (!_isShopOpen)
-          SliverToBoxAdapter(child: _buildShopClosedBanner()),
+        if (!_isShopOpen) SliverToBoxAdapter(child: _buildShopClosedBanner()),
         // Unified Offers Carousel (Combos + Promos together)
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
         SliverToBoxAdapter(child: _buildHorizontalCategories()),
@@ -876,10 +881,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             const Expanded(
               child: Text(
                 'Talk & Order / பேசி ஆர்டர் செய்',
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+            const Icon(Icons.arrow_forward_ios,
+                color: Colors.white70, size: 16),
           ],
         ),
       ),
@@ -914,7 +923,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  context.loc?.translate('shop_closed_message', args: [_shop?['name'] ?? 'This shop']) ??
+                  context.loc?.translate('shop_closed_message',
+                          args: [_shop?['name'] ?? 'This shop']) ??
                       'This shop is currently closed. Please try again during business hours.',
                   style: TextStyle(
                     fontSize: 12,
@@ -1216,7 +1226,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.assistant, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.assistant,
+                      color: Colors.white, size: 20),
                   onPressed: () {
                     context.push('/customer/voice-assistant', extra: {
                       'shopId': widget.shopId,
@@ -1256,7 +1267,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   color: Colors.green[50],
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.local_offer, color: Colors.green[700], size: 20),
+                child:
+                    Icon(Icons.local_offer, color: Colors.green[700], size: 20),
               ),
               const SizedBox(width: 12),
               Text(
@@ -1378,7 +1390,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           Container(
             height: 60,
             decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
               gradient: LinearGradient(
                 colors: [Colors.orange[700]!, Colors.orange[500]!],
                 begin: Alignment.topLeft,
@@ -1395,7 +1408,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.local_offer, color: Colors.white, size: 18),
+                    child: const Icon(Icons.local_offer,
+                        color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1450,7 +1464,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           minOrderAmount > 0
                               ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
                               : 'No minimum order',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 11),
                         ),
                       ],
                     ),
@@ -1467,7 +1482,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.orange[700],
                         borderRadius: BorderRadius.circular(20),
@@ -1477,7 +1493,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         children: [
                           Icon(Icons.copy, color: Colors.white, size: 14),
                           SizedBox(width: 6),
-                          Text('Copy Code', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text('Copy Code',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -1549,7 +1569,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       );
 
       // Debug: Log the created ProductModel
-      print('✅ Created ProductModel: name=${product.name}, nameTamil=${product.nameTamil}');
+      print(
+          '✅ Created ProductModel: name=${product.name}, nameTamil=${product.nameTamil}');
 
       // Add to cart with the specified quantity
       await cartProvider.addToCart(product, quantity: item.quantity);
@@ -1590,7 +1611,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   color: Colors.orange[50],
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.local_offer, color: Colors.orange[700], size: 20),
+                child: Icon(Icons.local_offer,
+                    color: Colors.orange[700], size: 20),
               ),
               const SizedBox(width: 12),
               Text(
@@ -1672,7 +1694,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     Container(
                       height: 60,
                       decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16)),
                         gradient: LinearGradient(
                           colors: [Colors.orange[700]!, Colors.orange[500]!],
                           begin: Alignment.topLeft,
@@ -1680,7 +1703,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         ),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
                         child: Row(
                           children: [
                             Container(
@@ -1689,7 +1713,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.local_offer, color: Colors.white, size: 18),
+                              child: const Icon(Icons.local_offer,
+                                  color: Colors.white, size: 18),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1724,7 +1749,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     // Bottom section
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
                         child: Row(
                           children: [
                             // Min order info
@@ -1746,7 +1772,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                     minOrderAmount > 0
                                         ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
                                         : 'No minimum order',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    style: TextStyle(
+                                        color: Colors.grey[600], fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -1765,7 +1792,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 );
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.orange[700],
                                   borderRadius: BorderRadius.circular(20),
@@ -1773,9 +1801,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.copy, color: Colors.white, size: 14),
+                                    Icon(Icons.copy,
+                                        color: Colors.white, size: 14),
                                     SizedBox(width: 6),
-                                    Text('Copy Code', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                    Text('Copy Code',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -1865,12 +1898,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         left: 12,
         right: 12,
         top: 12,
-        bottom: 100, // Extra padding to prevent floating cart from blocking products
+        bottom:
+            100, // Extra padding to prevent floating cart from blocking products
       ),
       sliver: SliverGrid(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.7, // Taller cards: breathing room for name/price/button
+          // Compact enough to avoid a large blank details area, while still
+          // leaving room for two-line names, stock, price, and cart controls.
+          childAspectRatio: 0.70,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
         ),
@@ -1889,10 +1925,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final productName = languageProvider.getDisplayName(product);
 
     // Get description
-    final description = product['customDescription']?.toString() ??
-        product['displayDescription']?.toString() ??
-        product['masterProduct']?['description']?.toString() ??
-        '';
+    final description = [
+      product['customDescription'],
+      product['displayDescription'],
+      product['description'],
+      product['masterProduct']?['description'],
+    ]
+        .map((value) => value?.toString().trim() ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
 
     final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     final originalPrice =
@@ -1919,6 +1959,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         ? ((originalPrice - price) / originalPrice * 100).round()
         : 0;
 
+    final productModel = ProductModel(
+      id: product['id'].toString(),
+      name: productName,
+      description: description,
+      price: price,
+      category: product['masterProduct']?['category']?.toString() ?? '',
+      shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
+      shopDatabaseId: _shop?['id'] ?? widget.shopId,
+      shopName: _shop?['name']?.toString() ?? 'Shop',
+      images: imageUrl.isNotEmpty ? [imageUrl] : [],
+      stockQuantity: stockQuantity,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
     return Container(
       // Reference grocery-app look: flat soft-grey card on a white page,
       // no drop shadow.
@@ -1932,102 +1987,111 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           // Product Image with discount badge
           Expanded(
             flex: 2,
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(16)),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _showProductDetails(
+                productModel,
+                weightDisplay,
+                originalPrice,
               ),
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
-                              color: Colors.grey[100],
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: VillageTheme.primaryGreen,
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl:
+                                  ImageUrlHelper.getFullImageUrl(imageUrl),
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: Colors.grey[100],
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: VillageTheme.primaryGreen,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            errorWidget: (_, __, ___) => Container(
+                              errorWidget: (_, __, ___) => Container(
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: Icon(Icons.inventory_2,
+                                      size: 30, color: Colors.grey),
+                                ),
+                              ),
+                            )
+                          : Container(
                               color: Colors.grey[200],
                               child: const Center(
                                 child: Icon(Icons.inventory_2,
-                                    size: 30, color: Colors.grey),
+                                    size: 40, color: Colors.grey),
                               ),
                             ),
-                          )
-                        : Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: Icon(Icons.inventory_2,
-                                  size: 40, color: Colors.grey),
-                            ),
-                          ),
-                  ),
-                  // Discount badge overlay at top left
-                  if (hasDiscount && discountPercentage > 0)
-                    Positioned(
-                      top: 4,
-                      left: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF6B6B),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '${discountPercentage.toStringAsFixed(0)}% OFF',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
                     ),
-                  // Keep only "Out of Stock" overlay on image
-                  if (!isInStock)
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(24)),
-                        ),
-                        child: const Center(
+                    // Discount badge overlay at top left
+                    if (hasDiscount && discountPercentage > 0)
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B6B),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
                           child: Text(
-                            'Out of Stock',
-                            style: TextStyle(
+                            '${discountPercentage.toStringAsFixed(0)}% OFF',
+                            style: const TextStyle(
                               color: Colors.white,
+                              fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                    // Keep only "Out of Stock" overlay on image
+                    if (!isInStock)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(24)),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Out of Stock',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2053,12 +2117,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           color: Color(0xFF212121),
                           height: 1.2,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        weightDisplay,
+                        'Stock $stockQuantity',
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.grey[600],
@@ -2110,25 +2174,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   ),
                   Consumer<CartProvider>(
                     builder: (context, cartProvider, child) {
-                      final productModel = ProductModel(
-                        id: product['id'].toString(),
-                        name: productName,
-                        description: description,
-                        price: price,
-                        category:
-                            product['masterProduct']?['category']?.toString() ??
-                                '',
-                        shopId: _shop?['shopId']?.toString() ??
-                            widget.shopId.toString(),
-                        shopDatabaseId: _shop?['id'] ??
-                            widget.shopId, // Pass numeric shop database ID
-                        shopName: _shop?['name']?.toString() ?? 'Shop',
-                        images: imageUrl.isNotEmpty ? [imageUrl] : [],
-                        stockQuantity: stockQuantity,
-                        createdAt: DateTime.now(),
-                        updatedAt: DateTime.now(),
-                      );
-
                       final cartQuantity =
                           cartProvider.getQuantity(productModel.id);
 
@@ -2159,6 +2204,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           onTap: () async {
                             await _handleAddToCart(
                                 context, cartProvider, productModel);
+                            if (mounted) setState(() {});
                           },
                           child: Container(
                             width: double.infinity,
@@ -2220,6 +2266,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                   onTap: () {
                                     cartProvider
                                         .decreaseQuantity(productModel.id);
+                                    if (mounted) setState(() {});
                                   },
                                   borderRadius: BorderRadius.circular(13),
                                   child: Container(
@@ -2255,6 +2302,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                   onTap: () async {
                                     await _handleAddToCart(
                                         context, cartProvider, productModel);
+                                    if (mounted) setState(() {});
                                   },
                                   borderRadius: BorderRadius.circular(13),
                                   child: Container(
@@ -2281,6 +2329,288 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
+  void _showProductDetails(
+    ProductModel product,
+    String weightDisplay,
+    double originalPrice,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setModalState) => Consumer<CartProvider>(
+          builder: (context, cartProvider, child) {
+            final quantity = cartProvider.getQuantity(product.id);
+            final hasDiscount = originalPrice > product.price;
+
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.82,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (product.images.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: ImageUrlHelper.getFullImageUrl(
+                              product.images.first,
+                            ),
+                            width: double.infinity,
+                            height: 220,
+                            fit: BoxFit.contain,
+                            errorWidget: (_, __, ___) => Container(
+                              height: 220,
+                              color: Colors.grey[100],
+                              child: const Icon(
+                                Icons.inventory_2,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 18),
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF212121),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        weightDisplay,
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Text(
+                            Helpers.formatCurrency(product.price),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
+                            ),
+                          ),
+                          if (hasDiscount) ...[
+                            const SizedBox(width: 10),
+                            Text(
+                              Helpers.formatCurrency(originalPrice),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Product details',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        product.description.isNotEmpty
+                            ? product.description
+                            : 'No description available for this product.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      if (!product.isInStock)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Out of Stock',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        )
+                      else if (quantity == 0)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final added = await _addFromProductDetails(
+                                sheetContext,
+                                cartProvider,
+                                product,
+                              );
+                              if (added && sheetContext.mounted) {
+                                setModalState(() {});
+                              }
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('ADD'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: VillageTheme.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        )
+                      else
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton.filled(
+                              onPressed: () {
+                                cartProvider.decreaseQuantity(product.id);
+                                setModalState(() {});
+                              },
+                              icon: const Icon(Icons.remove),
+                              style: IconButton.styleFrom(
+                                backgroundColor: VillageTheme.primaryGreen,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                '$quantity',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton.filled(
+                              onPressed: quantity >= product.stockQuantity
+                                  ? null
+                                  : () async {
+                                      final added =
+                                          await _addFromProductDetails(
+                                        sheetContext,
+                                        cartProvider,
+                                        product,
+                                      );
+                                      if (added && sheetContext.mounted) {
+                                        setModalState(() {});
+                                      }
+                                    },
+                              icon: const Icon(Icons.add),
+                              style: IconButton.styleFrom(
+                                backgroundColor: VillageTheme.primaryGreen,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _addFromProductDetails(
+    BuildContext sheetContext,
+    CartProvider cartProvider,
+    ProductModel product,
+  ) async {
+    final success = await cartProvider.addToCart(product);
+    if (success) {
+      cartProvider.setShopStatus(
+        isOpen: _isShopOpen,
+        shopName: _shop?['name'],
+      );
+      return true;
+    }
+
+    if (!sheetContext.mounted) return false;
+
+    final currentShopName = cartProvider.getCurrentShopName();
+    if (currentShopName != null && cartProvider.items.isNotEmpty) {
+      final replaceCart = await showDialog<bool>(
+        context: sheetContext,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Different Shop'),
+          content: Text(
+            'Your cart contains items from "$currentShopName".\n\n'
+            'Clear the cart and add this product from "${product.shopName}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VillageTheme.primaryGreen,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Clear Cart & Add'),
+            ),
+          ],
+        ),
+      );
+
+      if (replaceCart == true) {
+        cartProvider.clearCart();
+        final added = await cartProvider.addToCart(
+          product,
+          clearCartConfirmed: true,
+        );
+        cartProvider.setShopStatus(
+          isOpen: _isShopOpen,
+          shopName: _shop?['name'],
+        );
+        return added;
+      }
+      return false;
+    }
+
+    ScaffoldMessenger.of(sheetContext).showSnackBar(
+      SnackBar(
+        content: Text('Only ${product.stockQuantity} available'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return false;
+  }
+
   Future<void> _handleAddToCart(BuildContext context, CartProvider cartProvider,
       ProductModel product) async {
     // Allow adding to cart even when shop is closed
@@ -2292,11 +2622,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     if (currentCartQuantity >= availableStock) {
       // Stock limit reached — refresh products to get real stock
-      _loadProducts();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Only $availableStock available. Refreshing stock...'),
+            content: Text('Only $availableStock available'),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
           ),
@@ -2349,7 +2678,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
         if (shouldClearCart == true) {
           cartProvider.clearCart();
-          final addedSuccess = await cartProvider.addToCart(product, clearCartConfirmed: true);
+          final addedSuccess =
+              await cartProvider.addToCart(product, clearCartConfirmed: true);
           if (addedSuccess) {
             // Store shop open status for new shop
             cartProvider.setShopStatus(
@@ -2382,11 +2712,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         break;
       }
     }
-    final categoryName = raw?['masterProduct']?['category']?['name']?.toString();
+    final categoryName =
+        raw?['masterProduct']?['category']?['name']?.toString();
     if (categoryName == null || categoryName.isEmpty) return;
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
 
     final candidates = _allProducts.where((p) {
       if (p['id'].toString() == added.id) return false;
@@ -2415,7 +2747,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             .where((t) => t.length >= 3)
             .toSet();
 
-    final addedTokens = tokensOf(raw)..addAll(tokensOf({'customName': added.name}));
+    final addedTokens = tokensOf(raw)
+      ..addAll(tokensOf({'customName': added.name}));
     final addedPrice = double.tryParse(raw?['price']?.toString() ?? '') ?? 0.0;
 
     int relevance(dynamic p) {
@@ -2434,8 +2767,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     final ranked = List.generate(
         candidates.length, (i) => MapEntry(i, relevance(candidates[i])))
-      ..sort((a, b) =>
-          b.value != a.value ? b.value - a.value : a.key - b.key);
+      ..sort((a, b) => b.value != a.value ? b.value - a.value : a.key - b.key);
     // A name-word match scores >= 3. Show ONLY name-matched products —
     // padding with random same-category items reads as "completely wrong",
     // so with no real match the sheet is skipped entirely.
@@ -2500,6 +2832,40 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       final imageUrl = p['primaryImageUrl']?.toString() ??
                           p['masterProduct']?['primaryImageUrl']?.toString() ??
                           '';
+                      final originalPrice = double.tryParse(
+                              p['originalPrice']?.toString() ?? '0') ??
+                          0.0;
+                      final baseWeight = p['baseWeight'] ??
+                          p['masterProduct']?['baseWeight'] ??
+                          1;
+                      final baseUnit = p['baseUnit']?.toString() ??
+                          p['masterProduct']?['baseUnit']?.toString() ??
+                          'unit';
+                      final description = [
+                        p['customDescription'],
+                        p['displayDescription'],
+                        p['description'],
+                        p['masterProduct']?['description'],
+                      ]
+                          .map((value) => value?.toString().trim() ?? '')
+                          .firstWhere((value) => value.isNotEmpty,
+                              orElse: () => '');
+                      final model = ProductModel(
+                        id: p['id'].toString(),
+                        name: name,
+                        description: description,
+                        price: price,
+                        category: categoryName,
+                        shopId: _shop?['shopId']?.toString() ??
+                            widget.shopId.toString(),
+                        shopDatabaseId: _shop?['id'] ?? widget.shopId,
+                        shopName: _shop?['name']?.toString() ?? 'Shop',
+                        images: imageUrl.isNotEmpty ? [imageUrl] : [],
+                        stockQuantity: stock,
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      );
+                      final cartQuantity = cartProvider.getQuantity(model.id);
                       return Container(
                         width: 124,
                         margin: const EdgeInsets.only(right: 10),
@@ -2511,26 +2877,41 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              height: 72,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: imageUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: ImageUrlHelper.getFullImageUrl(
-                                            imageUrl),
-                                        fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) => const Icon(
-                                            Icons.inventory_2,
-                                            color: Colors.grey),
-                                      )
-                                    : const Icon(Icons.inventory_2,
-                                        color: Colors.grey),
+                            GestureDetector(
+                              onTap: () async {
+                                Navigator.of(sheetContext).pop();
+                                await Future<void>.delayed(
+                                    const Duration(milliseconds: 250));
+                                if (mounted) {
+                                  _showProductDetails(
+                                    model,
+                                    '$baseWeight $baseUnit',
+                                    originalPrice,
+                                  );
+                                }
+                              },
+                              child: Container(
+                                height: 72,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: imageUrl.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl:
+                                              ImageUrlHelper.getFullImageUrl(
+                                                  imageUrl),
+                                          fit: BoxFit.cover,
+                                          errorWidget: (_, __, ___) =>
+                                              const Icon(Icons.inventory_2,
+                                                  color: Colors.grey),
+                                        )
+                                      : const Icon(Icons.inventory_2,
+                                          color: Colors.grey),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -2553,59 +2934,109 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ),
                             ),
                             const Spacer(),
-                            GestureDetector(
-                              onTap: () async {
-                                final model = ProductModel(
-                                  id: p['id'].toString(),
-                                  name: name,
-                                  description: '',
-                                  price: price,
-                                  category: categoryName,
-                                  shopId: _shop?['shopId']?.toString() ??
-                                      widget.shopId.toString(),
-                                  shopDatabaseId: _shop?['id'] ?? widget.shopId,
-                                  shopName:
-                                      _shop?['name']?.toString() ?? 'Shop',
-                                  images:
-                                      imageUrl.isNotEmpty ? [imageUrl] : [],
-                                  stockQuantity: stock,
-                                  createdAt: DateTime.now(),
-                                  updatedAt: DateTime.now(),
-                                );
-                                final ok =
-                                    await cartProvider.addToCart(model);
-                                if (ok) {
-                                  setSheetState(() => related.remove(p));
-                                  if (related.isEmpty &&
-                                      sheetContext.mounted) {
-                                    Navigator.pop(sheetContext);
+                            if (cartQuantity == 0)
+                              GestureDetector(
+                                onTap: () async {
+                                  await cartProvider.addToCart(model);
+                                  if (sheetContext.mounted) {
+                                    setSheetState(() {});
                                   }
-                                }
-                              },
-                              child: Container(
-                                width: double.infinity,
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    color: VillageTheme.primaryGreen,
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_rounded,
+                                          color: Colors.white, size: 14),
+                                      Text(
+                                        'ADD',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
                                 height: 26,
                                 decoration: BoxDecoration(
                                   color: VillageTheme.primaryGreen,
                                   borderRadius: BorderRadius.circular(13),
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(Icons.add_rounded,
-                                        color: Colors.white, size: 14),
-                                    Text(
-                                      'ADD',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
+                                    InkWell(
+                                      onTap: () {
+                                        cartProvider.decreaseQuantity(model.id);
+                                        setSheetState(() {});
+                                      },
+                                      borderRadius: BorderRadius.circular(13),
+                                      child: const SizedBox(
+                                        width: 30,
+                                        height: 26,
+                                        child: Icon(Icons.remove,
+                                            color: Colors.white, size: 14),
+                                      ),
+                                    ),
+                                    Container(
+                                      constraints:
+                                          const BoxConstraints(minWidth: 24),
+                                      height: 22,
+                                      alignment: Alignment.center,
+                                      decoration: const BoxDecoration(
                                         color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        '$cartQuantity',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap: () async {
+                                        if (cartQuantity >= stock) {
+                                          ScaffoldMessenger.of(context)
+                                            ..hideCurrentSnackBar()
+                                            ..showSnackBar(SnackBar(
+                                              content:
+                                                  Text('Only $stock available'),
+                                              backgroundColor: Colors.orange,
+                                              duration:
+                                                  const Duration(seconds: 2),
+                                            ));
+                                          return;
+                                        }
+                                        await cartProvider.addToCart(model);
+                                        if (sheetContext.mounted) {
+                                          setSheetState(() {});
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(13),
+                                      child: const SizedBox(
+                                        width: 30,
+                                        height: 26,
+                                        child: Icon(Icons.add,
+                                            color: Colors.white, size: 14),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       );
@@ -2623,7 +3054,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
   void _showVoiceSearchDialog() {
     // Navigate to interactive Voice Assistant
-    final shopName = _shop?['name']?.toString() ?? widget.shop?['name']?.toString();
+    final shopName =
+        _shop?['name']?.toString() ?? widget.shop?['name']?.toString();
     context.push('/customer/voice-assistant', extra: {
       'shopId': widget.shopId,
       'shopName': shopName,
@@ -2661,7 +3093,8 @@ class _ComboCardWithSlideshow extends StatefulWidget {
   });
 
   @override
-  State<_ComboCardWithSlideshow> createState() => _ComboCardWithSlideshowState();
+  State<_ComboCardWithSlideshow> createState() =>
+      _ComboCardWithSlideshowState();
 }
 
 class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
@@ -2694,7 +3127,8 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
     }
     // Add banner image as fallback if no product images
     if (_productImages.isEmpty && widget.combo.bannerImageUrl != null) {
-      _productImages.add(ImageUrlHelper.getFullImageUrl(widget.combo.bannerImageUrl));
+      _productImages
+          .add(ImageUrlHelper.getFullImageUrl(widget.combo.bannerImageUrl));
     }
   }
 
@@ -2737,13 +3171,15 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
               width: 120,
               decoration: const BoxDecoration(
                 color: Color(0xFF1B4332),
-                borderRadius: BorderRadius.horizontal(left: Radius.circular(16)),
+                borderRadius:
+                    BorderRadius.horizontal(left: Radius.circular(16)),
               ),
               child: Stack(
                 children: [
                   // Product Image Slideshow
                   ClipRRect(
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                    borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(16)),
                     child: _productImages.isNotEmpty
                         ? PageView.builder(
                             controller: _imagePageController,
@@ -2759,14 +3195,18 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
                                 width: 120,
                                 height: double.infinity,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Center(
-                                  child: Icon(Icons.card_giftcard, color: Colors.white.withOpacity(0.5), size: 40),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Center(
+                                  child: Icon(Icons.card_giftcard,
+                                      color: Colors.white.withOpacity(0.5),
+                                      size: 40),
                                 ),
                               );
                             },
                           )
                         : Center(
-                            child: Icon(Icons.card_giftcard, color: Colors.white.withOpacity(0.5), size: 40),
+                            child: Icon(Icons.card_giftcard,
+                                color: Colors.white.withOpacity(0.5), size: 40),
                           ),
                   ),
                   // Discount Badge
@@ -2774,7 +3214,8 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.orange[600],
                         borderRadius: BorderRadius.circular(8),
@@ -2875,12 +3316,17 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
                             splashColor: Colors.white.withOpacity(0.3),
                             highlightColor: Colors.white.withOpacity(0.1),
                             child: Ink(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF2E7D32),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text('View', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                              child: const Text('View',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           ),
                         ),

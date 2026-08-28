@@ -341,7 +341,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
