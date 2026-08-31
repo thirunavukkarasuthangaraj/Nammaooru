@@ -134,12 +134,23 @@ public class ProductAISearchService {
     private List<MasterProduct> keywordFallbackSearch(String keywords) {
         log.info("🔍 Fallback keyword search: {}", keywords);
 
-        // Check if query contains Tamil characters and transliterate if needed
+        // Tamil query: ADD the transliteration alongside the original keywords,
+        // never replace them. Replacing dropped the Tamil tokens, so "முட்டை"
+        // became only "muttai" and stopped matching products whose nameTamil is
+        // முட்டை - Tamil search returned 0 results whenever transliteration
+        // succeeded but the English form wasn't in any product name.
         String searchKeywords = keywords;
         if (isTamilText(keywords)) {
             log.info("🔄 Detected Tamil text, transliterating using Gemini...");
-            searchKeywords = geminiSearchService.transliterateTamilToEnglish(keywords);
-            log.info("✅ Transliterated result: {}", searchKeywords);
+            try {
+                String translit = geminiSearchService.transliterateTamilToEnglish(keywords);
+                if (translit != null && !translit.isBlank() && !translit.equals(keywords)) {
+                    searchKeywords = keywords + "," + translit;
+                }
+            } catch (Exception e) {
+                log.warn("Transliteration failed, searching Tamil keywords only: {}", e.getMessage());
+            }
+            log.info("✅ Search keywords after transliteration: {}", searchKeywords);
         }
 
         // Get all active products
