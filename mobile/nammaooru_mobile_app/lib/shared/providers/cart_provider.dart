@@ -184,7 +184,11 @@ class CartProvider with ChangeNotifier {
     final index = _items.indexWhere((item) => item.product.id == productId);
     if (index >= 0) {
       final item = _items[index];
-      if (item.quantity < item.product.stockQuantity) {
+      // stockQuantity <= 0 means "stock not tracked", not "sold out" - some
+      // APIs send 0 when trackInventory is off. Blocking + here made the
+      // button silently dead for such items.
+      final maxStock = item.product.stockQuantity;
+      if (maxStock <= 0 || item.quantity < maxStock) {
         _items[index] = item.copyWith(quantity: item.quantity + 1);
         _saveCartToStorage();
         notifyListeners();
@@ -213,8 +217,11 @@ class CartProvider with ChangeNotifier {
         _items.removeAt(index);
       } else {
         final item = _items[index];
+        // <=0 stock = "not tracked": clamping against it set quantities to 0
         final maxQuantity = item.product.stockQuantity;
-        final validQuantity = quantity > maxQuantity ? maxQuantity : quantity;
+        final validQuantity = (maxQuantity > 0 && quantity > maxQuantity)
+            ? maxQuantity
+            : quantity;
         _items[index] = item.copyWith(quantity: validQuantity);
       }
       _saveCartToStorage();
@@ -332,13 +339,17 @@ class CartProvider with ChangeNotifier {
         
         // Convert backend cart items to local cart items
         final List<CartItem> convertedItems = [];
-        
+        final seenProductIds = <String>{};
+
         for (final backendItem in backendCart.items) {
           // A backend item without a usable product id can never be matched by
           // the +/- controls or re-add checks on any screen - skip it rather
-          // than seeding the cart with un-editable zombie rows.
-          if (backendItem.productId.trim().isEmpty) {
-            if (kDebugMode) print('Skipping backend cart item with empty productId: ${backendItem.productName}');
+          // than seeding the cart with un-editable zombie rows. Duplicate ids
+          // are equally toxic (every lookup hits the first match), so keep
+          // only the first occurrence of each id.
+          if (backendItem.productId.trim().isEmpty ||
+              !seenProductIds.add(backendItem.productId)) {
+            if (kDebugMode) print('Skipping backend cart item with empty/duplicate productId: ${backendItem.productName}');
             continue;
           }
           // Create a ProductModel from the backend cart item data
@@ -389,9 +400,17 @@ class CartProvider with ChangeNotifier {
     if (cartDataString != null) {
       try {
         final cartData = jsonDecode(cartDataString);
-        _items = (cartData['items'] as List)
+        // Drop items with an empty product id AND collapse duplicate ids.
+        // All cart operations look items up by product.id, so duplicates make
+        // every +/-/remove hit the FIRST matching row instead of the tapped
+        // one ("row 1 quantity climbs while my row does nothing"). Devices
+        // that cached a broken backend-cart restore self-heal on next launch.
+        final loaded = (cartData['items'] as List)
             .map((item) => CartItem.fromJson(item))
+            .where((item) => item.product.id.trim().isNotEmpty)
             .toList();
+        final seenIds = <String>{};
+        _items = loaded.where((item) => seenIds.add(item.product.id)).toList();
         _promoCode = cartData['promoCode'];
         _promoDiscount = cartData['promoDiscount']?.toDouble() ?? 0.0;
         _isShopOpen = cartData['isShopOpen'] ?? true;

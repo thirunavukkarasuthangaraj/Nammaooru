@@ -943,7 +943,13 @@ TONE: Warm Tamil shopkeeper. Casual: "வேணும்", "சொல்லு�
       'shopId': p['shopId']?.toString() ?? shopId.toString(),
       'shopDatabaseId': shopId,
       'shopName': shopName ?? '',
-      'stockQuantity': p['stockQuantity'] ?? 999,
+      // 0 / null stock must NOT poison the cart: CartProvider's + button is
+      // silently blocked when quantity >= stockQuantity, so a product with
+      // stockQuantity 0 (typical when the shop has trackInventory=false)
+      // could be added once and then never edited. Treat <=0 as "not tracked".
+      'stockQuantity': (p['stockQuantity'] is int && (p['stockQuantity'] as int) > 0)
+          ? p['stockQuantity']
+          : 999,
       'baseWeight': baseWeight?.toString() ?? '',
       'baseUnit': baseUnit,
       'weightDisplay': weightDisplay,

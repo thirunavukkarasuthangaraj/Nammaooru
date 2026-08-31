@@ -295,6 +295,12 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Subscribe the WHOLE screen to cart changes. The cards deep inside the
+    // message list watch the provider too, but when none are mounted (scrolled
+    // away / not yet built) no widget was listening - cart updates from the
+    // agent then didn't refresh the total bar or steppers until the user left
+    // and re-entered the screen ("count increased after go and back").
+    context.watch<CartProvider>();
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: _buildAppBar(),
