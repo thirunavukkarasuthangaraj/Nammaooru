@@ -184,6 +184,7 @@ export class ReceiptTemplateService {
           }
           body {
             box-sizing: border-box;
+            background: #fff;
             font-family: 'Noto Sans Tamil', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
             font-size: ${bodyFontSize}px;
             width: ${paperConfig.bodyWidth};

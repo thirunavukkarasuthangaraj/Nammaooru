@@ -1,5 +1,5 @@
 :host { display:block; }
-$green:#159b5b; $green-dark:#087443; $accent:#43d77d; $panel:#ECEFF1; $ink:#263238; $muted:#6f767c; $line:#dfe5e9; $paper:#fffdf7;
+$green:#159b5b; $green-dark:#087443; $accent:#43d77d; $panel:#ECEFF1; $ink:#263238; $muted:#6f767c; $line:#dfe5e9; $paper:#fff;
 * { box-sizing:border-box; }
 .bill-studio { min-height:100vh; padding:16px clamp(14px,2vw,28px) 72px; background:#fff; color:$ink; font-family:Roboto,"Helvetica Neue",Arial,sans-serif; }
 
