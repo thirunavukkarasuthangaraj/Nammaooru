@@ -7,6 +7,7 @@ import com.shopmanagement.product.dto.MasterProductResponse;
 import com.shopmanagement.product.dto.VoiceSearchGroupedResponse;
 import com.shopmanagement.product.service.ProductAISearchService;
 import com.shopmanagement.service.GeminiSearchService;
+import com.shopmanagement.service.GroqService;
 import com.shopmanagement.service.OpenAITranscriptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class ProductAISearchController {
 
     private final ProductAISearchService productAISearchService;
     private final GeminiSearchService geminiSearchService;
+    private final GroqService groqService;
     private final OpenAITranscriptionService openAITranscriptionService;
     private final ObjectMapper objectMapper;
 
@@ -199,7 +201,16 @@ public class ProductAISearchController {
                     "'கடலை' -> gram,groundnut | 'thakkali' -> tomato. " +
                     "If you cannot map it, reply with the input word unchanged.";
 
-            String raw = geminiSearchService.generateText(prompt);
+            // Gemini first; if it fails (quota exhausted, key/model problem),
+            // fall back to Groq automatically so Tamil search keeps working.
+            String raw;
+            try {
+                raw = geminiSearchService.generateText(prompt);
+            } catch (Exception geminiError) {
+                if (!groqService.isEnabled()) throw geminiError;
+                log.warn("Gemini failed ({}), falling back to Groq", geminiError.getMessage());
+                raw = groqService.generateText(prompt);
+            }
             List<String> keywords = new ArrayList<>();
             if (raw != null) {
                 for (String part : raw.replaceAll("[\\r\\n]+", ",").split(",")) {
