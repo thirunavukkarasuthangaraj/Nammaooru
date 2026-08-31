@@ -243,6 +243,15 @@ class CartProvider with ChangeNotifier {
     _shopName = null;
     _saveCartToStorage();
     notifyListeners();
+
+    // Also clear the BACKEND cart (fire-and-forget). Without this, ordering
+    // cleared only the local cart; on the next app start loadCartFromBackend()
+    // resurrected the already-ordered items - with backend id/shopId formats
+    // that no product screen matches, so +/- and re-add silently did nothing.
+    _cartService.clearCart().catchError((e) {
+      if (kDebugMode) print('🛒 Backend cart clear failed (local cleared): $e');
+      return <String, dynamic>{'success': false};
+    });
   }
 
   Future<bool> applyPromoCode(String code) async {
@@ -325,6 +334,13 @@ class CartProvider with ChangeNotifier {
         final List<CartItem> convertedItems = [];
         
         for (final backendItem in backendCart.items) {
+          // A backend item without a usable product id can never be matched by
+          // the +/- controls or re-add checks on any screen - skip it rather
+          // than seeding the cart with un-editable zombie rows.
+          if (backendItem.productId.trim().isEmpty) {
+            if (kDebugMode) print('Skipping backend cart item with empty productId: ${backendItem.productName}');
+            continue;
+          }
           // Create a ProductModel from the backend cart item data
           final product = ProductModel(
             id: backendItem.productId,

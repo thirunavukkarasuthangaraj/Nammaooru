@@ -139,7 +139,12 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
           cart.clearCart();
         }
 
-        final result = await cart.addToCart(productModel, quantity: quantity);
+        // clearCartConfirmed: we already resolved the shop question above.
+        // The provider's own shopId string comparison can false-positive when
+        // items came from loadCartFromBackend (different shopId format) and
+        // then addToCart returned false SILENTLY - "add button not working".
+        final result = await cart.addToCart(productModel,
+            quantity: quantity, clearCartConfirmed: true);
         return result;
       } catch (e) {
         debugPrint('Cart add error: $e');
