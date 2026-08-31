@@ -216,8 +216,14 @@ public class ProductAISearchController {
             result.put("keywords", keywords);
             return ResponseEntity.ok(ApiResponse.success(result, "Resolved " + keywords.size() + " keyword(s)"));
         } catch (Exception e) {
-            log.error("Error resolving keyword: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error("Resolve failed: " + e.getMessage()));
+            // Surface the ROOT cause (e.g. HTTP 429 quota / 404 bad model) — the
+            // wrapper "Failed to generate text" alone is undiagnosable without
+            // server log access.
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+            String detail = root.getMessage() != null ? root.getMessage() : e.getMessage();
+            log.error("Error resolving keyword: {}", detail);
+            return ResponseEntity.badRequest().body(ApiResponse.error("Resolve failed: " + detail));
         }
     }
 
