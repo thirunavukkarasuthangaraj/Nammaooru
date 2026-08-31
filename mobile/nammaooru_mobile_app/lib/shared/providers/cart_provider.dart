@@ -437,18 +437,27 @@ class CartProvider with ChangeNotifier {
     }
   }
 
+  /// Normalized grouping key: different add paths encode the shop differently
+  /// ("SHOP004" / "4" / empty), which split the SAME shop into multiple cart
+  /// sections on screen. Group by numeric id when available, else by digits.
+  String _shopGroupKey(ProductModel p) {
+    if (p.shopDatabaseId != null) return p.shopDatabaseId.toString();
+    final digits = p.shopId.replaceAll(RegExp(r'[^0-9]'), '');
+    return digits.isNotEmpty ? digits : p.shopId;
+  }
+
   Map<String, List<CartItem>> getItemsByShop() {
     final itemsByShop = <String, List<CartItem>>{};
-    
+
     for (final item in _items) {
-      final shopId = item.product.shopId;
-      if (itemsByShop.containsKey(shopId)) {
-        itemsByShop[shopId]!.add(item);
+      final shopKey = _shopGroupKey(item.product);
+      if (itemsByShop.containsKey(shopKey)) {
+        itemsByShop[shopKey]!.add(item);
       } else {
-        itemsByShop[shopId] = [item];
+        itemsByShop[shopKey] = [item];
       }
     }
-    
+
     return itemsByShop;
   }
 
@@ -457,8 +466,9 @@ class CartProvider with ChangeNotifier {
   }
 
   double getShopSubtotal(String shopId) {
+    // shopId here is the normalized group key from getItemsByShop()
     return _items
-        .where((item) => item.product.shopId == shopId)
+        .where((item) => _shopGroupKey(item.product) == shopId)
         .fold(0.0, (sum, item) => sum + (item.product.effectivePrice * item.quantity));
   }
 
