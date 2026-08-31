@@ -287,7 +287,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                 icon: const Icon(Icons.shopping_cart, color: Colors.white),
                 onPressed: () => context.push('/customer/cart'),
               ),
-              if (cartProvider.itemCount > 0)
+              if (cartProvider.productCount > 0)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -300,7 +300,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                     constraints:
                         const BoxConstraints(minWidth: 16, minHeight: 16),
                     child: Text(
-                      '${cartProvider.itemCount}',
+                      '${cartProvider.productCount}',
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -788,7 +788,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
       ),
 
       // Floating Cart Summary
-      bottomNavigationBar: cartProvider.itemCount > 0
+      bottomNavigationBar: cartProvider.productCount > 0
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -808,7 +808,7 @@ class _ShopProductsScreenState extends State<ShopProductsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${cartProvider.itemCount} items',
+                        '${cartProvider.productCount} items',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.grey,

@@ -261,8 +261,14 @@ class _CustomerShellState extends State<CustomerShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<FeatureConfigProvider, CartProvider>(
-      builder: (context, featureConfig, cartProvider, _) {
+    // Deliberately NOT listening to CartProvider here. Rebuilding the whole
+    // shell (Scaffold + body slot) on EVERY cart notify constantly re-laid-out
+    // the active page's slot, and under heavy add/remove churn the page's own
+    // provider subscription was intermittently lost - the cart screen then
+    // froze (state changed, no redraw) until re-entered. Only the little cart
+    // badge listens now, via the Selector below.
+    return Consumer<FeatureConfigProvider>(
+      builder: (context, featureConfig, _) {
         final visibleItems = _allNavItems
             .where((item) => item.alwaysShow || featureConfig.isVisible(item.key))
             .toList();
@@ -293,13 +299,19 @@ class _CustomerShellState extends State<CustomerShell> {
                   selectedItemColor: VillageTheme.primaryGreen,
                   unselectedItemColor: Colors.black54,
                   items: visibleItems.map((item) {
-                    final badge = item.key == 'nav_cart' ? cartProvider.itemCount : 0;
+                    // Only the badge itself listens to the cart - see comment
+                    // at the top of build() for why the shell must not.
                     return BottomNavigationBarItem(
-                      icon: Badge(
-                        isLabelVisible: badge > 0,
-                        label: Text('$badge'),
-                        child: Icon(item.icon),
-                      ),
+                      icon: item.key == 'nav_cart'
+                          ? Selector<CartProvider, int>(
+                              selector: (_, cart) => cart.productCount,
+                              builder: (_, badge, __) => Badge(
+                                isLabelVisible: badge > 0,
+                                label: Text('$badge'),
+                                child: Icon(item.icon),
+                              ),
+                            )
+                          : Icon(item.icon),
                       label: item.label,
                     );
                   }).toList(),

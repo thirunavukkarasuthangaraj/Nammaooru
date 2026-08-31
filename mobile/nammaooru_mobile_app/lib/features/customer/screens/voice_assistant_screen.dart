@@ -177,7 +177,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
     };
 
     _service.onGetCartTotal = () => cart.subtotal;
-    _service.onGetCartCount = () => cart.itemCount;
+    _service.onGetCartCount = () => cart.productCount;
     _service.onGetCartItems = () => cart.items.map((item) => <String, dynamic>{
       'name': item.product.name,
       'quantity': item.quantity,
@@ -417,7 +417,7 @@ class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
 
   Widget _buildCartTotalBar() {
     final cart = context.watch<CartProvider>();
-    final count = cart.itemCount;
+    final count = cart.productCount;
     final total = cart.subtotal;
     if (count == 0) return const SizedBox.shrink();
 
@@ -989,7 +989,7 @@ class _CartBottomSheet extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('${cart.itemCount} items',
+                            Text('${cart.productCount} items',
                               style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                             Text('₹${cart.subtotal.toStringAsFixed(0)}',
                               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold,

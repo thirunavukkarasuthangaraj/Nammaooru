@@ -317,7 +317,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
           '$added items added to cart!');
       // Speak items added + cart total
       final cartTotal = cart.total.toStringAsFixed(0);
-      final cartCount = cart.itemCount;
+      final cartCount = cart.productCount;
       await _service.speak(
           '$added பொருட்கள் கார்ட்டில் சேர்க்கப்பட்டன. '
           'கார்ட்டில் $cartCount பொருட்கள், Total ₹$cartTotal');
@@ -401,7 +401,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
               onPressed: _clearResults,
             ),
           Consumer<CartProvider>(
-            builder: (_, cart, __) => cart.itemCount > 0
+            builder: (_, cart, __) => cart.productCount > 0
                 ? Stack(
                     children: [
                       IconButton(
@@ -418,7 +418,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: Text(
-                            '${cart.itemCount}',
+                            '${cart.productCount}',
                             style: const TextStyle(
                                 color: Colors.white, fontSize: 10),
                           ),

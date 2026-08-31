@@ -9,6 +9,7 @@ import '../../core/config/env_config.dart';
 import 'dart:convert';
 
 class CartProvider with ChangeNotifier {
+
   List<CartItem> _items = [];
   double _deliveryFee = 30.0;
   double _freeDeliveryAbove = 0.0; // Shop's free delivery threshold (0 = no free delivery)
@@ -21,7 +22,13 @@ class CartProvider with ChangeNotifier {
   String? _shopName; // Track current shop name for error messages
 
   List<CartItem> get items => List.unmodifiable(_items);
+  /// Total units across the cart (sum of quantities) - for order payloads etc.
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
+
+  /// Number of DISTINCT products - what badges and "N items" labels should
+  /// show. A cart with 2 products x4 and x5 reads "2", not "9"; showing unit
+  /// totals confused customers ("I have 4 products, badge says 11").
+  int get productCount => _items.length;
   bool get isEmpty => _items.isEmpty;
   bool get isNotEmpty => _items.isNotEmpty;
   bool get isLoading => _isLoading;
@@ -81,14 +88,11 @@ class CartProvider with ChangeNotifier {
     }
 
     // Check if cart has items from different shop
-    if (_items.isNotEmpty && !clearCartConfirmed) {
-      final currentShopId = _items.first.product.shopId;
-      if (currentShopId != product.shopId) {
-        if (kDebugMode) {
-          print('🛒 Different shop detected. Current: $currentShopId, New: ${product.shopId}');
-        }
-        return false; // Return false to indicate shop conflict
+    if (_items.isNotEmpty && !clearCartConfirmed && !_isSameShopAsCart(product)) {
+      if (kDebugMode) {
+        print('🛒 Different shop detected. Current: ${_items.first.product.shopId}, New: ${product.shopId}');
       }
+      return false; // Return false to indicate shop conflict
     }
 
     _isLoading = true;
@@ -99,9 +103,11 @@ class CartProvider with ChangeNotifier {
       final existingIndex = _items.indexWhere((item) => item.product.id == product.id);
 
       if (existingIndex >= 0) {
-        // Check stock limit before adding more
+        // Check stock limit before adding more. stockQuantity <= 0 means the
+        // shop doesn't track stock - rejecting the add here made the second
+        // tap on such a product silently do nothing.
         final newQuantity = _items[existingIndex].quantity + quantity;
-        if (newQuantity > product.stockQuantity) {
+        if (product.stockQuantity > 0 && newQuantity > product.stockQuantity) {
           if (kDebugMode) {
             print('🛒 Stock limit reached. Available: ${product.stockQuantity}, Requested: $newQuantity');
           }
@@ -314,14 +320,23 @@ class CartProvider with ChangeNotifier {
   String? get appliedPromoCode => _promoCode;
 
   void _saveCartToStorage() {
-    final cartData = {
-      'items': _items.map((item) => item.toJson()).toList(),
-      'promoCode': _promoCode,
-      'promoDiscount': _promoDiscount,
-      'isShopOpen': _isShopOpen,
-      'shopName': _shopName,
-    };
-    LocalStorage.setString('cart_data', jsonEncode(cartData));
+    // MUST NEVER THROW. Every mutator calls this BETWEEN changing _items and
+    // notifyListeners() - an exception here (un-encodable product field,
+    // storage failure) silently killed the notify, so the screen froze while
+    // the state had actually changed ("+/- does nothing until I leave and
+    // come back"). Persistence is best-effort; the UI update is not.
+    try {
+      final cartData = {
+        'items': _items.map((item) => item.toJson()).toList(),
+        'promoCode': _promoCode,
+        'promoDiscount': _promoDiscount,
+        'isShopOpen': _isShopOpen,
+        'shopName': _shopName,
+      };
+      LocalStorage.setString('cart_data', jsonEncode(cartData));
+    } catch (e) {
+      if (kDebugMode) print('🛒 Cart save to storage failed (UI unaffected): $e');
+    }
   }
 
   Future<void> loadCartFromBackend() async {
@@ -448,8 +463,12 @@ class CartProvider with ChangeNotifier {
   }
 
   bool canCheckout() {
-    return _items.isNotEmpty && _items.every((item) => 
-        item.product.isAvailable && item.quantity <= item.product.stockQuantity);
+    // stockQuantity <= 0 = "shop doesn't track stock" - such items must not
+    // block checkout (they silently disabled the Proceed to Checkout button).
+    return _items.isNotEmpty && _items.every((item) =>
+        item.product.isAvailable &&
+        (item.product.stockQuantity <= 0 ||
+            item.quantity <= item.product.stockQuantity));
   }
   
   /// Get the shop ID of items currently in cart (null if cart is empty)
@@ -464,8 +483,30 @@ class CartProvider with ChangeNotifier {
   
   /// Check if product is from same shop as current cart items
   bool isFromSameShop(ProductModel product) {
-    final currentShopId = getCurrentShopId();
-    return currentShopId == null || currentShopId == product.shopId;
+    return _items.isEmpty || _isSameShopAsCart(product);
+  }
+
+  /// Robust same-shop check. Different add paths encode the shop differently
+  /// (numeric DB id vs shop-code string vs empty), so a raw shopId string
+  /// comparison called "different shop" for the SAME shop and WIPED the
+  /// customer's cart when they opened the voice assistant. Prefer the numeric
+  /// shopDatabaseId when both sides carry it; treat unknown as same-shop
+  /// (never destroy a cart on missing data).
+  bool _isSameShopAsCart(ProductModel product) {
+    if (_items.isEmpty) return true;
+    final current = _items.first.product;
+    if (current.shopDatabaseId != null && product.shopDatabaseId != null) {
+      return current.shopDatabaseId == product.shopDatabaseId;
+    }
+    final a = current.shopId.trim();
+    final b = product.shopId.trim();
+    if (a.isEmpty || b.isEmpty) return true;
+    if (a == b) return true;
+    // "SHOP004" vs "4" style mismatches: compare the numeric parts
+    final ai = int.tryParse(a.replaceAll(RegExp(r'[^0-9]'), ''));
+    final bi = int.tryParse(b.replaceAll(RegExp(r'[^0-9]'), ''));
+    if (ai != null && bi != null) return ai == bi;
+    return false;
   }
 
   List<String> getCheckoutIssues() {

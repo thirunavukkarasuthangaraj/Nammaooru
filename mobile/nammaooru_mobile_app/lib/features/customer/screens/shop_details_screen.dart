@@ -439,7 +439,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 minHeight: 20,
                               ),
                               child: Text(
-                                '${cartProvider.itemCount}',
+                                '${cartProvider.productCount}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,

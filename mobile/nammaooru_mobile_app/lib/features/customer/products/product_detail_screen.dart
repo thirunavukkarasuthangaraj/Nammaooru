@@ -334,11 +334,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _quantity < widget.product.stockQuantity ? () {
-                    setState(() {
-                      _quantity++;
-                    });
-                  } : null,
+                  // stockQuantity <= 0 = "not tracked", never disable +
+                  onPressed: (widget.product.stockQuantity <= 0 ||
+                          _quantity < widget.product.stockQuantity)
+                      ? () {
+                          setState(() {
+                            _quantity++;
+                          });
+                        }
+                      : null,
                   icon: const Icon(Icons.add),
                 ),
               ],

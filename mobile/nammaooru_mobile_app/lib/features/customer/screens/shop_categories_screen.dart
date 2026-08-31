@@ -221,7 +221,7 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
-    final cartItemCount = cartProvider.itemCount;
+    final cartItemCount = cartProvider.productCount;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),

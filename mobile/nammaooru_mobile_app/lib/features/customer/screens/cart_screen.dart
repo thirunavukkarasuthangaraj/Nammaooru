@@ -305,15 +305,20 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             ),
                           ),
+                          // stockQuantity <= 0 = "not tracked", never disable +
                           IconButton(
-                            onPressed: item.quantity < item.product.stockQuantity
+                            onPressed: (item.product.stockQuantity <= 0 ||
+                                    item.quantity < item.product.stockQuantity)
                                 ? () {
                                     cartProvider.increaseQuantity(item.product.id);
                                   }
                                 : null,
                             icon: Icon(
-                              Icons.add, 
-                              color: item.quantity < item.product.stockQuantity ? Colors.white : Colors.grey, 
+                              Icons.add,
+                              color: (item.product.stockQuantity <= 0 ||
+                                      item.quantity < item.product.stockQuantity)
+                                  ? Colors.white
+                                  : Colors.grey,
                               size: 18
                             ),
                             padding: const EdgeInsets.all(4),
@@ -471,7 +476,7 @@ class _CartScreenState extends State<CartScreen> {
           const SizedBox(height: 16),
 
           _buildSummaryRow(
-            '${context.loc?.translate('subtotal') ?? 'Subtotal'} (${cartProvider.itemCount} ${context.loc?.translate('items') ?? 'items'})',
+            '${context.loc?.translate('subtotal') ?? 'Subtotal'} (${cartProvider.productCount} ${context.loc?.translate('items') ?? 'items'})',
             Helpers.formatCurrency(cartProvider.subtotal),
           ),
 

@@ -36,8 +36,15 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, _) {
+    // ListenableBuilder subscribes DIRECTLY to the provider via addListener,
+    // not through the InheritedWidget dependency system Consumer relies on.
+    // Under heavy shell churn that dependency was intermittently lost, leaving
+    // this screen frozen (cart state changed, no redraw) until re-entered.
+    // A direct listener cannot be dropped by tree reparenting.
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    return ListenableBuilder(
+      listenable: cartProvider,
+      builder: (context, _) {
         return PopScope(
           canPop: false,
           onPopInvoked: (didPop) {
@@ -351,33 +358,41 @@ class _CartScreenState extends State<CartScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          InkWell(
-                            onTap: item.quantity < item.product.stockQuantity
-                                ? () {
-                                    cartProvider.increaseQuantity(item.product.id);
-                                  }
-                                : null,
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: item.quantity < item.product.stockQuantity
-                                    ? VillageTheme.primaryGreen
-                                    : Colors.grey.shade200,
-                                borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(7),
-                                  bottomRight: Radius.circular(7),
+                          // stockQuantity <= 0 means the shop does NOT track
+                          // stock, not "sold out". Gating + on quantity <
+                          // stockQuantity left the button permanently disabled
+                          // for such products ("+ works on some items, not
+                          // others"). Builder locals keep the three usages in
+                          // sync.
+                          Builder(builder: (context) {
+                            final stock = item.product.stockQuantity;
+                            final canAdd = stock <= 0 || item.quantity < stock;
+                            return InkWell(
+                              onTap: canAdd
+                                  ? () {
+                                      cartProvider.increaseQuantity(item.product.id);
+                                    }
+                                  : null,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: canAdd
+                                      ? VillageTheme.primaryGreen
+                                      : Colors.grey.shade200,
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(7),
+                                    bottomRight: Radius.circular(7),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.add,
+                                  size: 14,
+                                  color: canAdd ? Colors.white : Colors.black26,
                                 ),
                               ),
-                              child: Icon(
-                                Icons.add,
-                                size: 14,
-                                color: item.quantity < item.product.stockQuantity
-                                    ? Colors.white
-                                    : Colors.black26,
-                              ),
-                            ),
-                          ),
+                            );
+                          }),
                         ],
                       ),
                     ),
@@ -395,7 +410,8 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ],
                 ),
-                if (item.quantity > item.product.stockQuantity)
+                if (item.product.stockQuantity > 0 &&
+                    item.quantity > item.product.stockQuantity)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
@@ -547,7 +563,7 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 10),
 
             _buildSummaryRow(
-              '${context.loc?.translate('subtotal') ?? 'Subtotal'} (${cartProvider.itemCount} ${context.loc?.translate('items') ?? 'items'})',
+              '${context.loc?.translate('subtotal') ?? 'Subtotal'} (${cartProvider.productCount} ${context.loc?.translate('items') ?? 'items'})',
               Helpers.formatCurrency(cartProvider.subtotal),
             ),
 

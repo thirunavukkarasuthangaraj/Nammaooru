@@ -242,7 +242,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
-    final cartItemCount = cartProvider.itemCount;
+    final cartItemCount = cartProvider.productCount;
     final cartTotal = cartProvider.total;
 
     return Scaffold(
