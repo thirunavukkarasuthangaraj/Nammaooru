@@ -1762,6 +1762,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Filter products by search term
    */
   private filterProducts(term: string): void {
+    // Normalize the term first. Voice/speech-to-text input yields a trailing
+    // space (and sometimes double spaces) that plain typing never does, e.g.
+    // "egg ". A substring match then drops single-word products - "Egg".includes
+    // ("egg ") is false, while "Egg Masala".includes("egg ") is true - so voice
+    // searching "egg" showed "Egg Masala" but hid "Egg". Trim + collapse spaces
+    // so voice and typed search behave identically.
+    term = (term || '').trim().replace(/\s+/g, ' ');
+
     // In scanner mode, show empty list when no search term
     if (!term || term.length < 2) {
       if (this.browseProductsByDefault) {
