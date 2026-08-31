@@ -167,10 +167,40 @@ public class ProductAISearchService {
                 })
                 .collect(Collectors.toList());
 
+        // Rank by match quality: an exact/whole-word name match (plain "Egg" /
+        // "முட்டை") must beat products that merely CONTAIN the word ("Egg Curry
+        // Masala", a shampoo with முட்டை in its Tamil name). Without this the
+        // substring filter surfaced masala + shampoo before the actual egg.
+        results.sort(java.util.Comparator.comparingInt(p -> -fallbackMatchScore(p, keywordArray)));
+
         log.info("Found {} matching products", results.size());
         results.forEach(p -> log.info("  - {} | {} (SKU: {})", p.getName(), p.getNameTamil(), p.getSku()));
 
         return results;
+    }
+
+    /** Higher = better match; ties broken by shorter (more specific) name. */
+    private int fallbackMatchScore(MasterProduct product, String[] keywords) {
+        String name = product.getName() != null ? product.getName().toLowerCase() : "";
+        String nameTamil = product.getNameTamil() != null ? product.getNameTamil() : "";
+        int best = 0;
+        for (String k : keywords) {
+            if (k.isEmpty()) continue;
+            int s = 0;
+            if (name.equals(k) || nameTamil.equals(k)) {
+                s = 100;                                    // exact product name
+            } else if (name.startsWith(k + " ") || nameTamil.startsWith(k + " ")) {
+                s = 80;                                     // "egg 12pc", "முட்டை 6"
+            } else if (name.contains(" " + k + " ") || name.endsWith(" " + k)
+                    || nameTamil.contains(" " + k + " ") || nameTamil.endsWith(" " + k)) {
+                s = 60;                                     // whole word inside name
+            } else if (name.contains(k) || nameTamil.contains(k)) {
+                s = 40;                                     // plain substring
+            }
+            best = Math.max(best, s);
+        }
+        // Within the same tier prefer shorter names (plain "Egg" over long combos)
+        return best * 1000 - Math.min(name.length(), 999);
     }
 
     /**

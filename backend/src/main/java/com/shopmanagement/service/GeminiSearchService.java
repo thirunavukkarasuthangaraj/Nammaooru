@@ -23,14 +23,17 @@ public class GeminiSearchService {
 
     private final GeminiConfig geminiConfig;
     private final RestTemplate restTemplate;
+    private final GroqService groqService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Round-robin counter for API key rotation
     private final AtomicInteger keyRotationCounter = new AtomicInteger(0);
 
     @Autowired
-    public GeminiSearchService(GeminiConfig geminiConfig, RestTemplateBuilder restTemplateBuilder) {
+    public GeminiSearchService(GeminiConfig geminiConfig, RestTemplateBuilder restTemplateBuilder,
+                               GroqService groqService) {
         this.geminiConfig = geminiConfig;
+        this.groqService = groqService;
         // Configure RestTemplate with timeouts (15s read for large AI search prompts)
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(10))
@@ -272,10 +275,29 @@ public class GeminiSearchService {
 
         } catch (RestClientException e) {
             log.error("⏱️ Gemini API timeout or connection error: {}", e.getMessage());
+            // Groq safety net: covers invalid/expired Gemini keys, quota
+            // exhaustion, and outages for EVERY text feature going through
+            // this method (AI search, transliteration, keyword resolver, ...).
+            String groqAnswer = tryGroqFallback(prompt, e);
+            if (groqAnswer != null) return groqAnswer;
             throw new RuntimeException("Gemini API timeout - please try again", e);
         } catch (Exception e) {
             log.error("❌ Error calling Gemini API: {}", e.getMessage());
+            String groqAnswer = tryGroqFallback(prompt, e);
+            if (groqAnswer != null) return groqAnswer;
             throw new RuntimeException("Failed to call Gemini API", e);
+        }
+    }
+
+    /** Run the same prompt through Groq; null when Groq is off or also fails. */
+    private String tryGroqFallback(String prompt, Exception geminiError) {
+        if (!groqService.isEnabled()) return null;
+        try {
+            log.warn("Gemini failed ({}), retrying via Groq", geminiError.getMessage());
+            return groqService.generateText(prompt);
+        } catch (Exception groqError) {
+            log.error("Groq fallback also failed: {}", groqError.getMessage());
+            return null;
         }
     }
 
