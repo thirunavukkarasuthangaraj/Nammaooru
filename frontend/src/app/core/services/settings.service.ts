@@ -15,6 +15,17 @@ export interface Setting {
   category: string;
 }
 
+/** Mobile app version config served to the apps' update-check on launch */
+export interface AppVersionConfig {
+  appName: string;
+  platform: string;
+  currentVersion: string;
+  minimumVersion: string;
+  isMandatory: boolean;
+  updateUrl: string;
+  releaseNotes: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -101,6 +112,45 @@ export class SettingsService {
       }),
       catchError(error => {
         console.error('Error sending test WhatsApp OTP:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /** Current app-version config (via the public check endpoint). */
+  getAppVersion(appName: string, platform: string): Observable<AppVersionConfig> {
+    const url = `${API_ENDPOINTS.BASE_URL}/app-version/check?appName=${appName}&platform=${platform}&currentVersion=0.0.0`;
+    return this.http.get<any>(url).pipe(
+      map(raw => ({
+        appName,
+        platform,
+        currentVersion: raw.currentVersion || '',
+        minimumVersion: raw.minimumVersion || '',
+        isMandatory: !!raw.isMandatory,
+        updateUrl: raw.updateUrl || '',
+        releaseNotes: raw.releaseNotes || ''
+      })),
+      catchError(error => {
+        console.error('Error fetching app version:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /** Save app-version config. Admin/Super-admin only (JWT sent by interceptor). */
+  updateAppVersion(config: AppVersionConfig): Observable<AppVersionConfig> {
+    return this.http.put<any>(`${API_ENDPOINTS.BASE_URL}/app-version/update`, config).pipe(
+      map(raw => ({
+        appName: raw.appName,
+        platform: raw.platform,
+        currentVersion: raw.currentVersion,
+        minimumVersion: raw.minimumVersion,
+        isMandatory: !!raw.isMandatory,
+        updateUrl: raw.updateUrl || '',
+        releaseNotes: raw.releaseNotes || ''
+      })),
+      catchError(error => {
+        console.error('Error updating app version:', error);
         return throwError(() => error);
       })
     );

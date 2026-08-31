@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { SwalService } from '../../../../core/services/swal.service';
-import { SettingsService, Setting } from '../../../../core/services/settings.service';
+import { SettingsService, Setting, AppVersionConfig } from '../../../../core/services/settings.service';
 import Swal from 'sweetalert2';
 import * as L from 'leaflet';
 
@@ -43,6 +43,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
   testMobile = '';
   testSending = false;
 
+  // Mobile app version / force-update control
+  appVersion: AppVersionConfig = {
+    appName: 'CUSTOMER_APP',
+    platform: 'ANDROID',
+    currentVersion: '',
+    minimumVersion: '',
+    isMandatory: false,
+    updateUrl: 'https://play.google.com/store/apps/details?id=com.nammaooru.app',
+    releaseNotes: ''
+  };
+  appVersionLoading = false;
+  appVersionSaving = false;
+
   constructor(
     private fb: FormBuilder,
     private swal: SwalService,
@@ -53,6 +66,41 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadSettings();
+    this.loadAppVersion();
+  }
+
+  loadAppVersion(): void {
+    this.appVersionLoading = true;
+    this.settingsService.getAppVersion('CUSTOMER_APP', 'ANDROID').subscribe({
+      next: (cfg) => {
+        this.appVersion = { ...this.appVersion, ...cfg };
+        this.appVersionLoading = false;
+      },
+      error: () => { this.appVersionLoading = false; }
+    });
+  }
+
+  saveAppVersion(): void {
+    const v = /^\d+\.\d+\.\d+$/;
+    if (!v.test(this.appVersion.currentVersion.trim()) || !v.test(this.appVersion.minimumVersion.trim())) {
+      this.swal.toast('Versions must look like 1.2.66', 'warning');
+      return;
+    }
+    this.appVersionSaving = true;
+    this.settingsService.updateAppVersion({
+      ...this.appVersion,
+      currentVersion: this.appVersion.currentVersion.trim(),
+      minimumVersion: this.appVersion.minimumVersion.trim()
+    }).subscribe({
+      next: () => {
+        this.appVersionSaving = false;
+        this.swal.toast('App version updated - customers will see it on next app launch', 'success');
+      },
+      error: (err) => {
+        this.appVersionSaving = false;
+        this.swal.toast(err?.status === 403 ? 'Only admins can change the app version' : 'Failed to update app version', 'error');
+      }
+    });
   }
 
   createForm(): FormGroup {

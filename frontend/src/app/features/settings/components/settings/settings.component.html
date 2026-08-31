@@ -113,6 +113,44 @@
     </form>
   </div>
 
+  <!-- Mobile App Version / Force Update -->
+  <mat-card class="quick-actions-card">
+    <mat-card-header>
+      <mat-card-title>Mobile App Version (Customer App)</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p style="color:#666;font-size:14px;margin:0 0 12px 0;">
+        Controls the update popup customers see when opening the app.
+        <b>Latest version</b>: anyone below it sees "Update available".
+        <b>Minimum version</b> + <b>Force update ON</b>: anyone below the minimum is blocked until they update.
+        Keep force update OFF for a normal, skippable prompt.
+      </p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <mat-form-field appearance="outline" style="min-width:150px;">
+          <mat-label>Latest version</mat-label>
+          <input matInput [(ngModel)]="appVersion.currentVersion" [ngModelOptions]="{standalone:true}" placeholder="1.2.66">
+        </mat-form-field>
+        <mat-form-field appearance="outline" style="min-width:150px;">
+          <mat-label>Minimum version</mat-label>
+          <input matInput [(ngModel)]="appVersion.minimumVersion" [ngModelOptions]="{standalone:true}" placeholder="1.2.59">
+        </mat-form-field>
+        <mat-slide-toggle [(ngModel)]="appVersion.isMandatory" [ngModelOptions]="{standalone:true}" color="warn">
+          Force update (blocks old versions)
+        </mat-slide-toggle>
+      </div>
+      <mat-form-field appearance="outline" style="width:100%;">
+        <mat-label>Release notes (shown in the popup)</mat-label>
+        <input matInput [(ngModel)]="appVersion.releaseNotes" [ngModelOptions]="{standalone:true}" placeholder="Bug fixes and improvements">
+      </mat-form-field>
+      <div>
+        <button mat-raised-button color="primary" (click)="saveAppVersion()" [disabled]="appVersionSaving || appVersionLoading">
+          <mat-icon>system_update</mat-icon>
+          {{ appVersionSaving ? 'Saving...' : 'Save App Version' }}
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <!-- Test WhatsApp OTP (temporary helper) -->
   <mat-card class="quick-actions-card">
     <mat-card-header>
