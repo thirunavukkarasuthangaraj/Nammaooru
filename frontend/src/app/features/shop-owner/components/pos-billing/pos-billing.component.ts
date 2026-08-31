@@ -1903,10 +1903,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    // Out of stock: offer to restock on the spot and continue billing
-    if (product.trackInventory && product.stock <= 0) {
-      this.promptRestockAndAdd(product);
-      return;
+    // Out of stock: don't interrupt billing with the restock modal. Add the item
+    // and just warn (non-blocking). The shopkeeper reconciles stock later; stock
+    // may go negative. (Previously this popped a blocking "enter new stock
+    // quantity" prompt, which broke the scan-and-bill flow.)
+    const outOfStock = product.trackInventory && product.stock <= 0;
+    if (outOfStock) {
+      this.swal.toast(`${product.name} is out of stock — added anyway`, 'warning');
     }
 
     // Check if already in cart
@@ -1916,8 +1919,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const discount = mrp - product.price;
 
     if (existingItem) {
-      // Check stock before increasing
-      if (product.trackInventory && existingItem.quantity >= product.stock) {
+      // Enforce the stock ceiling only when there IS stock. Out-of-stock items are
+      // allowed to go negative so scanning the same item repeatedly still bills.
+      if (product.trackInventory && product.stock > 0 && existingItem.quantity >= product.stock) {
         this.swal.warning('Stock Limit', `Only ${product.stock} available`);
         return;
       }
