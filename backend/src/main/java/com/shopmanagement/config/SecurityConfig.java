@@ -86,7 +86,9 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/api/version",
-                                "/api/app-version/**",  // Allow app version check without authentication
+                                "/api/app-version/check",  // ONLY the version check is public - the
+                                                           // /update admin endpoint was reachable by
+                                                           // ANYONE under the old /** wildcard
                                 "/api/customer/**",  // ALLOW ALL CUSTOMER ENDPOINTS WITHOUT AUTH
                                 "/api/mobile/**",  // ALLOW ALL MOBILE ENDPOINTS (OTP, customer registration, etc.)
                                 "/api/webhooks/**",  // ALLOW WEBHOOKS (MSG91, payment gateways, etc.)

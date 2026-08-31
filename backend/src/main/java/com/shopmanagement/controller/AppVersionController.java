@@ -86,6 +86,7 @@ public class AppVersionController {
      * Admin endpoint to update app version (for future use)
      */
     @PutMapping("/update")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
     public ResponseEntity<AppVersion> updateVersion(@RequestBody AppVersion appVersion) {
         AppVersion existing = appVersionRepository
                 .findByAppNameAndPlatform(appVersion.getAppName(), appVersion.getPlatform())
