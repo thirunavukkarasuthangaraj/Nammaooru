@@ -176,6 +176,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private lastScannedBarcode: string = '';
   private lastScanTime: number = 0;
 
+  // Gemini fallback for Tamil/voice search: cache resolved term -> English
+  // keywords so we ask the AI at most once per word, and track in-flight calls.
+  private aiKeywordCache: Map<string, string[]> = new Map();
+  private aiResolveInFlight: Set<string> = new Set();
+
   // Barcode scanner keyboard handler (stored for cleanup)
   private barcodeKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 
@@ -876,6 +881,48 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       )
       .subscribe(term => {
         this.filterProducts(term);
+        // Local search (incl. the offline Tamil dictionary) found nothing — try
+        // the Gemini fallback to resolve an unknown Tamil/voice word to English.
+        if (this.filteredProducts.length === 0) {
+          this.aiResolveKeyword(term);
+        }
+      });
+  }
+
+  /**
+   * Gemini fallback for Tamil / voice search. When the local filter (and the
+   * built-in Tamil dictionary) find nothing, ask the backend to resolve the
+   * spoken/typed word to English keyword(s), cache them, and re-run the local
+   * filter so the shop's own product list is what actually gets matched.
+   * Guarded so we call the AI at most once per word and only when online.
+   */
+  private aiResolveKeyword(term: string): void {
+    const q = (term || '').trim();
+    const key = q.toLowerCase();
+    // Skip: too short, pure barcode/number, offline, already resolved or in flight.
+    if (q.length < 2 || /^\d+$/.test(q)) return;
+    if (!navigator.onLine) return;
+    if (this.aiKeywordCache.has(key) || this.aiResolveInFlight.has(key)) return;
+
+    this.aiResolveInFlight.add(key);
+    this.http.get<any>(`${this.apiUrl}/v1/products/search/resolve-keyword`, { params: { q } })
+      .subscribe({
+        next: (res) => {
+          this.aiResolveInFlight.delete(key);
+          const keywords: string[] = (res?.data?.keywords || res?.keywords || [])
+            .map((k: string) => String(k).toLowerCase().trim())
+            .filter((k: string) => k && k !== key); // drop the unchanged input
+          this.aiKeywordCache.set(key, keywords);
+          // Only re-filter if the user is still looking at this same term.
+          if (keywords.length && this.searchTerm.trim().toLowerCase() === key) {
+            this.filterProducts(this.searchTerm);
+          }
+        },
+        error: () => {
+          this.aiResolveInFlight.delete(key);
+          // Cache empty so we don't hammer the API for a word it can't resolve.
+          this.aiKeywordCache.set(key, []);
+        }
       });
   }
 
@@ -1759,6 +1806,65 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
+   * Tamil grocery words -> English keywords, so a shopkeeper can SPEAK (voice
+   * search) or type the Tamil name and still match English product names.
+   * Keys include Tamil script AND common romanizations; all keys are lowercase.
+   * This is the offline, instant first pass; the Gemini fallback (resolveViaAi)
+   * handles words not in this list when online.
+   */
+  private static readonly TAMIL_SEARCH_MAP: Record<string, string[]> = {
+    // Dairy & eggs
+    'முட்டை': ['egg'], 'muttai': ['egg'], 'mutta': ['egg'], 'mutai': ['egg'],
+    'பால்': ['milk'], 'paal': ['milk'], 'pal': ['milk'],
+    'தயிர்': ['curd'], 'thayir': ['curd'], 'thayiru': ['curd'],
+    'வெண்ணெய்': ['butter'], 'venney': ['butter'], 'vennai': ['butter'],
+    'நெய்': ['ghee'], 'nei': ['ghee'], 'ney': ['ghee'],
+    'பன்னீர்': ['paneer'], 'panneer': ['paneer'],
+    // Staples
+    'அரிசி': ['rice'], 'arisi': ['rice'],
+    'கோதுமை': ['wheat', 'atta'], 'kothumai': ['wheat', 'atta'], 'godhumai': ['wheat', 'atta'],
+    'மைதா': ['maida'], 'maida': ['maida'],
+    'பருப்பு': ['dal', 'dhall', 'lentil'], 'paruppu': ['dal', 'dhall', 'lentil'],
+    'ரவை': ['rava', 'sooji'], 'ravai': ['rava', 'sooji'],
+    // Cooking basics
+    'சர்க்கரை': ['sugar'], 'sarkkarai': ['sugar'], 'sakkarai': ['sugar'], 'chakkarai': ['sugar'],
+    'உப்பு': ['salt'], 'uppu': ['salt'],
+    'எண்ணெய்': ['oil'], 'ennai': ['oil'], 'enney': ['oil'], 'enn ai': ['oil'],
+    'தண்ணீர்': ['water'], 'thanneer': ['water'], 'thanni': ['water'], 'tanni': ['water'],
+    'மஞ்சள்': ['turmeric'], 'manjal': ['turmeric'],
+    'மிளகாய்': ['chilli', 'chili'], 'milagai': ['chilli', 'chili'], 'milakai': ['chilli', 'chili'],
+    'மிளகு': ['pepper'], 'milagu': ['pepper'],
+    'கடுகு': ['mustard'], 'kadugu': ['mustard'],
+    'சீரகம்': ['cumin', 'jeera'], 'seeragam': ['cumin', 'jeera'],
+    'புளி': ['tamarind'], 'puli': ['tamarind'],
+    'கொத்தமல்லி': ['coriander'], 'kothamalli': ['coriander'],
+    'கறிவேப்பிலை': ['curry leaves'], 'karuveppilai': ['curry leaves'], 'kariveppilai': ['curry leaves'],
+    // Vegetables
+    'வெங்காயம்': ['onion'], 'vengayam': ['onion'],
+    'தக்காளி': ['tomato'], 'thakkali': ['tomato'], 'takkali': ['tomato'],
+    'உருளைக்கிழங்கு': ['potato'], 'urulaikizhangu': ['potato'], 'urulai': ['potato'],
+    'பூண்டு': ['garlic'], 'poondu': ['garlic'],
+    'இஞ்சி': ['ginger'], 'inji': ['ginger'],
+    'தேங்காய்': ['coconut'], 'thengai': ['coconut'], 'thenga': ['coconut'],
+    'எலுமிச்சை': ['lemon', 'lime'], 'elumichai': ['lemon', 'lime'], 'elumichampazham': ['lemon', 'lime'],
+    'நிலக்கடலை': ['groundnut', 'peanut'], 'nilakadalai': ['groundnut', 'peanut'], 'kadalai': ['groundnut', 'peanut', 'gram'],
+    // Beverages
+    'தேயிலை': ['tea'], 'theyilai': ['tea'], 'dee': ['tea'],
+    'காபி': ['coffee'], 'kaapi': ['coffee'], 'kaappi': ['coffee'],
+    // Bakery & packaged
+    'ரொட்டி': ['bread', 'roti'], 'rotti': ['bread', 'roti'],
+    'பிஸ்கட்': ['biscuit'], 'biscuit': ['biscuit'], 'bisket': ['biscuit'],
+    'சோப்பு': ['soap'], 'soppu': ['soap'],
+    // Meat & fish
+    'கோழி': ['chicken'], 'kozhi': ['chicken'],
+    'மீன்': ['fish'], 'meen': ['fish'],
+    'மட்டன்': ['mutton'], 'aatirachi': ['mutton'], 'aattirachi': ['mutton'],
+    // Fruits
+    'வாழைப்பழம்': ['banana'], 'vazhaipazham': ['banana'], 'vazhapazham': ['banana'],
+    'ஆப்பிள்': ['apple'], 'apple': ['apple'],
+  };
+
+  /**
    * Filter products by search term
    */
   private filterProducts(term: string): void {
@@ -1784,6 +1890,23 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const lowerTerm = term.toLowerCase();
 
+    // Expand Tamil grocery words to their English equivalents so speaking/typing
+    // "முட்டை" or "muttai" also finds the English "Egg". The original term is
+    // always kept, and each space-separated token is looked up in TAMIL_SEARCH_MAP.
+    const searchTerms = [lowerTerm];
+    for (const tok of lowerTerm.split(' ')) {
+      const mapped = PosBillingComponent.TAMIL_SEARCH_MAP[tok];
+      if (mapped) {
+        for (const m of mapped) if (!searchTerms.includes(m)) searchTerms.push(m);
+      }
+    }
+    // Also fold in any English keywords the Gemini fallback previously resolved
+    // for this exact term (populated asynchronously by aiResolveKeyword).
+    const cachedAi = this.aiKeywordCache.get(lowerTerm);
+    if (cachedAi) {
+      for (const m of cachedAi) if (!searchTerms.includes(m)) searchTerms.push(m);
+    }
+
     // Fast path: exact barcode match (most common for scanner)
     if (term.length >= 5 && /^\d+$/.test(term)) {
       const exactMatch = this.products.find(p =>
@@ -1800,9 +1923,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     for (const p of this.products) {
       if (filtered.length >= 50) break; // Limit results for performance
 
-      if (p.name.toLowerCase().includes(lowerTerm) ||
-          (p.nameTamil && p.nameTamil.toLowerCase().includes(lowerTerm)) ||
-          (p.sku && p.sku.toLowerCase().includes(lowerTerm)) ||
+      const name = p.name.toLowerCase();
+      const nameTa = p.nameTamil ? p.nameTamil.toLowerCase() : '';
+      const sku = p.sku ? p.sku.toLowerCase() : '';
+      const textMatch = searchTerms.some(t =>
+        name.includes(t) || (nameTa && nameTa.includes(t)) || (sku && sku.includes(t))
+      );
+
+      if (textMatch ||
           (p.barcode && p.barcode.includes(term)) ||
           (p.barcode1 && p.barcode1.includes(term)) ||
           (p.barcode2 && p.barcode2.includes(term)) ||

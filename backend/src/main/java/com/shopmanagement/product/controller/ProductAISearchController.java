@@ -180,6 +180,48 @@ public class ProductAISearchController {
     }
 
     /**
+     * Resolve a single Tamil / Tanglish grocery word to its English keyword(s).
+     * Lightweight helper for the POS live-search: the frontend keeps matching
+     * against the shop's own product list locally and only calls this when its
+     * built-in offline Tamil dictionary has no hit. Returns comma-separated
+     * lowercase English keywords the frontend then re-filters with locally.
+     */
+    @GetMapping("/resolve-keyword")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resolveKeyword(
+            @RequestParam(name = "q") String query
+    ) {
+        log.info("Resolve keyword request: q={}", query);
+        try {
+            String prompt = "You translate ONE Indian grocery/household item into English. " +
+                    "The input is a single item spoken in Tamil, Tanglish (romanized Tamil), or English: \"" + query + "\". " +
+                    "Reply with ONLY the common English product keyword(s), comma-separated, lowercase, no other words, no explanation. " +
+                    "Examples: 'முட்டை' -> egg | 'muttai' -> egg | 'பால்' -> milk | 'sarkkarai' -> sugar | " +
+                    "'கடலை' -> gram,groundnut | 'thakkali' -> tomato. " +
+                    "If you cannot map it, reply with the input word unchanged.";
+
+            String raw = geminiSearchService.generateText(prompt);
+            List<String> keywords = new ArrayList<>();
+            if (raw != null) {
+                for (String part : raw.replaceAll("[\\r\\n]+", ",").split(",")) {
+                    String k = part.trim().toLowerCase();
+                    // keep only short single-word/phrase keywords; drop any stray sentences
+                    if (!k.isEmpty() && k.length() <= 30 && !keywords.contains(k)) {
+                        keywords.add(k);
+                    }
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("query", query);
+            result.put("keywords", keywords);
+            return ResponseEntity.ok(ApiResponse.success(result, "Resolved " + keywords.size() + " keyword(s)"));
+        } catch (Exception e) {
+            log.error("Error resolving keyword: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Resolve failed: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Parse a photo of a handwritten shopping list using Gemini Vision AI.
      * Supports Tamil and English handwriting.
      * Returns a list of parsed item names.
