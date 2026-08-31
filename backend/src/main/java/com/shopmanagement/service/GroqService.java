@@ -35,7 +35,7 @@ public class GroqService {
     @Value("${groq.api-key:}")
     private String apiKey;
 
-    @Value("${groq.model:llama-3.1-8b-instant}")
+    @Value("${groq.model:openai/gpt-oss-20b}")
     private String model;
 
     @Value("${groq.api-url:https://api.groq.com/openai/v1/chat/completions}")

@@ -79,7 +79,7 @@ services:
       # Groq AI (fallback when Gemini quota exhausted)
       - GROQ_ENABLED=${GROQ_ENABLED:-true}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - GROQ_MODEL=${GROQ_MODEL:-llama-3.1-8b-instant}
+      - GROQ_MODEL=${GROQ_MODEL:-openai/gpt-oss-20b}
       # Microservice feature flag
       - MICROSERVICE_USER_ENABLED=${MICROSERVICE_USER_ENABLED:-false}
       - MICROSERVICE_USER_URL=${MICROSERVICE_USER_URL:-http://46.225.224.191:8081}

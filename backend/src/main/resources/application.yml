@@ -341,7 +341,7 @@ gemini:
 groq:
   enabled: ${GROQ_ENABLED:true}
   api-key: ${GROQ_API_KEY:}
-  model: ${GROQ_MODEL:llama-3.1-8b-instant}
+  model: ${GROQ_MODEL:openai/gpt-oss-20b}
   api-url: ${GROQ_API_URL:https://api.groq.com/openai/v1/chat/completions}
 
 # OpenAI Configuration (Whisper for voice transcription)
