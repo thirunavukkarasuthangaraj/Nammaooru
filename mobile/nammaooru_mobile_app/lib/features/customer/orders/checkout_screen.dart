@@ -2536,32 +2536,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         cartProvider.clearCart();
 
         if (mounted) {
-          // Clear the cart after successful order
-          cartProvider.clearCart();
-
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                result['message'] ?? 'Order placed successfully!',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              backgroundColor: VillageTheme.primaryGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              margin: const EdgeInsets.all(12),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-
-          // Redirect to dashboard after a short delay to show the success message
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) {
-              context.go('/customer/dashboard');
-            }
-          });
+          // Big, un-missable confirmation (village users overlook SnackBar
+          // toasts) + guaranteed navigation away from checkout. The previous
+          // code showed a toast and called context.go() after 500ms - but this
+          // screen is pushed imperatively on the ROOT navigator, so context.go
+          // only rebuilt the dashboard UNDERNEATH it; checkout stayed on top
+          // and re-taps created duplicate orders.
+          final data = result['data'];
+          final orderNumber = (data is Map && data['orderNumber'] != null)
+              ? data['orderNumber'].toString()
+              : null;
+          _showOrderSuccessDialog(orderNumber);
         }
       } else {
         // Surface the real underlying error (order_service.dart tucks it into
@@ -2601,6 +2586,91 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         setState(() => _isPlacingOrder = false);
       }
     }
+  }
+
+  /// Big SweetAlert-style order confirmation. Not dismissible by tapping
+  /// outside or the back button - the only way forward is the button, which
+  /// pops the checkout page off the ROOT navigator (it was pushed there
+  /// imperatively, so context.go alone can't remove it) and then routes to
+  /// the orders screen. English + Tamil so village customers can't miss it.
+  void _showOrderSuccessDialog(String? orderNumber) {
+    final router = GoRouter.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: VillageTheme.primaryGreen.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_circle_rounded,
+                      color: VillageTheme.primaryGreen, size: 72),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Order Placed!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'உங்கள் ஆர்டர் வெற்றிகரமாக வைக்கப்பட்டது',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15, color: Colors.black87),
+                ),
+                if (orderNumber != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Order #$orderNumber',
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black54),
+                  ),
+                ],
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: VillageTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      // 1. close this dialog
+                      Navigator.of(dialogContext).pop();
+                      // 2. remove the checkout page itself from the root stack
+                      Navigator.of(context, rootNavigator: true).pop();
+                      // 3. land on the orders list (router captured before the
+                      //    pop so it survives this widget being disposed)
+                      router.go('/customer/orders');
+                    },
+                    child: const Text(
+                      'View My Orders',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _getCurrentLocation() async {

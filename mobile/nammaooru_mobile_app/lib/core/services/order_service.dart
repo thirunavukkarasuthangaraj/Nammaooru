@@ -136,19 +136,25 @@ class OrderService {
           final data = responseData['data'];
           final message = responseData['message'] ?? 'Order processed';
           
-          if (statusCode == '0000' && data != null) {
-            // Try to parse order data - backend might return different format
-            try {
-              final order = Order.fromJson(data is Map<String, dynamic> 
-                  ? data 
-                  : data is Map 
-                      ? Map<String, dynamic>.from(data)
-                      : <String, dynamic>{});
-              await _addToOrdersCache(order);
-            } catch (e) {
-              print('⚠️ Warning: Could not cache order data: $e');
+          // statusCode '0000' means the server CREATED the order. Do not also
+          // require data != null: a success envelope with a null/odd body was
+          // being reported as failure, the customer tapped "Place Order" again,
+          // and DUPLICATE orders were created.
+          if (statusCode == '0000') {
+            if (data != null) {
+              // Try to parse order data - backend might return different format
+              try {
+                final order = Order.fromJson(data is Map<String, dynamic>
+                    ? data
+                    : data is Map
+                        ? Map<String, dynamic>.from(data)
+                        : <String, dynamic>{});
+                await _addToOrdersCache(order);
+              } catch (e) {
+                print('⚠️ Warning: Could not cache order data: $e');
+              }
             }
-            
+
             return {
               'success': true,
               'data': data,
