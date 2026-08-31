@@ -9,6 +9,31 @@ class AddressService {
   AddressService._();
 
   static const String _addressesKey = 'saved_addresses';
+  static const String _lastPincodeKey = 'last_used_pincode';
+
+  /// Remember the pincode the customer last entered, so the address form can
+  /// pre-fill it next time instead of asking for it on every new address.
+  Future<void> saveLastUsedPincode(String pincode) async {
+    final trimmed = pincode.trim();
+    if (trimmed.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastPincodeKey, trimmed);
+    } catch (e) {
+      print('Error saving last used pincode: $e');
+    }
+  }
+
+  /// The customer's last-entered pincode, or empty string if none saved yet.
+  Future<String> getLastUsedPincode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_lastPincodeKey) ?? '';
+    } catch (e) {
+      print('Error reading last used pincode: $e');
+      return '';
+    }
+  }
 
   Future<List<SavedAddress>> getSavedAddresses() async {
     try {

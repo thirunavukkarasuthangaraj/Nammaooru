@@ -3,6 +3,7 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/services/delivery_location_service.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../services/address_api_service.dart';
+import '../../../core/services/address_service.dart';
 
 class SaveAddressDialog extends StatefulWidget {
   final double latitude;
@@ -68,6 +69,16 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
     _cityController.text = widget.detectedCity;
     _stateController.text = widget.detectedState;
     _pincodeController.text = widget.detectedPincode;
+
+    // If geocoding didn't give us a pincode, reuse the one the customer entered
+    // last time so they don't have to re-type it on every new address.
+    if (widget.detectedPincode.trim().isEmpty) {
+      AddressService.instance.getLastUsedPincode().then((saved) {
+        if (saved.isNotEmpty && _pincodeController.text.trim().isEmpty && mounted) {
+          setState(() => _pincodeController.text = saved);
+        }
+      });
+    }
   }
 
   @override
@@ -156,6 +167,12 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
         street: _streetController.text.trim(),
         village: _villageController.text.trim(),
       );
+
+      if (result['success']) {
+        // Remember this pincode so the next new-address form pre-fills it.
+        await AddressService.instance
+            .saveLastUsedPincode(_pincodeController.text.trim());
+      }
 
       if (mounted) {
         if (result['success']) {
