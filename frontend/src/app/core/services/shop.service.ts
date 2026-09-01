@@ -257,6 +257,21 @@ export class ShopService {
     );
   }
 
+  suspendShop(id: number): Observable<Shop> {
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/${id}/suspend`, {}).pipe(
+      map(apiResponse => {
+        if (ApiResponseHelper.isError(apiResponse)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(apiResponse));
+        }
+        return this.transformShop(apiResponse.data);
+      }),
+      catchError(error => {
+        console.error('Error suspending shop:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Toggle mobile app visibility (admin only)
   setMobileAppEnabled(id: number, enabled: boolean): Observable<Shop> {
     return this.http.patch<ApiResponse<any>>(`${this.API_URL}/${id}/mobile-app-enabled`, { enabled }).pipe(

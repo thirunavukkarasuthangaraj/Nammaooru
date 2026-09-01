@@ -294,6 +294,38 @@ import Swal from 'sweetalert2';
       line-height: 1.2;
     }
 
+    // Actionable status control — same visual language as the chip it
+    // replaced, but a real <select> so admins can change it inline
+    .status-dropdown {
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 16px;
+      padding: 4px 22px 4px 10px;
+      border: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 4px center;
+      background-size: 14px;
+      transition: opacity 0.15s ease;
+    }
+
+    .status-dropdown:hover {
+      opacity: 0.85;
+    }
+
+    .status-dropdown:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+
+    .status-dropdown:focus {
+      outline: 2px solid #3b82f6;
+      outline-offset: 1px;
+    }
+
     .status-pending {
       background-color: #fef3c7;
       color: #92400e;
@@ -890,6 +922,82 @@ export class ShopListComponent implements OnInit {
       } else if (result.isDenied && shop.status === 'PENDING') {
         this.rejectShop(shop);
       }
+    });
+  }
+
+  // Fired from the status dropdown on each shop card/row — mirrors the
+  // confirm-then-call-then-reload pattern of the existing approveShop()/
+  // rejectShop() actions below, but for any status the dropdown offers.
+  onStatusDropdownChange(shop: Shop, event: Event) {
+    const newStatus = (event.target as HTMLSelectElement).value;
+    const previousStatus = shop.status;
+    if (newStatus === previousStatus) return;
+
+    if (newStatus === 'APPROVED') {
+      this.confirmAndSetStatus(shop, previousStatus, 'Activate Shop',
+        `Set "${shop.name}" to Active? It will become visible to customers.`,
+        this.shopService.approveShop(shop.id));
+    } else if (newStatus === 'SUSPENDED') {
+      this.confirmAndSetStatus(shop, previousStatus, 'Suspend Shop',
+        `Suspend "${shop.name}"? It will be hidden from customers immediately.`,
+        this.shopService.suspendShop(shop.id));
+    } else if (newStatus === 'REJECTED') {
+      // Reuses the existing reject flow (asks for a reason)
+      (shop as any).status = previousStatus; // revert the raw select; rejectShop() reloads on success anyway
+      this.rejectShop(shop);
+    } else {
+      // PENDING has no direct backend action from here — revert the select
+      (shop as any).status = previousStatus;
+      Swal.fire({
+        title: 'Not supported',
+        text: '"Pending" can only be reached automatically, not selected directly.',
+        icon: 'info',
+        confirmButtonColor: '#3085d6'
+      });
+    }
+  }
+
+  private confirmAndSetStatus(shop: Shop, previousStatus: string, title: string, text: string, request: import('rxjs').Observable<Shop>) {
+    Swal.fire({
+      title,
+      text,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, confirm',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (!result.isConfirmed) {
+        (shop as any).status = previousStatus; // revert the select to its old value
+        return;
+      }
+      (shop as any).statusUpdating = true;
+      request.subscribe({
+        next: (updated) => {
+          (shop as any).statusUpdating = false;
+          shop.status = updated.status;
+          Swal.fire({
+            title: 'Updated!',
+            text: `"${shop.name}" status changed successfully.`,
+            icon: 'success',
+            confirmButtonColor: '#3085d6',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        },
+        error: (error) => {
+          (shop as any).statusUpdating = false;
+          (shop as any).status = previousStatus;
+          console.error('Error updating shop status:', error);
+          Swal.fire({
+            title: 'Error!',
+            text: `Failed to update "${shop.name}". Please try again.`,
+            icon: 'error',
+            confirmButtonColor: '#3085d6'
+          });
+        }
+      });
     });
   }
 
