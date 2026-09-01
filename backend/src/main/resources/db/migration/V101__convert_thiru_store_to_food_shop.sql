@@ -1,47 +1,51 @@
--- Convert shop id=1 ("Thiru store", currently GROCERY, Tirupattur village,
--- the real active/approved shop) into a food shop, and seed it with 34
--- real Tamil Nadu village-style food items across tiffin, rice/biryani,
--- chicken, mutton, beef, and regular curries/sides.
+-- Reactivate shop id=3 ("thiru food shop" — already RESTAURANT type, but
+-- SUSPENDED/inactive/hidden from the app), and seed it with 34 real Tamil
+-- Nadu village-style food items across tiffin, rice/biryani, chicken,
+-- mutton, beef, and regular curries/sides.
+-- (Originally targeted shop id=1 for conversion, but that deploy failed
+-- at the infra level before any SQL ran — confirmed via live API, shop 1
+-- was untouched. Pivoted to shop 3, which is already the right business
+-- type and just needs reactivating, avoiding the business-type change
+-- entirely.)
 -- No images are attached (none exist for these new dishes yet) — the
 -- product cards will show the default placeholder icon until the shop
 -- owner uploads real photos, same as how the vegetable catalog started.
 -- Idempotent: category/product inserts use WHERE NOT EXISTS / ON CONFLICT.
 
--- Step 1: update shop identity/type — only name, Tamil name, description,
--- business type and business name change; address/contact/commission etc
--- are left untouched.
+-- Step 1: reactivate the shop — approve it, mark active, enable in the
+-- mobile app, and fill in the Tamil name/description that were empty.
 UPDATE shops
-SET business_type = 'RESTAURANT',
-    name = 'Thiru Food Shop',
+SET status = 'APPROVED',
+    is_active = true,
+    mobile_app_enabled = true,
     name_tamil = 'திரு உணவகம்',
     description = 'Authentic Tamil Nadu food — tiffin, biryani, chicken, mutton & more, freshly made daily.',
-    business_name = 'Thiru Food Shop',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 3;
 
--- Step 2: create the food categories (shop-owned, scoped to shop 1)
+-- Step 2: create the food categories (shop-owned, scoped to shop 3)
 INSERT INTO product_categories (name, name_tamil, description, slug, parent_id, is_active, sort_order, owner_shop_id, created_by, updated_by, created_at, updated_at)
-SELECT 'Tiffin', 'டிபன்', 'Breakfast tiffin items', 'tiffin', NULL, true, 1, 1, 'system_seed', 'system_seed', NOW(), NOW()
+SELECT 'Tiffin', 'டிபன்', 'Breakfast tiffin items', 'tiffin', NULL, true, 1, 3, 'system_seed', 'system_seed', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE slug = 'tiffin');
 
 INSERT INTO product_categories (name, name_tamil, description, slug, parent_id, is_active, sort_order, owner_shop_id, created_by, updated_by, created_at, updated_at)
-SELECT 'Biryani & Rice', 'பிரியாணி & சாதம்', 'Biryani and rice varieties', 'biryani-rice', NULL, true, 2, 1, 'system_seed', 'system_seed', NOW(), NOW()
+SELECT 'Biryani & Rice', 'பிரியாணி & சாதம்', 'Biryani and rice varieties', 'biryani-rice', NULL, true, 2, 3, 'system_seed', 'system_seed', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE slug = 'biryani-rice');
 
 INSERT INTO product_categories (name, name_tamil, description, slug, parent_id, is_active, sort_order, owner_shop_id, created_by, updated_by, created_at, updated_at)
-SELECT 'Chicken', 'கோழி', 'Chicken dishes', 'chicken', NULL, true, 3, 1, 'system_seed', 'system_seed', NOW(), NOW()
+SELECT 'Chicken', 'கோழி', 'Chicken dishes', 'chicken', NULL, true, 3, 3, 'system_seed', 'system_seed', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE slug = 'chicken');
 
 INSERT INTO product_categories (name, name_tamil, description, slug, parent_id, is_active, sort_order, owner_shop_id, created_by, updated_by, created_at, updated_at)
-SELECT 'Mutton', 'ஆட்டு இறைச்சி', 'Mutton dishes', 'mutton', NULL, true, 4, 1, 'system_seed', 'system_seed', NOW(), NOW()
+SELECT 'Mutton', 'ஆட்டு இறைச்சி', 'Mutton dishes', 'mutton', NULL, true, 4, 3, 'system_seed', 'system_seed', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE slug = 'mutton');
 
 INSERT INTO product_categories (name, name_tamil, description, slug, parent_id, is_active, sort_order, owner_shop_id, created_by, updated_by, created_at, updated_at)
-SELECT 'Beef', 'மாட்டிறைச்சி', 'Beef dishes', 'beef', NULL, true, 5, 1, 'system_seed', 'system_seed', NOW(), NOW()
+SELECT 'Beef', 'மாட்டிறைச்சி', 'Beef dishes', 'beef', NULL, true, 5, 3, 'system_seed', 'system_seed', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE slug = 'beef');
 
 INSERT INTO product_categories (name, name_tamil, description, slug, parent_id, is_active, sort_order, owner_shop_id, created_by, updated_by, created_at, updated_at)
-SELECT 'Curries & Sides', 'குழம்பு & சைடு', 'Curries, soups and side items', 'curries-sides', NULL, true, 6, 1, 'system_seed', 'system_seed', NOW(), NOW()
+SELECT 'Curries & Sides', 'குழம்பு & சைடு', 'Curries, soups and side items', 'curries-sides', NULL, true, 6, 3, 'system_seed', 'system_seed', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE slug = 'curries-sides');
 
 -- Step 3: master products (the dishes)
@@ -97,10 +101,10 @@ VALUES
     ('Buttermilk', 'மோர்', 'Chilled spiced buttermilk', 'FOOD-BUTTERMILK-034', '8909988870034', (SELECT id FROM product_categories WHERE slug='curries-sides'), NULL, 'glass', 1, 'buttermilk, drink, lunch', 'ACTIVE', false, true, 'system_seed', 'system_seed', NOW(), NOW())
 ON CONFLICT (sku) DO NOTHING;
 
--- Step 4: list every one of these dishes for sale in shop 1
+-- Step 4: list every one of these dishes for sale in shop 3
 INSERT INTO shop_products
     (shop_id, master_product_id, price, stock_quantity, track_inventory, status, is_available, is_featured, created_by, updated_by, created_at, updated_at)
-SELECT 1, mp.id,
+SELECT 3, mp.id,
     CASE mp.sku
         WHEN 'FOOD-IDLI-001' THEN 30 WHEN 'FOOD-DOSA-002' THEN 35 WHEN 'FOOD-MDOSA-003' THEN 50
         WHEN 'FOOD-PONGAL-004' THEN 35 WHEN 'FOOD-VADA-005' THEN 25 WHEN 'FOOD-UTTAPAM-006' THEN 45
