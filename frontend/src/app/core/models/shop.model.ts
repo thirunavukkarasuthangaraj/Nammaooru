@@ -1,6 +1,7 @@
 export interface Shop {
   id: number;
   name: string;
+  statusUpdating?: boolean;
   nameTamil?: string;
   description?: string;
   shopId: string;
