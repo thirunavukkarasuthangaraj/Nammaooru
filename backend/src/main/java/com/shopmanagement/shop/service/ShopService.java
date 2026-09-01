@@ -563,7 +563,16 @@ public class ShopService {
     public List<ShopResponse> getNearbyShops(double latitude, double longitude, double radiusInKm) {
         List<Shop> nearbyShops = shopRepository.findShopsWithinRadius(latitude, longitude, radiusInKm);
         return nearbyShops.stream()
-                .map(shopMapper::toResponse)
+                .map(shop -> {
+                    ShopResponse response = shopMapper.toResponse(shop);
+                    try {
+                        response.setIsOpenNow(businessHoursService.isShopOpenNow(shop.getId()));
+                    } catch (Exception e) {
+                        log.warn("Failed to check business hours for shop {}: {}", shop.getId(), e.getMessage());
+                        response.setIsOpenNow(shop.getIsActive());
+                    }
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 
