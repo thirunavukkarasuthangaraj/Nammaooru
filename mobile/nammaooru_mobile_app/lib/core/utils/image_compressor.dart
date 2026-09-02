@@ -1,6 +1,5 @@
-import 'dart:io';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'logger.dart';
 
 class ImageCompressor {
@@ -19,7 +18,7 @@ class ImageCompressor {
 
       final result = await FlutterImageCompress.compressAndGetFile(
         file.path,
-        _getTempPath(file.path),
+        await _getTempPath(),
         quality: quality,
         minWidth: maxDimension,
         minHeight: maxDimension,
@@ -52,9 +51,14 @@ class ImageCompressor {
     return compressed;
   }
 
-  static String _getTempPath(String originalPath) {
-    final dir = originalPath.substring(0, originalPath.lastIndexOf('/'));
+  /// Always write into the app's own sandboxed temp directory — the source
+  /// file's own folder (e.g. a Photo Picker-resolved path) isn't reliably
+  /// writable by the app, which caused silent per-device compression
+  /// failures once broad media permissions were dropped for Play Store
+  /// compliance.
+  static Future<String> _getTempPath() async {
+    final dir = await getTemporaryDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '$dir/compressed_$timestamp.jpg';
+    return '${dir.path}/compressed_$timestamp.jpg';
   }
 }

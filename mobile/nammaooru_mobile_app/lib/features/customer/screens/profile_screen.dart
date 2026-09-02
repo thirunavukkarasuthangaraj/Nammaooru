@@ -16,6 +16,7 @@ import '../../../core/api/api_client.dart';
 import '../../../shared/services/location_service.dart';
 import 'payment_history_screen.dart';
 import 'contact_requests_screen.dart';
+import 'help_support_screen.dart';
 import '../../../core/services/contact_request_service.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 import '../../../services/contact_config_service.dart';
@@ -721,6 +722,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }),
         _buildActionRow(_t('Privacy Policy', 'தனியுரிமை கொள்கை'), Icons.privacy_tip_outlined, () {
           PrivacyPolicyDialog.show(context);
+        }),
+        _buildActionRow(_t('Help & Support', 'உதவி & ஆதரவு'), Icons.help_outline, () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => const HelpSupportScreen(),
+          ));
         }),
       ],
     );

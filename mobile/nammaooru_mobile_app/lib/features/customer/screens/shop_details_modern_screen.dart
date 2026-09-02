@@ -66,6 +66,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
   @override
   void dispose() {
+    _voiceSearch.stopListening();
     _searchController.dispose();
     _scrollController.dispose();
     _bannerController.dispose();

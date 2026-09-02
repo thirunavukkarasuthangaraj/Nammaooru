@@ -89,9 +89,10 @@ class VoiceSearchService {
           cancelOnError: false,
           partialResults: true,
         ),
-        // Short windows keep the mic snappy: stop ~2s after the user goes
-        // quiet instead of hanging on for 5s / 30s like before.
-        pauseFor: pauseFor ?? const Duration(seconds: 2),
+        // 2s was too aggressive in practice — it cut people off before they
+        // even started speaking, or mid-sentence during a natural pause.
+        // 4s gives real breathing room without hanging on for 5s / 30s like before.
+        pauseFor: pauseFor ?? const Duration(seconds: 4),
         listenFor: maxListen,
       );
 

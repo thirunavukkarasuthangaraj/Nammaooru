@@ -135,9 +135,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   void _triggerTour() {
     if (!mounted || _showcaseCtx == null) return;
+    // User already navigated away from the dashboard — starting now would
+    // draw the showcase overlay on top of the pushed screen.
+    if (ModalRoute.of(context)?.isCurrent != true) return;
     final keys = _featureTourKeys.values.toList();
     if (keys.isEmpty) return;
     ShowCaseWidget.of(_showcaseCtx!).startShowCase(keys);
+  }
+
+  void _dismissTour() {
+    if (_showcaseCtx == null) return;
+    try {
+      ShowCaseWidget.of(_showcaseCtx!).dismiss();
+    } catch (_) {}
   }
 
   Future<void> _initLocationThenLoadData() async {
@@ -1681,8 +1691,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                                   ] else
                                     const SizedBox(height: 12),
                                   _buildServiceCategories(),
-                                  const SizedBox(height: 16),
-                                  _buildHomeSearchBar(),
                                   const SizedBox(height: 20),
                                   _buildNearbyOnHome(),
                                   if (featureConfig.isVisible('section_featured_shops') &&
@@ -2068,21 +2076,46 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   // Map icon string from backend to Flutter IconData
-  IconData _mapIcon(String? iconName) {
+  IconData _mapIcon(String? iconName, {String? route}) {
     const iconMap = <String, IconData>{
       'shopping_basket_rounded': Icons.shopping_basket_rounded,
       'restaurant_rounded': Icons.restaurant_rounded,
       'storefront_rounded': Icons.storefront_rounded,
       'eco_rounded': Icons.eco_rounded,
+      'agriculture_rounded': Icons.agriculture_rounded,
       'construction_rounded': Icons.construction_rounded,
+      'engineering_rounded': Icons.engineering_rounded,
       'directions_bus_rounded': Icons.directions_bus_rounded,
       'local_shipping_rounded': Icons.local_shipping_rounded,
       'directions_car_rounded': Icons.directions_car_rounded,
       'home_work_rounded': Icons.home_work_rounded,
       'vpn_key_rounded': Icons.vpn_key_rounded,
       'account_balance_rounded': Icons.account_balance_rounded,
+      'work_rounded': Icons.work_rounded,
+      'spa_rounded': Icons.spa_rounded,
+      'recycling_rounded': Icons.recycling_rounded,
+      'shopping_bag_rounded': Icons.shopping_bag_rounded,
+      'fastfood_rounded': Icons.fastfood_rounded,
     };
-    return iconMap[iconName] ?? Icons.grid_view_rounded;
+    return iconMap[iconName] ?? _iconForRoute(route);
+  }
+
+  // Fallback when backend sends no/unknown icon name — pick by feature route
+  IconData _iconForRoute(String? route) {
+    if (route == null || route.isEmpty) return Icons.grid_view_rounded;
+    if (route.contains('grocery')) return Icons.shopping_basket_rounded;
+    if (route.contains('food')) return Icons.restaurant_rounded;
+    if (route.contains('marketplace')) return Icons.recycling_rounded;
+    if (route.contains('farmer')) return Icons.agriculture_rounded;
+    if (route.contains('labour')) return Icons.engineering_rounded;
+    if (route.contains('travel') || route.contains('bus')) return Icons.directions_bus_rounded;
+    if (route.contains('parcel')) return Icons.local_shipping_rounded;
+    if (route.contains('real-estate')) return Icons.home_work_rounded;
+    if (route.contains('rental')) return Icons.vpn_key_rounded;
+    if (route.contains('women')) return Icons.spa_rounded;
+    if (route.contains('village') || route.contains('panchayat')) return Icons.account_balance_rounded;
+    if (route.contains('job')) return Icons.work_rounded;
+    return Icons.grid_view_rounded;
   }
 
   // Parse hex color string to Color
@@ -2130,6 +2163,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   // Navigate based on route from backend — checks service area on every tap
   void _navigateToFeature(String? route) {
     if (route == null || route.isEmpty) return;
+    _dismissTour();
     _guardedNavigate(() => _doNavigateToFeature(route));
   }
 
@@ -2276,13 +2310,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildCategoryLoadingShimmer() {
-    return GridView.count(
+    return GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 1.25,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
+      // Same fixed tile height as the real tiles — width-independent
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 124,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
       children: List.generate(4, (index) => Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -2370,13 +2407,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             );
           },
         ),
-        GridView.count(
+        GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          childAspectRatio: 1.25,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          // Fixed tile height (icon badge + 2-line label) instead of an
+          // aspect ratio, so narrow screens can never overflow
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 124,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
           children: _dynamicFeatures.map((feature) {
             final featureName = feature['featureName']?.toString() ?? '';
             final title = isTamil && feature['displayNameTamil'] != null && feature['displayNameTamil'].toString().isNotEmpty
@@ -2385,7 +2426,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             final tourKey = _featureTourKeys[featureName];
             final desc = _getTourDesc(feature['route']?.toString(), isTamil);
             final tile = _buildModernCategoryTile(
-              icon: _mapIcon(feature['icon']),
+              icon: _mapIcon(feature['icon'], route: feature['route']?.toString()),
               title: title,
               subtitle: '',
               color: _parseColor(feature['color']),
@@ -2410,42 +2451,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           }).toList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildHomeSearchBar() {
-    return Consumer<LanguageProvider>(
-      builder: (context, lang, _) {
-        return Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          child: InkWell(
-            onTap: () => context.push('/customer/shops'),
-            borderRadius: BorderRadius.circular(28),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: Colors.grey.shade600, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      lang.getText('Search shops...', 'கடைகளைத் தேடுங்கள்...'),
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                    ),
-                  ),
-                  Icon(Icons.mic_none, color: Colors.grey.shade500, size: 22),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -2585,31 +2590,42 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
+                    gradient: LinearGradient(
+                      colors: [color, Color.lerp(color, Colors.black, 0.25)!],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: hasImage
                       ? ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                           child: Image.network(
                             ImageUrlHelper.getFullImageUrl(imageUrl),
-                            width: 52,
-                            height: 52,
+                            width: 56,
+                            height: 56,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 26),
+                            errorBuilder: (_, __, ___) => Icon(icon, color: Colors.white, size: 30),
                           ),
                         )
-                      : Icon(icon, color: color, size: 26),
+                      : Icon(icon, color: Colors.white, size: 30),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   title,
                   style: const TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: Color(0xFF1A1A1A),
                     height: 1.2,
                   ),

@@ -55,6 +55,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
 
   @override
   void dispose() {
+    _voiceSearchService.stopListening();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -307,7 +308,6 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         children: [
           _buildDeliverToBar(),
           _buildVillageSearchBar(),
-          _buildVillageSortingChips(),
           if (_isLocationBased && !_isLoading)
             Container(
               width: double.infinity,
@@ -454,54 +454,6 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildVillageSortingChips() {
-    final sortOptions = [
-      {'key': 'name', 'label': 'பெயர் / Name', 'icon': Icons.sort_by_alpha},
-    ];
-
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: sortOptions.map((option) {
-          final isSelected = _sortBy == option['key'];
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(
-                option['label']! as String,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF4CAF50),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  _sortBy = option['key']! as String;
-                  _applySortAndFilter();
-                });
-              },
-              backgroundColor: Colors.white,
-              selectedColor: const Color(0xFF4CAF50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: isSelected ? const Color(0xFF4CAF50) : Colors.grey.shade300,
-                  width: 1,
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              elevation: 0,
-            ),
-          );
-        }).toList(),
       ),
     );
   }

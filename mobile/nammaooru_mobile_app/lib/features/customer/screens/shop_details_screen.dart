@@ -21,6 +21,8 @@ import '../services/combo_service.dart';
 import '../widgets/combo_banner_widget.dart';
 import 'cart_screen.dart';
 import 'shop_products_screen.dart';
+import 'package:showcaseview/showcaseview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ShopDetailsScreen extends StatefulWidget {
   final int shopId;
@@ -57,7 +59,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   String? _selectedCategory;
   String? _selectedCategoryName; // Store category name for filtering
   bool _isLoadingShop = false;
-  bool _isLoadingProducts = false;
+  // Starts true so the spinner shows from the first frame until the (slow)
+  // products query returns — never a flash of "No Products Found"
+  bool _isLoadingProducts = true;
   bool _isLoadingCategories = false;
   bool _isLoadingPromotions = false;
   bool _isVoiceSearching = false;
@@ -85,6 +89,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
   @override
   void dispose() {
+    _voiceSearch.stopListening();
     _searchController.dispose();
     _scrollController.dispose();
     _couponPageController.dispose();
@@ -184,10 +189,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             },
             ...categoryList,
           ];
-          _selectedCategory = null; // null means "All Items"
-          _selectedCategoryName = null;
+          // Default to the maligai (essentials) category when the shop has
+          // one; otherwise start on "All Items"
+          Map<String, dynamic>? essentials;
+          for (final c in categoryList) {
+            if (_categoryPriority(c['name']?.toString()) == 0) {
+              essentials = Map<String, dynamic>.from(c as Map);
+              break;
+            }
+          }
+          _selectedCategory = essentials?['id']?.toString();
+          _selectedCategoryName = essentials?['name']?.toString();
           _isLoadingCategories = false;
         });
+        // Re-filter in case products finished loading before categories
+        _filterProducts();
       }
     } catch (e) {
       if (mounted) {
@@ -240,43 +256,87 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   void _updateCartFreeDelivery(Map<String, dynamic>? shop) {
     if (shop == null) return;
     final freeDeliveryAbove = (shop['freeDeliveryAbove'] ?? 0).toDouble();
-    print('🏪 Shop freeDeliveryAbove: $freeDeliveryAbove');
-    print('🏪 Shop images: ${shop['images']}');
     if (freeDeliveryAbove > 0) {
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      cartProvider.setFreeDeliveryAbove(freeDeliveryAbove);
+      // Defer to after the frame: this runs from the initState/load path while
+      // the tree may still be building, and CartProvider.notifyListeners()
+      // during build throws "setState() called during build".
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+        cartProvider.setFreeDeliveryAbove(freeDeliveryAbove);
+      });
     }
   }
+
+  // False while background pages are still streaming in — searches during
+  // that window show a loader instead of a wrong "No Products Found"
+  bool _catalogFullyLoaded = false;
 
   Future<void> _loadProducts() async {
     setState(() {
       _isLoadingProducts = true;
+      _catalogFullyLoaded = false;
       _hasError = false;
     });
 
     try {
       final searchQuery = _searchController.text.trim();
 
-      // Always load ALL products without any filters for client-side filtering
-      // Don't pass category ID since backend category IDs don't match product category IDs
+      // Progressive load: fetch the first page fast so the screen renders in
+      // ~1s, then pull the remaining pages in the background and append them.
+      // All filtering stays client-side (backend category IDs don't match
+      // product category IDs), so search/chips behave exactly as before.
+      const pageSize = 150;
       final response = await _shopApi.getShopProducts(
         shopId: widget.shopId.toString(),
         page: 0,
-        size: 2000, // Load all products at once
-        // Don't pass any filters - we'll filter client-side
+        size: pageSize,
       );
 
       if (mounted &&
           response['statusCode'] == '0000' &&
           response['data'] != null) {
-        final allProducts = response['data']['content'] ?? [];
+        final firstPage = response['data']['content'] ?? [];
+        final totalPages =
+            int.tryParse(response['data']['totalPages']?.toString() ?? '1') ??
+                1;
 
         setState(() {
-          _allProducts = allProducts;
+          _allProducts = List.of(firstPage);
           // Apply client-side filtering for both search and category
           _filterProducts();
           _isLoadingProducts = false;
         });
+
+        // Fetch the FULL catalog in one background request (the same query
+        // that always returned complete results) and REPLACE the list when it
+        // arrives — idempotent, so a retry/second call can never duplicate.
+        if (totalPages > 1) {
+          try {
+            final full = await _shopApi.getShopProducts(
+              shopId: widget.shopId.toString(),
+              page: 0,
+              size: 2000,
+            );
+            if (!mounted) return;
+            if (full['statusCode'] == '0000' && full['data'] != null) {
+              final all = full['data']['content'] ?? [];
+              if (all.length >= _allProducts.length) {
+                setState(() {
+                  _allProducts = List.of(all);
+                });
+              }
+            }
+          } catch (_) {
+            // Keep the first page — screen stays usable with partial catalog
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _catalogFullyLoaded = true;
+            _filterProducts();
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -322,9 +382,53 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       }).toList();
     }
 
+    // "All Items": daily-essential categories (maligai) come first instead of
+    // the server's plain alphabetical order
+    else {
+      filteredProducts = List.of(filteredProducts)
+        ..sort((a, b) {
+          final pa = _categoryPriority(
+              a['masterProduct']?['category']?['name']?.toString());
+          final pb = _categoryPriority(
+              b['masterProduct']?['category']?['name']?.toString());
+          if (pa != pb) return pa - pb;
+          final na = (a['displayName'] ?? '').toString().toLowerCase();
+          final nb = (b['displayName'] ?? '').toString().toLowerCase();
+          return na.compareTo(nb);
+        });
+    }
+
     setState(() {
       _products = filteredProducts;
     });
+  }
+
+  // Lower number = shown earlier in "All Items". Essentials (maligai) first,
+  // occasional-use goods (electronics, medicine) last.
+  int _categoryPriority(String? categoryName) {
+    final c = (categoryName ?? '').toLowerCase();
+    if (c.contains('maligai') ||
+        c.contains('மளிகை') ||
+        c.contains('grocery') ||
+        c.contains('provision') ||
+        c.contains('essential')) return 0;
+    if (c.contains('vegetable') ||
+        c.contains('fruit') ||
+        c.contains('rice') ||
+        c.contains('oil') ||
+        c.contains('dairy') ||
+        c.contains('milk') ||
+        c.contains('egg')) return 1;
+    if (c.contains('snack') ||
+        c.contains('food') ||
+        c.contains('beverage') ||
+        c.contains('drink') ||
+        c.contains('tea') ||
+        c.contains('coffee')) return 2;
+    if (c.contains('household') || c.contains('cleaning')) return 3;
+    if (c.contains('medicine') || c.contains('health')) return 5;
+    if (c.contains('electronic')) return 6;
+    return 4; // anything else sits between household and medicine
   }
 
   void _onSearchChanged() {
@@ -332,12 +436,60 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     _filterProducts();
   }
 
+  // One-time tour: search → voice order → card/list toggle
+  final GlobalKey _tourSearchKey = GlobalKey();
+  final GlobalKey _tourVoiceKey = GlobalKey();
+  final GlobalKey _tourCategoriesKey = GlobalKey();
+  final GlobalKey _tourToggleKey = GlobalKey();
+  final GlobalKey _tourAddKey = GlobalKey();
+  bool _shopTourChecked = false;
+  BuildContext? _shopShowcaseCtx;
+
+  Future<void> _startShopTourIfNeeded(BuildContext showcaseCtx) async {
+    _shopShowcaseCtx = showcaseCtx;
+    if (_shopTourChecked) return;
+    _shopTourChecked = true;
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('shop_screen_tour_shown') ?? false;
+    if (shown || !mounted) return;
+    await prefs.setBool('shop_screen_tour_shown', true);
+    // Wait until the first products are on screen so the ADD button step has
+    // a target; give up waiting after ~6s and run the tour without it
+    int attempts = 0;
+    Timer.periodic(const Duration(milliseconds: 800), (timer) {
+      attempts++;
+      if (!mounted || _shopShowcaseCtx == null) {
+        timer.cancel();
+        return;
+      }
+      final addReady =
+          !_isLoadingProducts && _products.isNotEmpty && !_isListView;
+      if (addReady || attempts >= 8) {
+        timer.cancel();
+        if (!mounted) return;
+        // Never draw the tour over another screen
+        if (ModalRoute.of(context)?.isCurrent != true) return;
+        ShowCaseWidget.of(_shopShowcaseCtx!).startShowCase([
+          _tourSearchKey,
+          _tourVoiceKey,
+          if (_categories.isNotEmpty) _tourCategoriesKey,
+          _tourToggleKey,
+          if (addReady) _tourAddKey,
+        ]);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
+    return ShowCaseWidget(
+      builder: (showcaseCtx) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _startShopTourIfNeeded(showcaseCtx));
+        return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       body: _isLoadingShop
           ? const Center(child: LoadingWidget())
@@ -347,7 +499,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   children: [
                     // Toolbar/AppBar area
                     Container(
-                      height: kToolbarHeight,
+                      height: 64,
                       color: VillageTheme.primaryGreen,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Row(
@@ -356,6 +508,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             icon: const Icon(Icons.arrow_back,
                                 color: Colors.white, size: 24),
                             onPressed: () {
+                              // Leaving mid-tour lets the showcase overlay
+                              // try to find a target that's no longer in the
+                              // tree ("inactive element" crash) — dismiss
+                              // first.
+                              try {
+                                ShowCaseWidget.of(context).dismiss();
+                              } catch (_) {}
                               if (context.canPop()) {
                                 context.pop();
                               } else if (Navigator.of(context).canPop()) {
@@ -374,6 +533,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ),
                             ),
                           ),
+                          _buildViewToggle(),
+                          const SizedBox(width: 8),
                         ],
                       ),
                     ),
@@ -488,14 +649,19 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         },
       ),
       floatingActionButtonLocation: const _RightFloatingButtonLocation(),
+        );
+      },
     );
   }
 
+  // Deep green accent from the reference design
+  static const Color _deepGreen = Color(0xFF0F7B23);
+
   Widget _buildHorizontalCategories() {
     if (_isLoadingCategories) {
-      return Container(
-        height: 100,
-        child: const Center(child: CircularProgressIndicator()),
+      return const SizedBox(
+        height: 52,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
 
@@ -503,34 +669,51 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      height: 100,
-      margin: const EdgeInsets.symmetric(vertical: 8),
+    // Simple text pill chips, like the reference design.
+    // Order: "All Items" first, then essentials (maligai) before the rest.
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final isTamil = languageProvider.currentLanguage == 'ta';
+    final sortedCategories = List<dynamic>.of(_categories)
+      ..sort((a, b) {
+        final aAll = a['id'] == null ? 0 : 1;
+        final bAll = b['id'] == null ? 0 : 1;
+        if (aAll != bAll) return aAll - bAll;
+        return _categoryPriority(a['name']?.toString()) -
+            _categoryPriority(b['name']?.toString());
+      });
+    return Showcase(
+      key: _tourCategoriesKey,
+      title: languageProvider.getText('Categories', 'வகைகள்'),
+      description: languageProvider.getText(
+          'Tap a category to see only those products. Maligai opens first.',
+          'ஒரு வகையைத் தட்டினால் அந்தப் பொருட்கள் மட்டும் தெரியும். மளிகை முதலில் திறக்கும்.'),
+      tooltipBackgroundColor: Colors.white,
+      textColor: Colors.grey.shade800,
+      titleTextStyle: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: VillageTheme.primaryGreen,
+      ),
+      descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+      child: SizedBox(
+      height: 52,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: _categories.length,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        itemCount: sortedCategories.length,
         itemBuilder: (context, index) {
-          final category = _categories[index];
+          final category = sortedCategories[index];
           final categoryId = category['id']?.toString();
           final categoryName = category['name']?.toString();
           final isSelected = _selectedCategory == categoryId;
-          final displayName =
-              category['displayName']?.toString() ?? categoryName ?? 'Category';
-          final imageUrl = category['imageUrl']?.toString();
-          final colorHex = category['color']?.toString() ?? '#4CAF50';
-
-          // Check if imageUrl is an actual image path
-          final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
-
-          // Parse color from hex
-          Color categoryColor = VillageTheme.primaryGreen;
-          try {
-            categoryColor =
-                Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-          } catch (e) {
-            categoryColor = VillageTheme.primaryGreen;
-          }
+          // Respect the Tamil/English toggle, falling back to English
+          final tamilName =
+              (category['displayNameTamil'] ?? category['nameTamil'])
+                  ?.toString()
+                  .trim();
+          final displayName = (isTamil && tamilName != null && tamilName.isNotEmpty)
+              ? tamilName
+              : category['displayName']?.toString() ?? categoryName ?? 'Category';
 
           return GestureDetector(
             onTap: () {
@@ -543,71 +726,28 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               });
             },
             child: Container(
-              width: 85,
               margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.all(6),
-              // Flat cards like the reference design: solid green when
-              // selected, soft grey otherwise — no borders.
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? VillageTheme.primaryGreen
-                    : const Color(0xFFECEFF1),
-                borderRadius: BorderRadius.circular(14),
+                color: isSelected ? _deepGreen : const Color(0xFFF1F2F4),
+                borderRadius: BorderRadius.circular(20),
+                border: isSelected
+                    ? null
+                    : Border.all(color: const Color(0xFFDDDFE2)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Category Image
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: hasImage
-                          ? Image.network(
-                              ImageUrlHelper.getFullImageUrl(imageUrl!),
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildCategoryPlaceholder(
-                                    categoryName ?? 'Category',
-                                    categoryColor,
-                                    isSelected);
-                              },
-                            )
-                          : _buildCategoryPlaceholder(
-                              categoryName ?? 'Category',
-                              categoryColor,
-                              isSelected),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Category Name
-                  Flexible(
-                    child: Text(
-                      displayName,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.grey[800],
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w600,
-                        fontSize: 10,
-                        height: 1.1,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF212121),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
             ),
           );
         },
+      ),
       ),
     );
   }
@@ -843,6 +983,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       return const Center(child: LoadingWidget());
     }
 
+    // Chip row is 52 high; search field ~56 + 16 margin.
+    final double categoriesExtent =
+        _isLoadingCategories ? 52 : (_categories.isEmpty ? 0 : 52);
+    const double searchExtent = 72;
+
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
@@ -850,8 +995,27 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         if (!_isShopOpen) SliverToBoxAdapter(child: _buildShopClosedBanner()),
         // Unified Offers Carousel (Combos + Promos together)
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
-        SliverToBoxAdapter(child: _buildHorizontalCategories()),
-        SliverToBoxAdapter(child: _buildSearchBar()),
+        // Categories + search stay pinned at the top while products scroll
+        SliverAppBar(
+          pinned: true,
+          primary: false,
+          automaticallyImplyLeading: false,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.black
+              : Colors.white,
+          toolbarHeight: categoriesExtent + searchExtent,
+          titleSpacing: 0,
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Search first, then category chips
+              _buildSearchBar(),
+              _buildHorizontalCategories(),
+            ],
+          ),
+        ),
         _buildProductGrid(),
       ],
     );
@@ -1193,12 +1357,28 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
+    final lang = Provider.of<LanguageProvider>(context);
+    return Showcase(
+      key: _tourSearchKey,
+      title: lang.getText('Search Products', 'பொருட்களைத் தேடுங்கள்'),
+      description: lang.getText(
+          'Type here to instantly find any product in this shop.',
+          'இந்தக் கடையில் எந்தப் பொருளையும் இங்கே உடனே தேடலாம்.'),
+      tooltipBackgroundColor: Colors.white,
+      textColor: Colors.grey.shade800,
+      titleTextStyle: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: VillageTheme.primaryGreen,
+      ),
+      descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+      child: Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      // Flat soft-grey pill, matching the reference design (no shadow).
+      // White field with a hairline border, like the reference design.
       decoration: BoxDecoration(
-        color: const Color(0xFFECEFF1),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC9CDD1)),
       ),
       child: TextField(
         controller: _searchController,
@@ -1217,24 +1397,39 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     _onSearchChanged();
                   },
                 ),
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
-                  ),
-                  shape: BoxShape.circle,
+              Showcase(
+                key: _tourVoiceKey,
+                title: lang.getText('Voice Order', 'பேசி ஆர்டர்'),
+                description: lang.getText(
+                    'Tap and just say what you need — the app finds and adds it.',
+                    'தட்டி தேவையானதைச் சொல்லுங்கள் — ஆப் தேடிச் சேர்க்கும்.'),
+                tooltipBackgroundColor: Colors.white,
+                textColor: Colors.grey.shade800,
+                titleTextStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: VillageTheme.primaryGreen,
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.assistant,
-                      color: Colors.white, size: 20),
-                  onPressed: () {
-                    context.push('/customer/voice-assistant', extra: {
-                      'shopId': widget.shopId,
-                      'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
-                    });
-                  },
-                  tooltip: 'Talk & Order',
+                descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.assistant,
+                        color: Colors.white, size: 20),
+                    onPressed: () {
+                      context.push('/customer/voice-assistant', extra: {
+                        'shopId': widget.shopId,
+                        'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
+                      });
+                    },
+                    tooltip: 'Talk & Order',
+                  ),
                 ),
               ),
             ],
@@ -1243,6 +1438,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
+      ),
       ),
     );
   }
@@ -1849,17 +2045,375 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
-  Widget _buildProductGrid() {
-    if (_isLoadingProducts) {
-      return const SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: LoadingWidget()),
+  // Card ↔ list view toggle, user-selectable from the header
+  bool _isListView = false;
+
+  // Lives in the green app bar: white translucent pill, active mode = white
+  Widget _buildViewToggle() {
+    Widget modeButton(IconData icon, bool active, VoidCallback onTap) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: active ? VillageTheme.primaryGreen : Colors.white,
+          ),
         ),
       );
     }
 
-    // Products are already filtered by the server-side search
+    final lang = Provider.of<LanguageProvider>(context);
+    return Showcase(
+      key: _tourToggleKey,
+      title: lang.getText('Card / List View', 'கார்டு / பட்டியல்'),
+      description: lang.getText(
+          'Tap to switch how products are shown — big cards or a compact list.',
+          'பொருட்களை கார்டு அல்லது பட்டியல் வடிவில் மாற்றிப் பார்க்க தட்டவும்.'),
+      tooltipBackgroundColor: Colors.white,
+      textColor: Colors.grey.shade800,
+      titleTextStyle: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: VillageTheme.primaryGreen,
+      ),
+      descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+      // While this step is highlighted, the tour overlay would otherwise
+      // swallow the tap and just advance the tour instead of toggling the
+      // view — make the tap do the real thing AND finish this step.
+      onTargetClick: () => setState(() => _isListView = !_isListView),
+      disposeOnTap: true,
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.25),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            modeButton(Icons.grid_view_rounded, !_isListView,
+                () => setState(() => _isListView = false)),
+            const SizedBox(width: 2),
+            modeButton(Icons.view_list_rounded, _isListView,
+                () => setState(() => _isListView = true)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // List-view row: same old-design styling as the grid card, horizontal layout
+  Widget _buildProductListTile(Map<String, dynamic> product) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final productName = languageProvider.getDisplayName(product);
+    final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final originalPrice =
+        double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
+    final stockQuantity =
+        int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    final isInStock = stockQuantity > 0;
+    final baseWeight =
+        product['baseWeight'] ?? product['masterProduct']?['baseWeight'] ?? 1;
+    final baseUnit = product['baseUnit']?.toString() ??
+        product['masterProduct']?['baseUnit']?.toString() ??
+        'unit';
+    final weightDisplay = '$baseWeight $baseUnit';
+    final imageUrl = product['primaryImageUrl']?.toString() ??
+        product['masterProduct']?['primaryImageUrl']?.toString() ??
+        '';
+    final hasDiscount = originalPrice > price;
+
+    final productModel = ProductModel(
+      id: product['id'].toString(),
+      name: productName,
+      description: '',
+      price: price,
+      category: product['masterProduct']?['category']?.toString() ?? '',
+      shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
+      shopDatabaseId: _shop?['id'] ?? widget.shopId,
+      shopName: _shop?['name']?.toString() ?? 'Shop',
+      images: imageUrl.isNotEmpty ? [imageUrl] : [],
+      stockQuantity: stockQuantity,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    // Whole row opens the product; the ADD control still wins its own taps
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () =>
+          _showProductDetails(productModel, weightDisplay, originalPrice),
+      child: Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECEFF1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () =>
+                _showProductDetails(productModel, weightDisplay, originalPrice),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 84,
+                height: 84,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.inventory_2,
+                              size: 24, color: Colors.grey),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.inventory_2,
+                            size: 24, color: Colors.grey),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  productName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF212121),
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  languageProvider.getText(
+                      'Stock $stockQuantity', 'இருப்பு $stockQuantity'),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: VillageTheme.primaryGreen,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (hasDiscount) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 92,
+            child: _buildListCartControl(productModel, isInStock),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildListCartControl(ProductModel productModel, bool isInStock) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, child) {
+        final cartQuantity = cartProvider.getQuantity(productModel.id);
+
+        if (!isInStock) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              languageProvider.getText('Out of Stock', 'இருப்பு இல்லை'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          );
+        }
+
+        if (cartQuantity == 0) {
+          return GestureDetector(
+            onTap: () async {
+              await _handleAddToCart(context, cartProvider, productModel);
+              if (mounted) setState(() {});
+            },
+            child: Container(
+              height: 30,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add_rounded, color: Colors.white, size: 16),
+                  const SizedBox(width: 2),
+                  Text(
+                    languageProvider.getText('ADD', 'சேர்'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          height: 30,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              InkWell(
+                onTap: () {
+                  cartProvider.decreaseQuantity(productModel.id);
+                  if (mounted) setState(() {});
+                },
+                child: const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: Icon(Icons.remove, color: Colors.white, size: 14),
+                ),
+              ),
+              Text(
+                '$cartQuantity',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              InkWell(
+                onTap: () async {
+                  await _handleAddToCart(context, cartProvider, productModel);
+                  if (mounted) setState(() {});
+                },
+                child: const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: Icon(Icons.add, color: Colors.white, size: 14),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProductGrid() {
+    if (_isLoadingProducts) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: Column(
+              children: [
+                const CircularProgressIndicator(
+                  color: VillageTheme.primaryGreen,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  Provider.of<LanguageProvider>(context).getText(
+                      'Loading products...', 'பொருட்கள் ஏற்றப்படுகின்றன...'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Catalog still streaming in — a search/filter may simply not have its
+    // items yet, so show progress instead of a wrong "No Products Found"
+    if (_products.isEmpty && !_catalogFullyLoaded) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: Column(
+              children: [
+                const CircularProgressIndicator(
+                  color: VillageTheme.primaryGreen,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  Provider.of<LanguageProvider>(context).getText(
+                      'Loading all products...',
+                      'எல்லா பொருட்களும் ஏற்றப்படுகின்றன...'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_products.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
@@ -1893,6 +2447,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       );
     }
 
+    // Responsive sizing: card height = image (scales with phone width) + a
+    // fixed info budget, so no overflow on small or large screens.
+    final itemWidth = (MediaQuery.of(context).size.width - 36) / 2;
+    final cardExtent = itemWidth + 120;
+
     return SliverPadding(
       padding: const EdgeInsets.only(
         left: 12,
@@ -1901,20 +2460,25 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         bottom:
             100, // Extra padding to prevent floating cart from blocking products
       ),
-      sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          // Compact enough to avoid a large blank details area, while still
-          // leaving room for two-line names, stock, price, and cart controls.
-          childAspectRatio: 0.70,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildProductCard(_products[index]),
-          childCount: _products.length,
-        ),
-      ),
+      sliver: _isListView
+          ? SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildProductListTile(_products[index]),
+                childCount: _products.length,
+              ),
+            )
+          : SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                mainAxisExtent: cardExtent,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildProductCard(_products[index]),
+                childCount: _products.length,
+              ),
+            ),
     );
   }
 
@@ -1974,9 +2538,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       updatedAt: DateTime.now(),
     );
 
-    return Container(
-      // Reference grocery-app look: flat soft-grey card on a white page,
-      // no drop shadow.
+    // Whole card opens the product; inner ADD buttons still win their taps
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () =>
+          _showProductDetails(productModel, weightDisplay, originalPrice),
+      child: Container(
+      // Old design: flat soft-grey card on a white page, no drop shadow.
       decoration: BoxDecoration(
         color: const Color(0xFFECEFF1),
         borderRadius: BorderRadius.circular(16),
@@ -2077,12 +2645,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(24)),
+                                top: Radius.circular(16)),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
-                              'Out of Stock',
-                              style: TextStyle(
+                              languageProvider.getText(
+                                  'Out of Stock', 'இருப்பு இல்லை'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -2096,10 +2665,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             ),
           ),
 
-          // Product Details
-          Expanded(
-            flex: 2,
-            child: Padding(
+          // Product Details — natural height (not flex-split), so long Tamil
+          // names + low-stock line can never overflow; the image above
+          // absorbs whatever space is left.
+          Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2122,12 +2691,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Stock $stockQuantity',
+                        languageProvider.getText(
+                            'Stock $stockQuantity', 'இருப்பு $stockQuantity'),
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.grey[600],
                           fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
                       // Price Row
@@ -2162,7 +2734,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 1),
                           child: Text(
-                            'Only $stockQuantity left',
+                            languageProvider.getText('Only $stockQuantity left',
+                                '$stockQuantity மட்டும் உள்ளது'),
                             style: const TextStyle(
                               fontSize: 9,
                               color: Color(0xFFFF6B6B),
@@ -2185,10 +2758,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             color: Colors.grey[300],
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Out of Stock',
+                          child: Text(
+                            languageProvider.getText(
+                                'Out of Stock', 'இருப்பு இல்லை'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                               color: Colors.grey,
@@ -2200,7 +2774,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       // Allow adding to cart even when shop is closed
                       // Order placement will be blocked at checkout
                       if (cartQuantity == 0) {
-                        return GestureDetector(
+                        final addButton = GestureDetector(
                           onTap: () async {
                             await _handleAddToCart(
                                 context, cartProvider, productModel);
@@ -2221,15 +2795,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_rounded,
+                                const Icon(Icons.add_rounded,
                                     color: Colors.white, size: 16),
-                                SizedBox(width: 2),
+                                const SizedBox(width: 2),
                                 Text(
-                                  'ADD',
-                                  style: TextStyle(
+                                  languageProvider.getText('ADD', 'சேர்'),
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -2239,6 +2813,36 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ],
                             ),
                           ),
+                        );
+                        // The one-time tour highlights the first card's ADD
+                        final isFirstProduct = _products.isNotEmpty &&
+                            identical(product, _products[0]);
+                        if (!isFirstProduct) return addButton;
+                        return Showcase(
+                          key: _tourAddKey,
+                          title: languageProvider.getText(
+                              'Add to Cart', 'கார்ட்டில் சேர்'),
+                          description: languageProvider.getText(
+                              'Tap ADD to put this item in your cart. Then use − and + to change the quantity.',
+                              'ADD தட்டி பொருளை கார்ட்டில் சேருங்கள். பிறகு − / + மூலம் எண்ணிக்கையை மாற்றலாம்.'),
+                          tooltipBackgroundColor: Colors.white,
+                          textColor: Colors.grey.shade800,
+                          titleTextStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: VillageTheme.primaryGreen,
+                          ),
+                          descTextStyle:
+                              const TextStyle(fontSize: 12, height: 1.5),
+                          // Otherwise the tour overlay swallows the tap and
+                          // just advances instead of adding the item
+                          onTargetClick: () async {
+                            await _handleAddToCart(
+                                context, cartProvider, productModel);
+                            if (mounted) setState(() {});
+                          },
+                          disposeOnTap: true,
+                          child: addButton,
                         );
                       }
 
@@ -2323,8 +2927,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 ],
               ),
             ),
-          ),
         ],
+      ),
       ),
     );
   }
