@@ -2,11 +2,7 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
-import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderPayment;
-import com.shopmanagement.entity.User;
-import com.shopmanagement.repository.OrderRepository;
-import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.OrderPaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -29,16 +25,13 @@ import java.util.Map;
 public class OrderPaymentController {
 
     private final OrderPaymentService orderPaymentService;
-    private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
 
     @PostMapping("/customer/orders/{orderId}/payment/create-order")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createOrder(
             @PathVariable Long orderId, Authentication authentication) {
         try {
-            requireOwnedOrder(orderId, authentication);
-            Map<String, Object> result = orderPaymentService.createOrder(orderId);
+            Map<String, Object> result = orderPaymentService.createOrder(orderId, authentication);
             return ResponseUtil.success(result, "Payment order created");
         } catch (Exception e) {
             log.error("Error creating order payment for order {}", orderId, e);
@@ -52,14 +45,13 @@ public class OrderPaymentController {
             @PathVariable Long orderId, Authentication authentication,
             @RequestBody Map<String, String> request) {
         try {
-            requireOwnedOrder(orderId, authentication);
             String razorpayOrderId = request.get("razorpay_order_id");
             String paymentId = request.get("razorpay_payment_id");
             String signature = request.get("razorpay_signature");
             if (razorpayOrderId == null || paymentId == null) {
                 return ResponseUtil.badRequest("razorpay_order_id and razorpay_payment_id are required");
             }
-            OrderPayment payment = orderPaymentService.verifyPayment(razorpayOrderId, paymentId, signature);
+            OrderPayment payment = orderPaymentService.verifyPayment(razorpayOrderId, paymentId, signature, authentication);
             return ResponseUtil.success(Map.of("status", payment.getStatus().name()), "Payment verified");
         } catch (Exception e) {
             log.error("Error verifying order payment for order {}", orderId, e);
@@ -129,24 +121,6 @@ public class OrderPaymentController {
         } catch (Exception e) {
             log.error("Error listing order payments", e);
             return ResponseUtil.error(e.getMessage());
-        }
-    }
-
-    private void requireOwnedOrder(Long orderId, Authentication authentication) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
-        if (isAdmin) return;
-
-        boolean owns = order.getCustomer() != null && (
-                (order.getCustomer().getMobileNumber() != null && order.getCustomer().getMobileNumber().equals(user.getMobileNumber()))
-                || (order.getCustomer().getEmail() != null && order.getCustomer().getEmail().equalsIgnoreCase(user.getEmail())));
-        if (!owns) {
-            throw new RuntimeException("This order does not belong to you");
         }
     }
 }

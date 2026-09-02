@@ -5,15 +5,19 @@ import com.razorpay.RazorpayException;
 import com.razorpay.Refund;
 import com.razorpay.Utils;
 import com.shopmanagement.config.RazorpayConfig;
+import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.OrderPayment;
+import com.shopmanagement.entity.User;
 import com.shopmanagement.repository.OrderPaymentRepository;
 import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +40,7 @@ public class OrderPaymentService {
 
     private final OrderRepository orderRepository;
     private final OrderPaymentRepository orderPaymentRepository;
+    private final UserRepository userRepository;
     private final RazorpayClient razorpayClient;
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
@@ -49,14 +54,39 @@ public class OrderPaymentService {
 
     public OrderPaymentService(OrderRepository orderRepository,
                                 OrderPaymentRepository orderPaymentRepository,
+                                UserRepository userRepository,
                                 @Autowired(required = false) RazorpayClient razorpayClient,
                                 RazorpayConfig razorpayConfig,
                                 SettingService settingService) {
         this.orderRepository = orderRepository;
         this.orderPaymentRepository = orderPaymentRepository;
+        this.userRepository = userRepository;
         this.razorpayClient = razorpayClient;
         this.razorpayConfig = razorpayConfig;
         this.settingService = settingService;
+    }
+
+    /**
+     * Must run inside an active transaction — order.getCustomer() is a lazy @ManyToOne.
+     * Touching it from a non-transactional context (e.g. a plain controller method that
+     * does its own orderRepository.findById() first) throws LazyInitializationException
+     * ("could not initialize proxy ... no Session") the moment a field on it is read,
+     * because Spring Data's per-call transaction for that findById already closed by then.
+     */
+    private void verifyOwnership(Order order, Authentication authentication) {
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        if (isAdmin) return;
+
+        boolean owns = order.getCustomer() != null && (
+                (order.getCustomer().getMobileNumber() != null && order.getCustomer().getMobileNumber().equals(user.getMobileNumber()))
+                || (order.getCustomer().getEmail() != null && order.getCustomer().getEmail().equalsIgnoreCase(user.getEmail())));
+        if (!owns) {
+            throw new RuntimeException("This order does not belong to you");
+        }
     }
 
     private boolean isTestMode() {
@@ -78,9 +108,10 @@ public class OrderPaymentService {
     }
 
     @Transactional
-    public Map<String, Object> createOrder(Long orderId) throws RazorpayException {
-        com.shopmanagement.entity.Order order = orderRepository.findById(orderId)
+    public Map<String, Object> createOrder(Long orderId, Authentication authentication) throws RazorpayException {
+        Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+        verifyOwnership(order, authentication);
 
         orderPaymentRepository.findByOrder_Id(orderId).ifPresent(existing -> {
             if (existing.getStatus() == OrderPayment.OrderPaymentStatus.PAID) {
@@ -135,9 +166,11 @@ public class OrderPaymentService {
     }
 
     @Transactional
-    public OrderPayment verifyPayment(String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) throws RazorpayException {
+    public OrderPayment verifyPayment(String razorpayOrderId, String razorpayPaymentId, String razorpaySignature,
+                                       Authentication authentication) throws RazorpayException {
         OrderPayment payment = orderPaymentRepository.findByRazorpayOrderId(razorpayOrderId)
                 .orElseThrow(() -> new RuntimeException("Payment order not found: " + razorpayOrderId));
+        verifyOwnership(payment.getOrder(), authentication);
 
         if (payment.getStatus() == OrderPayment.OrderPaymentStatus.PAID) {
             return payment; // idempotent — already confirmed, possibly by the webhook
@@ -170,8 +203,8 @@ public class OrderPaymentService {
         payment.setStatus(OrderPayment.OrderPaymentStatus.PAID);
         orderPaymentRepository.save(payment);
 
-        com.shopmanagement.entity.Order order = payment.getOrder();
-        order.setPaymentStatus(com.shopmanagement.entity.Order.PaymentStatus.PAID);
+        Order order = payment.getOrder();
+        order.setPaymentStatus(Order.PaymentStatus.PAID);
         orderRepository.save(order);
         log.info("Order payment confirmed: orderId={}, razorpayOrderId={}, razorpayPaymentId={}",
                 order.getId(), payment.getRazorpayOrderId(), payment.getRazorpayPaymentId());
