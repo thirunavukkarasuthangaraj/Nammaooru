@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../api/api_client.dart';
 import '../models/order_model.dart';
 import '../storage/local_storage.dart';
@@ -185,6 +186,10 @@ class OrderService {
       }
     } catch (e) {
       print('❌ Error placing order: $e');
+      if (e is DioException) {
+        print('❌ Backend response status: ${e.response?.statusCode}');
+        print('❌ Backend response body: ${e.response?.data}');
+      }
       return {
         'success': false,
         'message': 'Failed to place order. Please check your connection and try again.',

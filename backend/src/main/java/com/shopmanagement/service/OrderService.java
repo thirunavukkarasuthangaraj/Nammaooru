@@ -376,7 +376,10 @@ public class OrderService {
         // Send WebSocket notification to shop owner for real-time web updates
         try {
             log.info("📡 Sending WebSocket notification for new order to shop: {}", shop.getId());
-            sendNewOrderWebSocketNotification(savedOrder, customer, shop, orderItems.size());
+            sendNewOrderWebSocketNotification(savedOrder.getId(), savedOrder.getOrderNumber(), customer.getFullName(),
+                    customer.getMobileNumber(), savedOrder.getTotalAmount(), savedOrder.getStatus().name(),
+                    savedOrder.getDeliveryType() != null ? savedOrder.getDeliveryType().name() : null,
+                    savedOrder.getPaymentMethod(), savedOrder.getCreatedAt().toString(), shop.getId(), orderItems.size());
         } catch (Exception e) {
             log.error("❌ Failed to send WebSocket notification to shop", e);
         }
@@ -2011,9 +2014,23 @@ public class OrderService {
         // createOrder path always sent this; the customer path never did, so
         // web owners only saw new orders on manual refresh. Published after
         // commit so the browser's follow-up loadOrders() can see the row.
-        final Order orderForWs = savedOrder;
-        final Customer customerForWs = customer;
-        final Shop shopForWs = shop;
+        //
+        // Values are resolved to plain primitives HERE, while the transaction/
+        // Hibernate session is still open — afterCommit() runs after the session
+        // closes, so passing live entities (order.getCustomer(), a lazy proxy)
+        // into that closure instead would throw LazyInitializationException
+        // ("could not initialize proxy ... no Session") the moment a field on
+        // them is touched post-commit.
+        final Long orderIdForWs = savedOrder.getId();
+        final String orderNumberForWs = savedOrder.getOrderNumber();
+        final String customerNameForWs = customer.getFullName();
+        final String customerPhoneForWs = customer.getMobileNumber();
+        final BigDecimal totalAmountForWs = savedOrder.getTotalAmount();
+        final String statusForWs = savedOrder.getStatus().name();
+        final String deliveryTypeForWs = savedOrder.getDeliveryType() != null ? savedOrder.getDeliveryType().name() : null;
+        final Order.PaymentMethod paymentMethodForWs = savedOrder.getPaymentMethod();
+        final String createdAtForWs = savedOrder.getCreatedAt().toString();
+        final Long shopIdForWs = shop.getId();
         final int itemCountForWs = orderItems.size();
         try {
             if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -2021,11 +2038,15 @@ public class OrderService {
                         new org.springframework.transaction.support.TransactionSynchronization() {
                             @Override
                             public void afterCommit() {
-                                sendNewOrderWebSocketNotification(orderForWs, customerForWs, shopForWs, itemCountForWs);
+                                sendNewOrderWebSocketNotification(orderIdForWs, orderNumberForWs, customerNameForWs,
+                                        customerPhoneForWs, totalAmountForWs, statusForWs, deliveryTypeForWs,
+                                        paymentMethodForWs, createdAtForWs, shopIdForWs, itemCountForWs);
                             }
                         });
             } else {
-                sendNewOrderWebSocketNotification(orderForWs, customerForWs, shopForWs, itemCountForWs);
+                sendNewOrderWebSocketNotification(orderIdForWs, orderNumberForWs, customerNameForWs,
+                        customerPhoneForWs, totalAmountForWs, statusForWs, deliveryTypeForWs,
+                        paymentMethodForWs, createdAtForWs, shopIdForWs, itemCountForWs);
             }
         } catch (Exception e) {
             log.error("❌ Failed to schedule WebSocket notification to shop", e);
@@ -2310,29 +2331,32 @@ public class OrderService {
      * Send WebSocket notification to shop owner when a new order is placed.
      * This enables real-time updates on the shop owner's web dashboard.
      */
-    private void sendNewOrderWebSocketNotification(Order order, Customer customer, Shop shop, int itemCount) {
+    private void sendNewOrderWebSocketNotification(Long orderId, String orderNumber, String customerName,
+                                                    String customerPhone, BigDecimal totalAmount, String status,
+                                                    String deliveryType, Order.PaymentMethod paymentMethod,
+                                                    String createdAt, Long shopId, int itemCount) {
         try {
             Map<String, Object> orderData = new HashMap<>();
             orderData.put("type", "NEW_ORDER");
-            orderData.put("orderId", order.getId());
-            orderData.put("orderNumber", order.getOrderNumber());
-            orderData.put("customerName", customer.getFullName());
-            orderData.put("customerPhone", customer.getMobileNumber());
-            orderData.put("totalAmount", order.getTotalAmount());
+            orderData.put("orderId", orderId);
+            orderData.put("orderNumber", orderNumber);
+            orderData.put("customerName", customerName);
+            orderData.put("customerPhone", customerPhone);
+            orderData.put("totalAmount", totalAmount);
             orderData.put("itemCount", itemCount);
-            orderData.put("status", order.getStatus().name());
-            orderData.put("deliveryType", order.getDeliveryType().name());
-            orderData.put("paymentMethod", order.getPaymentMethod());
-            orderData.put("createdAt", order.getCreatedAt().toString());
+            orderData.put("status", status);
+            orderData.put("deliveryType", deliveryType);
+            orderData.put("paymentMethod", paymentMethod);
+            orderData.put("createdAt", createdAt);
             orderData.put("timestamp", LocalDateTime.now().toString());
 
             // Send to shop-specific topic
-            String destination = "/topic/shop/" + shop.getId() + "/orders";
+            String destination = "/topic/shop/" + shopId + "/orders";
             messagingTemplate.convertAndSend(destination, orderData);
 
-            log.info("✅ WebSocket notification sent to {} for new order: {}", destination, order.getOrderNumber());
+            log.info("✅ WebSocket notification sent to {} for new order: {}", destination, orderNumber);
         } catch (Exception e) {
-            log.error("❌ Error sending WebSocket notification for order {}: {}", order.getOrderNumber(), e.getMessage());
+            log.error("❌ Error sending WebSocket notification for order {}: {}", orderNumber, e.getMessage());
         }
     }
 
