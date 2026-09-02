@@ -2053,6 +2053,16 @@ public class OrderService {
         }
 
         log.info("Customer order created successfully: {}", savedOrder.getOrderNumber());
+
+        // Re-attach the already-loaded, definitely-initialized customer/shop before mapping
+        // the response. If anything earlier in this method threw a Hibernate-level exception
+        // that got caught and logged locally (FCM send, promo recording, etc.), Hibernate can
+        // still mark the session unusable internally even though the Java exception itself
+        // was swallowed — the *next* lazy access (order.getCustomer(), a lazy @ManyToOne)
+        // then fails with a misleading "no Session" error that looks unrelated to its real
+        // cause. Using the objects we already hold, rather than the lazy proxy, sidesteps it.
+        savedOrder.setCustomer(customer);
+        savedOrder.setShop(shop);
         return mapToResponse(savedOrder);
     }
 
