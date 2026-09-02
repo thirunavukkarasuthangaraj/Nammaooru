@@ -24,6 +24,7 @@ import com.shopmanagement.repository.UserFcmTokenRepository;
 import com.shopmanagement.repository.OrderAssignmentRepository;
 import com.shopmanagement.entity.UserFcmToken;
 import com.shopmanagement.entity.OrderAssignment;
+import com.shopmanagement.entity.Wallet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -77,6 +78,8 @@ public class OrderService {
     private final SimpMessagingTemplate messagingTemplate;
     private final BusinessHoursService businessHoursService;
     private final com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils;
+    private final OrderPaymentService orderPaymentService;
+    private final WalletService walletService;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -96,7 +99,9 @@ public class OrderService {
             com.shopmanagement.repository.PromotionRepository promotionRepository,
             SimpMessagingTemplate messagingTemplate,
             BusinessHoursService businessHoursService,
-            com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils) {
+            com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils,
+            OrderPaymentService orderPaymentService,
+            WalletService walletService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -115,6 +120,8 @@ public class OrderService {
         this.promotionRepository = promotionRepository;
         this.businessHoursService = businessHoursService;
         this.geoLocationUtils = geoLocationUtils;
+        this.orderPaymentService = orderPaymentService;
+        this.walletService = walletService;
     }
 
     @Transactional
@@ -472,6 +479,65 @@ public class OrderService {
         return order.getShop() != null && Boolean.TRUE.equals(order.getShop().getSelfDeliveryEnabled());
     }
 
+    /**
+     * Splits an online-paid order's total between the shop and the delivery partner on
+     * delivery. No platform commission is deducted here — none was specified for order
+     * payments (unlike the existing delivery-partner COD commission, which is separate).
+     * If a commission cut is wanted later, add it here the same way OrderPaymentService's
+     * gateway fee is configurable, rather than baking in an unstated percentage now.
+     *
+     * - Self-delivery shop: shop wallet gets the full order total (goods + delivery fee),
+     *   since the shop performed the delivery itself.
+     * - Platform-assigned driver: driver wallet gets the delivery fee, shop wallet gets the
+     *   remainder (goods value). If delivery somehow completed with no assignment on record
+     *   (shouldn't happen for a HOME_DELIVERY order, but SELF_PICKUP orders have none by
+     *   design), the shop gets the full total — there's no driver to pay.
+     */
+    private void settleWalletsForDeliveredOrder(Order order) {
+        Long shopId = order.getShop() != null ? order.getShop().getId() : null;
+        if (shopId == null) {
+            log.warn("Cannot settle wallet for order {}: no shop on order", order.getId());
+            return;
+        }
+
+        BigDecimal total = order.getTotalAmount();
+        BigDecimal deliveryFee = order.getDeliveryFee() != null ? order.getDeliveryFee() : BigDecimal.ZERO;
+
+        if (isSelfDeliveryShop(order) || order.getDeliveryType() == Order.DeliveryType.SELF_PICKUP) {
+            walletService.creditForOrder(Wallet.WalletOwnerType.SHOP, shopId, order.getId(), total,
+                    "Order " + order.getOrderNumber() + " (self-delivery/pickup, full amount)");
+            return;
+        }
+
+        Optional<OrderAssignment> deliveredAssignment = orderAssignmentRepository
+                .findByOrderIdAndStatus(order.getId(), OrderAssignment.AssignmentStatus.DELIVERED);
+        if (deliveredAssignment.isEmpty()) {
+            deliveredAssignment = orderAssignmentRepository.findByOrderIdAndStatus(
+                    order.getId(), OrderAssignment.AssignmentStatus.COMPLETED);
+        }
+
+        if (deliveredAssignment.isPresent() && deliveredAssignment.get().getDeliveryPartner() != null) {
+            OrderAssignment assignment = deliveredAssignment.get();
+            Long partnerId = assignment.getDeliveryPartner().getId();
+            BigDecimal partnerAmount = assignment.getDeliveryFee() != null && assignment.getDeliveryFee().compareTo(BigDecimal.ZERO) > 0
+                    ? assignment.getDeliveryFee() : deliveryFee;
+            BigDecimal shopAmount = total.subtract(partnerAmount);
+
+            if (partnerAmount.compareTo(BigDecimal.ZERO) > 0) {
+                walletService.creditForOrder(Wallet.WalletOwnerType.DELIVERY_PARTNER, partnerId, order.getId(), partnerAmount,
+                        "Delivery fee for order " + order.getOrderNumber());
+            }
+            if (shopAmount.compareTo(BigDecimal.ZERO) > 0) {
+                walletService.creditForOrder(Wallet.WalletOwnerType.SHOP, shopId, order.getId(), shopAmount,
+                        "Order " + order.getOrderNumber() + " (goods value)");
+            }
+        } else {
+            log.warn("Order {} delivered with no completed delivery-partner assignment on record — crediting full amount to shop", order.getId());
+            walletService.creditForOrder(Wallet.WalletOwnerType.SHOP, shopId, order.getId(), total,
+                    "Order " + order.getOrderNumber() + " (no delivery partner on record)");
+        }
+    }
+
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, Order.OrderStatus status) {
         log.info("Updating order status: {} to {}", orderId, status);
@@ -498,8 +564,21 @@ public class OrderService {
         if (status == Order.OrderStatus.DELIVERED) {
             order.setActualDeliveryTime(LocalDateTime.now());
         }
-        
+
         Order updatedOrder = orderRepository.save(order);
+
+        // Settle wallets only for online-paid orders — the platform is holding this money
+        // via Razorpay and owes it out. COD orders never touch wallets: the driver already
+        // holds the cash and settles commission back to the platform via PaymentSettlement.
+        if (status == Order.OrderStatus.DELIVERED && updatedOrder.isPaid()) {
+            try {
+                settleWalletsForDeliveredOrder(updatedOrder);
+            } catch (Exception e) {
+                // Never let a wallet-crediting bug block the delivery status update itself —
+                // log loudly so it can be settled manually, but the order still completes.
+                log.error("Wallet settlement failed for delivered order {}: {}", updatedOrder.getId(), e.getMessage(), e);
+            }
+        }
 
         // Save the order status update first
         OrderResponse response = mapToResponse(updatedOrder);
@@ -780,9 +859,16 @@ public class OrderService {
                                order.getPaymentMethod() == Order.PaymentMethod.CARD)) {
             log.info("Processing refund for cancelled order: {} with amount: {}",
                     order.getOrderNumber(), order.getTotalAmount());
-            order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
-            // Note: Actual refund transaction would be handled by payment gateway integration
-            // For now, we just mark the status as REFUNDED
+            try {
+                orderPaymentService.refundForCancellation(orderId);
+                order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
+            } catch (Exception e) {
+                // Do not silently mark REFUNDED if the actual Razorpay refund call failed —
+                // that would show the customer a refund that never happened. Surface the
+                // failure so the cancellation can be retried or handled manually.
+                log.error("Refund failed for order {}: {}", order.getOrderNumber(), e.getMessage(), e);
+                throw new RuntimeException("Order cancellation failed: refund could not be processed. " + e.getMessage());
+            }
         } else if (order.getPaymentMethod() == Order.PaymentMethod.CASH_ON_DELIVERY) {
             log.info("COD order cancelled: {}. No refund processing needed.", order.getOrderNumber());
         }

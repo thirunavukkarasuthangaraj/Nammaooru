@@ -31,6 +31,8 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
 
     Page<ParcelServicePost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
+    Page<ParcelServicePost> findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(int minReportCount, List<PostStatus> excludedStatuses, Pageable pageable);
+
     Page<ParcelServicePost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<ParcelServicePost> findByStatusInAndServiceTypeAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, ServiceType serviceType, LocalDateTime after, Pageable pageable);

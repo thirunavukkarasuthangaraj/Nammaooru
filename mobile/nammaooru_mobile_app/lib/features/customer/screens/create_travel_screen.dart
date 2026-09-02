@@ -13,6 +13,7 @@ import '../services/travel_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../../services/post_config_service.dart';
 
 class CreateTravelScreen extends StatefulWidget {
@@ -91,7 +92,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
   void _prefillData() {
     final phone = LocalStorage.getString('phoneNumber');
     if (phone != null && phone.isNotEmpty) {
-      _phoneController.text = phone;
+      _phoneController.text = FormValidators.normalizeIndianMobile(phone);
     } else {
       _fetchPhoneFromProfile();
     }
@@ -105,12 +106,14 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         final data = response.data;
         if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
           final userData = data['data'];
-          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          final phone =
+              userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
           if (phone.toString().isNotEmpty && mounted) {
+            final normalizedPhone = FormValidators.normalizeIndianMobile(phone);
             setState(() {
-              _phoneController.text = phone.toString();
+              _phoneController.text = normalizedPhone;
             });
-            await LocalStorage.setString('phoneNumber', phone.toString());
+            await LocalStorage.setString('phoneNumber', normalizedPhone);
           }
         }
       }
@@ -122,10 +125,13 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
   Future<void> _getLocation() async {
     try {
       final position = await LocationService.instance.getCurrentPosition();
-      if (position != null && position.latitude != null && position.longitude != null) {
+      if (position != null &&
+          position.latitude != null &&
+          position.longitude != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        final address = await LocationService.instance.getAddressFromCoordinates(
+        final address =
+            await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
         );
@@ -153,11 +159,12 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
     }
     try {
       final picker = ImagePicker();
+      // No maxWidth/maxHeight/imageQuality here — those force image_picker's
+      // own native resize into a cache file ("scaled_*.jpg") that races with
+      // reads on some OEM builds (Samsung and others), causing
+      // PathNotFoundException. ImageCompressor below handles resizing instead.
       final pickedFile = await picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
       );
       if (pickedFile != null && mounted) {
         final compressed = await ImageCompressor.compressXFile(pickedFile);
@@ -182,11 +189,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
     try {
       final picker = ImagePicker();
       final remaining = _maxImages - _selectedImages.length;
-      final pickedFiles = await picker.pickMultiImage(
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
-      );
+      // See _pickImageFromCamera — no native resize params, ImageCompressor handles it.
+      final pickedFiles = await picker.pickMultiImage();
       if (pickedFiles.isNotEmpty && mounted) {
         final toAdd = pickedFiles.take(remaining).toList();
         final compressed = await ImageCompressor.compressMultiple(toAdd);
@@ -228,7 +232,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: Text(langProvider.getText('Take Photo', '\u0BAA\u0BC1\u0B95\u0BC8\u0BAA\u0BCD\u0BAA\u0B9F\u0BAE\u0BCD \u0B8E\u0B9F\u0BC1\u0B95\u0BCD\u0B95')),
+              title: Text(langProvider.getText('Take Photo',
+                  '\u0BAA\u0BC1\u0B95\u0BC8\u0BAA\u0BCD\u0BAA\u0B9F\u0BAE\u0BCD \u0B8E\u0B9F\u0BC1\u0B95\u0BCD\u0B95')),
               onTap: () {
                 Navigator.pop(context);
                 _pickImageFromCamera();
@@ -236,7 +241,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: Text(langProvider.getText('Choose from Gallery', '\u0B95\u0BC7\u0BB2\u0BB0\u0BBF\u0BAF\u0BBF\u0BB2\u0BBF\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1 \u0BA4\u0BC7\u0BB0\u0BCD\u0BB5\u0BC1 \u0B9A\u0BC6\u0BAF\u0BCD\u0B95')),
+              title: Text(langProvider.getText('Choose from Gallery',
+                  '\u0B95\u0BC7\u0BB2\u0BB0\u0BBF\u0BAF\u0BBF\u0BB2\u0BBF\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4\u0BC1 \u0BA4\u0BC7\u0BB0\u0BCD\u0BB5\u0BC1 \u0B9A\u0BC6\u0BAF\u0BCD\u0B95')),
               onTap: () {
                 Navigator.pop(context);
                 _pickImagesFromGallery();
@@ -293,7 +299,9 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
           _paidTokenId = null;
           _showSuccessDialog();
         } else if (PostPaymentHandler.isLimitReached(result)) {
-          setState(() { _isSubmitting = false; });
+          setState(() {
+            _isSubmitting = false;
+          });
           _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -331,7 +339,12 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId);
       },
-      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+      onPaymentCancelled: () {
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
+      },
     );
     handler.startPayment();
   }
@@ -345,7 +358,12 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId, isBanner: true);
       },
-      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+      onPaymentCancelled: () {
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
+      },
     );
     handler.startPayment(includeBanner: true);
   }
@@ -363,7 +381,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
             const Icon(Icons.check_circle, color: Color(0xFF00897B), size: 64),
             const SizedBox(height: 16),
             Text(
-              langProvider.getText('Travel Listing Submitted!', '\u0BAA\u0BAF\u0BA3 \u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BAE\u0BB0\u0BCD\u0BAA\u0BCD\u0BAA\u0BBF\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1!'),
+              langProvider.getText('Travel Listing Submitted!',
+                  '\u0BAA\u0BAF\u0BA3 \u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BAE\u0BB0\u0BCD\u0BAA\u0BCD\u0BAA\u0BBF\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1!'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -395,86 +414,198 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
   void _showHelpGuide(LanguageProvider langProvider) {
     final isTamil = langProvider.showTamil;
     final steps = [
-      {'icon': Icons.title, 'color': Colors.orange.shade600,
+      {
+        'icon': Icons.title,
+        'color': Colors.orange.shade600,
         'title': isTamil ? '1. தலைப்பு எழுதவும்' : '1. Write a Title',
-        'desc': isTamil ? 'பயண சேவையின் சுருக்கமான தலைப்பு எழுதவும். எ.கா: "சென்னை பேருந்து சேவை", "திருப்பூர் வேன் வாடகை".' : 'Write a short title. e.g., "Chennai Bus Service", "Tiruppur Van Rental".'},
-      {'icon': Icons.directions_bus_outlined, 'color': Colors.teal.shade600,
+        'desc': isTamil
+            ? 'பயண சேவையின் சுருக்கமான தலைப்பு எழுதவும். எ.கா: "சென்னை பேருந்து சேவை", "திருப்பூர் வேன் வாடகை".'
+            : 'Write a short title. e.g., "Chennai Bus Service", "Tiruppur Van Rental".'
+      },
+      {
+        'icon': Icons.directions_bus_outlined,
+        'color': Colors.teal.shade600,
         'title': isTamil ? '2. வாகன வகை' : '2. Vehicle Type',
-        'desc': isTamil ? 'பேருந்து / லாரி / மினி பஸ் / வாடகை / கார் என சரியான வாகன வகையை தேர்வு செய்யவும்.' : 'Select vehicle type: Bus, Lorry, Mini Bus, Rent Car, etc.'},
-      {'icon': Icons.route_outlined, 'color': Colors.blue.shade600,
+        'desc': isTamil
+            ? 'பேருந்து / லாரி / மினி பஸ் / வாடகை / கார் என சரியான வாகன வகையை தேர்வு செய்யவும்.'
+            : 'Select vehicle type: Bus, Lorry, Mini Bus, Rent Car, etc.'
+      },
+      {
+        'icon': Icons.route_outlined,
+        'color': Colors.blue.shade600,
         'title': isTamil ? '3. பயண இடங்கள்' : '3. From → To Locations',
-        'desc': isTamil ? 'புறப்படும் இடம் மற்றும் சென்று சேரும் இடத்தை உள்ளிடவும். GPS மூலம் தானாக கண்டுபிடிக்கலாம்.' : 'Enter departure and destination locations. GPS auto-fills your current location.'},
-      {'icon': Icons.currency_rupee, 'color': Colors.green.shade700,
-        'title': isTamil ? '4. இருக்கை விலை & எண்ணிக்கை' : '4. Price per Seat & Seats',
-        'desc': isTamil ? 'ஒரு இருக்கைக்கான விலையும், மொத்த இருக்கைகளின் எண்ணிக்கையும் குறிப்பிடவும்.' : 'Enter price per seat and total number of seats available.'},
-      {'icon': Icons.description_outlined, 'color': Colors.purple.shade600,
+        'desc': isTamil
+            ? 'புறப்படும் இடம் மற்றும் சென்று சேரும் இடத்தை உள்ளிடவும். GPS மூலம் தானாக கண்டுபிடிக்கலாம்.'
+            : 'Enter departure and destination locations. GPS auto-fills your current location.'
+      },
+      {
+        'icon': Icons.currency_rupee,
+        'color': Colors.green.shade700,
+        'title': isTamil
+            ? '4. இருக்கை விலை & எண்ணிக்கை'
+            : '4. Price per Seat & Seats',
+        'desc': isTamil
+            ? 'ஒரு இருக்கைக்கான விலையும், மொத்த இருக்கைகளின் எண்ணிக்கையும் குறிப்பிடவும்.'
+            : 'Enter price per seat and total number of seats available.'
+      },
+      {
+        'icon': Icons.description_outlined,
+        'color': Colors.purple.shade600,
         'title': isTamil ? '5. விவரம்' : '5. Description',
-        'desc': isTamil ? 'பயண நேரம், சேவை வழி, வசதிகள் பற்றி விவரமாக எழுதவும். குரல் பொத்தானை பயன்படுத்தலாம்.' : 'Describe travel timings, route stops, and amenities. Use mic button to speak.'},
-      {'icon': Icons.camera_alt_outlined, 'color': Colors.indigo.shade600,
+        'desc': isTamil
+            ? 'பயண நேரம், சேவை வழி, வசதிகள் பற்றி விவரமாக எழுதவும். குரல் பொத்தானை பயன்படுத்தலாம்.'
+            : 'Describe travel timings, route stops, and amenities. Use mic button to speak.'
+      },
+      {
+        'icon': Icons.camera_alt_outlined,
+        'color': Colors.indigo.shade600,
         'title': isTamil ? '6. வாகன புகைப்படம்' : '6. Vehicle Photos',
-        'desc': isTamil ? 'வாகனத்தின் உள்ளே மற்றும் வெளியே புகைப்படங்கள் சேர்க்கவும். இது பயணிகளுக்கு நம்பிக்கை தரும்.' : 'Add interior and exterior photos of the vehicle. This builds passenger trust.'},
-      {'icon': Icons.check_circle_outline, 'color': _travelTeal,
+        'desc': isTamil
+            ? 'வாகனத்தின் உள்ளே மற்றும் வெளியே புகைப்படங்கள் சேர்க்கவும். இது பயணிகளுக்கு நம்பிக்கை தரும்.'
+            : 'Add interior and exterior photos of the vehicle. This builds passenger trust.'
+      },
+      {
+        'icon': Icons.check_circle_outline,
+        'color': _travelTeal,
         'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit for Approval',
-        'desc': isTamil ? '"ஒப்புதலுக்கு சமர்ப்பிக்கவும்" அழுத்தவும். நிர்வாகி சரிபார்த்த பின் பயணிகள் தொடர்பு கொள்வார்கள்.' : 'Tap "Submit". Passengers will contact you directly after admin review.'},
+        'desc': isTamil
+            ? '"ஒப்புதலுக்கு சமர்ப்பிக்கவும்" அழுத்தவும். நிர்வாகி சரிபார்த்த பின் பயணிகள் தொடர்பு கொள்வார்கள்.'
+            : 'Tap "Submit". Passengers will contact you directly after admin review.'
+      },
     ];
-    _showGuideSheet(langProvider, steps,
-      isTamil ? 'பயண சேவை பதிவிடுவது எப்படி?' : 'How to Add a Travel Listing?',
-      isTamil ? '7 எளிய படிகளில் பயண சேவை பட்டியலிடவும்' : 'List your travel service in 7 easy steps',
-      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். வாகன புகைப்படம் சேர்த்தால் அதிக பயணிகள் தொடர்பு கொள்வார்கள்.' : 'Tip: 3 free posts per day. Adding vehicle photos gets more passenger inquiries.');
+    _showGuideSheet(
+        langProvider,
+        steps,
+        isTamil
+            ? 'பயண சேவை பதிவிடுவது எப்படி?'
+            : 'How to Add a Travel Listing?',
+        isTamil
+            ? '7 எளிய படிகளில் பயண சேவை பட்டியலிடவும்'
+            : 'List your travel service in 7 easy steps',
+        isTamil
+            ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். வாகன புகைப்படம் சேர்த்தால் அதிக பயணிகள் தொடர்பு கொள்வார்கள்.'
+            : 'Tip: 3 free posts per day. Adding vehicle photos gets more passenger inquiries.');
   }
 
-  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+  void _showGuideSheet(
+      LanguageProvider langProvider,
+      List<Map<String, dynamic>> steps,
+      String title,
+      String subtitle,
+      String tip) {
     showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
         builder: (_, sc) => Container(
-          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
           child: Column(children: [
-            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(children: [
-                Container(padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: _travelTeal.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(Icons.lightbulb_outline, color: _travelTeal, size: 22)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 4),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2))),
+            Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(children: [
+                  Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color: _travelTeal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.lightbulb_outline,
+                          color: _travelTeal, size: 22)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(title,
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(subtitle,
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade600)),
+                      ])),
+                  IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx)),
                 ])),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-              ])),
             const Divider(height: 1),
-            Expanded(child: ListView.separated(
-              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+            Expanded(
+                child: ListView.separated(
+              controller: sc,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, i) {
                 final s = steps[i];
                 return Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Container(padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
-                      const SizedBox(height: 4),
-                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
-                    ])),
-                  ]),
+                  decoration: BoxDecoration(
+                      color: (s['color'] as Color).withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                                color: (s['color'] as Color).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10)),
+                            child: Icon(s['icon'] as IconData,
+                                color: s['color'] as Color, size: 22)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text(s['title'] as String,
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: (s['color'] as Color)
+                                          .withOpacity(0.9))),
+                              const SizedBox(height: 4),
+                              Text(s['desc'] as String,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade700,
+                                      height: 1.4)),
+                            ])),
+                      ]),
                 );
               },
             )),
-            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
-              child: Row(children: [
-                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
-              ])),
+            Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade200)),
+                child: Row(children: [
+                  Icon(Icons.tips_and_updates_outlined,
+                      color: Colors.amber.shade700, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text(tip,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber.shade900,
+                              height: 1.4))),
+                ])),
           ]),
         ),
       ),
@@ -489,7 +620,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          langProvider.getText('Add Travel', '\u0BAA\u0BAF\u0BA3\u0BAE\u0BCD \u0B9A\u0BC7\u0BB0\u0BCD\u0B95\u0BCD\u0B95'),
+          langProvider.getText('Add Travel',
+              '\u0BAA\u0BAF\u0BA3\u0BAE\u0BCD \u0B9A\u0BC7\u0BB0\u0BCD\u0B95\u0BCD\u0B95'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: _travelTeal,
@@ -498,7 +630,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            tooltip:
+                langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
             onPressed: () => _showHelpGuide(langProvider),
           ),
         ],
@@ -510,296 +643,349 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image picker
-              _buildImagePicker(langProvider),
-              const SizedBox(height: 20),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image picker
+                _buildImagePicker(langProvider),
+                const SizedBox(height: 20),
 
-              // Title
-              _buildLabel(langProvider.getText('Title *', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _titleController,
-                maxLength: 200,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.next,
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., Chennai to Tirupathi Daily', '\u0B8E.\u0B95\u0BBE., \u0B9A\u0BC6\u0BA9\u0BCD\u0BA9\u0BC8 \u0BA4\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BA4\u0BBF \u0BA4\u0BBF\u0BA9\u0B9A\u0BB0\u0BBF'),
-                ).copyWith(suffixIcon: VoiceInputButton(controller: _titleController)),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Title is required', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0BA4\u0BC7\u0BB5\u0BC8');
-                  }
-                  if (value.trim().length < 3) {
-                    return langProvider.getText('Must be at least 3 characters', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 3 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
-                  }
-                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
-                    return langProvider.getText('Title max 3 words', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Vehicle Type
-              _buildLabel(langProvider.getText('Vehicle Type *', '\u0BB5\u0BBE\u0B95\u0BA9 \u0BB5\u0B95\u0BC8 *')),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: _selectedVehicleType,
-                decoration: _inputDecoration(
-                  langProvider.getText('Select vehicle type', '\u0BB5\u0BBE\u0B95\u0BA9 \u0BB5\u0B95\u0BC8\u0BAF\u0BC8\u0BA4\u0BCD \u0BA4\u0BC7\u0BB0\u0BCD\u0BA8\u0BCD\u0BA4\u0BC6\u0B9F\u0BC1\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD'),
+                // Title
+                _buildLabel(langProvider.getText(
+                    'Title *', '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _titleController,
+                  maxLength: 200,
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    langProvider.getText('e.g., Chennai to Tirupathi Daily',
+                        '\u0B8E.\u0B95\u0BBE., \u0B9A\u0BC6\u0BA9\u0BCD\u0BA9\u0BC8 \u0BA4\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BA4\u0BBF \u0BA4\u0BBF\u0BA9\u0B9A\u0BB0\u0BBF'),
+                  ).copyWith(
+                      suffixIcon:
+                          VoiceInputButton(controller: _titleController)),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('Title is required',
+                          '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0BA4\u0BC7\u0BB5\u0BC8');
+                    }
+                    if (value.trim().length < 3) {
+                      return langProvider.getText(
+                          'Must be at least 3 characters',
+                          '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 3 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                    }
+                    if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                      return langProvider.getText('Title max 3 words',
+                          '\u0BA4\u0BB2\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
+                    }
+                    return null;
+                  },
                 ),
-                items: _vehicleTypes.entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(langProvider.getText(entry.value, _vehicleTypeTamil[entry.key] ?? entry.value)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedVehicleType = value ?? 'BUS';
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              // From Location
-              _buildLabel(langProvider.getText('From Location *', '\u0BAA\u0BC1\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _fromLocationController,
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., Chennai', '\u0B8E.\u0B95\u0BBE., \u0B9A\u0BC6\u0BA9\u0BCD\u0BA9\u0BC8'),
-                ).copyWith(
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.my_location, color: _travelTeal),
-                    onPressed: _getLocation,
+                // Vehicle Type
+                _buildLabel(langProvider.getText('Vehicle Type *',
+                    '\u0BB5\u0BBE\u0B95\u0BA9 \u0BB5\u0B95\u0BC8 *')),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: _selectedVehicleType,
+                  decoration: _inputDecoration(
+                    langProvider.getText('Select vehicle type',
+                        '\u0BB5\u0BBE\u0B95\u0BA9 \u0BB5\u0B95\u0BC8\u0BAF\u0BC8\u0BA4\u0BCD \u0BA4\u0BC7\u0BB0\u0BCD\u0BA8\u0BCD\u0BA4\u0BC6\u0B9F\u0BC1\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD'),
                   ),
+                  items: _vehicleTypes.entries.map((entry) {
+                    return DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(langProvider.getText(entry.value,
+                          _vehicleTypeTamil[entry.key] ?? entry.value)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedVehicleType = value ?? 'BUS';
+                    });
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('From location is required', '\u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd \u0b87\u0b9f\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
-                  }
-                  if (value.trim().length < 3) {
-                    return langProvider.getText('Enter a valid from location', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              // To Location
-              _buildLabel(langProvider.getText('To Location *', '\u0B9A\u0BC7\u0BB0\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _toLocationController,
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., Tirupathi', '\u0B8E.\u0B95\u0BBE., \u0BA4\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BA4\u0BBF'),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('To location is required', '\u0b9a\u0bc7\u0bb0\u0bc1\u0bae\u0bcd \u0b87\u0b9f\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
-                  }
-                  if (value.trim().length < 3) {
-                    return langProvider.getText('Enter a valid to location', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Price
-              _buildLabel(langProvider.getText('Price *', '\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _priceController,
-                keyboardType: TextInputType.text,
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., 500, Negotiable', '\u0B8E.\u0B95\u0BBE., 500, \u0BAA\u0BC7\u0B9A\u0BBF \u0BAE\u0BC1\u0B9F\u0BBF\u0BAF\u0BC1\u0BAE\u0BCD'),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Price is required', '\u0b95\u0b9f\u0bcd\u0b9f\u0ba3\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
-                  }
-                  if (value.trim().length < 2) {
-                    return langProvider.getText('Enter valid price info', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b95\u0b9f\u0bcd\u0b9f\u0ba3\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Seats Available
-              _buildLabel(langProvider.getText('Seats Available *', '\u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BC8\u0B95\u0BB3\u0BCD *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _seatsController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., 4', '\u0B8E.\u0B95\u0BBE., 4'),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Seats available is required', '\u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
-                  }
-                  final seats = int.tryParse(value.trim());
-                  if (seats == null) {
-                    return langProvider.getText('Enter a valid number', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
-                  } else if (seats < 1) {
-                    return langProvider.getText('At least 1 seat required', '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 1 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8 \u0ba4\u0bc7\u0bb5\u0bc8');
-                  } else if (seats > 60) {
-                    return langProvider.getText('Maximum 60 seats allowed', '\u0b85\u0ba4\u0bbf\u0b95\u0baa\u0b9f\u0bcd\u0b9a\u0bae\u0bcd 60 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bb3\u0bcd \u0b85\u0ba9\u0bc1\u0bae\u0ba4\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Phone (auto-filled, read-only)
-              _buildLabel(langProvider.getText('Phone Number *', '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ],
-                decoration: _inputDecoration(
-                  langProvider.getText('Contact phone number', '\u0BA4\u0BCA\u0B9F\u0BB0\u0BCD\u0BAA\u0BC1 \u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD'),
-                ).copyWith(
-                  prefixIcon: const Icon(Icons.phone, size: 20, color: _travelTeal),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Phone number is required', '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD \u0BA4\u0BC7\u0BB5\u0BC8');
-                  }
-                  if (value.trim().length != 10) {
-                    return langProvider.getText('Enter valid 10-digit mobile number', '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 10 \u0b87\u0bb2\u0b95\u0bcd\u0b95 \u0bae\u0bca\u0baa\u0bc8\u0bb2\u0bcd \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
-                  }
-                  if (!RegExp(r'^[6-9]').hasMatch(value.trim())) {
-                    return langProvider.getText('Must start with 6, 7, 8 or 9', '6, 7, 8 \u0b85\u0bb2\u0bcd\u0bb2\u0ba4\u0bc1 9 \u0b87\u0bb2\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Description
-              _buildLabel(langProvider.getText('Description *', '\u0BB5\u0BBF\u0BB5\u0BB0\u0BAE\u0BCD *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _descriptionController,
-                maxLength: 1000,
-                minLines: 3,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                decoration: _inputDecoration(
-                  langProvider.getText('Additional details about the travel...', '\u0BAA\u0BAF\u0BA3\u0BA4\u0BCD\u0BA4\u0BC8\u0BAA\u0BCD \u0BAA\u0BB1\u0BCD\u0BB1\u0BBF\u0BAF \u0B95\u0BC2\u0B9F\u0BC1\u0BA4\u0BB2\u0BCD \u0BB5\u0BBF\u0BB5\u0BB0\u0B99\u0BCD\u0B95\u0BB3\u0BCD...'),
-                ).copyWith(
-                  suffixIcon: VoiceInputButton(controller: _descriptionController),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Description is required', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
-                  }
-                  if (value.trim().length < 10) {
-                    return langProvider.getText('Description must be at least 10 characters', '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 10 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Banner toggle
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _wantsBanner ? Colors.amber.shade400 : Colors.grey.shade300,
+                // From Location
+                _buildLabel(langProvider.getText('From Location *',
+                    '\u0BAA\u0BC1\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _fromLocationController,
+                  decoration: _inputDecoration(
+                    langProvider.getText('e.g., Chennai',
+                        '\u0B8E.\u0B95\u0BBE., \u0B9A\u0BC6\u0BA9\u0BCD\u0BA9\u0BC8'),
+                  ).copyWith(
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.my_location, color: _travelTeal),
+                      onPressed: _getLocation,
+                    ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('From location is required',
+                          '\u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd \u0b87\u0b9f\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                    }
+                    if (value.trim().length < 3) {
+                      return langProvider.getText('Enter a valid from location',
+                          '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                    }
+                    return null;
+                  },
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.star,
-                      color: _wantsBanner ? Colors.amber.shade700 : Colors.grey.shade400,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            langProvider.getText('Feature as Banner', '\u0BAA\u0BC7\u0BA9\u0BB0\u0BBE\u0B95 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1'),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: _wantsBanner ? Colors.amber.shade900 : Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            langProvider.getText(
-                              'Show at top of listings (paid)',
-                              '\u0BAA\u0B9F\u0BCD\u0B9F\u0BBF\u0BAF\u0BB2\u0BCD\u0B95\u0BB3\u0BBF\u0BA9\u0BCD \u0BAE\u0BC7\u0BB2\u0BC7 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1 (\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD)',
-                            ),
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _wantsBanner,
-                      activeColor: Colors.amber.shade700,
-                      onChanged: (val) => setState(() => _wantsBanner = val),
-                    ),
+                const SizedBox(height: 12),
+
+                // To Location
+                _buildLabel(langProvider.getText('To Location *',
+                    '\u0B9A\u0BC7\u0BB0\u0BC1\u0BAE\u0BCD \u0B87\u0B9F\u0BAE\u0BCD *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _toLocationController,
+                  decoration: _inputDecoration(
+                    langProvider.getText('e.g., Tirupathi',
+                        '\u0B8E.\u0B95\u0BBE., \u0BA4\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BA4\u0BBF'),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('To location is required',
+                          '\u0b9a\u0bc7\u0bb0\u0bc1\u0bae\u0bcd \u0b87\u0b9f\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                    }
+                    if (value.trim().length < 3) {
+                      return langProvider.getText('Enter a valid to location',
+                          '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Price
+                _buildLabel(langProvider.getText(
+                    'Price *', '\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.text,
+                  decoration: _inputDecoration(
+                    langProvider.getText('e.g., 500, Negotiable',
+                        '\u0B8E.\u0B95\u0BBE., 500, \u0BAA\u0BC7\u0B9A\u0BBF \u0BAE\u0BC1\u0B9F\u0BBF\u0BAF\u0BC1\u0BAE\u0BCD'),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('Price is required',
+                          '\u0b95\u0b9f\u0bcd\u0b9f\u0ba3\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                    }
+                    if (value.trim().length < 2) {
+                      return langProvider.getText('Enter valid price info',
+                          '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b95\u0b9f\u0bcd\u0b9f\u0ba3\u0ba4\u0bcd\u0ba4\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Seats Available
+                _buildLabel(langProvider.getText('Seats Available *',
+                    '\u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BC8\u0B95\u0BB3\u0BCD *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _seatsController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(2),
                   ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Submit button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _travelTeal,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    disabledBackgroundColor: Colors.grey[400],
+                  decoration: _inputDecoration(
+                    langProvider.getText('e.g., 4', '\u0B8E.\u0B95\u0BBE., 4'),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          langProvider.getText('Submit Listing', '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BAE\u0BB0\u0BCD\u0BAA\u0BCD\u0BAA\u0BBF\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD'),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('Seats available is required',
+                          '\u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                    }
+                    final seats = int.tryParse(value.trim());
+                    if (seats == null) {
+                      return langProvider.getText('Enter a valid number',
+                          '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                    } else if (seats < 1) {
+                      return langProvider.getText('At least 1 seat required',
+                          '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 1 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8 \u0ba4\u0bc7\u0bb5\u0bc8');
+                    } else if (seats > 60) {
+                      return langProvider.getText('Maximum 60 seats allowed',
+                          '\u0b85\u0ba4\u0bbf\u0b95\u0baa\u0b9f\u0bcd\u0b9a\u0bae\u0bcd 60 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bb3\u0bcd \u0b85\u0ba9\u0bc1\u0bae\u0ba4\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd');
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 12),
+
+                // Phone (auto-filled, read-only)
+                _buildLabel(langProvider.getText('Phone Number *',
+                    '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: _inputDecoration(
+                    langProvider.getText(FormValidators.mobileExample,
+                        '\u0B8E.\u0B95\u0BBE., 9876543210'),
+                  ).copyWith(
+                    prefixIcon:
+                        const Icon(Icons.phone, size: 20, color: _travelTeal),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('Phone number is required',
+                          '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD \u0BA4\u0BC7\u0BB5\u0BC8');
+                    }
+                    if (value.trim().length != 10) {
+                      return langProvider.getText(
+                          'Enter valid 10-digit mobile number',
+                          '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 10 \u0b87\u0bb2\u0b95\u0bcd\u0b95 \u0bae\u0bca\u0baa\u0bc8\u0bb2\u0bcd \u0b8e\u0ba3\u0bcd\u0ba3\u0bc8 \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bb5\u0bc1\u0bae\u0bcd');
+                    }
+                    if (!FormValidators.isValidIndianMobile(value)) {
+                      return langProvider.getText(
+                          'Must start with 6, 7, 8 or 9',
+                          '6, 7, 8 \u0b85\u0bb2\u0bcd\u0bb2\u0ba4\u0bc1 9 \u0b87\u0bb2\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Description
+                _buildLabel(langProvider.getText(
+                    'Description *', '\u0BB5\u0BBF\u0BB5\u0BB0\u0BAE\u0BCD *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _descriptionController,
+                  maxLength: 1000,
+                  minLines: 3,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  decoration: _inputDecoration(
+                    langProvider.getText(
+                        'Additional details about the travel...',
+                        '\u0BAA\u0BAF\u0BA3\u0BA4\u0BCD\u0BA4\u0BC8\u0BAA\u0BCD \u0BAA\u0BB1\u0BCD\u0BB1\u0BBF\u0BAF \u0B95\u0BC2\u0B9F\u0BC1\u0BA4\u0BB2\u0BCD \u0BB5\u0BBF\u0BB5\u0BB0\u0B99\u0BCD\u0B95\u0BB3\u0BCD...'),
+                  ).copyWith(
+                    suffixIcon:
+                        VoiceInputButton(controller: _descriptionController),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText('Description is required',
+                          '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8');
+                    }
+                    if (value.trim().length < 10) {
+                      return langProvider.getText(
+                          'Description must be at least 10 characters',
+                          '\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd \u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 10 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Banner toggle
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _wantsBanner
+                          ? Colors.amber.shade400
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.star,
+                        color: _wantsBanner
+                            ? Colors.amber.shade700
+                            : Colors.grey.shade400,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              langProvider.getText('Feature as Banner',
+                                  '\u0BAA\u0BC7\u0BA9\u0BB0\u0BBE\u0B95 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: _wantsBanner
+                                    ? Colors.amber.shade900
+                                    : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              langProvider.getText(
+                                'Show at top of listings (paid)',
+                                '\u0BAA\u0B9F\u0BCD\u0B9F\u0BBF\u0BAF\u0BB2\u0BCD\u0B95\u0BB3\u0BBF\u0BA9\u0BCD \u0BAE\u0BC7\u0BB2\u0BC7 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1 (\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD)',
+                              ),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _wantsBanner,
+                        activeColor: Colors.amber.shade700,
+                        onChanged: (val) => setState(() => _wantsBanner = val),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Submit button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitPost,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _travelTeal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      disabledBackgroundColor: Colors.grey[400],
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            langProvider.getText('Submit Listing',
+                                '\u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BAE\u0BB0\u0BCD\u0BAA\u0BCD\u0BAA\u0BBF\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD'),
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -842,13 +1028,16 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
       children: [
         Row(
           children: [
-            _buildLabel(langProvider.getText('Photos (optional)', '\u0BAA\u0BC1\u0B95\u0BC8\u0BAA\u0BCD\u0BAA\u0B9F\u0B99\u0BCD\u0B95\u0BB3\u0BCD (\u0BB5\u0BBF\u0BB0\u0BC1\u0BAE\u0BCD\u0BAA\u0BBF\u0BA9\u0BBE\u0BB2\u0BCD)')),
+            _buildLabel(langProvider.getText('Photos (optional)',
+                '\u0BAA\u0BC1\u0B95\u0BC8\u0BAA\u0BCD\u0BAA\u0B9F\u0B99\u0BCD\u0B95\u0BB3\u0BCD (\u0BB5\u0BBF\u0BB0\u0BC1\u0BAE\u0BCD\u0BAA\u0BBF\u0BA9\u0BBE\u0BB2\u0BCD)')),
             const SizedBox(width: 8),
             Text(
               '${_selectedImages.length}/$_maxImages',
               style: TextStyle(
                 fontSize: 13,
-                color: _selectedImages.length >= _maxImages ? Colors.orange : Colors.grey[500],
+                color: _selectedImages.length >= _maxImages
+                    ? Colors.orange
+                    : Colors.grey[500],
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -891,7 +1080,8 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                               color: Colors.red,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 16),
                           ),
                         ),
                       ),
@@ -900,14 +1090,18 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                           bottom: 4,
                           left: 4,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
@@ -924,16 +1118,20 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                      border: Border.all(
+                          color: Colors.grey[300]!, style: BorderStyle.solid),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.grey[400]),
+                        Icon(Icons.add_a_photo_outlined,
+                            size: 32, color: Colors.grey[400]),
                         const SizedBox(height: 6),
                         Text(
-                          langProvider.getText('Add Photo', '\u0BAA\u0BC1\u0B95\u0BC8\u0BAA\u0BCD\u0BAA\u0B9F\u0BAE\u0BCD'),
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                          langProvider.getText('Add Photo',
+                              '\u0BAA\u0BC1\u0B95\u0BC8\u0BAA\u0BCD\u0BAA\u0B9F\u0BAE\u0BCD'),
+                          style:
+                              TextStyle(color: Colors.grey[500], fontSize: 12),
                         ),
                       ],
                     ),

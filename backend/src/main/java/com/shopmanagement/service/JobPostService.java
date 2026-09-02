@@ -236,7 +236,10 @@ public class JobPostService {
     }
 
     public Page<JobPost> getReportedPosts(Pageable pageable) {
-        return jobPostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+        // Exclude DELETED — once a reported post has been taken down there's
+        // nothing left to review, so it shouldn't keep reappearing in the report queue.
+        List<PostStatus> excluded = List.of(PostStatus.DELETED);
+        return jobPostRepository.findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(0, excluded, pageable);
     }
 
     public Map<String, Long> getStats() {

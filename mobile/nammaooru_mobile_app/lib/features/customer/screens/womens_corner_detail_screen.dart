@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -568,6 +569,10 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: phone.isEmpty ? null : () async {
+              if (!Provider.of<AuthProvider>(context, listen: false).isAuthenticated) {
+                context.go('/register');
+                return;
+              }
               final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
               final uri = Uri.parse('tel:$cleanPhone');
               ContactViewService.log(
@@ -601,6 +606,10 @@ class _WomensCornerDetailScreenState extends State<WomensCornerDetailScreen> {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: phone.isEmpty ? null : () async {
+              if (!Provider.of<AuthProvider>(context, listen: false).isAuthenticated) {
+                context.go('/register');
+                return;
+              }
               final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
               final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
               final message = Uri.encodeComponent('Hi, I am interested in: ${post['title']}');

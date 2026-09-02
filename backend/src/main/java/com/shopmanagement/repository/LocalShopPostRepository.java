@@ -29,6 +29,8 @@ public interface LocalShopPostRepository extends JpaRepository<LocalShopPost, Lo
 
     Page<LocalShopPost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
+    Page<LocalShopPost> findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(int minReportCount, List<PostStatus> excludedStatuses, Pageable pageable);
+
     Page<LocalShopPost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<LocalShopPost> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, ShopCategory category, LocalDateTime after, Pageable pageable);

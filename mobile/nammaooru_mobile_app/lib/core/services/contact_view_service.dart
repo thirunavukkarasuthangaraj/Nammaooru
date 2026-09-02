@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config/env_config.dart';
+import '../storage/secure_storage.dart';
 
 /// Logs when a user taps "Call" on any post — records who viewed whose phone number.
 /// Fire-and-forget: call without awaiting so it doesn't block the UI.
@@ -24,8 +24,7 @@ class ContactViewService {
     int? ownerUserId,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final token = await SecureStorage.getAuthToken();
       if (token == null) return; // Not logged in — skip
 
       final uri = Uri.parse('${EnvConfig.baseUrl}/api/contact-views');

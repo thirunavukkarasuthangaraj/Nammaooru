@@ -28,6 +28,8 @@ public interface WomensCornerPostRepository extends JpaRepository<WomensCornerPo
 
     Page<WomensCornerPost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
+    Page<WomensCornerPost> findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(int minReportCount, List<PostStatus> excludedStatuses, Pageable pageable);
+
     Page<WomensCornerPost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<WomensCornerPost> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, String category, LocalDateTime after, Pageable pageable);

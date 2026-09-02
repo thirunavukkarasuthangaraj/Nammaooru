@@ -13,6 +13,7 @@ import '../services/labour_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../services/post_config_service.dart';
 
@@ -124,7 +125,7 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   void _prefillData() {
     final phone = LocalStorage.getString('phoneNumber');
     if (phone != null && phone.isNotEmpty) {
-      _phoneController.text = phone;
+      _phoneController.text = FormValidators.normalizeIndianMobile(phone);
     } else {
       _fetchPhoneFromProfile();
     }
@@ -138,12 +139,14 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         final data = response.data;
         if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
           final userData = data['data'];
-          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          final phone =
+              userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
           if (phone.toString().isNotEmpty && mounted) {
+            final normalizedPhone = FormValidators.normalizeIndianMobile(phone);
             setState(() {
-              _phoneController.text = phone.toString();
+              _phoneController.text = normalizedPhone;
             });
-            await LocalStorage.setString('phoneNumber', phone.toString());
+            await LocalStorage.setString('phoneNumber', normalizedPhone);
           }
         }
       }
@@ -155,10 +158,13 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   Future<void> _getLocation() async {
     try {
       final position = await LocationService.instance.getCurrentPosition();
-      if (position != null && position.latitude != null && position.longitude != null) {
+      if (position != null &&
+          position.latitude != null &&
+          position.longitude != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        final address = await LocationService.instance.getAddressFromCoordinates(
+        final address =
+            await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
         );
@@ -188,11 +194,12 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     }
     try {
       final picker = ImagePicker();
+      // No maxWidth/maxHeight/imageQuality here — those force image_picker's
+      // own native resize into a cache file ("scaled_*.jpg") that races with
+      // reads on some OEM builds (Samsung and others), causing
+      // PathNotFoundException. ImageCompressor below handles resizing instead.
       final pickedFile = await picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
       );
       if (pickedFile != null && mounted) {
         final compressed = await ImageCompressor.compressXFile(pickedFile);
@@ -217,11 +224,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
     try {
       final picker = ImagePicker();
       final remaining = _maxImages - _selectedImages.length;
-      final pickedFiles = await picker.pickMultiImage(
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
-      );
+      // See _pickImageFromCamera — no native resize params, ImageCompressor handles it.
+      final pickedFiles = await picker.pickMultiImage();
       if (pickedFiles.isNotEmpty && mounted) {
         final toAdd = pickedFiles.take(remaining).toList();
         final compressed = await ImageCompressor.compressMultiple(toAdd);
@@ -263,7 +267,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: Text(langProvider.getText('Take Photo', 'புகைப்படம் எடுக்க')),
+              title:
+                  Text(langProvider.getText('Take Photo', 'புகைப்படம் எடுக்க')),
               onTap: () {
                 Navigator.pop(context);
                 _pickImageFromCamera();
@@ -271,7 +276,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: Text(langProvider.getText('Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
+              title: Text(langProvider.getText(
+                  'Choose from Gallery', 'கேலரியிலிருந்து தேர்வு செய்க')),
               onTap: () {
                 Navigator.pop(context);
                 _pickImagesFromGallery();
@@ -320,7 +326,9 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
           _paidTokenId = null;
           _showSuccessDialog();
         } else if (PostPaymentHandler.isLimitReached(result)) {
-          setState(() { _isSubmitting = false; });
+          setState(() {
+            _isSubmitting = false;
+          });
           _handleLimitReached();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -358,7 +366,12 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId);
       },
-      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+      onPaymentCancelled: () {
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
+      },
     );
     handler.startPayment();
   }
@@ -372,7 +385,12 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         _paidTokenId = tokenId;
         _submitPost(paidTokenId: tokenId, isBanner: true);
       },
-      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+      onPaymentCancelled: () {
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
+      },
     );
     handler.startPayment(includeBanner: true);
   }
@@ -390,7 +408,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
             const Icon(Icons.check_circle, color: Color(0xFF1565C0), size: 64),
             const SizedBox(height: 16),
             Text(
-              langProvider.getText('Listing Submitted!', 'பதிவு சமர்ப்பிக்கப்பட்டது!'),
+              langProvider.getText(
+                  'Listing Submitted!', 'பதிவு சமர்ப்பிக்கப்பட்டது!'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -422,86 +441,196 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
   void _showHelpGuide(LanguageProvider langProvider) {
     final isTamil = langProvider.showTamil;
     final steps = [
-      {'icon': Icons.camera_alt_outlined, 'color': Colors.blue.shade600,
+      {
+        'icon': Icons.camera_alt_outlined,
+        'color': Colors.blue.shade600,
         'title': isTamil ? '1. புகைப்படம் (விருப்பம்)' : '1. Photos (Optional)',
-        'desc': isTamil ? 'தொழிலாளரின் வேலை செய்யும் புகைப்படம் சேர்த்தால் வாடிக்கையாளர்கள் நம்பிக்கையாக தொடர்பு கொள்வார்கள்.' : 'Add a work photo of the worker. It builds trust and gets more inquiries.'},
-      {'icon': Icons.person_outline, 'color': Colors.orange.shade600,
+        'desc': isTamil
+            ? 'தொழிலாளரின் வேலை செய்யும் புகைப்படம் சேர்த்தால் வாடிக்கையாளர்கள் நம்பிக்கையாக தொடர்பு கொள்வார்கள்.'
+            : 'Add a work photo of the worker. It builds trust and gets more inquiries.'
+      },
+      {
+        'icon': Icons.person_outline,
+        'color': Colors.orange.shade600,
         'title': isTamil ? '2. தொழிலாளர் பெயர்' : '2. Worker Name',
-        'desc': isTamil ? 'தொழிலாளரின் பெயரை உள்ளிடவும் (அதிகபட்சம் 3 வார்த்தைகள்). குரல் பொத்தானை பயன்படுத்தி சொல்லலாம்.' : 'Enter the worker\'s name (max 3 words). Use the mic button to speak.'},
-      {'icon': Icons.construction_outlined, 'color': Colors.teal.shade600,
+        'desc': isTamil
+            ? 'தொழிலாளரின் பெயரை உள்ளிடவும் (அதிகபட்சம் 3 வார்த்தைகள்). குரல் பொத்தானை பயன்படுத்தி சொல்லலாம்.'
+            : 'Enter the worker\'s name (max 3 words). Use the mic button to speak.'
+      },
+      {
+        'icon': Icons.construction_outlined,
+        'color': Colors.teal.shade600,
         'title': isTamil ? '3. திறன் வகை' : '3. Skill Category',
-        'desc': isTamil ? 'பெயிண்டர், தச்சர், எலக்ட்ரீஷியன், மெக்கானிக் என 23+ வகைகளில் சரியானதை தேர்வு செய்யவும்.' : 'Select from 23+ skill types: Painter, Carpenter, Electrician, Mechanic, etc.'},
-      {'icon': Icons.phone_outlined, 'color': Colors.indigo.shade600,
+        'desc': isTamil
+            ? 'பெயிண்டர், தச்சர், எலக்ட்ரீஷியன், மெக்கானிக் என 23+ வகைகளில் சரியானதை தேர்வு செய்யவும்.'
+            : 'Select from 23+ skill types: Painter, Carpenter, Electrician, Mechanic, etc.'
+      },
+      {
+        'icon': Icons.phone_outlined,
+        'color': Colors.indigo.shade600,
         'title': isTamil ? '4. தொலைபேசி & அனுபவம்' : '4. Phone & Experience',
-        'desc': isTamil ? '10-இலக்க மொபைல் எண் உள்ளிடவும். அனுபவ வருடங்களும் குறிப்பிட்டால் மேலும் நம்பகமாக இருக்கும்.' : 'Enter 10-digit mobile number. Adding years of experience builds more trust.'},
-      {'icon': Icons.location_on_outlined, 'color': Colors.red.shade600,
+        'desc': isTamil
+            ? '10-இலக்க மொபைல் எண் உள்ளிடவும். அனுபவ வருடங்களும் குறிப்பிட்டால் மேலும் நம்பகமாக இருக்கும்.'
+            : 'Enter 10-digit mobile number. Adding years of experience builds more trust.'
+      },
+      {
+        'icon': Icons.location_on_outlined,
+        'color': Colors.red.shade600,
         'title': isTamil ? '5. இடம்' : '5. Location',
-        'desc': isTamil ? 'தொழிலாளர் எங்கு பணி செய்கிறார் என்ற இடத்தை உள்ளிடவும். GPS பொத்தான் அழுத்தி தானாக கண்டுபிடிக்கலாம்.' : 'Enter where the worker is available. Tap GPS to auto-detect current location.'},
-      {'icon': Icons.description_outlined, 'color': Colors.purple.shade600,
+        'desc': isTamil
+            ? 'தொழிலாளர் எங்கு பணி செய்கிறார் என்ற இடத்தை உள்ளிடவும். GPS பொத்தான் அழுத்தி தானாக கண்டுபிடிக்கலாம்.'
+            : 'Enter where the worker is available. Tap GPS to auto-detect current location.'
+      },
+      {
+        'icon': Icons.description_outlined,
+        'color': Colors.purple.shade600,
         'title': isTamil ? '6. விவரம்' : '6. Description',
-        'desc': isTamil ? 'தொழிலாளரின் திறன்கள், வேலை முடித்த திட்டங்கள் பற்றி எழுதவும். குரல் பொத்தான் உதவும்.' : 'Describe the worker\'s skills and past projects. Use the mic button to speak.'},
-      {'icon': Icons.check_circle_outline, 'color': _labourBlue,
+        'desc': isTamil
+            ? 'தொழிலாளரின் திறன்கள், வேலை முடித்த திட்டங்கள் பற்றி எழுதவும். குரல் பொத்தான் உதவும்.'
+            : 'Describe the worker\'s skills and past projects. Use the mic button to speak.'
+      },
+      {
+        'icon': Icons.check_circle_outline,
+        'color': _labourBlue,
         'title': isTamil ? '7. சமர்ப்பிக்கவும்' : '7. Submit Listing',
-        'desc': isTamil ? '"பதிவு சமர்ப்பிக்கவும்" அழுத்தவும். உடனே பட்டியலில் தெரியும், வாடிக்கையாளர்கள் நேரடியாக அழைப்பார்கள்.' : 'Tap "Submit". Your listing goes live immediately and customers call directly.'},
+        'desc': isTamil
+            ? '"பதிவு சமர்ப்பிக்கவும்" அழுத்தவும். உடனே பட்டியலில் தெரியும், வாடிக்கையாளர்கள் நேரடியாக அழைப்பார்கள்.'
+            : 'Tap "Submit". Your listing goes live immediately and customers call directly.'
+      },
     ];
-    _showGuideSheet(langProvider, steps,
-      isTamil ? 'தொழிலாளர் பதிவிடுவது எப்படி?' : 'How to Add a Labour Listing?',
-      isTamil ? '7 எளிய படிகளில் தொழிலாளரை பட்டியலிடவும்' : 'List a worker in 7 easy steps',
-      isTamil ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். திறன் வகை சரியாக தேர்வு செய்தால் சரியான வாடிக்கையாளர் கிடைப்பார்.' : 'Tip: 3 free posts per day. Choosing the right skill category gets the right customers.');
+    _showGuideSheet(
+        langProvider,
+        steps,
+        isTamil
+            ? 'தொழிலாளர் பதிவிடுவது எப்படி?'
+            : 'How to Add a Labour Listing?',
+        isTamil
+            ? '7 எளிய படிகளில் தொழிலாளரை பட்டியலிடவும்'
+            : 'List a worker in 7 easy steps',
+        isTamil
+            ? 'குறிப்பு: ஒரு நாளில் 3 இலவச பதிவுகள். திறன் வகை சரியாக தேர்வு செய்தால் சரியான வாடிக்கையாளர் கிடைப்பார்.'
+            : 'Tip: 3 free posts per day. Choosing the right skill category gets the right customers.');
   }
 
-  void _showGuideSheet(LanguageProvider langProvider, List<Map<String, dynamic>> steps, String title, String subtitle, String tip) {
+  void _showGuideSheet(
+      LanguageProvider langProvider,
+      List<Map<String, dynamic>> steps,
+      String title,
+      String subtitle,
+      String tip) {
     showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.85, maxChildSize: 0.95, minChildSize: 0.5,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
         builder: (_, sc) => Container(
-          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
           child: Column(children: [
-            Container(margin: const EdgeInsets.only(top: 10, bottom: 4), width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(children: [
-                Container(padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: _labourBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.lightbulb_outline, color: _labourBlue, size: 22)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 4),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2))),
+            Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(children: [
+                  Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color: _labourBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.lightbulb_outline,
+                          color: _labourBlue, size: 22)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(title,
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(subtitle,
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade600)),
+                      ])),
+                  IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx)),
                 ])),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-              ])),
             const Divider(height: 1),
-            Expanded(child: ListView.separated(
-              controller: sc, padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              itemCount: steps.length, separatorBuilder: (_, __) => const SizedBox(height: 12),
+            Expanded(
+                child: ListView.separated(
+              controller: sc,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: steps.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, i) {
                 final s = steps[i];
                 return Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: (s['color'] as Color).withOpacity(0.2))),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Container(padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: (s['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 22)),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(s['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: (s['color'] as Color).withOpacity(0.9))),
-                      const SizedBox(height: 4),
-                      Text(s['desc'] as String, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
-                    ])),
-                  ]),
+                  decoration: BoxDecoration(
+                      color: (s['color'] as Color).withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: (s['color'] as Color).withOpacity(0.2))),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                                color: (s['color'] as Color).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10)),
+                            child: Icon(s['icon'] as IconData,
+                                color: s['color'] as Color, size: 22)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text(s['title'] as String,
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: (s['color'] as Color)
+                                          .withOpacity(0.9))),
+                              const SizedBox(height: 4),
+                              Text(s['desc'] as String,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade700,
+                                      height: 1.4)),
+                            ])),
+                      ]),
                 );
               },
             )),
-            Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 20), padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)),
-              child: Row(children: [
-                Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade700, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text(tip, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.4))),
-              ])),
+            Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade200)),
+                child: Row(children: [
+                  Icon(Icons.tips_and_updates_outlined,
+                      color: Colors.amber.shade700, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text(tip,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber.shade900,
+                              height: 1.4))),
+                ])),
           ]),
         ),
       ),
@@ -525,7 +654,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
+            tooltip:
+                langProvider.getText('How to Post', 'எப்படி பதிவிட வேண்டும்'),
             onPressed: () => _showHelpGuide(langProvider),
           ),
         ],
@@ -536,245 +666,283 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
           padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image picker
-              _buildImagePicker(langProvider),
-              const SizedBox(height: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image picker
+                _buildImagePicker(langProvider),
+                const SizedBox(height: 20),
 
-              // Name
-              _buildLabel(langProvider.getText('Worker Name *', 'தொழிலாளர் பெயர் *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _nameController,
-                maxLength: 200,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.next,
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., Raju Kumar', 'எ.கா., ராஜு குமார்'),
-                ).copyWith(suffixIcon: VoiceInputButton(controller: _nameController)),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Worker name is required', 'தொழிலாளர் பெயர் தேவை');
-                  }
-                  if (value.trim().length < 3) {
-                    return langProvider.getText('Must be at least 3 characters', 'குறைந்தது 3 எழுத்துகள் தேவை');
-                  }
-                  if (value.trim().split(RegExp(r'\s+')).length > 3) {
-                    return langProvider.getText('Name max 3 words', '\u0BAA\u0BC6\u0BAF\u0BB0\u0BCD \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Category
-              _buildLabel(langProvider.getText('Category *', 'வகை *')),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: _inputDecoration(
-                  langProvider.getText('Select category', 'வகையைத் தேர்ந்தெடுக்கவும்'),
+                // Name
+                _buildLabel(
+                    langProvider.getText('Worker Name *', 'தொழிலாளர் பெயர் *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _nameController,
+                  maxLength: 200,
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    langProvider.getText(
+                        'e.g., Raju Kumar', 'எ.கா., ராஜு குமார்'),
+                  ).copyWith(
+                      suffixIcon:
+                          VoiceInputButton(controller: _nameController)),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText(
+                          'Worker name is required', 'தொழிலாளர் பெயர் தேவை');
+                    }
+                    if (value.trim().length < 3) {
+                      return langProvider.getText(
+                          'Must be at least 3 characters',
+                          'குறைந்தது 3 எழுத்துகள் தேவை');
+                    }
+                    if (value.trim().split(RegExp(r'\s+')).length > 3) {
+                      return langProvider.getText('Name max 3 words',
+                          '\u0BAA\u0BC6\u0BAF\u0BB0\u0BCD \u0B85\u0BA4\u0BBF\u0B95\u0BAA\u0B9F\u0BCD\u0B9A\u0BAE\u0BCD 3 \u0BB5\u0BBE\u0BB0\u0BCD\u0BA4\u0BCD\u0BA4\u0BC8\u0B95\u0BB3\u0BCD');
+                    }
+                    return null;
+                  },
                 ),
-                items: _categories.entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(langProvider.getText(entry.value, _categoryTamil[entry.key] ?? entry.value)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value ?? 'GENERAL_LABOUR';
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              // Phone (auto-filled, read-only)
-              _buildLabel(langProvider.getText('Phone Number *', 'தொலைபேசி எண் *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ],
-                decoration: _inputDecoration(
-                  langProvider.getText('Worker\'s phone number', 'தொழிலாளர் தொலைபேசி எண்'),
-                ).copyWith(
-                  prefixIcon: const Icon(Icons.phone, size: 20, color: _labourBlue),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Phone number is required', 'தொலைபேசி எண் தேவை');
-                  }
-                  if (value.trim().length != 10) {
-                    return langProvider.getText('Enter valid 10-digit mobile number', 'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்');
-                  }
-                  if (!RegExp(r'^[6-9]').hasMatch(value.trim())) {
-                    return langProvider.getText('Must start with 6, 7, 8 or 9', '6, 7, 8 அல்லது 9 இல் தொடங்க வேண்டும்');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Experience
-              _buildLabel(langProvider.getText('Experience', 'அனுபவம்')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _experienceController,
-                maxLength: 100,
-                keyboardType: TextInputType.text,
-                decoration: _inputDecoration(
-                  langProvider.getText('e.g., 5 years, 10+ years', 'எ.கா., 5 வருடங்கள், 10+ வருடங்கள்'),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Location
-              _buildLabel(langProvider.getText('Location *', 'இடம் *')),
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: LocationAutocompleteField(
-                      controller: _locationController,
-                      hintText: 'e.g., Your Village, District',
-                      accentColor: _labourBlue,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return langProvider.getText('Location is required', 'இடம் தேவை');
-                        }
-                        if (value.trim().length < 3) {
-                          return langProvider.getText('Enter a valid location', 'சரியான இடத்தை உள்ளிடவும்');
-                        }
-                        return null;
-                      },
-                    ),
+                // Category
+                _buildLabel(langProvider.getText('Category *', 'வகை *')),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  decoration: _inputDecoration(
+                    langProvider.getText(
+                        'Select category', 'வகையைத் தேர்ந்தெடுக்கவும்'),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.my_location, color: _labourBlue),
-                    onPressed: _getLocation,
-                    tooltip: 'Use current location',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Description
-              _buildLabel(langProvider.getText('Description *', 'விவரம் *')),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _descriptionController,
-                maxLength: 1000,
-                minLines: 3,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                decoration: _inputDecoration(
-                  langProvider.getText('Additional details about the worker...', 'தொழிலாளரைப் பற்றிய கூடுதல் விவரங்கள்...'),
-                ).copyWith(
-                  suffixIcon: VoiceInputButton(controller: _descriptionController),
+                  items: _categories.entries.map((entry) {
+                    return DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(langProvider.getText(entry.value,
+                          _categoryTamil[entry.key] ?? entry.value)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value ?? 'GENERAL_LABOUR';
+                    });
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return langProvider.getText('Description is required', 'விவரம் தேவை');
-                  }
-                  if (value.trim().length < 10) {
-                    return langProvider.getText('Description must be at least 10 characters', 'விவரம் குறைந்தது 10 எழுத்துகள் இருக்க வேண்டும்');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
-              // Banner toggle
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _wantsBanner ? Colors.amber.shade400 : Colors.grey.shade300,
+                // Phone (auto-filled, read-only)
+                _buildLabel(
+                    langProvider.getText('Phone Number *', 'தொலைபேசி எண் *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: _inputDecoration(
+                    langProvider.getText(
+                        FormValidators.mobileExample, 'எ.கா., 9876543210'),
+                  ).copyWith(
+                    prefixIcon:
+                        const Icon(Icons.phone, size: 20, color: _labourBlue),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText(
+                          'Phone number is required', 'தொலைபேசி எண் தேவை');
+                    }
+                    if (value.trim().length != 10) {
+                      return langProvider.getText(
+                          'Enter valid 10-digit mobile number',
+                          'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்');
+                    }
+                    if (!FormValidators.isValidIndianMobile(value)) {
+                      return langProvider.getText(
+                          'Must start with 6, 7, 8 or 9',
+                          '6, 7, 8 அல்லது 9 இல் தொடங்க வேண்டும்');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Experience
+                _buildLabel(langProvider.getText('Experience', 'அனுபவம்')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _experienceController,
+                  maxLength: 100,
+                  keyboardType: TextInputType.text,
+                  decoration: _inputDecoration(
+                    langProvider.getText('e.g., 5 years, 10+ years',
+                        'எ.கா., 5 வருடங்கள், 10+ வருடங்கள்'),
                   ),
                 ),
-                child: Row(
+                const SizedBox(height: 12),
+
+                // Location
+                _buildLabel(langProvider.getText('Location *', 'இடம் *')),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.star,
-                      color: _wantsBanner ? Colors.amber.shade700 : Colors.grey.shade400,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            langProvider.getText('Feature as Banner', '\u0BAA\u0BC7\u0BA9\u0BB0\u0BBE\u0B95 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1'),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: _wantsBanner ? Colors.amber.shade900 : Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            langProvider.getText(
-                              'Show at top of listings (paid)',
-                              '\u0BAA\u0B9F\u0BCD\u0B9F\u0BBF\u0BAF\u0BB2\u0BCD\u0B95\u0BB3\u0BBF\u0BA9\u0BCD \u0BAE\u0BC7\u0BB2\u0BC7 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1 (\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD)',
-                            ),
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                          ),
-                        ],
+                      child: LocationAutocompleteField(
+                        controller: _locationController,
+                        hintText: 'e.g., Your Village, District',
+                        accentColor: _labourBlue,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return langProvider.getText(
+                                'Location is required', 'இடம் தேவை');
+                          }
+                          if (value.trim().length < 3) {
+                            return langProvider.getText(
+                                'Enter a valid location',
+                                'சரியான இடத்தை உள்ளிடவும்');
+                          }
+                          return null;
+                        },
                       ),
                     ),
-                    Switch(
-                      value: _wantsBanner,
-                      activeColor: Colors.amber.shade700,
-                      onChanged: (val) => setState(() => _wantsBanner = val),
+                    IconButton(
+                      icon: const Icon(Icons.my_location, color: _labourBlue),
+                      onPressed: _getLocation,
+                      tooltip: 'Use current location',
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-              // Submit button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _labourBlue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    disabledBackgroundColor: Colors.grey[400],
+                // Description
+                _buildLabel(langProvider.getText('Description *', 'விவரம் *')),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _descriptionController,
+                  maxLength: 1000,
+                  minLines: 3,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  decoration: _inputDecoration(
+                    langProvider.getText(
+                        'Additional details about the worker...',
+                        'தொழிலாளரைப் பற்றிய கூடுதல் விவரங்கள்...'),
+                  ).copyWith(
+                    suffixIcon:
+                        VoiceInputButton(controller: _descriptionController),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          langProvider.getText('Submit Listing', 'பதிவு சமர்ப்பிக்கவும்'),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return langProvider.getText(
+                          'Description is required', 'விவரம் தேவை');
+                    }
+                    if (value.trim().length < 10) {
+                      return langProvider.getText(
+                          'Description must be at least 10 characters',
+                          'விவரம் குறைந்தது 10 எழுத்துகள் இருக்க வேண்டும்');
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 24),
+
+                // Banner toggle
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _wantsBanner ? Colors.amber.shade50 : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _wantsBanner
+                          ? Colors.amber.shade400
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.star,
+                        color: _wantsBanner
+                            ? Colors.amber.shade700
+                            : Colors.grey.shade400,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              langProvider.getText('Feature as Banner',
+                                  '\u0BAA\u0BC7\u0BA9\u0BB0\u0BBE\u0B95 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: _wantsBanner
+                                    ? Colors.amber.shade900
+                                    : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              langProvider.getText(
+                                'Show at top of listings (paid)',
+                                '\u0BAA\u0B9F\u0BCD\u0B9F\u0BBF\u0BAF\u0BB2\u0BCD\u0B95\u0BB3\u0BBF\u0BA9\u0BCD \u0BAE\u0BC7\u0BB2\u0BC7 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1 (\u0B95\u0B9F\u0BCD\u0B9F\u0BA3\u0BAE\u0BCD)',
+                              ),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _wantsBanner,
+                        activeColor: Colors.amber.shade700,
+                        onChanged: (val) => setState(() => _wantsBanner = val),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Submit button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitPost,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _labourBlue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      disabledBackgroundColor: Colors.grey[400],
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            langProvider.getText(
+                                'Submit Listing', 'பதிவு சமர்ப்பிக்கவும்'),
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -817,13 +985,16 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
       children: [
         Row(
           children: [
-            _buildLabel(langProvider.getText('Photos (optional)', 'புகைப்படங்கள் (விரும்பினால்)')),
+            _buildLabel(langProvider.getText(
+                'Photos (optional)', 'புகைப்படங்கள் (விரும்பினால்)')),
             const SizedBox(width: 8),
             Text(
               '${_selectedImages.length}/$_maxImages',
               style: TextStyle(
                 fontSize: 13,
-                color: _selectedImages.length >= _maxImages ? Colors.orange : Colors.grey[500],
+                color: _selectedImages.length >= _maxImages
+                    ? Colors.orange
+                    : Colors.grey[500],
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -866,7 +1037,8 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
                               color: Colors.red,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 16),
                           ),
                         ),
                       ),
@@ -875,14 +1047,18 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
                           bottom: 4,
                           left: 4,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
@@ -899,16 +1075,19 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                      border: Border.all(
+                          color: Colors.grey[300]!, style: BorderStyle.solid),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.grey[400]),
+                        Icon(Icons.add_a_photo_outlined,
+                            size: 32, color: Colors.grey[400]),
                         const SizedBox(height: 6),
                         Text(
                           langProvider.getText('Add Photo', 'புகைப்படம்'),
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                          style:
+                              TextStyle(color: Colors.grey[500], fontSize: 12),
                         ),
                       ],
                     ),

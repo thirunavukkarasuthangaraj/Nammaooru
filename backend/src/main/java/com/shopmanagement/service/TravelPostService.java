@@ -233,7 +233,10 @@ public class TravelPostService {
 
     @Transactional(readOnly = true)
     public Page<TravelPost> getReportedPosts(Pageable pageable) {
-        return travelPostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+        // Exclude DELETED/REMOVED — once a reported post has been taken down there's
+        // nothing left to review, so it shouldn't keep reappearing in the report queue.
+        List<PostStatus> excluded = List.of(PostStatus.DELETED, PostStatus.REMOVED);
+        return travelPostRepository.findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(0, excluded, pageable);
     }
 
     @Transactional(readOnly = true)

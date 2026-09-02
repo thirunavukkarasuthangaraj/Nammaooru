@@ -336,6 +336,55 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // Wallet Methods (real backend wallet system)
+  Future<Map<String, dynamic>> getWalletBalance() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/wallet/delivery-partner/balance'),
+      headers: await _getHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getWalletTransactions({int page = 0, int size = 20}) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/wallet/delivery-partner/transactions?page=$page&size=$size'),
+      headers: await _getHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> requestWalletWithdrawal({double? amount}) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/wallet/delivery-partner/withdraw'),
+      headers: await _getHeaders(),
+      body: json.encode({
+        if (amount != null) 'amount': amount,
+      }),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> updateWalletPayoutDetails({
+    required String payoutMethod,
+    String? accountHolderName,
+    String? accountNumber,
+    String? ifsc,
+    String? upiId,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/wallet/delivery-partner/payout-details'),
+      headers: await _getHeaders(),
+      body: json.encode({
+        'payoutMethod': payoutMethod,
+        if (accountHolderName != null) 'accountHolderName': accountHolderName,
+        if (accountNumber != null) 'accountNumber': accountNumber,
+        if (ifsc != null) 'ifsc': ifsc,
+        if (upiId != null) 'upiId': upiId,
+      }),
+    );
+    return _handleResponse(response);
+  }
+
   // Generic HTTP methods
   Future<Map<String, dynamic>> get(String endpoint) async {
     final response = await http.get(

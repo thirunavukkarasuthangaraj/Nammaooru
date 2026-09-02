@@ -13,6 +13,7 @@ import '../services/local_shops_service.dart';
 import '../widgets/post_payment_handler.dart';
 import '../widgets/voice_input_button.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../services/post_config_service.dart';
 
@@ -122,7 +123,7 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
   void _prefillData() {
     final phone = LocalStorage.getString('phoneNumber');
     if (phone != null && phone.isNotEmpty) {
-      _phoneController.text = phone;
+      _phoneController.text = FormValidators.normalizeIndianMobile(phone);
     } else {
       _fetchPhoneFromProfile();
     }
@@ -136,12 +137,14 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
         final data = response.data;
         if (data is Map<String, dynamic> && data['statusCode'] == '0000') {
           final userData = data['data'];
-          final phone = userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
+          final phone =
+              userData['mobileNumber'] ?? userData['phoneNumber'] ?? '';
           if (phone.toString().isNotEmpty && mounted) {
+            final normalizedPhone = FormValidators.normalizeIndianMobile(phone);
             setState(() {
-              _phoneController.text = phone.toString();
+              _phoneController.text = normalizedPhone;
             });
-            await LocalStorage.setString('phoneNumber', phone.toString());
+            await LocalStorage.setString('phoneNumber', normalizedPhone);
           }
         }
       }
@@ -153,10 +156,13 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
   Future<void> _getLocation() async {
     try {
       final position = await LocationService.instance.getCurrentPosition();
-      if (position != null && position.latitude != null && position.longitude != null) {
+      if (position != null &&
+          position.latitude != null &&
+          position.longitude != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        final address = await LocationService.instance.getAddressFromCoordinates(
+        final address =
+            await LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
         );
@@ -186,11 +192,12 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
     }
     try {
       final picker = ImagePicker();
+      // No maxWidth/maxHeight/imageQuality here — those force image_picker's
+      // own native resize into a cache file ("scaled_*.jpg") that races with
+      // reads on some OEM builds (Samsung and others), causing
+      // PathNotFoundException. ImageCompressor below handles resizing instead.
       final pickedFile = await picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
       );
       if (pickedFile != null && mounted) {
         final compressed = await ImageCompressor.compressXFile(pickedFile);
@@ -210,11 +217,8 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
     }
     try {
       final picker = ImagePicker();
-      final pickedFiles = await picker.pickMultiImage(
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 70,
-      );
+      // See _pickImageFromCamera — no native resize params, ImageCompressor handles it.
+      final pickedFiles = await picker.pickMultiImage();
       if (pickedFiles.isNotEmpty && mounted) {
         final remaining = _maxImages - _selectedImages.length;
         final toAdd = pickedFiles.take(remaining).toList();
@@ -234,7 +238,9 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
 
   void _showMaxImagesMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Maximum $_maxImages images allowed'), backgroundColor: Colors.orange),
+      SnackBar(
+          content: Text('Maximum $_maxImages images allowed'),
+          backgroundColor: Colors.orange),
     );
   }
 
@@ -287,9 +293,15 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
         shopName: _shopNameController.text.trim(),
         phone: _phoneController.text.trim(),
         category: _selectedCategory,
-        address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : null,
-        timings: _timingsController.text.trim().isNotEmpty ? _timingsController.text.trim() : null,
-        description: _descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null,
+        address: _addressController.text.trim().isNotEmpty
+            ? _addressController.text.trim()
+            : null,
+        timings: _timingsController.text.trim().isNotEmpty
+            ? _timingsController.text.trim()
+            : null,
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
         imagePaths: _selectedImages.map((f) => f.path).toList(),
         latitude: _latitude,
         longitude: _longitude,
@@ -368,14 +380,16 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               decoration: InputDecoration(
                 labelText: lang.getText('Shop Name *', 'கடை பெயர் *'),
                 prefixIcon: const Icon(Icons.store, color: _shopColor),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: _shopColor),
                 ),
               ),
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Shop name is required';
+                if (v == null || v.trim().isEmpty)
+                  return 'Shop name is required';
                 if (v.trim().length < 2) return 'Enter a valid shop name';
                 return null;
               },
@@ -387,20 +401,29 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               controller: _phoneController,
               keyboardType: TextInputType.phone,
               maxLength: 10,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
               decoration: InputDecoration(
                 labelText: lang.getText('Phone Number *', 'தொலைபேசி எண் *'),
+                hintText: lang.getText(
+                    FormValidators.mobileExample, 'எ.கா., 9876543210'),
                 prefixIcon: const Icon(Icons.phone, color: _shopColor),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: _shopColor),
                 ),
               ),
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Phone number is required';
-                if (v.trim().length != 10) return 'Enter a valid 10-digit phone number';
-                if (!RegExp(r'^[6-9]\d{9}$').hasMatch(v.trim())) return 'Enter a valid mobile number';
+                if (v == null || v.trim().isEmpty)
+                  return 'Phone number is required';
+                if (v.trim().length != 10)
+                  return 'Enter a valid 10-digit phone number';
+                if (!FormValidators.isValidIndianMobile(v))
+                  return 'Enter a valid mobile number starting with 6, 7, 8 or 9';
                 return null;
               },
             ),
@@ -412,7 +435,8 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               decoration: InputDecoration(
                 labelText: lang.getText('Category *', 'வகை *'),
                 prefixIcon: const Icon(Icons.category, color: _shopColor),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: _shopColor),
@@ -434,6 +458,17 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               controller: _addressController,
               labelText: lang.getText('Address / Location *', 'முகவரி *'),
               accentColor: _shopColor,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return lang.getText(
+                      'Address / location is required', 'முகவரி / இடம் தேவை');
+                }
+                if (value.trim().length > 500) {
+                  return lang.getText(
+                      'Address is too long', 'முகவரி மிக நீளமாக உள்ளது');
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
 
@@ -442,10 +477,13 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               controller: _timingsController,
               maxLength: 200,
               decoration: InputDecoration(
-                labelText: lang.getText('Timings (optional)', 'நேரம் (விருப்பத்தேர்வு)'),
-                hintText: lang.getText('e.g. 9 AM - 9 PM, Mon-Sat', 'எ.கா. காலை 9 - இரவு 9'),
+                labelText: lang.getText(
+                    'Timings (optional)', 'நேரம் (விருப்பத்தேர்வு)'),
+                hintText: lang.getText(
+                    'e.g. 9 AM - 9 PM, Mon-Sat', 'எ.கா. காலை 9 - இரவு 9'),
                 prefixIcon: const Icon(Icons.access_time, color: _shopColor),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: _shopColor),
@@ -463,9 +501,13 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
                     maxLength: 1000,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      labelText: lang.getText('Description (optional)', 'விவரம் (விருப்பத்தேர்வு)'),
-                      hintText: lang.getText('What does your shop sell? Any specialties?', 'கடையின் சிறப்பு என்ன?'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      labelText: lang.getText(
+                          'Description (optional)', 'விவரம் (விருப்பத்தேர்வு)'),
+                      hintText: lang.getText(
+                          'What does your shop sell? Any specialties?',
+                          'கடையின் சிறப்பு என்ன?'),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: _shopColor),
@@ -481,7 +523,8 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
 
             // Images
             Text(
-              lang.getText('Photos (optional, max $_maxImages)', 'புகைப்படங்கள் (விருப்பம், அதிகபட்சம் $_maxImages)'),
+              lang.getText('Photos (optional, max $_maxImages)',
+                  'புகைப்படங்கள் (விருப்பம், அதிகபட்சம் $_maxImages)'),
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             const SizedBox(height: 8),
@@ -490,25 +533,28 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               runSpacing: 8,
               children: [
                 ..._selectedImages.asMap().entries.map((entry) => Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(entry.value, width: 80, height: 80, fit: BoxFit.cover),
-                    ),
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () => _removeImage(entry.key),
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(entry.value,
+                              width: 80, height: 80, fit: BoxFit.cover),
                         ),
-                      ),
-                    ),
-                  ],
-                )),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: () => _removeImage(entry.key),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                  color: Colors.red, shape: BoxShape.circle),
+                              child: const Icon(Icons.close,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )),
                 if (_selectedImages.length < _maxImages)
                   GestureDetector(
                     onTap: _showImageSourceDialog,
@@ -520,7 +566,8 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
                         borderRadius: BorderRadius.circular(8),
                         color: _shopColor.withOpacity(0.05),
                       ),
-                      child: const Icon(Icons.add_photo_alternate, color: _shopColor, size: 30),
+                      child: const Icon(Icons.add_photo_alternate,
+                          color: _shopColor, size: 30),
                     ),
                   ),
               ],
@@ -529,8 +576,11 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
 
             // Banner toggle
             SwitchListTile(
-              title: Text(lang.getText('Feature as Banner (paid)', 'பேனராக காட்டு (கட்டணம்)')),
-              subtitle: Text(lang.getText('Show your shop at the top', 'கடையை முன்னிலைப்படுத்தவும்'),
+              title: Text(lang.getText(
+                  'Feature as Banner (paid)', 'பேனராக காட்டு (கட்டணம்)')),
+              subtitle: Text(
+                  lang.getText('Show your shop at the top',
+                      'கடையை முன்னிலைப்படுத்தவும்'),
                   style: const TextStyle(fontSize: 12)),
               value: _wantsBanner,
               activeColor: _shopColor,
@@ -543,21 +593,27 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : () => _submit(isBanner: _wantsBanner),
+                onPressed: _isSubmitting
+                    ? null
+                    : () => _submit(isBanner: _wantsBanner),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _shopColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
                       )
                     : Text(
-                        lang.getText('Submit Listing', 'விளம்பரம் சமர்ப்பிக்கவும்'),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        lang.getText(
+                            'Submit Listing', 'விளம்பரம் சமர்ப்பிக்கவும்'),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
               ),
             ),

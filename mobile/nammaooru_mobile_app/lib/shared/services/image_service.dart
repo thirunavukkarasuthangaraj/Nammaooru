@@ -31,15 +31,18 @@ class ImageService {
       // final hasPermission = await requestCameraPermission();
       // if (!hasPermission) return null;
       
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: maxWidth?.toDouble(),
-        maxHeight: maxHeight?.toDouble(),
-        imageQuality: imageQuality ?? AppConstants.imageQuality,
-      );
+      // No maxWidth/maxHeight/imageQuality passed to the picker — those force
+      // image_picker's own native resize into a cache file ("scaled_*.jpg")
+      // that races with reads on some OEM builds (Samsung and others),
+      // causing PathNotFoundException. ImageCompressor below handles
+      // resizing instead, using maxWidth as its target dimension.
+      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
 
       if (image != null) {
-        final compressed = await ImageCompressor.compressXFile(image);
+        final compressed = await ImageCompressor.compressXFile(
+          image,
+          maxDimension: maxWidth ?? 1280,
+        );
         return File(compressed.path);
       }
 
@@ -59,15 +62,14 @@ class ImageService {
       final hasPermission = await requestGalleryPermission();
       if (!hasPermission) return null;
       
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: maxWidth?.toDouble(),
-        maxHeight: maxHeight?.toDouble(),
-        imageQuality: imageQuality ?? AppConstants.imageQuality,
-      );
+      // See pickImageFromCamera — no native resize params, ImageCompressor handles it.
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
 
       if (image != null) {
-        final compressed = await ImageCompressor.compressXFile(image);
+        final compressed = await ImageCompressor.compressXFile(
+          image,
+          maxDimension: maxWidth ?? 1280,
+        );
         return File(compressed.path);
       }
 
@@ -88,18 +90,18 @@ class ImageService {
       final hasPermission = await requestGalleryPermission();
       if (!hasPermission) return [];
       
-      final List<XFile> images = await _picker.pickMultiImage(
-        maxWidth: maxWidth?.toDouble(),
-        maxHeight: maxHeight?.toDouble(),
-        imageQuality: imageQuality ?? AppConstants.imageQuality,
-      );
+      // See pickImageFromCamera — no native resize params, ImageCompressor handles it.
+      final List<XFile> images = await _picker.pickMultiImage();
 
       List<XFile> selected = images;
       if (limit != null && selected.length > limit) {
         selected = selected.take(limit).toList();
       }
 
-      final compressed = await ImageCompressor.compressMultiple(selected);
+      final compressed = await ImageCompressor.compressMultiple(
+        selected,
+        maxDimension: maxWidth ?? 1280,
+      );
       return compressed.map((xfile) => File(xfile.path)).toList();
     } catch (e) {
       print('Error picking multiple images: $e');

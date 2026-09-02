@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../../core/services/order_payment_service.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -63,17 +65,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   // Payment
   String _selectedPaymentMethod = 'CASH_ON_DELIVERY';
+  Razorpay? _razorpay;
+  _PendingOnlinePayment? _pendingOnlinePayment;
 
-  // Payment form keys
-  final _cardFormKey = GlobalKey<FormState>();
-  final _upiFormKey = GlobalKey<FormState>();
-
-  // Payment controllers
-  final _cardNumberController = TextEditingController();
-  final _expiryController = TextEditingController();
-  final _cvvController = TextEditingController();
-  final _cardHolderController = TextEditingController();
-  final _upiIdController = TextEditingController();
 
   // Delivery
   String _selectedDeliverySlot = 'ASAP';
@@ -86,10 +80,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final List<String> _addressTypes = ['HOME', 'WORK', 'OTHER'];
   final List<String> _cities = ['Tirupattur']; // Only Tirupattur for now
   final List<String> _states = ['Tamil Nadu'];
-  final List<Map<String, String>> _deliveryTypes = [
-    {'key': 'HOME_DELIVERY', 'label': 'Home Delivery', 'icon': '🚚'},
-    {'key': 'SELF_PICKUP', 'label': 'Self Pickup', 'icon': '🏪'},
+  final List<Map<String, dynamic>> _deliveryTypes = [
+    {'key': 'HOME_DELIVERY', 'label': 'Home Delivery', 'icon': Icons.delivery_dining_rounded},
+    {'key': 'SELF_PICKUP', 'label': 'Self Pickup', 'icon': Icons.storefront_rounded},
   ];
+  // ONLINE_PAYMENT is fully wired (Razorpay checkout, verify, refund-on-cancel) but stays
+  // hidden until real (non-test) Razorpay keys are configured in production — otherwise
+  // customers would see a "Simulate Pay" test-mode button and get free confirmed orders.
+  // Add 'ONLINE_PAYMENT' back to this list once razorpay.mode=live is set on the backend.
   final List<String> _paymentMethods = ['CASH_ON_DELIVERY'];
 
   @override
@@ -195,13 +193,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _landmarkController.dispose();
     _pincodeController.dispose();
     _pageController.dispose();
-
-    // Payment controllers
-    _cardNumberController.dispose();
-    _expiryController.dispose();
-    _cvvController.dispose();
-    _cardHolderController.dispose();
-    _upiIdController.dispose();
+    _razorpay?.clear();
 
     super.dispose();
   }
@@ -585,13 +577,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      type['icon']!,
-                                      style: const TextStyle(fontSize: 28),
+                                    Icon(
+                                      type['icon'] as IconData,
+                                      size: 30,
+                                      color: isSelected ? Colors.white : VillageTheme.primaryGreen,
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      type['label']!,
+                                      type['label'] as String,
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -1377,204 +1370,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Icons.local_shipping,
                 Colors.orange,
               ),
+              // ONLINE_PAYMENT card intentionally hidden — see the comment on
+              // _paymentMethods above. All the Razorpay wiring below (checkout,
+              // verify, refund-on-cancel) is complete; re-add this card once
+              // razorpay.mode=live is set on the backend.
               // const SizedBox(height: 10),
               // _buildModernPaymentOption(
-              //   'ONLINE',
+              //   'ONLINE_PAYMENT',
               //   'Online Payment',
-              //   'Pay now with card/wallet',
+              //   'Pay now via UPI, card or wallet',
               //   Icons.credit_card,
               //   Colors.blue,
-              // ),
-              // const SizedBox(height: 10),
-              // _buildModernPaymentOption(
-              //   'UPI',
-              //   'UPI Payment',
-              //   'Pay with UPI apps',
-              //   Icons.account_balance_wallet,
-              //   VillageTheme.primaryGreen,
               // ),
             ],
           ),
 
-          if (_selectedPaymentMethod == 'ONLINE') ...[
+          if (_selectedPaymentMethod == 'ONLINE_PAYMENT') ...[
             const SizedBox(height: 12),
             Card(
-              elevation: 2,
-              shadowColor: Colors.black.withOpacity(0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Form(
-                  key: _cardFormKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Card Details',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _cardNumberController,
-                        style: const TextStyle(color: Colors.black, fontSize: 14),
-                        decoration: const InputDecoration(
-                          labelText: 'Card Number',
-                          labelStyle: TextStyle(fontSize: 12),
-                          hintText: '1234 5678 9012 3456',
-                          hintStyle: TextStyle(fontSize: 12),
-                          prefixIcon: Icon(Icons.credit_card, size: 18),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          isDense: true,
-                          counterText: '',
-                        ),
-                        keyboardType: TextInputType.number,
-                        maxLength: 19,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) return 'Required';
-                          if (value.replaceAll(' ', '').length < 16) return 'Invalid';
-                          return null;
-                        },
-                        onChanged: (value) => _formatCardNumber(value),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _expiryController,
-                              style: const TextStyle(color: Colors.black, fontSize: 14),
-                              decoration: const InputDecoration(
-                                labelText: 'Expiry',
-                                labelStyle: TextStyle(fontSize: 12),
-                                hintText: 'MM/YY',
-                                hintStyle: TextStyle(fontSize: 12),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                isDense: true,
-                                counterText: '',
-                              ),
-                              keyboardType: TextInputType.number,
-                              maxLength: 5,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) return 'Required';
-                                if (!RegExp(r'^(0[1-9]|1[0-2])\/\d{2}$').hasMatch(value)) return 'Invalid';
-                                return null;
-                              },
-                              onChanged: (value) => _formatExpiry(value),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _cvvController,
-                              style: const TextStyle(color: Colors.black, fontSize: 14),
-                              decoration: const InputDecoration(
-                                labelText: 'CVV',
-                                labelStyle: TextStyle(fontSize: 12),
-                                hintText: '123',
-                                hintStyle: TextStyle(fontSize: 12),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                isDense: true,
-                                counterText: '',
-                              ),
-                              keyboardType: TextInputType.number,
-                              obscureText: true,
-                              maxLength: 3,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) return 'Required';
-                                if (value.length < 3) return 'Invalid';
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _cardHolderController,
-                        style: const TextStyle(color: Colors.black, fontSize: 14),
-                        decoration: const InputDecoration(
-                          labelText: 'Cardholder Name',
-                          labelStyle: TextStyle(fontSize: 12),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          isDense: true,
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) return 'Required';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _validateAndSaveCardDetails,
-                          style: VillageTheme.primaryButtonStyle,
-                          child: const Text('Save Card Details', style: TextStyle(fontSize: 13)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              elevation: 0,
+              color: Colors.blue.shade50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.blue.shade100),
               ),
-            ),
-          ],
-
-          if (_selectedPaymentMethod == 'UPI') ...[
-            const SizedBox(height: 12),
-            Card(
-              elevation: 2,
-              shadowColor: Colors.black.withOpacity(0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Form(
-                  key: _upiFormKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'UPI ID',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'You\'ll be taken to a secure Razorpay checkout to complete payment. '
+                        'A small gateway fee is added to the total to cover the payment processing cost.',
+                        style: TextStyle(fontSize: 12.5, color: Colors.blue.shade900, height: 1.4),
                       ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _upiIdController,
-                        style: const TextStyle(color: Colors.black, fontSize: 14),
-                        decoration: const InputDecoration(
-                          labelText: 'UPI ID',
-                          labelStyle: TextStyle(fontSize: 12),
-                          hintText: 'yourname@upi',
-                          hintStyle: TextStyle(fontSize: 12),
-                          prefixIcon: Icon(Icons.account_balance_wallet, size: 18),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) return 'Required';
-                          if (!value.contains('@')) return 'Invalid UPI ID';
-                          if (!RegExp(r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$').hasMatch(value)) return 'Invalid format';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _validateAndSaveUPIDetails,
-                          style: VillageTheme.primaryButtonStyle,
-                          child: const Text('Save UPI Details', style: TextStyle(fontSize: 13)),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -2095,30 +1928,61 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ],
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            if (_currentStep > 0)
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _previousStep,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Back', style: TextStyle(fontSize: 13)),
-                ),
-              ),
-            if (_currentStep > 0) const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: _isPlacingOrder
-                  ? const LoadingWidget()
-                  : PrimaryButton(
-                      text: _currentStep == 2 ? 'Place Order' : 'Continue',
-                      onPressed: _currentStep == 2 ? _placeOrder : _nextStep,
-                      icon: _currentStep == 2 ? Icons.check : Icons.arrow_forward,
+        child: Consumer<CartProvider>(
+          builder: (context, cartProvider, child) {
+            return Row(
+              children: [
+                // Payable amount stays visible on every checkout step
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-            ),
-          ],
+                    Text(
+                      Helpers.formatCurrency(cartProvider.total),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: VillageTheme.primaryGreen,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                if (_currentStep > 0)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _previousStep,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Back', style: TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                if (_currentStep > 0) const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: _isPlacingOrder
+                      ? const LoadingWidget()
+                      : PrimaryButton(
+                          text: _currentStep == 2 ? 'Place Order' : 'Continue',
+                          onPressed:
+                              _currentStep == 2 ? _placeOrder : _nextStep,
+                          icon: _currentStep == 2
+                              ? Icons.check
+                              : Icons.arrow_forward,
+                        ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -2168,13 +2032,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
 
-    // Validate payment details when moving from payment step
-    if (_currentStep == 1) {
-      if (!_validatePaymentDetails()) {
-        return;
-      }
-    }
-
     // Save address when moving from address step
     if (_currentStep == 0) {
       await _saveCurrentAddress();
@@ -2186,35 +2043,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         curve: Curves.easeInOut,
       );
     }
-  }
-
-  bool _validatePaymentDetails() {
-    switch (_selectedPaymentMethod) {
-      case 'ONLINE':
-        if (_cardFormKey.currentState == null || !_cardFormKey.currentState!.validate()) {
-          _showErrorMessage('Please fill in all card details correctly');
-          return false;
-        }
-        break;
-      case 'UPI':
-        if (_upiIdController.text.trim().isEmpty) {
-          _showErrorMessage('UPI ID is required. Please enter your UPI ID before proceeding.');
-          return false;
-        }
-        if (!_upiIdController.text.contains('@')) {
-          _showErrorMessage('Please enter a valid UPI ID (e.g., yourname@upi)');
-          return false;
-        }
-        if (_upiFormKey.currentState == null || !_upiFormKey.currentState!.validate()) {
-          _showErrorMessage('Please enter a valid UPI ID');
-          return false;
-        }
-        break;
-      case 'CASH_ON_DELIVERY':
-        // No validation needed for COD
-        break;
-    }
-    return true;
   }
 
   void _showErrorMessage(String message) {
@@ -2257,81 +2085,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       default:
         return Icons.location_on;
     }
-  }
-
-  void _formatCardNumber(String value) {
-    String formatted = value.replaceAll(' ', '');
-    String newValue = '';
-
-    for (int i = 0; i < formatted.length; i++) {
-      if (i > 0 && i % 4 == 0) {
-        newValue += ' ';
-      }
-      newValue += formatted[i];
-    }
-
-    _cardNumberController.value = TextEditingValue(
-      text: newValue,
-      selection: TextSelection.collapsed(offset: newValue.length),
-    );
-  }
-
-  void _formatExpiry(String value) {
-    String formatted = value.replaceAll('/', '');
-    String newValue = '';
-
-    for (int i = 0; i < formatted.length && i < 4; i++) {
-      if (i == 2) {
-        newValue += '/';
-      }
-      newValue += formatted[i];
-    }
-
-    _expiryController.value = TextEditingValue(
-      text: newValue,
-      selection: TextSelection.collapsed(offset: newValue.length),
-    );
-  }
-
-  void _validateAndSaveUPIDetails() {
-    if (_upiFormKey.currentState!.validate()) {
-      _showSuccessMessage('UPI details saved successfully!');
-    }
-  }
-
-  void _validateAndSaveCardDetails() {
-    if (_cardFormKey.currentState!.validate()) {
-      _showSuccessMessage('Card details saved successfully!');
-    }
-  }
-
-  void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: VillageTheme.primaryGreen,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(12),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   void _previousStep() {
@@ -2532,21 +2285,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       print('📦 Order result: ${result.toString()}');
 
       if (result['success']) {
-        // Clear cart on success
-        cartProvider.clearCart();
+        final data = result['data'];
+        final orderNumber = (data is Map && data['orderNumber'] != null)
+            ? data['orderNumber'].toString()
+            : null;
+        final orderId = (data is Map && data['id'] != null)
+            ? int.tryParse(data['id'].toString())
+            : null;
 
-        if (mounted) {
+        if (_selectedPaymentMethod == 'ONLINE_PAYMENT' && orderId != null) {
+          // Order exists now but is unpaid (PENDING) — don't clear the cart or
+          // show success until the payment itself actually goes through.
+          await _startOnlinePayment(orderId: orderId, orderNumber: orderNumber, cartProvider: cartProvider);
+        } else {
           // Big, un-missable confirmation (village users overlook SnackBar
           // toasts) + guaranteed navigation away from checkout. The previous
           // code showed a toast and called context.go() after 500ms - but this
           // screen is pushed imperatively on the ROOT navigator, so context.go
           // only rebuilt the dashboard UNDERNEATH it; checkout stayed on top
           // and re-taps created duplicate orders.
-          final data = result['data'];
-          final orderNumber = (data is Map && data['orderNumber'] != null)
-              ? data['orderNumber'].toString()
-              : null;
-          _showOrderSuccessDialog(orderNumber);
+          cartProvider.clearCart();
+          if (mounted) {
+            _showOrderSuccessDialog(orderNumber);
+          }
         }
       } else {
         // Surface the real underlying error (order_service.dart tucks it into
@@ -2585,6 +2346,136 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (mounted) {
         setState(() => _isPlacingOrder = false);
       }
+    }
+  }
+
+  /// The order already exists (PENDING/unpaid) at this point. Creates the
+  /// Razorpay order and opens checkout; only on confirmed payment does the
+  /// cart get cleared and the success dialog shown. On any failure/cancel,
+  /// the just-created order is cancelled so it doesn't linger unpaid.
+  Future<void> _startOnlinePayment({
+    required int orderId,
+    required String? orderNumber,
+    required CartProvider cartProvider,
+  }) async {
+    final createResult = await OrderPaymentService.createOrder(orderId);
+    if (createResult['success'] != true) {
+      await _abandonUnpaidOrder(orderId, createResult['message'] ?? 'Could not start payment');
+      return;
+    }
+
+    final paymentData = createResult['data'] as Map;
+    final bool isTestMode = paymentData['testMode'] == true;
+    final String razorpayOrderId = paymentData['razorpayOrderId'].toString();
+
+    if (isTestMode) {
+      await _handleTestModeOrderPayment(orderId, orderNumber, razorpayOrderId, cartProvider);
+      return;
+    }
+
+    _pendingOnlinePayment = _PendingOnlinePayment(orderId, orderNumber, cartProvider);
+    _razorpay = Razorpay();
+    _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleOrderPaymentSuccess);
+    _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handleOrderPaymentError);
+    _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, (_) {});
+
+    final options = {
+      'key': paymentData['keyId'],
+      'amount': paymentData['amountPaise'],
+      'currency': paymentData['currency'] ?? 'INR',
+      'name': 'NammaOoru',
+      'description': 'Order ${orderNumber ?? orderId}',
+      'order_id': razorpayOrderId,
+      'prefill': {'contact': _phoneController.text.trim()},
+      'theme': {'color': '#2E7D32'},
+    };
+
+    try {
+      _razorpay!.open(options);
+    } catch (e) {
+      await _abandonUnpaidOrder(orderId, 'Unable to open payment gateway');
+    }
+  }
+
+  Future<void> _handleTestModeOrderPayment(
+      int orderId, String? orderNumber, String razorpayOrderId, CartProvider cartProvider) async {
+    final pay = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('TEST MODE', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('This is a test payment. No real money will be charged.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            child: const Text('Simulate Pay'),
+          ),
+        ],
+      ),
+    );
+
+    if (pay != true) {
+      await _abandonUnpaidOrder(orderId, null);
+      return;
+    }
+
+    final verifyResult = await OrderPaymentService.verifyPayment(
+      orderId: orderId,
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: 'test_pay_${DateTime.now().millisecondsSinceEpoch}',
+      razorpaySignature: null,
+    );
+    await _completeOnlinePayment(verifyResult, orderId, orderNumber, cartProvider);
+  }
+
+  void _handleOrderPaymentSuccess(PaymentSuccessResponse response) async {
+    final pending = _pendingOnlinePayment;
+    _razorpay?.clear();
+    if (pending == null) return;
+
+    final verifyResult = await OrderPaymentService.verifyPayment(
+      orderId: pending.orderId,
+      razorpayOrderId: response.orderId ?? '',
+      razorpayPaymentId: response.paymentId ?? '',
+      razorpaySignature: response.signature,
+    );
+    await _completeOnlinePayment(verifyResult, pending.orderId, pending.orderNumber, pending.cartProvider);
+  }
+
+  void _handleOrderPaymentError(PaymentFailureResponse response) async {
+    final pending = _pendingOnlinePayment;
+    _razorpay?.clear();
+    if (pending == null) return;
+    await _abandonUnpaidOrder(pending.orderId, response.message ?? 'Payment was not completed');
+  }
+
+  Future<void> _completeOnlinePayment(
+      Map<String, dynamic> verifyResult, int orderId, String? orderNumber, CartProvider cartProvider) async {
+    _pendingOnlinePayment = null;
+    if (verifyResult['success'] == true) {
+      cartProvider.clearCart();
+      if (mounted) {
+        _showOrderSuccessDialog(orderNumber);
+      }
+    } else {
+      await _abandonUnpaidOrder(orderId, verifyResult['message'] ?? 'Payment verification failed');
+    }
+  }
+
+  /// Cancels an order left unpaid after a failed/cancelled online payment, so it
+  /// doesn't sit around as a phantom PENDING order the customer never actually paid for.
+  Future<void> _abandonUnpaidOrder(int orderId, String? reason) async {
+    try {
+      await OrderService().cancelOrder(orderId.toString(), 'Online payment not completed');
+    } catch (_) {
+      // Best-effort cleanup — even if cancellation itself fails, the order stays
+      // unpaid (PENDING) and won't be settled to anyone, so nothing is lost silently.
+    }
+    if (mounted && reason != null) {
+      Helpers.showSnackBar(context, reason, isError: true);
     }
   }
 
@@ -2791,4 +2682,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
   }
+}
+
+/// Carries the just-created order's identity across the async gap while
+/// Razorpay's own checkout UI is open, so the success/error callbacks know
+/// which order to verify or abandon.
+class _PendingOnlinePayment {
+  final int orderId;
+  final String? orderNumber;
+  final CartProvider cartProvider;
+  _PendingOnlinePayment(this.orderId, this.orderNumber, this.cartProvider);
 }

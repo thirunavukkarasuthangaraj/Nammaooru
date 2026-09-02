@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -553,6 +554,10 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
+                              if (!Provider.of<AuthProvider>(context, listen: false).isAuthenticated) {
+                                context.go('/register');
+                                return;
+                              }
                               final phone = post['phone']?.toString() ?? '';
                               if (phone.isNotEmpty) {
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -582,6 +587,10 @@ class _ParcelPostDetailScreenState extends State<ParcelPostDetailScreen> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () async {
+                              if (!Provider.of<AuthProvider>(context, listen: false).isAuthenticated) {
+                                context.go('/register');
+                                return;
+                              }
                               final phone = post['phone']?.toString() ?? '';
                               if (phone.isNotEmpty) {
                                 final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');

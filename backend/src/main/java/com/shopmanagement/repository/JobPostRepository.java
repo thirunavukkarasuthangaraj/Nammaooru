@@ -34,6 +34,8 @@ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
 
     Page<JobPost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
+    Page<JobPost> findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(int minReportCount, List<PostStatus> excludedStatuses, Pageable pageable);
+
     Page<JobPost> findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
             List<PostStatus> statuses, String location, Pageable pageable);
 

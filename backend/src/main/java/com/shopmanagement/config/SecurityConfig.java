@@ -150,7 +150,11 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/webjars/**"
+                                "/webjars/**",
+                                // Razorpay calls this server-to-server with no user session —
+                                // the webhook signature (verified inside the handler against
+                                // the configured secret) is the actual auth, not Spring Security.
+                                "/api/order-payments/webhook"
                         ).permitAll()
                         .requestMatchers("/api/delivery/partners/*/documents/upload").hasAnyRole("SUPER_ADMIN", "ADMIN", "DELIVERY_PARTNER")
                         .requestMatchers("/api/products/**").permitAll() // TEMPORARY: Allow all product operations without auth for testing

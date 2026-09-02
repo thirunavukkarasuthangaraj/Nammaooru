@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config/env_config.dart';
+import '../storage/secure_storage.dart';
 
 class ContactRequestService {
   static final ContactRequestService _instance = ContactRequestService._internal();
@@ -9,8 +9,7 @@ class ContactRequestService {
   ContactRequestService._internal();
 
   static Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return SecureStorage.getAuthToken();
   }
 
   static Map<String, String> _headers(String token) => {

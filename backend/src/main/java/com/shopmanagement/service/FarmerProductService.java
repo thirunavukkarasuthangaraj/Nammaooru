@@ -217,7 +217,10 @@ public class FarmerProductService {
 
     @Transactional(readOnly = true)
     public Page<FarmerProduct> getReportedPosts(Pageable pageable) {
-        return farmerProductRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+        // Exclude DELETED/REMOVED — once a reported post has been taken down there's
+        // nothing left to review, so it shouldn't keep reappearing in the report queue.
+        List<PostStatus> excluded = List.of(PostStatus.DELETED, PostStatus.REMOVED);
+        return farmerProductRepository.findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(0, excluded, pageable);
     }
 
     @Transactional(readOnly = true)

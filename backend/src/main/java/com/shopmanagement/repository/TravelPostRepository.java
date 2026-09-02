@@ -31,6 +31,8 @@ public interface TravelPostRepository extends JpaRepository<TravelPost, Long> {
 
     Page<TravelPost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
+    Page<TravelPost> findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(int minReportCount, List<PostStatus> excludedStatuses, Pageable pageable);
+
     Page<TravelPost> findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LocalDateTime after, Pageable pageable);
 
     Page<TravelPost> findByStatusInAndVehicleTypeAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, VehicleType vehicleType, LocalDateTime after, Pageable pageable);

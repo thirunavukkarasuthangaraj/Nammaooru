@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'core/providers/delivery_partner_provider.dart';
 import 'core/providers/location_provider.dart';
+import 'core/providers/earnings_provider.dart';
 import 'core/constants/app_theme.dart';
 import 'core/services/version_service.dart';
 import 'core/widgets/update_dialog.dart';
@@ -15,6 +16,7 @@ import 'features/orders/screens/available_orders_screen.dart';
 import 'features/orders/screens/active_orders_screen.dart';
 import 'features/orders/screens/order_history_screen.dart';
 import 'features/earnings/screens/earnings_screen.dart';
+import 'features/earnings/screens/payout_details_screen.dart';
 
 // Conditional imports for Firebase (mobile only)
 import 'firebase_mobile_init.dart' if (dart.library.html) 'firebase_web_stub.dart';
@@ -108,6 +110,7 @@ class _DeliveryPartnerAppState extends State<DeliveryPartnerApp> {
       providers: [
         ChangeNotifierProvider(create: (context) => DeliveryPartnerProvider()),
         ChangeNotifierProvider(create: (context) => LocationProvider()),
+        ChangeNotifierProvider(create: (context) => EarningsProvider()),
       ],
       child: MaterialApp(
         title: 'NammaOoru Delivery Partner',
@@ -121,6 +124,7 @@ class _DeliveryPartnerAppState extends State<DeliveryPartnerApp> {
           '/active-orders': (context) => const ActiveOrdersScreen(),
           '/order-history': (context) => const OrderHistoryScreen(),
           '/earnings': (context) => const EarningsScreen(),
+          '/payout-details': (context) => const PayoutDetailsScreen(),
         },
       ),
     );

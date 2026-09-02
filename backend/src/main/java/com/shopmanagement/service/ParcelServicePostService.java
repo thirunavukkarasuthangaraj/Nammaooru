@@ -234,7 +234,10 @@ public class ParcelServicePostService {
 
     @Transactional(readOnly = true)
     public Page<ParcelServicePost> getReportedPosts(Pageable pageable) {
-        return parcelServicePostRepository.findByReportCountGreaterThanOrderByReportCountDesc(0, pageable);
+        // Exclude DELETED/REMOVED — once a reported post has been taken down there's
+        // nothing left to review, so it shouldn't keep reappearing in the report queue.
+        List<PostStatus> excluded = List.of(PostStatus.DELETED, PostStatus.REMOVED);
+        return parcelServicePostRepository.findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(0, excluded, pageable);
     }
 
     @Transactional(readOnly = true)
