@@ -124,11 +124,12 @@ public class WalletController {
             Page<Order> orders = orderRepository.findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(
                     shop.getId(), start, end, PageRequest.of(page, size));
 
-            // The real Razorpay rate today, not whatever was stored on each OrderPayment at
-            // creation time - that field reflects what was charged to the customer, which is
-            // now always 0 since the fee is absorbed. Showing the stale stored value here
-            // would make an actual ~2.36% cost look like it disappeared.
-            BigDecimal currentFeePercent = orderPaymentService.getGatewayFeePercent();
+            // The REAL Razorpay rate (account-level, ~2.36%), not getGatewayFeePercent() -
+            // that's what we charge the CUSTOMER (0, since it's absorbed) and is a pricing
+            // decision, not the actual cost. Conflating the two here would make a real
+            // deduction (confirmed against the Razorpay dashboard) look like it never
+            // happened just because we chose not to pass it on.
+            BigDecimal currentFeePercent = orderPaymentService.getRealRazorpayFeePercent();
 
             Page<Map<String, Object>> mapped = orders.map(order -> {
                 Map<String, Object> row = new HashMap<>();
@@ -360,7 +361,7 @@ public class WalletController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            Page<WalletWithdrawal> withdrawals = walletService.getPendingWithdrawals(PageRequest.of(page, size));
+            Page<Map<String, Object>> withdrawals = walletService.getPendingWithdrawalsForAdmin(PageRequest.of(page, size));
             return ResponseUtil.paginated(withdrawals);
         } catch (Exception e) {
             log.error("Error listing pending withdrawals", e);
@@ -370,7 +371,7 @@ public class WalletController {
 
     @PutMapping("/admin/withdrawals/{id}/mark-paid")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<WalletWithdrawal>> markWithdrawalPaid(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> markWithdrawalPaid(
             @PathVariable Long id, Authentication authentication,
             @RequestBody Map<String, String> body) {
         try {
@@ -379,7 +380,7 @@ public class WalletController {
                 return ResponseUtil.badRequest("payoutReference is required (bank UTR / transaction reference)");
             }
             WalletWithdrawal withdrawal = walletService.markWithdrawalPaid(id, payoutReference, authentication.getName());
-            return ResponseUtil.success(withdrawal, "Withdrawal marked as paid");
+            return ResponseUtil.success(withdrawalSummary(withdrawal), "Withdrawal marked as paid");
         } catch (Exception e) {
             log.error("Error marking withdrawal {} as paid", id, e);
             return ResponseUtil.error(e.getMessage());
@@ -388,17 +389,31 @@ public class WalletController {
 
     @PutMapping("/admin/withdrawals/{id}/reject")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<WalletWithdrawal>> rejectWithdrawal(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> rejectWithdrawal(
             @PathVariable Long id, Authentication authentication,
             @RequestBody(required = false) Map<String, String> body) {
         try {
             String reason = body != null ? body.get("reason") : null;
             WalletWithdrawal withdrawal = walletService.rejectWithdrawal(id, reason, authentication.getName());
-            return ResponseUtil.success(withdrawal, "Withdrawal rejected");
+            return ResponseUtil.success(withdrawalSummary(withdrawal), "Withdrawal rejected");
         } catch (Exception e) {
             log.error("Error rejecting withdrawal {}", id, e);
             return ResponseUtil.error(e.getMessage());
         }
+    }
+
+    // Avoids serializing WalletWithdrawal's lazy `wallet` field directly - same
+    // LazyInitializationException class of bug this app has hit before.
+    private Map<String, Object> withdrawalSummary(WalletWithdrawal withdrawal) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("id", withdrawal.getId());
+        row.put("amount", withdrawal.getAmount());
+        row.put("status", withdrawal.getStatus().name());
+        row.put("payoutReference", withdrawal.getPayoutReference());
+        row.put("notes", withdrawal.getNotes());
+        row.put("processedAt", withdrawal.getProcessedAt());
+        row.put("processedBy", withdrawal.getProcessedBy());
+        return row;
     }
 
     private Map<String, Object> revenueByMethod(Long shopId, LocalDateTime start, LocalDateTime end) {

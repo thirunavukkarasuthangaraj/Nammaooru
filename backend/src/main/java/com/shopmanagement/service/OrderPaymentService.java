@@ -55,6 +55,15 @@ public class OrderPaymentService {
     private static final String GATEWAY_FEE_PERCENT_KEY = "order_payment.gateway_fee_percent";
     private static final String DEFAULT_GATEWAY_FEE_PERCENT = "0";
 
+    // Separate from the above on purpose: GATEWAY_FEE_PERCENT is what we charge the
+    // customer (0, since it's absorbed) - this is what Razorpay ACTUALLY deducts from
+    // settlement regardless of that choice, tied to the account type, not to our pricing
+    // decision. Confirmed against this account's real dashboard figures (Total Fee ₹0.24
+    // on a ₹10 payment = 2.4%, i.e. 2% MDR + 18% GST on that MDR = 2.36%). Update this if
+    // the account is ever upgraded to a rate that genuinely differs.
+    private static final String REAL_RAZORPAY_FEE_PERCENT_KEY = "order_payment.real_razorpay_fee_percent";
+    private static final String DEFAULT_REAL_RAZORPAY_FEE_PERCENT = "2.36";
+
     public OrderPaymentService(OrderRepository orderRepository,
                                 OrderPaymentRepository orderPaymentRepository,
                                 UserRepository userRepository,
@@ -108,6 +117,10 @@ public class OrderPaymentService {
         settingService.saveSetting(GATEWAY_FEE_PERCENT_KEY, percent.toPlainString(),
                 "Percent added to the order total and charged to the customer to cover Razorpay's fee. "
                 + "Set this to match your actual Razorpay MDR — check your Razorpay dashboard/agreement.");
+    }
+
+    public BigDecimal getRealRazorpayFeePercent() {
+        return new BigDecimal(settingService.getSettingValue(REAL_RAZORPAY_FEE_PERCENT_KEY, DEFAULT_REAL_RAZORPAY_FEE_PERCENT));
     }
 
     @Transactional
