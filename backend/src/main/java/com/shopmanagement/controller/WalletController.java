@@ -11,6 +11,7 @@ import com.shopmanagement.entity.WalletWithdrawal;
 import com.shopmanagement.repository.OrderPaymentRepository;
 import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.service.OrderPaymentService;
 import com.shopmanagement.service.WalletService;
 import com.shopmanagement.shop.entity.Shop;
 import com.shopmanagement.shop.service.ShopService;
@@ -42,6 +43,7 @@ public class WalletController {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final OrderPaymentRepository orderPaymentRepository;
+    private final OrderPaymentService orderPaymentService;
 
     // ===== Shop owner =====
 
@@ -122,6 +124,12 @@ public class WalletController {
             Page<Order> orders = orderRepository.findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(
                     shop.getId(), start, end, PageRequest.of(page, size));
 
+            // The real Razorpay rate today, not whatever was stored on each OrderPayment at
+            // creation time - that field reflects what was charged to the customer, which is
+            // now always 0 since the fee is absorbed. Showing the stale stored value here
+            // would make an actual ~2.36% cost look like it disappeared.
+            BigDecimal currentFeePercent = orderPaymentService.getGatewayFeePercent();
+
             Page<Map<String, Object>> mapped = orders.map(order -> {
                 Map<String, Object> row = new HashMap<>();
                 row.put("orderId", order.getId());
@@ -147,12 +155,21 @@ public class WalletController {
                 if (isOnline) {
                     OrderPayment payment = orderPaymentRepository.findByOrder_Id(order.getId()).orElse(null);
                     if (payment != null) {
-                        BigDecimal totalFee = payment.getGatewayFeeAmount() != null ? payment.getGatewayFeeAmount() : BigDecimal.ZERO;
-                        // Fee = MDR * 1.18 (2% MDR + 18% GST on that MDR), so MDR = fee / 1.18
-                        razorpayMdr = totalFee.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP);
-                        gstOnFee = totalFee.subtract(razorpayMdr);
-                        customerPaid = payment.getTotalChargedAmount() != null ? payment.getTotalChargedAmount() : order.getTotalAmount();
                         gatewayStatus = payment.getStatus().name();
+                        customerPaid = payment.getTotalChargedAmount() != null ? payment.getTotalChargedAmount() : order.getTotalAmount();
+                        // Only money that actually moved incurs a real Razorpay fee -
+                        // a CREATED (never completed) or FAILED payment cost nothing.
+                        boolean feeApplies = payment.getStatus() == OrderPayment.OrderPaymentStatus.PAID
+                                || payment.getStatus() == OrderPayment.OrderPaymentStatus.REFUNDED
+                                || payment.getStatus() == OrderPayment.OrderPaymentStatus.PARTIALLY_REFUNDED;
+                        if (feeApplies && currentFeePercent.compareTo(BigDecimal.ZERO) > 0) {
+                            BigDecimal totalFee = order.getTotalAmount()
+                                    .multiply(currentFeePercent)
+                                    .divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                            // Fee = MDR * 1.18 (2% MDR + 18% GST on that MDR), so MDR = fee / 1.18
+                            razorpayMdr = totalFee.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP);
+                            gstOnFee = totalFee.subtract(razorpayMdr);
+                        }
                     }
                 }
                 row.put("razorpayMdr", razorpayMdr);
