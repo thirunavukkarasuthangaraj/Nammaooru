@@ -31,6 +31,7 @@ import { CustomerFormComponent } from './components/customer-form/customer-form.
 import { CustomerDetailComponent } from './components/customer-detail/customer-detail.component';
 import { DeliveryFeeManagementComponent } from './components/delivery-fee-management/delivery-fee-management.component';
 import { WithdrawalManagementComponent } from './components/withdrawal-management/withdrawal-management.component';
+import { ShopPaymentsComponent } from './components/shop-payments/shop-payments.component';
 import { PromoCodeListComponent } from './components/promo-code-management/promo-code-list.component';
 import { PromoCodeFormComponent } from './components/promo-code-management/promo-code-form.component';
 import { PromoCodeStatsComponent } from './components/promo-code-management/promo-code-stats.component';
@@ -77,6 +78,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     CustomerDetailComponent,
     DeliveryFeeManagementComponent,
     WithdrawalManagementComponent,
+    ShopPaymentsComponent,
     PromoCodeListComponent,
     PromoCodeFormComponent,
     PromoCodeStatsComponent,
@@ -171,6 +173,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'withdrawals',
         component: WithdrawalManagementComponent
+      },
+      {
+        path: 'shop-payments',
+        component: ShopPaymentsComponent
       },
       {
         path: 'promo-codes',

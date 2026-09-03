@@ -59,4 +59,11 @@ export class PaymentsService {
     if (endDate) params.endDate = endDate;
     return this.http.get(`${this.walletApiUrl}/orders`, { params });
   }
+
+  // No amount sent = withdraw the full balance (backend treats a missing
+  // "amount" key as "everything") - shop owners always want the full amount,
+  // there's no reason to make them type it in.
+  requestWithdrawal(): Observable<any> {
+    return this.http.post(`${this.walletApiUrl}/withdraw`, {});
+  }
 }

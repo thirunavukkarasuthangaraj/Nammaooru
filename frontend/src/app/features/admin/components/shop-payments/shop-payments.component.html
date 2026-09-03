@@ -1,0 +1,197 @@
+<div class="shop-payments-page">
+  <div class="page-header">
+    <h1>Shop Payments</h1>
+    <p class="subtitle">Validate a shop's sales before paying them &mdash; to actually pay, use Withdrawals</p>
+  </div>
+
+  <!-- ===== Shop list ===== -->
+  <ng-container *ngIf="!selectedShop">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search shop</mat-label>
+      <input matInput [(ngModel)]="shopSearch" (ngModelChange)="onShopSearch()" placeholder="Type a shop name..." />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <div class="loading-row" *ngIf="isLoadingShops">
+      <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+    </div>
+
+    <div class="empty-state" *ngIf="!isLoadingShops && filteredShops.length === 0">
+      No shops found.
+    </div>
+
+    <div class="shop-list" *ngIf="!isLoadingShops">
+      <mat-card class="shop-row" *ngFor="let shop of filteredShops" (click)="selectShop(shop)">
+        <div class="shop-info">
+          <mat-icon class="shop-icon">storefront</mat-icon>
+          <span class="shop-name">{{ shop.shopName }}</span>
+        </div>
+        <div class="shop-balance">
+          <span class="balance-value" [class.zero]="shop.balance <= 0">₹{{ shop.balance | number: '1.2-2' }}</span>
+          <span class="balance-label">owed</span>
+        </div>
+        <mat-icon class="chevron">chevron_right</mat-icon>
+      </mat-card>
+    </div>
+  </ng-container>
+
+  <!-- ===== Selected shop detail ===== -->
+  <ng-container *ngIf="selectedShop">
+    <button mat-button class="back-btn" (click)="backToList()">
+      <mat-icon>arrow_back</mat-icon> All Shops
+    </button>
+
+    <h2 class="shop-detail-title">{{ selectedShop.shopName }}</h2>
+
+    <div class="date-select-row" *ngIf="!isLoadingSummary && summary">
+      <mat-icon>calendar_today</mat-icon>
+      <span>Showing day:</span>
+      <input type="date" [(ngModel)]="selectedDate" (change)="onDateChange()" class="date-picker" />
+    </div>
+
+    <div class="stat-grid" *ngIf="!isLoadingSummary && summary">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon sales-today"><mat-icon>today</mat-icon></div>
+          <div class="stat-details">
+            <p class="stat-label">Today's Sales</p>
+            <p class="stat-value">₹{{ summary.daySales | number: '1.2-2' }}</p>
+            <p class="stat-change">{{ summary.dayOrderCount }} order{{ summary.dayOrderCount === 1 ? '' : 's' }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon total-sales"><mat-icon>trending_up</mat-icon></div>
+          <div class="stat-details">
+            <p class="stat-label">Total Sales (All Time)</p>
+            <p class="stat-value">₹{{ summary.totalSales | number: '1.2-2' }}</p>
+            <p class="stat-change">UPI ₹{{ summary.totalOnlineSales | number: '1.0-0' }} &middot; Cash ₹{{ summary.totalCodSales | number: '1.0-0' }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card highlight-card">
+        <mat-card-content>
+          <div class="stat-icon platform-owes"><mat-icon>account_balance_wallet</mat-icon></div>
+          <div class="stat-details">
+            <p class="stat-label">You Owe This Shop</p>
+            <p class="stat-value">₹{{ summary.walletBalance | number: '1.2-2' }}</p>
+            <p class="stat-change">Total earned ₹{{ summary.totalEarned | number: '1.0-0' }} &middot; withdrawn ₹{{ summary.totalWithdrawn | number: '1.0-0' }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="loading-row" *ngIf="isLoadingSummary">
+      <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+    </div>
+
+    <mat-card class="transactions-card">
+      <div class="section-header">
+        <h2>Transactions</h2>
+        <div class="date-range">
+          <label>From <input type="date" [(ngModel)]="rangeStart" (change)="onRangeChange()" /></label>
+          <label>To <input type="date" [(ngModel)]="rangeEnd" (change)="onRangeChange()" /></label>
+        </div>
+      </div>
+
+      <div class="status-tabs" *ngIf="!isLoadingOrders">
+        <button
+          *ngFor="let tab of statusTabs"
+          type="button"
+          class="status-tab"
+          [class.active]="selectedTab === tab.key"
+          [ngClass]="'tab-' + tab.key.toLowerCase()"
+          (click)="selectTab(tab.key)">
+          {{ tab.label }} <span class="tab-count">{{ tabCount(tab.key) }}</span>
+        </button>
+      </div>
+
+      <div class="loading-row" *ngIf="isLoadingOrders">
+        <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+      </div>
+
+      <div class="table-scroll" *ngIf="!isLoadingOrders">
+        <table mat-table [dataSource]="pagedOrders" class="transactions-table">
+          <ng-container matColumnDef="orderNumber">
+            <th mat-header-cell *matHeaderCellDef>Order</th>
+            <td mat-cell *matCellDef="let row">#{{ row.orderNumber }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="method">
+            <th mat-header-cell *matHeaderCellDef>Method</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="method-chip" [ngClass]="methodClass(row)">{{ methodLabel(row) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="subtotal">
+            <th mat-header-cell *matHeaderCellDef>Subtotal</th>
+            <td mat-cell *matCellDef="let row">₹{{ row.subtotal | number: '1.2-2' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="taxAmount">
+            <th mat-header-cell *matHeaderCellDef>GST/Tax</th>
+            <td mat-cell *matCellDef="let row">₹{{ row.taxAmount | number: '1.2-2' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="deliveryFee">
+            <th mat-header-cell *matHeaderCellDef>Delivery Fee</th>
+            <td mat-cell *matCellDef="let row">₹{{ row.deliveryFee | number: '1.2-2' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="youReceive">
+            <th mat-header-cell *matHeaderCellDef>Shop Receives</th>
+            <td mat-cell *matCellDef="let row" class="you-receive-cell">₹{{ row.totalAmount | number: '1.2-2' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="razorpayMdr">
+            <th mat-header-cell *matHeaderCellDef>
+              Razorpay MDR
+              <mat-icon class="info-icon" matTooltip="Platform-absorbed, not deducted from the shop">info_outline</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let row" class="fee-cell">{{ row.isOnline ? ('₹' + (row.razorpayMdr | number: '1.2-2')) : '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="gstOnGatewayFee">
+            <th mat-header-cell *matHeaderCellDef>
+              GST on Fee
+              <mat-icon class="info-icon" matTooltip="Platform-absorbed, not deducted from the shop">info_outline</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let row" class="fee-cell">{{ row.isOnline ? ('₹' + (row.gstOnGatewayFee | number: '1.2-2')) : '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="status-chip" [ngClass]="statusClass(statusFor(row))">{{ statusLabel(statusFor(row)) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <td mat-cell *matCellDef="let row">{{ formatDateTime(row.createdAt) }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="!isLoadingOrders && filteredCount === 0">
+        No {{ selectedTab !== 'ALL' ? (selectedTab | lowercase) + ' ' : '' }}orders in this date range.
+      </div>
+
+      <mat-paginator
+        *ngIf="!isLoadingOrders && filteredCount > 0"
+        [length]="filteredCount"
+        [pageIndex]="currentPage"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[10, 20, 50]"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    </mat-card>
+  </ng-container>
+</div>

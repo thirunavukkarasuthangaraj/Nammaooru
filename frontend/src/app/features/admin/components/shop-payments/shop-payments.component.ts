@@ -1,22 +1,44 @@
 import { Component, OnInit } from '@angular/core';
-import { PaymentsService, PaymentSummary, OrderPaymentRow } from '../../services/payments.service';
+import { ShopPaymentsService, ShopBalanceRow } from '../../services/shop-payments.service';
 import { SwalService } from '../../../../core/services/swal.service';
 
 type StatusTab = 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED' | 'ALL';
 
+interface OrderPaymentRow {
+  orderId: number;
+  orderNumber: string;
+  paymentMethod: string;
+  subtotal: number;
+  taxAmount: number;
+  deliveryFee: number;
+  totalAmount: number;
+  orderStatus: string;
+  paymentStatus: string;
+  createdAt: string;
+  isOnline: boolean;
+  razorpayMdr: number;
+  gstOnGatewayFee: number;
+  totalGatewayFee: number;
+  customerPaid: number;
+  gatewayStatus: string | null;
+}
+
 @Component({
-  selector: 'app-payments',
-  templateUrl: './payments.component.html',
-  styleUrls: ['./payments.component.scss']
+  selector: 'app-shop-payments',
+  templateUrl: './shop-payments.component.html',
+  styleUrls: ['./shop-payments.component.scss']
 })
-export class PaymentsComponent implements OnInit {
+export class ShopPaymentsComponent implements OnInit {
   private static readonly SUCCESS_CODE = '0000';
-  // Fetched once per date range and filtered/paginated client-side - a single
-  // shop's order volume in a 30-day window is small enough that this is
-  // simpler and faster than round-tripping the server on every tab click.
   private static readonly FETCH_SIZE = 1000;
 
-  summary: PaymentSummary | null = null;
+  shops: ShopBalanceRow[] = [];
+  filteredShops: ShopBalanceRow[] = [];
+  shopSearch = '';
+  isLoadingShops = false;
+
+  selectedShop: ShopBalanceRow | null = null;
+  summary: any = null;
   private allOrders: OrderPaymentRow[] = [];
   pagedOrders: OrderPaymentRow[] = [];
 
@@ -40,19 +62,17 @@ export class PaymentsComponent implements OnInit {
 
   isLoadingSummary = false;
   isLoadingOrders = false;
-  isRequestingWithdrawal = false;
 
   currentPage = 0;
   pageSize = 20;
 
   constructor(
-    private paymentsService: PaymentsService,
+    private shopPaymentsService: ShopPaymentsService,
     private swal: SwalService
   ) {}
 
   ngOnInit(): void {
-    this.loadSummary();
-    this.loadOrders();
+    this.loadShops();
   }
 
   private todayIso(): string {
@@ -65,30 +85,73 @@ export class PaymentsComponent implements OnInit {
     return d.toISOString().substring(0, 10);
   }
 
-  loadSummary(): void {
-    this.isLoadingSummary = true;
-    this.paymentsService.getSummary(this.selectedDate).subscribe({
+  loadShops(): void {
+    this.isLoadingShops = true;
+    this.shopPaymentsService.getShopsSummary().subscribe({
       next: (response) => {
-        if (response.statusCode === PaymentsComponent.SUCCESS_CODE) {
+        if (response.statusCode === ShopPaymentsComponent.SUCCESS_CODE) {
+          this.shops = (response.data?.content || []).sort((a: ShopBalanceRow, b: ShopBalanceRow) => b.balance - a.balance);
+          this.filteredShops = this.shops;
+        } else {
+          this.swal.toast(response.message || 'Failed to load shops', 'error');
+        }
+        this.isLoadingShops = false;
+      },
+      error: (error) => {
+        console.error('Error loading shops:', error);
+        this.swal.toast('Error loading shops', 'error');
+        this.isLoadingShops = false;
+      }
+    });
+  }
+
+  onShopSearch(): void {
+    const q = this.shopSearch.trim().toLowerCase();
+    this.filteredShops = !q ? this.shops : this.shops.filter((s) => s.shopName.toLowerCase().includes(q));
+  }
+
+  selectShop(shop: ShopBalanceRow): void {
+    this.selectedShop = shop;
+    this.selectedDate = this.todayIso();
+    this.rangeStart = this.daysAgoIso(30);
+    this.rangeEnd = this.todayIso();
+    this.selectedTab = 'PAID';
+    this.currentPage = 0;
+    this.loadSummary();
+    this.loadOrders();
+  }
+
+  backToList(): void {
+    this.selectedShop = null;
+    this.summary = null;
+  }
+
+  loadSummary(): void {
+    if (!this.selectedShop) return;
+    this.isLoadingSummary = true;
+    this.shopPaymentsService.getShopSummary(this.selectedShop.shopId, this.selectedDate).subscribe({
+      next: (response) => {
+        if (response.statusCode === ShopPaymentsComponent.SUCCESS_CODE) {
           this.summary = response.data;
         } else {
-          this.swal.toast(response.message || 'Failed to load payment summary', 'error');
+          this.swal.toast(response.message || 'Failed to load summary', 'error');
         }
         this.isLoadingSummary = false;
       },
       error: (error) => {
-        console.error('Error loading payment summary:', error);
-        this.swal.toast('Error loading payment summary', 'error');
+        console.error('Error loading summary:', error);
+        this.swal.toast('Error loading summary', 'error');
         this.isLoadingSummary = false;
       }
     });
   }
 
   loadOrders(): void {
+    if (!this.selectedShop) return;
     this.isLoadingOrders = true;
-    this.paymentsService.getOrders(this.rangeStart, this.rangeEnd, 0, PaymentsComponent.FETCH_SIZE).subscribe({
+    this.shopPaymentsService.getShopOrders(this.selectedShop.shopId, this.rangeStart, this.rangeEnd, 0, ShopPaymentsComponent.FETCH_SIZE).subscribe({
       next: (response) => {
-        if (response.statusCode === PaymentsComponent.SUCCESS_CODE) {
+        if (response.statusCode === ShopPaymentsComponent.SUCCESS_CODE) {
           this.allOrders = response.data?.content || [];
           this.currentPage = 0;
           this.applyFilter();
@@ -134,27 +197,6 @@ export class PaymentsComponent implements OnInit {
     this.loadSummary();
   }
 
-  requestWithdrawal(): void {
-    if (!this.summary || this.summary.walletBalance <= 0) return;
-    this.isRequestingWithdrawal = true;
-    this.paymentsService.requestWithdrawal().subscribe({
-      next: (response) => {
-        this.isRequestingWithdrawal = false;
-        if (response.statusCode === PaymentsComponent.SUCCESS_CODE) {
-          this.swal.toast('Withdrawal requested — the admin will pay you soon', 'success');
-          this.loadSummary();
-        } else {
-          this.swal.toast(response.message || 'Failed to request withdrawal', 'error');
-        }
-      },
-      error: (error) => {
-        this.isRequestingWithdrawal = false;
-        console.error('Error requesting withdrawal:', error);
-        this.swal.toast('Error requesting withdrawal', 'error');
-      }
-    });
-  }
-
   onRangeChange(): void {
     this.loadOrders();
   }
@@ -174,11 +216,6 @@ export class PaymentsComponent implements OnInit {
   }
 
   statusFor(row: OrderPaymentRow): string {
-    // The order itself always wins over the payment record's status - a customer
-    // backing out of Razorpay checkout cancels the ORDER (via cancelOrder()), but
-    // the payment record just stays CREATED forever since payment was never
-    // attempted. Without this, an abandoned checkout shows as "Awaiting Payment"
-    // (Pending) instead of Cancelled, which is what actually happened.
     if (row.orderStatus === 'CANCELLED') return 'CANCELLED';
     return row.isOnline ? (row.gatewayStatus || 'CREATED') : row.orderStatus;
   }
@@ -234,10 +271,6 @@ export class PaymentsComponent implements OnInit {
     return labels[status] || status || 'Pending';
   }
 
-  // Backend LocalDateTime values serialize without timezone info, which the
-  // Angular `date` pipe then reads as if it were already browser-local time -
-  // since the server stores wall-clock UTC, that showed times 5:30h behind
-  // actual IST (matches orders-management.component.ts's same fix).
   formatDateTime(dateString: string): string {
     if (!dateString) return '';
     const hasTimezone = dateString.endsWith('Z') ||

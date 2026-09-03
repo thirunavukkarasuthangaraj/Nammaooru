@@ -62,6 +62,13 @@
           <p class="stat-label">You'll Receive From Platform</p>
           <p class="stat-value">₹{{ summary.walletBalance | number: '1.2-2' }}</p>
           <p class="stat-change">Settles by ~{{ summary.expectedSettlementDate | date: 'dd MMM' }}</p>
+          <button
+            mat-flat-button
+            class="withdraw-btn"
+            [disabled]="summary.walletBalance <= 0 || isRequestingWithdrawal"
+            (click)="requestWithdrawal()">
+            {{ isRequestingWithdrawal ? 'Requesting…' : 'Request Withdrawal' }}
+          </button>
         </div>
       </mat-card-content>
     </mat-card>

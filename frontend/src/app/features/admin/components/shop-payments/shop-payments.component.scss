@@ -1,4 +1,4 @@
-.payments-page {
+.shop-payments-page {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
@@ -19,6 +19,89 @@
     font-size: 14px;
     margin: 0;
   }
+}
+
+/* ===== Shop list ===== */
+
+.search-field {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 16px;
+}
+
+.shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shop-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px !important;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  }
+
+  .shop-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+
+    .shop-icon {
+      color: #888;
+    }
+
+    .shop-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #222;
+    }
+  }
+
+  .shop-balance {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-right: 12px;
+
+    .balance-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a7f4b;
+
+      &.zero {
+        color: #999;
+      }
+    }
+
+    .balance-label {
+      font-size: 11px;
+      color: #999;
+    }
+  }
+
+  .chevron {
+    color: #ccc;
+  }
+}
+
+/* ===== Shop detail ===== */
+
+.back-btn {
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.shop-detail-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #222;
+  margin: 0 0 16px 0;
 }
 
 .date-select-row {
@@ -78,11 +161,8 @@
     }
 
     &.sales-today { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    &.upi-today { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-    &.cash-today { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
     &.total-sales { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
     &.platform-owes { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-    &.earned { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
   }
 
   .stat-details {
@@ -105,10 +185,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-
-      &.small {
-        font-size: 18px;
-      }
     }
 
     .stat-change {
@@ -121,21 +197,6 @@
   &.highlight-card {
     mat-card-content { background: linear-gradient(135deg, #43e97b0f 0%, #38f9d70f 100%); }
     .stat-value { color: #1a7f4b; }
-
-    .withdraw-btn {
-      margin-top: 8px;
-      background: #1a7f4b;
-      color: white;
-      font-size: 12px;
-      line-height: 32px;
-      height: 32px;
-      padding: 0 16px;
-
-      &:disabled {
-        background: #ccc;
-        color: #888;
-      }
-    }
   }
 }
 
@@ -143,6 +204,12 @@
   display: flex;
   justify-content: center;
   padding: 32px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: #888;
 }
 
 .transactions-card {
@@ -162,11 +229,6 @@
     font-weight: 600;
     margin: 0;
     color: #333;
-  }
-
-  .section-caption {
-    font-size: 12px;
-    color: #888;
   }
 
   .date-range {
@@ -231,28 +293,6 @@
   &.tab-failed.active { background: #c0392b; }
   &.tab-refunded.active { background: #b9770e; }
   &.tab-all.active { background: #2e5aac; }
-}
-
-.reassurance-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #e8f8f0;
-  border: 1px solid #b8ecd3;
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: #1a5c3a;
-
-  mat-icon {
-    color: #1a7f4b;
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
 }
 
 .table-scroll {
@@ -346,10 +386,4 @@
     background: #eef0f2;
     color: #555;
   }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 32px;
-  color: #888;
 }
