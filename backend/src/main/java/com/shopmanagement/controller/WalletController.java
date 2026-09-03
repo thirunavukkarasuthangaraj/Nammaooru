@@ -94,11 +94,16 @@ public class WalletController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         try {
-            Page<Wallet> wallets = walletService.listWallets(Wallet.WalletOwnerType.SHOP, PageRequest.of(page, size));
-            Page<Map<String, Object>> mapped = wallets.map(wallet -> {
+            // Every shop, not just ones with an existing wallet row - a wallet only gets
+            // created once a shop's first online order settles, so listing wallets alone
+            // silently hid every shop that hasn't had one yet (looked like "only 1 shop
+            // exists" instead of "only 1 shop has been paid online so far").
+            Page<com.shopmanagement.shop.dto.ShopResponse> shops = shopService.getAllShops(PageRequest.of(page, size));
+            Page<Map<String, Object>> mapped = shops.map(shop -> {
+                Wallet wallet = walletService.getWallet(Wallet.WalletOwnerType.SHOP, shop.getId());
                 Map<String, Object> row = new HashMap<>();
-                row.put("shopId", wallet.getOwnerId());
-                row.put("shopName", walletService.resolveOwnerName(Wallet.WalletOwnerType.SHOP, wallet.getOwnerId()));
+                row.put("shopId", shop.getId());
+                row.put("shopName", shop.getName());
                 row.put("balance", wallet.getBalance());
                 row.put("totalEarned", wallet.getTotalEarned());
                 row.put("totalWithdrawn", wallet.getTotalWithdrawn());
@@ -140,6 +145,13 @@ public class WalletController {
         summary.put("walletBalance", wallet.getBalance());
         summary.put("totalEarned", wallet.getTotalEarned());
         summary.put("totalWithdrawn", wallet.getTotalWithdrawn());
+        // So the admin can pay directly from this screen (Pay via UPI / bank transfer)
+        // without a separate trip to the Withdrawals queue.
+        summary.put("payoutMethod", wallet.getPayoutMethod() != null ? wallet.getPayoutMethod().name() : null);
+        summary.put("upiId", wallet.getUpiId());
+        summary.put("bankAccountHolderName", wallet.getBankAccountHolderName());
+        summary.put("bankAccountNumber", wallet.getBankAccountNumber());
+        summary.put("bankIfsc", wallet.getBankIfsc());
         // Razorpay settles to the bank account T+2 business days after the payment,
         // not instantly - shown so "why isn't today's online total in my balance yet"
         // has an answer on screen instead of looking broken.
@@ -187,6 +199,32 @@ public class WalletController {
             return ResponseUtil.paginated(buildShopOrders(shopId, startDate, endDate, page, size));
         } catch (Exception e) {
             log.error("Error getting shop order payments for admin (shop {})", shopId, e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Admin pays a shop directly from the Shop Payments screen - request + mark-paid in
+     * one step, instead of waiting for the shop to submit a withdrawal request first.
+     * amount defaults to the full wallet balance if not given.
+     */
+    @PostMapping("/admin/shop/{shopId}/release-payment")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> releasePaymentToShop(
+            @PathVariable Long shopId, Authentication authentication,
+            @RequestBody Map<String, String> body) {
+        try {
+            String payoutReference = body.get("payoutReference");
+            if (payoutReference == null || payoutReference.isBlank()) {
+                return ResponseUtil.badRequest("payoutReference is required (bank UTR / UPI transaction reference)");
+            }
+            BigDecimal amount = body.get("amount") != null && !body.get("amount").isBlank()
+                    ? new BigDecimal(body.get("amount")) : null;
+            WalletWithdrawal withdrawal = walletService.releasePayment(
+                    Wallet.WalletOwnerType.SHOP, shopId, amount, payoutReference, authentication.getName());
+            return ResponseUtil.success(withdrawalSummary(withdrawal), "Payment released");
+        } catch (Exception e) {
+            log.error("Error releasing payment to shop {}", shopId, e);
             return ResponseUtil.error(e.getMessage());
         }
     }

@@ -14,4 +14,6 @@ public interface WalletWithdrawalRepository extends JpaRepository<WalletWithdraw
     Page<WalletWithdrawal> findByStatusOrderByRequestedAtAsc(WalletWithdrawal.WithdrawalStatus status, Pageable pageable);
 
     boolean existsByWallet_IdAndStatus(Long walletId, WalletWithdrawal.WithdrawalStatus status);
+
+    java.util.Optional<WalletWithdrawal> findFirstByWallet_IdAndStatus(Long walletId, WalletWithdrawal.WithdrawalStatus status);
 }

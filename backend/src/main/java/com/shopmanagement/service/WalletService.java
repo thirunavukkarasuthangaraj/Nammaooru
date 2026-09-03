@@ -212,6 +212,23 @@ public class WalletService {
         return saved;
     }
 
+    /**
+     * Admin-initiated pay-out: request + mark-paid in one step, for when the admin is
+     * proactively settling a shop rather than waiting for the shop to click "Request
+     * Withdrawal" themselves. Reuses an already-pending request instead of creating a
+     * second one if the shop happens to have submitted one first - requestWithdrawal()
+     * only ever allows one PENDING withdrawal per wallet at a time.
+     */
+    @Transactional
+    public WalletWithdrawal releasePayment(Wallet.WalletOwnerType ownerType, Long ownerId, BigDecimal amount,
+                                            String payoutReference, String processedBy) {
+        Wallet wallet = getOrCreateWallet(ownerType, ownerId);
+        WalletWithdrawal withdrawal = walletWithdrawalRepository
+                .findFirstByWallet_IdAndStatus(wallet.getId(), WalletWithdrawal.WithdrawalStatus.PENDING)
+                .orElseGet(() -> requestWithdrawal(ownerType, ownerId, amount));
+        return markWithdrawalPaid(withdrawal.getId(), payoutReference, processedBy);
+    }
+
     @Transactional
     public WalletWithdrawal rejectWithdrawal(Long withdrawalId, String reason, String processedBy) {
         WalletWithdrawal withdrawal = walletWithdrawalRepository.findById(withdrawalId)
