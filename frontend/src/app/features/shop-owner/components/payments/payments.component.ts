@@ -152,6 +152,12 @@ export class PaymentsComponent implements OnInit {
   }
 
   statusFor(row: OrderPaymentRow): string {
+    // The order itself always wins over the payment record's status - a customer
+    // backing out of Razorpay checkout cancels the ORDER (via cancelOrder()), but
+    // the payment record just stays CREATED forever since payment was never
+    // attempted. Without this, an abandoned checkout shows as "Awaiting Payment"
+    // (Pending) instead of Cancelled, which is what actually happened.
+    if (row.orderStatus === 'CANCELLED') return 'CANCELLED';
     return row.isOnline ? (row.gatewayStatus || 'CREATED') : row.orderStatus;
   }
 
