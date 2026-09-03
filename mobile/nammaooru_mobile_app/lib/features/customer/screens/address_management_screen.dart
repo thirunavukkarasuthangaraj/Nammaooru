@@ -8,6 +8,10 @@ import '../../../services/address_api_service.dart';
 import 'google_maps_location_picker_screen.dart';
 import '../../../core/services/address_service.dart';
 import '../widgets/address_selection_dialog.dart';
+import 'package:showcaseview/showcaseview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/localization/language_provider.dart';
+import 'package:provider/provider.dart';
 
 class AddressManagementScreen extends StatefulWidget {
   final bool autoOpenManualForm;
@@ -21,6 +25,27 @@ class AddressManagementScreen extends StatefulWidget {
 class _AddressManagementScreenState extends State<AddressManagementScreen> {
   List<Map<String, dynamic>> _addresses = [];
   bool _isLoading = true;
+
+  // One-time tour: the + add-address button
+  final GlobalKey _tourAddAddressKey = GlobalKey();
+  bool _addressTourChecked = false;
+  BuildContext? _addressShowcaseCtx;
+
+  Future<void> _startAddressTourIfNeeded(BuildContext showcaseCtx) async {
+    _addressShowcaseCtx = showcaseCtx;
+    if (_addressTourChecked) return;
+    _addressTourChecked = true;
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('address_screen_tour_shown') ?? false;
+    if (shown || !mounted) return;
+    await prefs.setBool('address_screen_tour_shown', true);
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted || _addressShowcaseCtx == null) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      ShowCaseWidget.of(_addressShowcaseCtx!)
+          .startShowCase([_tourAddAddressKey]);
+    });
+  }
 
   @override
   void initState() {
@@ -1252,6 +1277,24 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     }
   }
 
+  /// Tries each candidate query in order (most to least specific) and returns
+  /// the first one that geocodes successfully, or null if all fail.
+  Future<Location?> _geocodeWithFallbacks(List<String> candidates) async {
+    for (final candidate in candidates) {
+      if (candidate.trim().isEmpty) continue;
+      try {
+        final locations = await locationFromAddress(candidate);
+        if (locations.isNotEmpty) {
+          print('✅ Geocoded "$candidate" to: ${locations.first.latitude}, ${locations.first.longitude}');
+          return locations.first;
+        }
+      } catch (e) {
+        print('⚠️ Geocoding failed for "$candidate": $e');
+      }
+    }
+    return null;
+  }
+
   Future<void> _addAddressDetailed(
     String label,
     String flatHouse,
@@ -1295,22 +1338,23 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
       print('Adding detailed address: $label - $fullAddress');
 
-      // Geocode the address to get real lat/long coordinates
-      double latitude = 13.0827; // Default fallback
-      double longitude = 80.2707; // Default fallback
-
-      try {
-        // Try to get coordinates from the full address
-        final locations = await locationFromAddress(fullAddress);
-        if (locations.isNotEmpty) {
-          latitude = locations.first.latitude;
-          longitude = locations.first.longitude;
-          print('✅ Geocoded address to: $latitude, $longitude');
-        } else {
-          print('⚠️ Could not geocode address, using fallback coordinates');
-        }
-      } catch (e) {
-        print('⚠️ Geocoding failed: $e, using fallback coordinates');
+      // Geocode the address to get real lat/long coordinates. The full
+      // address (house number, floor, street) often fails to geocode for
+      // rural villages even though the area/city/pincode alone would
+      // resolve fine, so retry with progressively broader queries before
+      // falling back to a default - a wrong default silently breaks
+      // shop-delivery-radius checks for this address forever.
+      final geocodeCandidates = <String>[
+        fullAddress,
+        [village, city, state, pincode].where((s) => s.trim().isNotEmpty).join(', '),
+        [city, state, pincode].where((s) => s.trim().isNotEmpty).join(', '),
+        if (pincode.trim().isNotEmpty) pincode.trim(),
+      ];
+      final geocoded = await _geocodeWithFallbacks(geocodeCandidates);
+      double latitude = geocoded?.latitude ?? 13.0827; // Default fallback
+      double longitude = geocoded?.longitude ?? 80.2707; // Default fallback
+      if (geocoded == null) {
+        print('⚠️ All geocoding attempts failed, using fallback coordinates');
       }
 
       // Get contact info from LocalStorage (saved from profile)
@@ -1380,22 +1424,20 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     try {
       print('Adding address: $label - $address');
 
-      // Geocode the manually entered address to get real lat/long coordinates
-      double latitude = 13.0827; // Default fallback
-      double longitude = 80.2707; // Default fallback
-
-      try {
-        // Try to get coordinates from the address text
-        final locations = await locationFromAddress(address);
-        if (locations.isNotEmpty) {
-          latitude = locations.first.latitude;
-          longitude = locations.first.longitude;
-          print('✅ Geocoded address to: $latitude, $longitude');
-        } else {
-          print('⚠️ Could not geocode address, using fallback coordinates');
-        }
-      } catch (e) {
-        print('⚠️ Geocoding failed: $e, using fallback coordinates');
+      // Geocode the manually entered address to get real lat/long coordinates.
+      // Same reasoning as _addAddressDetailed: retry with the address minus
+      // its leading (most specific) segments before giving up, since a
+      // house-number-level query often fails where the area/city alone works.
+      final parts = address.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      final geocodeCandidates = <String>[
+        address,
+        for (int i = 1; i < parts.length; i++) parts.sublist(i).join(', '),
+      ];
+      final geocoded = await _geocodeWithFallbacks(geocodeCandidates);
+      double latitude = geocoded?.latitude ?? 13.0827; // Default fallback
+      double longitude = geocoded?.longitude ?? 80.2707; // Default fallback
+      if (geocoded == null) {
+        print('⚠️ All geocoding attempts failed, using fallback coordinates');
       }
 
       final result = await AddressApiService.addAddress(
@@ -1518,6 +1560,19 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
       print('Updating address $addressId: $label - $fullAddress');
 
+      // Re-geocode on edit too - otherwise an address originally saved with
+      // wrong (e.g. fallback) coordinates stays wrong forever since editing
+      // it would just carry those same coordinates through unchanged.
+      final geocodeCandidates = <String>[
+        fullAddress,
+        [village, city, state, pincode].where((s) => s.trim().isNotEmpty).join(', '),
+        [city, state, pincode].where((s) => s.trim().isNotEmpty).join(', '),
+        if (pincode.trim().isNotEmpty) pincode.trim(),
+      ];
+      final geocoded = await _geocodeWithFallbacks(geocodeCandidates);
+      final latitude = geocoded?.latitude ?? (currentAddress['latitude'] ?? 13.0827);
+      final longitude = geocoded?.longitude ?? (currentAddress['longitude'] ?? 80.2707);
+
       // Get contact info from LocalStorage (saved from profile)
       final firstName = await LocalStorage.getString('firstName') ?? '';
       final lastName = await LocalStorage.getString('lastName') ?? '';
@@ -1529,8 +1584,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         label: label,
         fullAddress: fullAddress,
         details: landmark,
-        latitude: currentAddress['latitude'] ?? 13.0827,
-        longitude: currentAddress['longitude'] ?? 80.2707,
+        latitude: latitude,
+        longitude: longitude,
         isDefault: currentAddress['isDefault'] ?? false,
         city: city,
         state: state,
@@ -1691,6 +1746,16 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ShowCaseWidget(
+      builder: (showcaseCtx) {
+        WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _startAddressTourIfNeeded(showcaseCtx));
+        return _buildAddressScaffold();
+      },
+    );
+  }
+
+  Widget _buildAddressScaffold() {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -1703,6 +1768,18 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 2,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // Leaving mid-tour lets the showcase overlay try to find a
+            // target that's no longer in the tree ("inactive element"
+            // crash) — dismiss it first.
+            try {
+              ShowCaseWidget.of(context).dismiss();
+            } catch (_) {}
+            Navigator.of(context).pop();
+          },
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -1751,10 +1828,31 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAddressDialog,  // Directly open manual form, map option hidden for now
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white, size: 24),
+      floatingActionButton: Showcase(
+        key: _tourAddAddressKey,
+        title: Provider.of<LanguageProvider>(context, listen: false)
+            .getText('Add Address', 'முகவரி சேர்க்க'),
+        description: Provider.of<LanguageProvider>(context, listen: false)
+            .getText(
+                'Tap here to add a new delivery address.',
+                'புதிய டெலிவரி முகவரியைச் சேர்க்க இங்கே தட்டவும்.'),
+        tooltipBackgroundColor: Colors.white,
+        textColor: Colors.grey.shade800,
+        titleTextStyle: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
+        ),
+        descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+        // Otherwise the tour overlay swallows the tap and just advances
+        // instead of opening the add-address form
+        onTargetClick: _showAddAddressDialog,
+        disposeOnTap: true,
+        child: FloatingActionButton(
+          onPressed: _showAddAddressDialog,  // Directly open manual form, map option hidden for now
+          backgroundColor: AppColors.primary,
+          child: const Icon(Icons.add, color: Colors.white, size: 24),
+        ),
       ),
     );
   }
