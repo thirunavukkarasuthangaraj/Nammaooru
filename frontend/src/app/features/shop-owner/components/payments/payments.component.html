@@ -174,7 +174,7 @@
 
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef>Date</th>
-          <td mat-cell *matCellDef="let row">{{ row.createdAt | date: 'dd MMM y, h:mm a' }}</td>
+          <td mat-cell *matCellDef="let row">{{ formatDateTime(row.createdAt) }}</td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>

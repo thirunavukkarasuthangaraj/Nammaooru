@@ -211,4 +211,25 @@ export class PaymentsComponent implements OnInit {
     };
     return labels[status] || status || 'Pending';
   }
+
+  // Backend LocalDateTime values serialize without timezone info, which the
+  // Angular `date` pipe then reads as if it were already browser-local time -
+  // since the server stores wall-clock UTC, that showed times 5:30h behind
+  // actual IST (matches orders-management.component.ts's same fix).
+  formatDateTime(dateString: string): string {
+    if (!dateString) return '';
+    const hasTimezone = dateString.endsWith('Z') ||
+                        /[+-]\d{2}:\d{2}$/.test(dateString) ||
+                        /[+-]\d{4}$/.test(dateString);
+    const d = hasTimezone ? new Date(dateString) : new Date(dateString + 'Z');
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
 }
