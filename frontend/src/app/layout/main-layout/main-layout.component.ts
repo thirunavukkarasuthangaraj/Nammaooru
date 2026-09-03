@@ -375,7 +375,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Payments',
       items: [
-        { title: 'Payment Collect', icon: 'request_quote', route: '/pay-and-use', badge: null }
+        { title: 'Sales & Payments', icon: 'account_balance_wallet', route: '/shop-owner/payments', badge: null },
+        { title: 'App Subscription', icon: 'request_quote', route: '/pay-and-use', badge: null }
       ]
     }
   ];

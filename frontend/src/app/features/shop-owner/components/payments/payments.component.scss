@@ -1,0 +1,152 @@
+.payments-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 24px;
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #333;
+  }
+
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  padding: 20px !important;
+
+  &.highlight {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: white;
+
+    .card-label,
+    .card-caption {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+
+  .card-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 8px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .card-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: inherit;
+
+    &.small {
+      font-size: 18px;
+    }
+  }
+
+  .card-caption {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+  }
+
+  .date-picker {
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    color: #666;
+    font-family: inherit;
+    cursor: pointer;
+  }
+}
+
+.loading-row {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.transactions-card {
+  padding: 20px !important;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+  }
+
+  .section-caption {
+    font-size: 12px;
+    color: #888;
+  }
+}
+
+.transactions-table {
+  width: 100%;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.status-paid {
+    background: #e0f5ea;
+    color: #1a7f4b;
+  }
+
+  &.status-failed {
+    background: #fde8e8;
+    color: #c0392b;
+  }
+
+  &.status-refunded {
+    background: #fff4e0;
+    color: #b9770e;
+  }
+
+  &.status-pending {
+    background: #eef0f2;
+    color: #555;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: #888;
+}

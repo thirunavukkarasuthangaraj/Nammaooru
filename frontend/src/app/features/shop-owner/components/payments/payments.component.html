@@ -1,0 +1,99 @@
+<div class="payments-page">
+  <div class="page-header">
+    <h1>Payments</h1>
+    <p class="subtitle">Sales, transactions, and what the platform owes you</p>
+  </div>
+
+  <div class="summary-cards" *ngIf="!isLoadingSummary && summary">
+    <mat-card class="summary-card">
+      <div class="card-label">
+        <mat-icon>calendar_today</mat-icon>
+        <input type="date" [(ngModel)]="selectedDate" (change)="onDateChange()" class="date-picker" />
+      </div>
+      <div class="card-value">₹{{ summary.daySales | number: '1.2-2' }}</div>
+      <div class="card-caption">{{ summary.dayOrderCount }} order{{ summary.dayOrderCount === 1 ? '' : 's' }}</div>
+    </mat-card>
+
+    <mat-card class="summary-card">
+      <div class="card-label"><mat-icon>trending_up</mat-icon> Total Sales (All Time)</div>
+      <div class="card-value">₹{{ summary.totalSales | number: '1.2-2' }}</div>
+    </mat-card>
+
+    <mat-card class="summary-card highlight">
+      <div class="card-label"><mat-icon>account_balance_wallet</mat-icon> You'll Receive From Platform</div>
+      <div class="card-value">₹{{ summary.walletBalance | number: '1.2-2' }}</div>
+      <div class="card-caption">Online-paid orders only &mdash; COD you already hold yourself</div>
+    </mat-card>
+
+    <mat-card class="summary-card">
+      <div class="card-label"><mat-icon>savings</mat-icon> Total Earned / Withdrawn</div>
+      <div class="card-value small">
+        ₹{{ summary.totalEarned | number: '1.2-2' }} / ₹{{ summary.totalWithdrawn | number: '1.2-2' }}
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="loading-row" *ngIf="isLoadingSummary">
+    <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+  </div>
+
+  <mat-card class="transactions-card">
+    <div class="section-header">
+      <h2>Online Payment Transactions</h2>
+      <span class="section-caption">Cash on Delivery orders don't appear here &mdash; see Order Management</span>
+    </div>
+
+    <div class="loading-row" *ngIf="isLoadingTransactions">
+      <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+    </div>
+
+    <table mat-table [dataSource]="transactions" *ngIf="!isLoadingTransactions" class="transactions-table">
+      <ng-container matColumnDef="orderNumber">
+        <th mat-header-cell *matHeaderCellDef>Order</th>
+        <td mat-cell *matCellDef="let txn">#{{ txn.orderNumber }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="orderAmount">
+        <th mat-header-cell *matHeaderCellDef>Order Amount</th>
+        <td mat-cell *matCellDef="let txn">₹{{ txn.orderAmount | number: '1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="gatewayFeeAmount">
+        <th mat-header-cell *matHeaderCellDef>Gateway Fee</th>
+        <td mat-cell *matCellDef="let txn">₹{{ txn.gatewayFeeAmount | number: '1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="totalChargedAmount">
+        <th mat-header-cell *matHeaderCellDef>Customer Paid</th>
+        <td mat-cell *matCellDef="let txn">₹{{ txn.totalChargedAmount | number: '1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let txn">
+          <span class="status-chip" [ngClass]="statusClass(txn.status)">{{ statusLabel(txn.status) }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef>Date</th>
+        <td mat-cell *matCellDef="let txn">{{ txn.createdAt | date: 'dd MMM y, h:mm a' }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <div class="empty-state" *ngIf="!isLoadingTransactions && transactions.length === 0">
+      No online payment transactions yet.
+    </div>
+
+    <mat-paginator
+      *ngIf="!isLoadingTransactions && totalTransactions > 0"
+      [length]="totalTransactions"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  </mat-card>
+</div>

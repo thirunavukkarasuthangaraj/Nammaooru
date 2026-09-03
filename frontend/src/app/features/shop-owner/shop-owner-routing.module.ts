@@ -23,8 +23,13 @@ import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list
 import { PosBillingComponent } from './components/pos-billing/pos-billing.component';
 import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 import { BillSettingsComponent } from './components/bill-settings/bill-settings.component';
+import { PaymentsComponent } from './components/payments/payments.component';
 
 const routes: Routes = [
+  {
+    path: 'payments',
+    component: PaymentsComponent
+  },
   {
     path: '',
     redirectTo: 'dashboard',

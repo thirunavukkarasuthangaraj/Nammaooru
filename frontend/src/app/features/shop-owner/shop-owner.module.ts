@@ -67,10 +67,12 @@ import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 import { CategoryCreateDialogComponent } from './components/category-create-dialog/category-create-dialog.component';
 import { LabelDatesDialogComponent } from './components/label-dates-dialog/label-dates-dialog.component';
 import { BillSettingsComponent } from './components/bill-settings/bill-settings.component';
+import { PaymentsComponent } from './components/payments/payments.component';
 
 @NgModule({
   declarations: [
     ShopOwnerDashboardComponent,
+    PaymentsComponent,
     ShopProfileComponent,
     ShopOverviewComponent,
     MyProductsComponent,
