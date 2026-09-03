@@ -206,6 +206,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find orders by shop and created date range (for daily summary)
     List<Order> findByShopIdAndCreatedAtBetween(Long shopId, LocalDateTime startDate, LocalDateTime endDate);
 
+    // Paginated version for the shop-owner Payments screen's transaction table (date-range filterable)
+    Page<Order> findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long shopId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+
+    // Sales split by payment method (UPI/online vs cash on delivery) for a shop in a date range
+    @Query("SELECT o.paymentMethod, COALESCE(SUM(o.totalAmount), 0), COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY o.paymentMethod")
+    List<Object[]> getRevenueByShopGroupedByMethod(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
     // ============ Analytics aggregate queries (across all shops) ============
 
     // Total revenue across all shops in date range

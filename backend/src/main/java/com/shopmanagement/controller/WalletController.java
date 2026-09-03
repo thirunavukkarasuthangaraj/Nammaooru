@@ -3,10 +3,12 @@ package com.shopmanagement.controller;
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.entity.Order;
+import com.shopmanagement.entity.OrderPayment;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.Wallet;
 import com.shopmanagement.entity.WalletTransaction;
 import com.shopmanagement.entity.WalletWithdrawal;
+import com.shopmanagement.repository.OrderPaymentRepository;
 import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.WalletService;
@@ -39,6 +41,7 @@ public class WalletController {
     private final ShopService shopService;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final OrderPaymentRepository orderPaymentRepository;
 
     // ===== Shop owner =====
 
@@ -60,22 +63,110 @@ public class WalletController {
             LocalDateTime endOfDay = startOfDay.plusDays(1);
 
             BigDecimal daySales = orderRepository.getRevenueByShopAndDateRange(shop.getId(), startOfDay, endOfDay);
-            List<Order> dayOrders = orderRepository.findByShopIdAndCreatedAtBetween(shop.getId(), startOfDay, endOfDay);
             BigDecimal totalSales = orderRepository.getTotalRevenueByShop(shop.getId());
             Wallet wallet = walletService.getWallet(Wallet.WalletOwnerType.SHOP, shop.getId());
+
+            Map<String, Object> daySplit = revenueByMethod(shop.getId(), startOfDay, endOfDay);
+            Map<String, Object> allTimeSplit = revenueByMethod(shop.getId(), LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now());
 
             Map<String, Object> summary = new HashMap<>();
             summary.put("date", targetDate.toString());
             summary.put("daySales", daySales != null ? daySales : BigDecimal.ZERO);
-            summary.put("dayOrderCount", dayOrders.size());
+            summary.put("dayOrderCount", ((Number) daySplit.get("onlineCount")).intValue() + ((Number) daySplit.get("codCount")).intValue());
+            summary.put("dayOnlineSales", daySplit.get("onlineSales"));
+            summary.put("dayOnlineOrderCount", daySplit.get("onlineCount"));
+            summary.put("dayCodSales", daySplit.get("codSales"));
+            summary.put("dayCodOrderCount", daySplit.get("codCount"));
             summary.put("totalSales", totalSales != null ? totalSales : BigDecimal.ZERO);
+            summary.put("totalOnlineSales", allTimeSplit.get("onlineSales"));
+            summary.put("totalCodSales", allTimeSplit.get("codSales"));
             summary.put("walletBalance", wallet.getBalance());
             summary.put("totalEarned", wallet.getTotalEarned());
             summary.put("totalWithdrawn", wallet.getTotalWithdrawn());
+            // Razorpay settles to the bank account T+2 business days after the payment,
+            // not instantly - shown so "why isn't today's online total in my balance yet"
+            // has an answer on screen instead of looking broken.
+            summary.put("expectedSettlementDate", targetDate.plusDays(2).toString());
 
             return ResponseUtil.success(summary, "Summary retrieved");
         } catch (Exception e) {
             log.error("Error getting shop payment summary", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Unified order-level view for the Payments screen's transaction table - COD and
+     * online orders together (OrderPayment alone only ever covers online orders, so
+     * a shop owner using it exclusively would never see their cash sales here),
+     * date-range filterable, with the Razorpay fee split into its MDR and GST
+     * components for online rows.
+     */
+    @GetMapping("/shop/orders")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopOrderPayments(
+            Authentication authentication,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Shop shop = requireShop(authentication);
+            LocalDateTime start = startDate != null
+                    ? LocalDate.parse(startDate).atStartOfDay()
+                    : LocalDate.now().minusDays(30).atStartOfDay();
+            LocalDateTime end = endDate != null
+                    ? LocalDate.parse(endDate).atStartOfDay().plusDays(1)
+                    : LocalDateTime.now();
+
+            Page<Order> orders = orderRepository.findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+                    shop.getId(), start, end, PageRequest.of(page, size));
+
+            Page<Map<String, Object>> mapped = orders.map(order -> {
+                Map<String, Object> row = new HashMap<>();
+                row.put("orderId", order.getId());
+                row.put("orderNumber", order.getOrderNumber());
+                row.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
+                row.put("subtotal", order.getSubtotal());
+                row.put("taxAmount", order.getTaxAmount());
+                row.put("deliveryFee", order.getDeliveryFee());
+                row.put("totalAmount", order.getTotalAmount());
+                row.put("orderStatus", order.getStatus() != null ? order.getStatus().name() : null);
+                row.put("paymentStatus", order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null);
+                row.put("createdAt", order.getCreatedAt());
+
+                boolean isOnline = order.getPaymentMethod() == Order.PaymentMethod.ONLINE_PAYMENT
+                        || order.getPaymentMethod() == Order.PaymentMethod.UPI
+                        || order.getPaymentMethod() == Order.PaymentMethod.CARD;
+                row.put("isOnline", isOnline);
+
+                BigDecimal razorpayMdr = BigDecimal.ZERO;
+                BigDecimal gstOnFee = BigDecimal.ZERO;
+                BigDecimal customerPaid = order.getTotalAmount();
+                String gatewayStatus = null;
+                if (isOnline) {
+                    OrderPayment payment = orderPaymentRepository.findByOrder_Id(order.getId()).orElse(null);
+                    if (payment != null) {
+                        BigDecimal totalFee = payment.getGatewayFeeAmount() != null ? payment.getGatewayFeeAmount() : BigDecimal.ZERO;
+                        // Fee = MDR * 1.18 (2% MDR + 18% GST on that MDR), so MDR = fee / 1.18
+                        razorpayMdr = totalFee.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP);
+                        gstOnFee = totalFee.subtract(razorpayMdr);
+                        customerPaid = payment.getTotalChargedAmount() != null ? payment.getTotalChargedAmount() : order.getTotalAmount();
+                        gatewayStatus = payment.getStatus().name();
+                    }
+                }
+                row.put("razorpayMdr", razorpayMdr);
+                row.put("gstOnGatewayFee", gstOnFee);
+                row.put("totalGatewayFee", razorpayMdr.add(gstOnFee));
+                row.put("customerPaid", customerPaid);
+                row.put("gatewayStatus", gatewayStatus);
+
+                return row;
+            });
+
+            return ResponseUtil.paginated(mapped);
+        } catch (Exception e) {
+            log.error("Error getting shop order payments", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
@@ -291,6 +382,34 @@ public class WalletController {
             log.error("Error rejecting withdrawal {}", id, e);
             return ResponseUtil.error(e.getMessage());
         }
+    }
+
+    private Map<String, Object> revenueByMethod(Long shopId, LocalDateTime start, LocalDateTime end) {
+        BigDecimal onlineSales = BigDecimal.ZERO;
+        BigDecimal codSales = BigDecimal.ZERO;
+        int onlineCount = 0;
+        int codCount = 0;
+        for (Object[] row : orderRepository.getRevenueByShopGroupedByMethod(shopId, start, end)) {
+            Order.PaymentMethod method = (Order.PaymentMethod) row[0];
+            BigDecimal amount = (BigDecimal) row[1];
+            long count = (Long) row[2];
+            boolean isOnline = method == Order.PaymentMethod.ONLINE_PAYMENT
+                    || method == Order.PaymentMethod.UPI
+                    || method == Order.PaymentMethod.CARD;
+            if (isOnline) {
+                onlineSales = onlineSales.add(amount);
+                onlineCount += count;
+            } else {
+                codSales = codSales.add(amount);
+                codCount += count;
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("onlineSales", onlineSales);
+        result.put("onlineCount", onlineCount);
+        result.put("codSales", codSales);
+        result.put("codCount", codCount);
+        return result;
     }
 
     private Shop requireShop(Authentication authentication) {
