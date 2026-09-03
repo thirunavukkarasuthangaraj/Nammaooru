@@ -21,85 +21,106 @@
   }
 }
 
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
+.date-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #555;
 
-.summary-card {
-  padding: 20px !important;
-
-  &.highlight {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    color: white;
-
-    .card-label,
-    .card-caption {
-      color: rgba(255, 255, 255, 0.9);
-    }
-  }
-
-  .card-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 8px;
-
-    mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-    }
-  }
-
-  .card-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: inherit;
-
-    &.small {
-      font-size: 18px;
-    }
-  }
-
-  .card-caption {
-    font-size: 12px;
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
     color: #888;
-    margin-top: 4px;
   }
 
   .date-picker {
-    border: none;
-    background: transparent;
-    font-size: 13px;
-    color: #666;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 14px;
     font-family: inherit;
     cursor: pointer;
   }
+}
 
-  .method-split {
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  mat-card-content {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-top: 8px;
-    font-size: 11px;
+    align-items: center;
+    padding: 20px !important;
+  }
 
-    .split-online {
-      color: #1a7f4b;
+  .stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      color: white;
     }
 
-    .split-cod {
-      color: #b9770e;
+    &.sales-today { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    &.upi-today { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    &.cash-today { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    &.total-sales { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+    &.platform-owes { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    &.earned { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+  }
+
+  .stat-details {
+    flex: 1;
+    min-width: 0;
+
+    .stat-label {
+      font-size: 12px;
+      color: #999;
+      margin: 0 0 4px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      &.small {
+        font-size: 18px;
+      }
+    }
+
+    .stat-change {
+      font-size: 12px;
+      color: #666;
+      margin: 0;
     }
   }
 
-  &.highlight .method-split .split-online,
-  &.highlight .method-split .split-cod {
-    color: rgba(255, 255, 255, 0.9);
+  &.highlight-card {
+    mat-card-content { background: linear-gradient(135deg, #43e97b0f 0%, #38f9d70f 100%); }
+    .stat-value { color: #1a7f4b; }
   }
 }
 

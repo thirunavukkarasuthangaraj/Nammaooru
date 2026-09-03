@@ -4,43 +4,76 @@
     <p class="subtitle">Sales, transactions, and what the platform owes you</p>
   </div>
 
-  <div class="summary-cards" *ngIf="!isLoadingSummary && summary">
-    <mat-card class="summary-card">
-      <div class="card-label">
-        <mat-icon>calendar_today</mat-icon>
-        <input type="date" [(ngModel)]="selectedDate" (change)="onDateChange()" class="date-picker" />
-      </div>
-      <div class="card-value">₹{{ summary.daySales | number: '1.2-2' }}</div>
-      <div class="card-caption">{{ summary.dayOrderCount }} order{{ summary.dayOrderCount === 1 ? '' : 's' }}</div>
-      <div class="method-split">
-        <span class="split-online">UPI/Online: ₹{{ summary.dayOnlineSales | number: '1.2-2' }} ({{ summary.dayOnlineOrderCount }})</span>
-        <span class="split-cod">Cash: ₹{{ summary.dayCodSales | number: '1.2-2' }} ({{ summary.dayCodOrderCount }})</span>
-      </div>
+  <div class="date-select-row" *ngIf="!isLoadingSummary && summary">
+    <mat-icon>calendar_today</mat-icon>
+    <span>Showing day:</span>
+    <input type="date" [(ngModel)]="selectedDate" (change)="onDateChange()" class="date-picker" />
+  </div>
+
+  <div class="stat-grid" *ngIf="!isLoadingSummary && summary">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon sales-today"><mat-icon>today</mat-icon></div>
+        <div class="stat-details">
+          <p class="stat-label">Today's Sales</p>
+          <p class="stat-value">₹{{ summary.daySales | number: '1.2-2' }}</p>
+          <p class="stat-change">{{ summary.dayOrderCount }} order{{ summary.dayOrderCount === 1 ? '' : 's' }}</p>
+        </div>
+      </mat-card-content>
     </mat-card>
 
-    <mat-card class="summary-card">
-      <div class="card-label"><mat-icon>trending_up</mat-icon> Total Sales (All Time)</div>
-      <div class="card-value">₹{{ summary.totalSales | number: '1.2-2' }}</div>
-      <div class="method-split">
-        <span class="split-online">UPI/Online: ₹{{ summary.totalOnlineSales | number: '1.2-2' }}</span>
-        <span class="split-cod">Cash: ₹{{ summary.totalCodSales | number: '1.2-2' }}</span>
-      </div>
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon upi-today"><mat-icon>qr_code_2</mat-icon></div>
+        <div class="stat-details">
+          <p class="stat-label">UPI / Online Today</p>
+          <p class="stat-value">₹{{ summary.dayOnlineSales | number: '1.2-2' }}</p>
+          <p class="stat-change">{{ summary.dayOnlineOrderCount }} order{{ summary.dayOnlineOrderCount === 1 ? '' : 's' }}</p>
+        </div>
+      </mat-card-content>
     </mat-card>
 
-    <mat-card class="summary-card highlight">
-      <div class="card-label"><mat-icon>account_balance_wallet</mat-icon> You'll Receive From Platform</div>
-      <div class="card-value">₹{{ summary.walletBalance | number: '1.2-2' }}</div>
-      <div class="card-caption">
-        Online-paid, delivered orders only &mdash; Cash on Delivery you already collect yourself.
-        Today's online sales settle to your bank by ~{{ summary.expectedSettlementDate | date: 'dd MMM' }} (Razorpay's T+2).
-      </div>
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon cash-today"><mat-icon>payments</mat-icon></div>
+        <div class="stat-details">
+          <p class="stat-label">Cash Today</p>
+          <p class="stat-value">₹{{ summary.dayCodSales | number: '1.2-2' }}</p>
+          <p class="stat-change">{{ summary.dayCodOrderCount }} order{{ summary.dayCodOrderCount === 1 ? '' : 's' }}</p>
+        </div>
+      </mat-card-content>
     </mat-card>
 
-    <mat-card class="summary-card">
-      <div class="card-label"><mat-icon>savings</mat-icon> Total Earned / Withdrawn</div>
-      <div class="card-value small">
-        ₹{{ summary.totalEarned | number: '1.2-2' }} / ₹{{ summary.totalWithdrawn | number: '1.2-2' }}
-      </div>
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon total-sales"><mat-icon>trending_up</mat-icon></div>
+        <div class="stat-details">
+          <p class="stat-label">Total Sales (All Time)</p>
+          <p class="stat-value">₹{{ summary.totalSales | number: '1.2-2' }}</p>
+          <p class="stat-change">UPI ₹{{ summary.totalOnlineSales | number: '1.0-0' }} &middot; Cash ₹{{ summary.totalCodSales | number: '1.0-0' }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card highlight-card">
+      <mat-card-content>
+        <div class="stat-icon platform-owes"><mat-icon>account_balance_wallet</mat-icon></div>
+        <div class="stat-details">
+          <p class="stat-label">You'll Receive From Platform</p>
+          <p class="stat-value">₹{{ summary.walletBalance | number: '1.2-2' }}</p>
+          <p class="stat-change">Settles by ~{{ summary.expectedSettlementDate | date: 'dd MMM' }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon earned"><mat-icon>savings</mat-icon></div>
+        <div class="stat-details">
+          <p class="stat-label">Earned / Withdrawn</p>
+          <p class="stat-value small">₹{{ summary.totalEarned | number: '1.0-0' }} / ₹{{ summary.totalWithdrawn | number: '1.0-0' }}</p>
+        </div>
+      </mat-card-content>
     </mat-card>
   </div>
 
