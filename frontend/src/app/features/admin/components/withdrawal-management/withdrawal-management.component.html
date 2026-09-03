@@ -1,0 +1,84 @@
+<div class="withdrawals-page">
+  <div class="page-header">
+    <h1>Pending Withdrawals</h1>
+    <p class="subtitle">Pay shops and delivery partners what the platform owes them, then confirm here</p>
+  </div>
+
+  <div class="loading-row" *ngIf="isLoading">
+    <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && withdrawals.length === 0">
+    <mat-icon>check_circle</mat-icon>
+    <p>No pending withdrawals right now.</p>
+  </div>
+
+  <div class="withdrawal-list" *ngIf="!isLoading">
+    <mat-card class="withdrawal-card" *ngFor="let row of withdrawals">
+      <div class="card-top">
+        <div class="owner-info">
+          <span class="owner-type-chip" [ngClass]="row.ownerType === 'SHOP' ? 'type-shop' : 'type-partner'">
+            {{ ownerTypeLabel(row.ownerType) }}
+          </span>
+          <span class="owner-name">{{ row.ownerName }}</span>
+        </div>
+        <div class="amount">₹{{ row.amount | number: '1.2-2' }}</div>
+      </div>
+
+      <div class="card-meta">
+        <span>Requested {{ row.requestedAt | date: 'dd MMM y, h:mm a' }}</span>
+        <span *ngIf="row.notes"> &middot; {{ row.notes }}</span>
+      </div>
+
+      <div class="payout-details" *ngIf="row.payoutMethod">
+        <div class="payout-row" *ngIf="row.payoutMethod === 'UPI'">
+          <mat-icon>qr_code</mat-icon>
+          <span class="payout-value">{{ row.upiId }}</span>
+          <button mat-stroked-button color="primary" (click)="payViaUpi(row)" class="upi-pay-btn">
+            <mat-icon>send</mat-icon> Pay via UPI
+          </button>
+        </div>
+        <div class="payout-row" *ngIf="row.payoutMethod === 'BANK_ACCOUNT'">
+          <mat-icon>account_balance</mat-icon>
+          <span class="payout-value">
+            {{ row.bankAccountHolderName }} &middot; {{ row.bankAccountNumber }} &middot; {{ row.bankIfsc }}
+          </span>
+        </div>
+        <span class="verified-badge" *ngIf="!row.payoutDetailsVerified">
+          <mat-icon>warning_amber</mat-icon> Not verified
+        </span>
+      </div>
+
+      <div class="payout-details" *ngIf="!row.payoutMethod">
+        <span class="no-payout-details">No payout details on file yet &mdash; contact them before paying.</span>
+      </div>
+
+      <div class="card-actions">
+        <mat-form-field appearance="outline" class="reference-field">
+          <mat-label>UTR / Transaction Reference</mat-label>
+          <input matInput [(ngModel)]="row.referenceInput" placeholder="e.g. UPI txn ID after paying" />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="processingId === row.id"
+          (click)="markPaid(row)">
+          Mark as Paid
+        </button>
+        <button mat-button color="warn" [disabled]="processingId === row.id" (click)="toggleReject(row)">
+          Reject
+        </button>
+      </div>
+
+      <div class="reject-panel" *ngIf="row.showRejectInput">
+        <mat-form-field appearance="outline" class="reason-field">
+          <mat-label>Rejection reason (optional)</mat-label>
+          <input matInput [(ngModel)]="row.rejectReasonInput" />
+        </mat-form-field>
+        <button mat-flat-button color="warn" [disabled]="processingId === row.id" (click)="confirmReject(row)">
+          Confirm Reject
+        </button>
+      </div>
+    </mat-card>
+  </div>
+</div>
