@@ -45,12 +45,14 @@ public class OrderPaymentService {
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
 
-    // Razorpay's actual merchant discount rate (MDR) depends on your negotiated agreement
-    // and payment method (UPI/card/netbanking differ) — this default is a placeholder and
-    // MUST be corrected via the settings key below to match your real Razorpay MDR, or the
-    // platform will over- or under-charge customers relative to what Razorpay actually deducts.
+    // RBI mandates zero MDR on UPI P2M transactions, and Razorpay's order amount is fixed
+    // before the customer picks a payment method inside Checkout — there's no way to charge
+    // a fee only for card/netbanking and not UPI within a single order. Since UPI is the
+    // overwhelming majority of traffic here, default to 0 so we never illegally surcharge
+    // UPI payments. Raise this via the settings key below only if you've decided to also
+    // absorb it into pricing elsewhere instead, or you accept passing card MDR to customers.
     private static final String GATEWAY_FEE_PERCENT_KEY = "order_payment.gateway_fee_percent";
-    private static final String DEFAULT_GATEWAY_FEE_PERCENT = "2.36"; // 2% MDR + 18% GST on that fee, typical card/UPI rate
+    private static final String DEFAULT_GATEWAY_FEE_PERCENT = "0";
 
     public OrderPaymentService(OrderRepository orderRepository,
                                 OrderPaymentRepository orderPaymentRepository,
