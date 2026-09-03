@@ -100,6 +100,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
     BigDecimal getAverageOrderValueByShop(@Param("shopId") Long shopId);
+
+    // Online/app orders only (excludes WALK_IN/COUNTER_SALE POS sales) - for the shop-owner
+    // Payments screen, kept separate from getTotalRevenueByShop/getRevenueByShopAndDateRange
+    // above since those ARE meant to include POS sales for other shop revenue reporting.
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.shop.id = :shopId AND o.orderType = 'ONLINE' AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
+    BigDecimal getTotalOnlineRevenueByShop(@Param("shopId") Long shopId);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND o.orderType = 'ONLINE' AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED'))")
+    BigDecimal getOnlineRevenueByShopAndDateRange(@Param("shopId") Long shopId,
+                                           @Param("startDate") LocalDateTime startDate,
+                                           @Param("endDate") LocalDateTime endDate);
     
     // Find pending orders for delivery
     @Query("SELECT o FROM Order o WHERE o.status IN ('CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP') AND o.estimatedDeliveryTime < :currentTime")
@@ -206,11 +217,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find orders by shop and created date range (for daily summary)
     List<Order> findByShopIdAndCreatedAtBetween(Long shopId, LocalDateTime startDate, LocalDateTime endDate);
 
-    // Paginated version for the shop-owner Payments screen's transaction table (date-range filterable)
-    Page<Order> findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long shopId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+    // Paginated version for the shop-owner Payments screen's transaction table (date-range
+    // filterable). Excludes WALK_IN/COUNTER_SALE - those are in-person POS sales already
+    // collected at the counter, not app/delivery orders this Cash-vs-UPI screen is about.
+    @Query("SELECT o FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND o.orderType = 'ONLINE' ORDER BY o.createdAt DESC")
+    Page<Order> findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
-    // Sales split by payment method (UPI/online vs cash on delivery) for a shop in a date range
-    @Query("SELECT o.paymentMethod, COALESCE(SUM(o.totalAmount), 0), COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY o.paymentMethod")
+    // Sales split by payment method (UPI/online vs cash on delivery) for a shop in a date
+    // range - same WALK_IN/COUNTER_SALE exclusion as above.
+    @Query("SELECT o.paymentMethod, COALESCE(SUM(o.totalAmount), 0), COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt BETWEEN :startDate AND :endDate AND o.orderType = 'ONLINE' AND (o.paymentStatus = 'PAID' OR o.status IN ('DELIVERED', 'COMPLETED')) GROUP BY o.paymentMethod")
     List<Object[]> getRevenueByShopGroupedByMethod(@Param("shopId") Long shopId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // ============ Analytics aggregate queries (across all shops) ============

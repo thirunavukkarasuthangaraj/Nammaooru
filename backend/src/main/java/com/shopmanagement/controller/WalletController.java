@@ -64,8 +64,11 @@ public class WalletController {
             LocalDateTime startOfDay = targetDate.atStartOfDay();
             LocalDateTime endOfDay = startOfDay.plusDays(1);
 
-            BigDecimal daySales = orderRepository.getRevenueByShopAndDateRange(shop.getId(), startOfDay, endOfDay);
-            BigDecimal totalSales = orderRepository.getTotalRevenueByShop(shop.getId());
+            // Online/app orders only - walk-in/POS counter sales don't have a Cash-vs-UPI
+            // question (already collected in person) and would make this total not match
+            // the online+cash split shown right below it. POS sales are reported elsewhere.
+            BigDecimal daySales = orderRepository.getOnlineRevenueByShopAndDateRange(shop.getId(), startOfDay, endOfDay);
+            BigDecimal totalSales = orderRepository.getTotalOnlineRevenueByShop(shop.getId());
             Wallet wallet = walletService.getWallet(Wallet.WalletOwnerType.SHOP, shop.getId());
 
             Map<String, Object> daySplit = revenueByMethod(shop.getId(), startOfDay, endOfDay);
