@@ -2,10 +2,12 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
+import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.Wallet;
 import com.shopmanagement.entity.WalletTransaction;
 import com.shopmanagement.entity.WalletWithdrawal;
+import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.WalletService;
 import com.shopmanagement.shop.entity.Shop;
@@ -21,6 +23,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -32,8 +38,47 @@ public class WalletController {
     private final WalletService walletService;
     private final ShopService shopService;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
 
     // ===== Shop owner =====
+
+    /**
+     * One-screen view of what a shop owner actually cares about: how much they
+     * sold on a given day (any payment method), lifetime sales, and - separately
+     * - how much the platform currently owes them for online-paid orders
+     * (COD money they already hold themselves; see Wallet's own note on this).
+     */
+    @GetMapping("/shop/summary")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopPaymentSummary(
+            Authentication authentication,
+            @RequestParam(required = false) String date) {
+        try {
+            Shop shop = requireShop(authentication);
+            LocalDate targetDate = date != null ? LocalDate.parse(date) : LocalDate.now();
+            LocalDateTime startOfDay = targetDate.atStartOfDay();
+            LocalDateTime endOfDay = startOfDay.plusDays(1);
+
+            BigDecimal daySales = orderRepository.getRevenueByShopAndDateRange(shop.getId(), startOfDay, endOfDay);
+            List<Order> dayOrders = orderRepository.findByShopIdAndCreatedAtBetween(shop.getId(), startOfDay, endOfDay);
+            BigDecimal totalSales = orderRepository.getTotalRevenueByShop(shop.getId());
+            Wallet wallet = walletService.getWallet(Wallet.WalletOwnerType.SHOP, shop.getId());
+
+            Map<String, Object> summary = new HashMap<>();
+            summary.put("date", targetDate.toString());
+            summary.put("daySales", daySales != null ? daySales : BigDecimal.ZERO);
+            summary.put("dayOrderCount", dayOrders.size());
+            summary.put("totalSales", totalSales != null ? totalSales : BigDecimal.ZERO);
+            summary.put("walletBalance", wallet.getBalance());
+            summary.put("totalEarned", wallet.getTotalEarned());
+            summary.put("totalWithdrawn", wallet.getTotalWithdrawn());
+
+            return ResponseUtil.success(summary, "Summary retrieved");
+        } catch (Exception e) {
+            log.error("Error getting shop payment summary", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
 
     @GetMapping("/shop/balance")
     @PreAuthorize("hasRole('SHOP_OWNER')")

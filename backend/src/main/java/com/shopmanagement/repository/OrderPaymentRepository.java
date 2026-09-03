@@ -18,4 +18,6 @@ public interface OrderPaymentRepository extends JpaRepository<OrderPayment, Long
     Page<OrderPayment> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     Page<OrderPayment> findByStatusOrderByCreatedAtDesc(OrderPayment.OrderPaymentStatus status, Pageable pageable);
+
+    Page<OrderPayment> findByOrder_Shop_IdOrderByCreatedAtDesc(Long shopId, Pageable pageable);
 }

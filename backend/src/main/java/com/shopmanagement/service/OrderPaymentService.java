@@ -320,4 +320,29 @@ public class OrderPaymentService {
     public Page<OrderPayment> listAll(Pageable pageable) {
         return orderPaymentRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
+
+    /**
+     * Maps to plain data inside the transaction rather than returning entities -
+     * OrderPayment.order is a lazy @OneToOne, and this app has already hit
+     * LazyInitializationException more than once from serializing lazy
+     * associations after the transaction (and its Hibernate session) closed.
+     */
+    @Transactional(readOnly = true)
+    public Page<Map<String, Object>> listForShop(Long shopId, Pageable pageable) {
+        return orderPaymentRepository.findByOrder_Shop_IdOrderByCreatedAtDesc(shopId, pageable)
+                .map(payment -> {
+                    Map<String, Object> row = new java.util.HashMap<>();
+                    row.put("id", payment.getId());
+                    row.put("orderId", payment.getOrder().getId());
+                    row.put("orderNumber", payment.getOrder().getOrderNumber());
+                    row.put("orderAmount", payment.getOrderAmount());
+                    row.put("gatewayFeeAmount", payment.getGatewayFeeAmount());
+                    row.put("totalChargedAmount", payment.getTotalChargedAmount());
+                    row.put("status", payment.getStatus().name());
+                    row.put("refundAmount", payment.getRefundAmount());
+                    row.put("failureReason", payment.getFailureReason());
+                    row.put("createdAt", payment.getCreatedAt());
+                    return row;
+                });
+    }
 }

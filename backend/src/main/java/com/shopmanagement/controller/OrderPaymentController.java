@@ -4,6 +4,8 @@ import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.entity.OrderPayment;
 import com.shopmanagement.service.OrderPaymentService;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.service.ShopService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ import java.util.Map;
 public class OrderPaymentController {
 
     private final OrderPaymentService orderPaymentService;
+    private final ShopService shopService;
 
     @PostMapping("/customer/orders/{orderId}/payment/create-order")
     @PreAuthorize("isAuthenticated()")
@@ -120,6 +123,32 @@ public class OrderPaymentController {
             return ResponseUtil.success(null, "Config updated");
         } catch (Exception e) {
             log.error("Error updating order payment config", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    /**
+     * The transaction-level view for a shop owner's own Payments screen -
+     * amount, gateway fee, and status (paid/failed/refunded) per order, as
+     * opposed to the wallet ledger which only has entries for settled
+     * (delivered) online orders.
+     */
+    @GetMapping("/order-payments/shop/transactions")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> listForShop(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Shop shop = shopService.getShopByOwner(authentication.getName());
+            if (shop == null) {
+                return ResponseUtil.error("Shop not found for owner: " + authentication.getName());
+            }
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Map<String, Object>> payments = orderPaymentService.listForShop(shop.getId(), pageable);
+            return ResponseUtil.paginated(payments);
+        } catch (Exception e) {
+            log.error("Error listing shop order payments", e);
             return ResponseUtil.error(e.getMessage());
         }
     }
