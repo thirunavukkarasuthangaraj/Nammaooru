@@ -962,7 +962,8 @@ export class ShopProfileComponent implements OnInit {
       deliveryRadius: [5, [Validators.required, Validators.min(1), Validators.max(50)]],
       minOrderAmount: [0],
       freeDeliveryAbove: [0],
-      selfDeliveryEnabled: [{ value: false, disabled: true }]
+      selfDeliveryEnabled: [{ value: false, disabled: true }],
+      selfDeliveryFee: [null]
     });
   }
 
@@ -1090,6 +1091,13 @@ export class ShopProfileComponent implements OnInit {
         control: 'selfDeliveryEnabled',
         type: 'toggle',
         hint: 'When on, no delivery partner is searched - you deliver orders to customers yourself'
+      },
+      {
+        label: 'Self Delivery Fee (₹)',
+        control: 'selfDeliveryFee',
+        type: 'number',
+        placeholder: 'e.g., 30',
+        hint: 'Charged to customers instead of the platform\'s distance-based fee when Self Delivery is on. Leave blank to use the platform fee.'
       }
     ];
   }
@@ -1257,7 +1265,8 @@ export class ShopProfileComponent implements OnInit {
       longitude: 'my_location',
       deliveryRadius: 'delivery_dining',
       minOrderAmount: 'shopping_cart',
-      freeDeliveryAbove: 'local_shipping'
+      freeDeliveryAbove: 'local_shipping',
+      selfDeliveryFee: 'payments'
     };
     return iconMap[controlName] || 'info';
   }
@@ -1433,9 +1442,10 @@ export class ShopProfileComponent implements OnInit {
             deliveryRadius: shop.deliveryRadius || 5,
             minOrderAmount: shop.minOrderAmount || 0,
             freeDeliveryAbove: shop.freeDeliveryAbove || 0,
-            selfDeliveryEnabled: shop.selfDeliveryEnabled === true
+            selfDeliveryEnabled: shop.selfDeliveryEnabled === true,
+            selfDeliveryFee: shop.selfDeliveryFee ?? null
           });
-          
+
           // Set email separately since it's disabled
           this.shopForm.get('email')?.setValue(shop.ownerEmail || shop.email || '');
           
@@ -1544,7 +1554,8 @@ export class ShopProfileComponent implements OnInit {
         deliveryRadius: this.shopForm.value.deliveryRadius,
         minOrderAmount: this.shopForm.value.minOrderAmount,
         freeDeliveryAbove: this.shopForm.value.freeDeliveryAbove,
-        selfDeliveryEnabled: this.shopForm.get('selfDeliveryEnabled')?.value === true
+        selfDeliveryEnabled: this.shopForm.get('selfDeliveryEnabled')?.value === true,
+        selfDeliveryFee: this.shopForm.value.selfDeliveryFee
       };
       
       this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
@@ -1572,7 +1583,8 @@ export class ShopProfileComponent implements OnInit {
             deliveryRadius: response.deliveryRadius || 5,
             minOrderAmount: response.minOrderAmount || 0,
             freeDeliveryAbove: response.freeDeliveryAbove || 0,
-            selfDeliveryEnabled: response.selfDeliveryEnabled === true
+            selfDeliveryEnabled: response.selfDeliveryEnabled === true,
+            selfDeliveryFee: response.selfDeliveryFee ?? null
           });
           this.shopForm.get('selfDeliveryEnabled')?.disable();
 
