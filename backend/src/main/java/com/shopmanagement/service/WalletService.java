@@ -59,6 +59,8 @@ public class WalletService {
     private final OrderRepository orderRepository;
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final WhatsAppNotificationService whatsAppNotificationService;
 
     @Transactional
     public Wallet getOrCreateWallet(Wallet.WalletOwnerType ownerType, Long ownerId) {
@@ -235,7 +237,49 @@ public class WalletService {
 
         log.info("Withdrawal {} marked PAID: {} {} to {} wallet (ownerId={}), ref={}",
                 withdrawalId, withdrawal.getAmount(), wallet.getCurrency(), wallet.getOwnerType(), wallet.getOwnerId(), payoutReference);
+
+        notifyPayoutPaid(wallet.getOwnerType(), wallet.getOwnerId(), withdrawal.getAmount(), payoutReference);
+
         return saved;
+    }
+
+    /**
+     * Best-effort - a notification failure must never roll back a payment that already
+     * happened in the real world. Email/WhatsApp send errors are logged and swallowed.
+     */
+    private void notifyPayoutPaid(Wallet.WalletOwnerType ownerType, Long ownerId, BigDecimal amount, String payoutReference) {
+        try {
+            String name;
+            String email;
+            String phone;
+            if (ownerType == Wallet.WalletOwnerType.SHOP) {
+                Shop shop = shopRepository.findById(ownerId).orElse(null);
+                if (shop == null) return;
+                name = shop.getName();
+                email = shop.getOwnerEmail();
+                phone = shop.getOwnerPhone();
+            } else {
+                User partner = userRepository.findById(ownerId).orElse(null);
+                if (partner == null) return;
+                name = (partner.getFirstName() != null ? partner.getFirstName() : "") + " " + (partner.getLastName() != null ? partner.getLastName() : "");
+                email = partner.getEmail();
+                phone = partner.getMobileNumber();
+            }
+
+            String subject = "Payment Received - ₹" + amount.toPlainString();
+            String body = "Hi " + name.trim() + ",\n\n"
+                    + "We've paid out ₹" + amount.toPlainString() + " to your account.\n"
+                    + "Reference: " + payoutReference + "\n\n"
+                    + "Thanks,\nNammaOoru";
+            if (email != null && !email.isBlank()) {
+                emailService.sendSimpleEmail(email, subject, body);
+            }
+            if (phone != null && !phone.isBlank()) {
+                whatsAppNotificationService.sendTextMessage(phone, body);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send payout notification for {} {} amount {}", ownerType, ownerId, amount, e);
+        }
     }
 
     /**
