@@ -24,6 +24,22 @@ class OrderPaymentService {
     }
   }
 
+  /// Fetches the current gateway fee percent so checkout can show it in the
+  /// bill summary before the order is even placed. Falls back to the
+  /// backend's own default if the call fails, so the UI never shows nothing.
+  static Future<double> getGatewayFeePercent() async {
+    try {
+      final response = await ApiClient.get('/customer/order-payments/config');
+      if (_isSuccess(response.data)) {
+        final percent = response.data['data']?['gatewayFeePercent'];
+        if (percent != null) return double.parse(percent.toString());
+      }
+    } catch (e) {
+      Logger.e('Failed to fetch gateway fee percent', 'ORDER_PAYMENT', e);
+    }
+    return 0.0;
+  }
+
   static Future<Map<String, dynamic>> verifyPayment({
     required int orderId,
     required String razorpayOrderId,

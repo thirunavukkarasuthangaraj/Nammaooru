@@ -20,6 +20,10 @@ class CartProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isShopOpen = true; // Track if current shop is open
   String? _shopName; // Track current shop name for error messages
+  // Per-shop minimum order amount (shop.minOrderAmount from the backend).
+  // Null until a shop's details are loaded; checkout falls back to a safe
+  // default in that case rather than treating "unknown" as "no minimum".
+  double? _minOrderAmount;
 
   List<CartItem> get items => List.unmodifiable(_items);
   /// Total units across the cart (sum of quantities) - for order payloads etc.
@@ -62,10 +66,12 @@ class CartProvider with ChangeNotifier {
   // Shop open status - set when entering shop, checked at checkout
   bool get isShopOpen => _isShopOpen;
   String? get shopName => _shopName;
+  double? get minOrderAmount => _minOrderAmount;
 
-  void setShopStatus({required bool isOpen, String? shopName}) {
+  void setShopStatus({required bool isOpen, String? shopName, double? minOrderAmount}) {
     _isShopOpen = isOpen;
     if (shopName != null) _shopName = shopName;
+    if (minOrderAmount != null) _minOrderAmount = minOrderAmount;
     _saveCartToStorage();
     notifyListeners();
   }
@@ -254,6 +260,7 @@ class CartProvider with ChangeNotifier {
     _promoDiscount = 0.0;
     _isShopOpen = true;
     _shopName = null;
+    _minOrderAmount = null;
     _saveCartToStorage();
     notifyListeners();
 
@@ -332,6 +339,7 @@ class CartProvider with ChangeNotifier {
         'promoDiscount': _promoDiscount,
         'isShopOpen': _isShopOpen,
         'shopName': _shopName,
+        'minOrderAmount': _minOrderAmount,
       };
       LocalStorage.setString('cart_data', jsonEncode(cartData));
     } catch (e) {
@@ -430,6 +438,7 @@ class CartProvider with ChangeNotifier {
         _promoDiscount = cartData['promoDiscount']?.toDouble() ?? 0.0;
         _isShopOpen = cartData['isShopOpen'] ?? true;
         _shopName = cartData['shopName'];
+        _minOrderAmount = (cartData['minOrderAmount'] as num?)?.toDouble();
         notifyListeners();
       } catch (e) {
         print('Error loading cart from storage: $e');

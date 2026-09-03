@@ -20,15 +20,17 @@ class DeliveryFeeService {
     required double shopLongitude,
     required double customerLatitude,
     required double customerLongitude,
+    int? shopId,
   }) async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/delivery-fees/calculate');
+      final url = Uri.parse('${ApiConfig.apiUrl}/delivery-fees/calculate');
 
       final requestBody = {
         'shopLat': shopLatitude,
         'shopLon': shopLongitude,
         'customerLat': customerLatitude,
         'customerLon': customerLongitude,
+        if (shopId != null) 'shopId': shopId,
       };
 
       print('Calculating delivery fee for coordinates:');
@@ -79,7 +81,7 @@ class DeliveryFeeService {
   /// Get active delivery fee ranges
   Future<List<DeliveryFeeRange>> getActiveRanges() async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/delivery-fees/active');
+      final url = Uri.parse('${ApiConfig.apiUrl}/delivery-fees/active');
 
       final response = await http.get(
         url,

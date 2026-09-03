@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../core/services/order_payment_service.dart';
+import '../../../core/services/delivery_fee_service.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -67,6 +68,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'CASH_ON_DELIVERY';
   Razorpay? _razorpay;
   _PendingOnlinePayment? _pendingOnlinePayment;
+  double _gatewayFeePercent = 0.0;
 
 
   // Delivery
@@ -84,11 +86,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     {'key': 'HOME_DELIVERY', 'label': 'Home Delivery', 'icon': Icons.delivery_dining_rounded},
     {'key': 'SELF_PICKUP', 'label': 'Self Pickup', 'icon': Icons.storefront_rounded},
   ];
-  // ONLINE_PAYMENT is fully wired (Razorpay checkout, verify, refund-on-cancel) but stays
-  // hidden until real (non-test) Razorpay keys are configured in production — otherwise
-  // customers would see a "Simulate Pay" test-mode button and get free confirmed orders.
-  // Add 'ONLINE_PAYMENT' back to this list once razorpay.mode=live is set on the backend.
-  final List<String> _paymentMethods = ['CASH_ON_DELIVERY'];
+  final List<String> _paymentMethods = ['CASH_ON_DELIVERY', 'ONLINE_PAYMENT'];
 
   @override
   void initState() {
@@ -97,6 +95,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _checkAuthentication();
       await _loadUserData(); // Load profile data first
       await _loadSavedAddresses(); // Then load addresses
+    });
+    OrderPaymentService.getGatewayFeePercent().then((percent) {
+      if (mounted) setState(() => _gatewayFeePercent = percent);
     });
   }
 
@@ -1370,18 +1371,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Icons.local_shipping,
                 Colors.orange,
               ),
-              // ONLINE_PAYMENT card intentionally hidden — see the comment on
-              // _paymentMethods above. All the Razorpay wiring below (checkout,
-              // verify, refund-on-cancel) is complete; re-add this card once
-              // razorpay.mode=live is set on the backend.
-              // const SizedBox(height: 10),
-              // _buildModernPaymentOption(
-              //   'ONLINE_PAYMENT',
-              //   'Online Payment',
-              //   'Pay now via UPI, card or wallet',
-              //   Icons.credit_card,
-              //   Colors.blue,
-              // ),
+              const SizedBox(height: 10),
+              _buildModernPaymentOption(
+                'ONLINE_PAYMENT',
+                'Online Payment',
+                'Pay now via UPI, card or wallet',
+                Icons.credit_card,
+                Colors.blue,
+              ),
             ],
           ),
 
@@ -1837,14 +1834,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           '-${Helpers.formatCurrency(cartProvider.promoDiscount)}',
                           valueColor: Colors.green,
                         ),
+                      if (_selectedPaymentMethod == 'ONLINE_PAYMENT' && _onlinePaymentFee(cartProvider.total) > 0)
+                        _buildBillRow(
+                          'Online Payment Fee',
+                          Helpers.formatCurrency(_onlinePaymentFee(cartProvider.total)),
+                        ),
                       const Divider(height: 16),
                       _buildBillRow(
                         'Total Amount',
-                        Helpers.formatCurrency(cartProvider.total),
+                        Helpers.formatCurrency(cartProvider.total + _onlinePaymentFeeIfApplicable(cartProvider.total)),
                         isTotal: true,
                       ),
                       // Minimum order warning
-                      if (cartProvider.subtotal < 100)
+                      if (cartProvider.subtotal < (cartProvider.minOrderAmount ?? 100.0))
                         Container(
                           margin: const EdgeInsets.only(top: 10),
                           padding: const EdgeInsets.all(10),
@@ -1859,7 +1861,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Add ₹${(100 - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹100',
+                                  'Add ₹${((cartProvider.minOrderAmount ?? 100.0) - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹${(cartProvider.minOrderAmount ?? 100.0).toStringAsFixed(0)}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: Colors.orange.shade700,
@@ -1881,6 +1883,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       },
     );
+  }
+
+  // Estimate only, for display before the order is placed — the backend
+  // computes and charges the authoritative amount in OrderPaymentService.
+  double _onlinePaymentFee(double orderTotal) {
+    return double.parse((orderTotal * _gatewayFeePercent / 100).toStringAsFixed(2));
+  }
+
+  double _onlinePaymentFeeIfApplicable(double orderTotal) {
+    return _selectedPaymentMethod == 'ONLINE_PAYMENT' ? _onlinePaymentFee(orderTotal) : 0.0;
   }
 
   Widget _buildBillRow(String label, String value, {Color? valueColor, bool isTotal = false}) {
@@ -2035,6 +2047,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // Save address when moving from address step
     if (_currentStep == 0) {
       await _saveCurrentAddress();
+      await _recalculateDeliveryFee();
     }
 
     if (_currentStep < 2) {
@@ -2042,6 +2055,47 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+    }
+  }
+
+  /// Replaces CartProvider's hardcoded ₹30 default with the real distance-based
+  /// fee (admin-configured tiers via /api/delivery-fees/calculate). Self Pickup
+  /// doesn't need a delivery fee at all — the order submission already forces
+  /// it to 0 for that case — so this only runs for Home Delivery. Best-effort:
+  /// if the shop/customer coordinates aren't available or the call fails, the
+  /// existing fee is left as-is rather than blocking checkout over it.
+  Future<void> _recalculateDeliveryFee() async {
+    if (_selectedDeliveryType != 'HOME_DELIVERY' || !mounted) return;
+
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    if (cartProvider.items.isEmpty) return;
+
+    final customerLat = _selectedSavedAddress?.latitude ?? LocationService.cachedLatitude;
+    final customerLng = _selectedSavedAddress?.longitude ?? LocationService.cachedLongitude;
+    if (customerLat == null || customerLng == null) return;
+
+    final shopId = int.tryParse(cartProvider.items.first.product.shopDatabaseId.toString());
+    if (shopId == null) return;
+
+    try {
+      final shopResponse = await ShopApiService().getShopById(shopId);
+      final shopData = shopResponse['data'];
+      final shopLat = (shopData?['latitude'] as num?)?.toDouble();
+      final shopLng = (shopData?['longitude'] as num?)?.toDouble();
+      if (shopLat == null || shopLng == null) return;
+
+      final result = await DeliveryFeeService.instance.calculateDeliveryFee(
+        shopLatitude: shopLat,
+        shopLongitude: shopLng,
+        customerLatitude: customerLat,
+        customerLongitude: customerLng,
+        shopId: shopId,
+      );
+      if (result != null && result.success && mounted) {
+        cartProvider.setDeliveryFee(result.deliveryFee);
+      }
+    } catch (e) {
+      print('⚠️ Delivery fee recalculation failed, keeping existing fee: $e');
     }
   }
 
@@ -2110,8 +2164,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         throw Exception('Cart is empty');
       }
 
-      // Check minimum order amount (₹100)
-      const double minimumOrderAmount = 100.0;
+      // Per-shop minimum order amount (shop.minOrderAmount, set in the shop's
+      // own profile) — falls back to ₹100 only if that value was never loaded
+      // (e.g. a cart restored from storage saved before this field existed).
+      // A shop that has explicitly set 0 means "no minimum", not "unknown".
+      final double minimumOrderAmount = cartProvider.minOrderAmount ?? 100.0;
       if (cartProvider.subtotal < minimumOrderAmount) {
         if (mounted) {
           Helpers.showSnackBar(
@@ -2367,10 +2424,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final paymentData = createResult['data'] as Map;
     final bool isTestMode = paymentData['testMode'] == true;
     final String razorpayOrderId = paymentData['razorpayOrderId'].toString();
+    final double gatewayFee = (paymentData['gatewayFeeAmount'] as num?)?.toDouble() ?? 0.0;
+    final double totalCharged = (paymentData['totalChargedAmount'] as num?)?.toDouble() ?? 0.0;
 
     if (isTestMode) {
-      await _handleTestModeOrderPayment(orderId, orderNumber, razorpayOrderId, cartProvider);
+      await _handleTestModeOrderPayment(
+          orderId, orderNumber, razorpayOrderId, cartProvider, gatewayFee, totalCharged);
       return;
+    }
+
+    if (gatewayFee > 0 && mounted) {
+      final proceed = await _confirmGatewayFee(gatewayFee, totalCharged);
+      if (proceed != true) {
+        await _abandonUnpaidOrder(orderId, null);
+        return;
+      }
     }
 
     _pendingOnlinePayment = _PendingOnlinePayment(orderId, orderNumber, cartProvider);
@@ -2388,6 +2456,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       'order_id': razorpayOrderId,
       'prefill': {'contact': _phoneController.text.trim()},
       'theme': {'color': '#2E7D32'},
+      // UPI carries zero MDR by law; card/netbanking/wallet don't, and Razorpay's
+      // order amount is fixed before the customer picks a method, so we can't
+      // charge a fee only on the non-UPI ones. Restricting to UPI here keeps this
+      // gateway fee-free without needing per-method pricing. Mirror this in the
+      // Razorpay Dashboard (Settings > Payment Methods) too — that's the
+      // authoritative, server-side control; this is defense-in-depth on the client.
+      'method': {'netbanking': 0, 'card': 0, 'wallet': 0, 'upi': 1, 'paylater': 0},
     };
 
     try {
@@ -2397,15 +2472,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<void> _handleTestModeOrderPayment(
-      int orderId, String? orderNumber, String razorpayOrderId, CartProvider cartProvider) async {
+  /// Shows the Razorpay gateway fee that gets added on top of the order total
+  /// before charging the card/UPI — the app's own bill summary only shows the
+  /// order total, so without this the amount Razorpay asks for looks wrong.
+  Future<bool?> _confirmGatewayFee(double gatewayFee, double totalCharged) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Payment Gateway Fee'),
+        content: Text(
+          'A payment gateway fee of ₹${gatewayFee.toStringAsFixed(2)} applies to online payments.\n\n'
+          'Total to be charged: ₹${totalCharged.toStringAsFixed(2)}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleTestModeOrderPayment(int orderId, String? orderNumber, String razorpayOrderId,
+      CartProvider cartProvider, double gatewayFee, double totalCharged) async {
+    final feeText = gatewayFee > 0
+        ? '\n\nPayment gateway fee: ₹${gatewayFee.toStringAsFixed(2)}\nTotal to be charged: ₹${totalCharged.toStringAsFixed(2)}'
+        : '';
     final pay = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('TEST MODE', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('This is a test payment. No real money will be charged.'),
+        content: Text('This is a test payment. No real money will be charged.$feeText'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
@@ -2449,7 +2553,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final pending = _pendingOnlinePayment;
     _razorpay?.clear();
     if (pending == null) return;
-    await _abandonUnpaidOrder(pending.orderId, response.message ?? 'Payment was not completed');
+
+    // Cancelling via the device back button (rather than Razorpay's own close
+    // button) comes through with code=PAYMENT_CANCELLED but response.message
+    // as the literal string "undefined" (a JS-bridge artifact on Android),
+    // not a real Dart null — so a plain `?? fallback` doesn't catch it.
+    final isCancelled = response.code == Razorpay.PAYMENT_CANCELLED;
+    final message = isCancelled || response.message == null || response.message == 'undefined'
+        ? 'Payment cancelled'
+        : response.message!;
+    await _abandonUnpaidOrder(pending.orderId, message);
   }
 
   Future<void> _completeOnlinePayment(

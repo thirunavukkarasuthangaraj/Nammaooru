@@ -256,16 +256,25 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   void _updateCartFreeDelivery(Map<String, dynamic>? shop) {
     if (shop == null) return;
     final freeDeliveryAbove = (shop['freeDeliveryAbove'] ?? 0).toDouble();
-    if (freeDeliveryAbove > 0) {
-      // Defer to after the frame: this runs from the initState/load path while
-      // the tree may still be building, and CartProvider.notifyListeners()
-      // during build throws "setState() called during build".
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    // Defer to after the frame: this runs from the initState/load path while
+    // the tree may still be building, and CartProvider.notifyListeners()
+    // during build throws "setState() called during build".
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      if (freeDeliveryAbove > 0) {
         cartProvider.setFreeDeliveryAbove(freeDeliveryAbove);
-      });
-    }
+      }
+      // Set this as soon as shop data loads, not only on the specific
+      // "Add" buttons that happen to call setShopStatus — several quick-add
+      // buttons in this screen skip that call entirely, leaving
+      // minOrderAmount null and checkout falling back to its ₹100 default.
+      cartProvider.setShopStatus(
+        isOpen: _isShopOpen,
+        shopName: shop['name'],
+        minOrderAmount: (shop['minOrderAmount'] as num?)?.toDouble(),
+      );
+    });
   }
 
   // False while background pages are still streaming in — searches during
@@ -3158,6 +3167,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       cartProvider.setShopStatus(
         isOpen: _isShopOpen,
         shopName: _shop?['name'],
+        minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
       );
       return true;
     }
@@ -3200,6 +3210,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         cartProvider.setShopStatus(
           isOpen: _isShopOpen,
           shopName: _shop?['name'],
+          minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
         );
         return added;
       }
@@ -3245,6 +3256,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       cartProvider.setShopStatus(
         isOpen: _isShopOpen,
         shopName: _shop?['name'],
+        minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
       );
 
       // First ADD of this product (not stepper +): suggest same-category
@@ -3289,6 +3301,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             cartProvider.setShopStatus(
               isOpen: _isShopOpen,
               shopName: _shop?['name'],
+              minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
             );
           }
           if (context.mounted) {
