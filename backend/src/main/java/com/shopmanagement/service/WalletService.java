@@ -1,13 +1,17 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.entity.Order;
+import com.shopmanagement.entity.User;
 import com.shopmanagement.entity.Wallet;
 import com.shopmanagement.entity.WalletTransaction;
 import com.shopmanagement.entity.WalletWithdrawal;
 import com.shopmanagement.repository.OrderRepository;
+import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.repository.WalletRepository;
 import com.shopmanagement.repository.WalletTransactionRepository;
 import com.shopmanagement.repository.WalletWithdrawalRepository;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +57,8 @@ public class WalletService {
     private final WalletTransactionRepository walletTransactionRepository;
     private final WalletWithdrawalRepository walletWithdrawalRepository;
     private final OrderRepository orderRepository;
+    private final ShopRepository shopRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public Wallet getOrCreateWallet(Wallet.WalletOwnerType ownerType, Long ownerId) {
@@ -221,6 +229,47 @@ public class WalletService {
     @Transactional(readOnly = true)
     public Page<WalletWithdrawal> getPendingWithdrawals(Pageable pageable) {
         return walletWithdrawalRepository.findByStatusOrderByRequestedAtAsc(WalletWithdrawal.WithdrawalStatus.PENDING, pageable);
+    }
+
+    /**
+     * Maps to plain data inside the transaction rather than returning entities - wallet
+     * is a lazy @ManyToOne on WalletWithdrawal, same LazyInitializationException risk as
+     * elsewhere in this app if it's serialized after the transaction closes. Also resolves
+     * the owner's display name and payout details so the admin screen can show "who to pay
+     * and where" without a second round trip per row.
+     */
+    @Transactional(readOnly = true)
+    public Page<Map<String, Object>> getPendingWithdrawalsForAdmin(Pageable pageable) {
+        return walletWithdrawalRepository.findByStatusOrderByRequestedAtAsc(WalletWithdrawal.WithdrawalStatus.PENDING, pageable)
+                .map(withdrawal -> {
+                    Wallet wallet = withdrawal.getWallet();
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", withdrawal.getId());
+                    row.put("amount", withdrawal.getAmount());
+                    row.put("status", withdrawal.getStatus().name());
+                    row.put("requestedAt", withdrawal.getRequestedAt());
+                    row.put("notes", withdrawal.getNotes());
+                    row.put("ownerType", wallet.getOwnerType().name());
+                    row.put("ownerId", wallet.getOwnerId());
+                    row.put("ownerName", resolveOwnerName(wallet.getOwnerType(), wallet.getOwnerId()));
+                    row.put("payoutMethod", wallet.getPayoutMethod() != null ? wallet.getPayoutMethod().name() : null);
+                    row.put("upiId", wallet.getUpiId());
+                    row.put("bankAccountHolderName", wallet.getBankAccountHolderName());
+                    row.put("bankAccountNumber", wallet.getBankAccountNumber());
+                    row.put("bankIfsc", wallet.getBankIfsc());
+                    row.put("payoutDetailsVerified", wallet.getPayoutDetailsVerified());
+                    return row;
+                });
+    }
+
+    private String resolveOwnerName(Wallet.WalletOwnerType ownerType, Long ownerId) {
+        if (ownerType == Wallet.WalletOwnerType.SHOP) {
+            return shopRepository.findById(ownerId).map(Shop::getName).orElse("Shop #" + ownerId);
+        }
+        return userRepository.findById(ownerId)
+                .map(u -> ((u.getFirstName() != null ? u.getFirstName() : "") + " " + (u.getLastName() != null ? u.getLastName() : "")).trim())
+                .filter(name -> !name.isEmpty())
+                .orElse("Partner #" + ownerId);
     }
 
     @Transactional(readOnly = true)
