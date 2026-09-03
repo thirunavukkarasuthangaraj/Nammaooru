@@ -45,14 +45,16 @@ public class OrderPaymentService {
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
 
-    // RBI mandates zero MDR on UPI P2M transactions, and Razorpay's order amount is fixed
-    // before the customer picks a payment method inside Checkout — there's no way to charge
-    // a fee only for card/netbanking and not UPI within a single order. Since UPI is the
-    // overwhelming majority of traffic here, default to 0 so we never illegally surcharge
-    // UPI payments. Raise this via the settings key below only if you've decided to also
-    // absorb it into pricing elsewhere instead, or you accept passing card MDR to customers.
+    // RBI's zero-MDR mandate for UPI only applies to verified small-merchant accounts
+    // under a specific interchange scheme. A personal/non-KYC'd Razorpay account is
+    // charged the standard rate regardless of method - 2% MDR + 18% GST on that MDR =
+    // 2.36% - confirmed against this account's actual Razorpay dashboard figures.
+    // Zeroing this out doesn't make the fee disappear, it just means the platform
+    // silently eats it on every transaction instead of the customer seeing it. Only
+    // drop this back toward 0 once the account genuinely qualifies for zero-MDR UPI
+    // (verified business/current account KYC with Razorpay).
     private static final String GATEWAY_FEE_PERCENT_KEY = "order_payment.gateway_fee_percent";
-    private static final String DEFAULT_GATEWAY_FEE_PERCENT = "0";
+    private static final String DEFAULT_GATEWAY_FEE_PERCENT = "2.36";
 
     public OrderPaymentService(OrderRepository orderRepository,
                                 OrderPaymentRepository orderPaymentRepository,
@@ -335,6 +337,9 @@ public class OrderPaymentService {
                     row.put("id", payment.getId());
                     row.put("orderId", payment.getOrder().getId());
                     row.put("orderNumber", payment.getOrder().getOrderNumber());
+                    row.put("subtotal", payment.getOrder().getSubtotal());
+                    row.put("taxAmount", payment.getOrder().getTaxAmount());
+                    row.put("deliveryFee", payment.getOrder().getDeliveryFee());
                     row.put("orderAmount", payment.getOrderAmount());
                     row.put("gatewayFeeAmount", payment.getGatewayFeeAmount());
                     row.put("totalChargedAmount", payment.getTotalChargedAmount());
