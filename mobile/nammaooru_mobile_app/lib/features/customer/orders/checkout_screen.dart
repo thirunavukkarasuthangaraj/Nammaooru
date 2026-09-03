@@ -2664,12 +2664,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       Navigator.of(dialogContext).pop();
                       // 2. remove the checkout page itself from the root stack
                       Navigator.of(context, rootNavigator: true).pop();
-                      // 3. land on the orders list (router captured before the
-                      //    pop so it survives this widget being disposed)
-                      router.go('/customer/orders');
+                      // 3. land on Home with the bottom nav's Home tab
+                      //    selected (router captured before the pop so it
+                      //    survives this widget being disposed). Landing on
+                      //    Orders instead left it as the navigation root with
+                      //    no back history, so the system back button closed
+                      //    the app instead of going anywhere.
+                      router.go('/customer/dashboard');
                     },
                     child: const Text(
-                      'View My Orders',
+                      'Continue Shopping',
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
