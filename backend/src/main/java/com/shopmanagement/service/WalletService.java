@@ -262,7 +262,7 @@ public class WalletService {
                 });
     }
 
-    private String resolveOwnerName(Wallet.WalletOwnerType ownerType, Long ownerId) {
+    public String resolveOwnerName(Wallet.WalletOwnerType ownerType, Long ownerId) {
         if (ownerType == Wallet.WalletOwnerType.SHOP) {
             return shopRepository.findById(ownerId).map(Shop::getName).orElse("Shop #" + ownerId);
         }

@@ -60,44 +60,91 @@ public class WalletController {
             @RequestParam(required = false) String date) {
         try {
             Shop shop = requireShop(authentication);
-            LocalDate targetDate = date != null ? LocalDate.parse(date) : LocalDate.now();
-            LocalDateTime startOfDay = targetDate.atStartOfDay();
-            LocalDateTime endOfDay = startOfDay.plusDays(1);
-
-            // Online/app orders only - walk-in/POS counter sales don't have a Cash-vs-UPI
-            // question (already collected in person) and would make this total not match
-            // the online+cash split shown right below it. POS sales are reported elsewhere.
-            BigDecimal daySales = orderRepository.getOnlineRevenueByShopAndDateRange(shop.getId(), startOfDay, endOfDay);
-            BigDecimal totalSales = orderRepository.getTotalOnlineRevenueByShop(shop.getId());
-            Wallet wallet = walletService.getWallet(Wallet.WalletOwnerType.SHOP, shop.getId());
-
-            Map<String, Object> daySplit = revenueByMethod(shop.getId(), startOfDay, endOfDay);
-            Map<String, Object> allTimeSplit = revenueByMethod(shop.getId(), LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now());
-
-            Map<String, Object> summary = new HashMap<>();
-            summary.put("date", targetDate.toString());
-            summary.put("daySales", daySales != null ? daySales : BigDecimal.ZERO);
-            summary.put("dayOrderCount", ((Number) daySplit.get("onlineCount")).intValue() + ((Number) daySplit.get("codCount")).intValue());
-            summary.put("dayOnlineSales", daySplit.get("onlineSales"));
-            summary.put("dayOnlineOrderCount", daySplit.get("onlineCount"));
-            summary.put("dayCodSales", daySplit.get("codSales"));
-            summary.put("dayCodOrderCount", daySplit.get("codCount"));
-            summary.put("totalSales", totalSales != null ? totalSales : BigDecimal.ZERO);
-            summary.put("totalOnlineSales", allTimeSplit.get("onlineSales"));
-            summary.put("totalCodSales", allTimeSplit.get("codSales"));
-            summary.put("walletBalance", wallet.getBalance());
-            summary.put("totalEarned", wallet.getTotalEarned());
-            summary.put("totalWithdrawn", wallet.getTotalWithdrawn());
-            // Razorpay settles to the bank account T+2 business days after the payment,
-            // not instantly - shown so "why isn't today's online total in my balance yet"
-            // has an answer on screen instead of looking broken.
-            summary.put("expectedSettlementDate", targetDate.plusDays(2).toString());
-
-            return ResponseUtil.success(summary, "Summary retrieved");
+            return ResponseUtil.success(buildShopSummary(shop.getId(), date), "Summary retrieved");
         } catch (Exception e) {
             log.error("Error getting shop payment summary", e);
             return ResponseUtil.error(e.getMessage());
         }
+    }
+
+    /**
+     * Same summary, for the admin's per-shop Payments view - lets you check a shop's
+     * balance before paying them without needing to be logged in as that shop.
+     */
+    @GetMapping("/admin/shop/{shopId}/summary")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopPaymentSummaryForAdmin(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) String date) {
+        try {
+            return ResponseUtil.success(buildShopSummary(shopId, date), "Summary retrieved");
+        } catch (Exception e) {
+            log.error("Error getting shop payment summary for admin (shop {})", shopId, e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Every shop that has ever earned anything online, with its current balance - the
+     * admin's entry point into "which shops do I owe money to right now."
+     */
+    @GetMapping("/admin/shops-summary")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAllShopsSummary(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        try {
+            Page<Wallet> wallets = walletService.listWallets(Wallet.WalletOwnerType.SHOP, PageRequest.of(page, size));
+            Page<Map<String, Object>> mapped = wallets.map(wallet -> {
+                Map<String, Object> row = new HashMap<>();
+                row.put("shopId", wallet.getOwnerId());
+                row.put("shopName", walletService.resolveOwnerName(Wallet.WalletOwnerType.SHOP, wallet.getOwnerId()));
+                row.put("balance", wallet.getBalance());
+                row.put("totalEarned", wallet.getTotalEarned());
+                row.put("totalWithdrawn", wallet.getTotalWithdrawn());
+                return row;
+            });
+            return ResponseUtil.paginated(mapped);
+        } catch (Exception e) {
+            log.error("Error getting all shops summary", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    private Map<String, Object> buildShopSummary(Long shopId, String date) {
+        LocalDate targetDate = date != null ? LocalDate.parse(date) : LocalDate.now();
+        LocalDateTime startOfDay = targetDate.atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+
+        // Online/app orders only - walk-in/POS counter sales don't have a Cash-vs-UPI
+        // question (already collected in person) and would make this total not match
+        // the online+cash split shown right below it. POS sales are reported elsewhere.
+        BigDecimal daySales = orderRepository.getOnlineRevenueByShopAndDateRange(shopId, startOfDay, endOfDay);
+        BigDecimal totalSales = orderRepository.getTotalOnlineRevenueByShop(shopId);
+        Wallet wallet = walletService.getWallet(Wallet.WalletOwnerType.SHOP, shopId);
+
+        Map<String, Object> daySplit = revenueByMethod(shopId, startOfDay, endOfDay);
+        Map<String, Object> allTimeSplit = revenueByMethod(shopId, LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now());
+
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("date", targetDate.toString());
+        summary.put("daySales", daySales != null ? daySales : BigDecimal.ZERO);
+        summary.put("dayOrderCount", ((Number) daySplit.get("onlineCount")).intValue() + ((Number) daySplit.get("codCount")).intValue());
+        summary.put("dayOnlineSales", daySplit.get("onlineSales"));
+        summary.put("dayOnlineOrderCount", daySplit.get("onlineCount"));
+        summary.put("dayCodSales", daySplit.get("codSales"));
+        summary.put("dayCodOrderCount", daySplit.get("codCount"));
+        summary.put("totalSales", totalSales != null ? totalSales : BigDecimal.ZERO);
+        summary.put("totalOnlineSales", allTimeSplit.get("onlineSales"));
+        summary.put("totalCodSales", allTimeSplit.get("codSales"));
+        summary.put("walletBalance", wallet.getBalance());
+        summary.put("totalEarned", wallet.getTotalEarned());
+        summary.put("totalWithdrawn", wallet.getTotalWithdrawn());
+        // Razorpay settles to the bank account T+2 business days after the payment,
+        // not instantly - shown so "why isn't today's online total in my balance yet"
+        // has an answer on screen instead of looking broken.
+        summary.put("expectedSettlementDate", targetDate.plusDays(2).toString());
+        return summary;
     }
 
     /**
@@ -117,79 +164,108 @@ public class WalletController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Shop shop = requireShop(authentication);
-            LocalDateTime start = startDate != null
-                    ? LocalDate.parse(startDate).atStartOfDay()
-                    : LocalDate.now().minusDays(30).atStartOfDay();
-            LocalDateTime end = endDate != null
-                    ? LocalDate.parse(endDate).atStartOfDay().plusDays(1)
-                    : LocalDateTime.now();
-
-            Page<Order> orders = orderRepository.findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-                    shop.getId(), start, end, PageRequest.of(page, size));
-
-            // The REAL Razorpay rate (account-level, ~2.36%), not getGatewayFeePercent() -
-            // that's what we charge the CUSTOMER (0, since it's absorbed) and is a pricing
-            // decision, not the actual cost. Conflating the two here would make a real
-            // deduction (confirmed against the Razorpay dashboard) look like it never
-            // happened just because we chose not to pass it on.
-            BigDecimal currentFeePercent = orderPaymentService.getRealRazorpayFeePercent();
-
-            Page<Map<String, Object>> mapped = orders.map(order -> {
-                Map<String, Object> row = new HashMap<>();
-                row.put("orderId", order.getId());
-                row.put("orderNumber", order.getOrderNumber());
-                row.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
-                row.put("subtotal", order.getSubtotal());
-                row.put("taxAmount", order.getTaxAmount());
-                row.put("deliveryFee", order.getDeliveryFee());
-                row.put("totalAmount", order.getTotalAmount());
-                row.put("orderStatus", order.getStatus() != null ? order.getStatus().name() : null);
-                row.put("paymentStatus", order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null);
-                row.put("createdAt", order.getCreatedAt());
-
-                boolean isOnline = order.getPaymentMethod() == Order.PaymentMethod.ONLINE_PAYMENT
-                        || order.getPaymentMethod() == Order.PaymentMethod.UPI
-                        || order.getPaymentMethod() == Order.PaymentMethod.CARD;
-                row.put("isOnline", isOnline);
-
-                BigDecimal razorpayMdr = BigDecimal.ZERO;
-                BigDecimal gstOnFee = BigDecimal.ZERO;
-                BigDecimal customerPaid = order.getTotalAmount();
-                String gatewayStatus = null;
-                if (isOnline) {
-                    OrderPayment payment = orderPaymentRepository.findByOrder_Id(order.getId()).orElse(null);
-                    if (payment != null) {
-                        gatewayStatus = payment.getStatus().name();
-                        customerPaid = payment.getTotalChargedAmount() != null ? payment.getTotalChargedAmount() : order.getTotalAmount();
-                        // Only money that actually moved incurs a real Razorpay fee -
-                        // a CREATED (never completed) or FAILED payment cost nothing.
-                        boolean feeApplies = payment.getStatus() == OrderPayment.OrderPaymentStatus.PAID
-                                || payment.getStatus() == OrderPayment.OrderPaymentStatus.REFUNDED
-                                || payment.getStatus() == OrderPayment.OrderPaymentStatus.PARTIALLY_REFUNDED;
-                        if (feeApplies && currentFeePercent.compareTo(BigDecimal.ZERO) > 0) {
-                            BigDecimal totalFee = order.getTotalAmount()
-                                    .multiply(currentFeePercent)
-                                    .divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-                            // Fee = MDR * 1.18 (2% MDR + 18% GST on that MDR), so MDR = fee / 1.18
-                            razorpayMdr = totalFee.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP);
-                            gstOnFee = totalFee.subtract(razorpayMdr);
-                        }
-                    }
-                }
-                row.put("razorpayMdr", razorpayMdr);
-                row.put("gstOnGatewayFee", gstOnFee);
-                row.put("totalGatewayFee", razorpayMdr.add(gstOnFee));
-                row.put("customerPaid", customerPaid);
-                row.put("gatewayStatus", gatewayStatus);
-
-                return row;
-            });
-
-            return ResponseUtil.paginated(mapped);
+            return ResponseUtil.paginated(buildShopOrders(shop.getId(), startDate, endDate, page, size));
         } catch (Exception e) {
             log.error("Error getting shop order payments", e);
             return ResponseUtil.error(e.getMessage());
         }
+    }
+
+    /**
+     * Same order list, for the admin's per-shop Payments view - what you'd validate
+     * before paying a shop, without needing to be logged in as that shop.
+     */
+    @GetMapping("/admin/shop/{shopId}/orders")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopOrderPaymentsForAdmin(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            return ResponseUtil.paginated(buildShopOrders(shopId, startDate, endDate, page, size));
+        } catch (Exception e) {
+            log.error("Error getting shop order payments for admin (shop {})", shopId, e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Unified order-level view for the Payments screen's transaction table - COD and
+     * online orders together (OrderPayment alone only ever covers online orders, so
+     * a shop owner using it exclusively would never see their cash sales here),
+     * date-range filterable, with the Razorpay fee split into its MDR and GST
+     * components for online rows.
+     */
+    private Page<Map<String, Object>> buildShopOrders(Long shopId, String startDate, String endDate, int page, int size) {
+        LocalDateTime start = startDate != null
+                ? LocalDate.parse(startDate).atStartOfDay()
+                : LocalDate.now().minusDays(30).atStartOfDay();
+        LocalDateTime end = endDate != null
+                ? LocalDate.parse(endDate).atStartOfDay().plusDays(1)
+                : LocalDateTime.now();
+
+        Page<Order> orders = orderRepository.findByShopIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+                shopId, start, end, PageRequest.of(page, size));
+
+        // The REAL Razorpay rate (account-level, ~2.36%), not getGatewayFeePercent() -
+        // that's what we charge the CUSTOMER (0, since it's absorbed) and is a pricing
+        // decision, not the actual cost. Conflating the two here would make a real
+        // deduction (confirmed against the Razorpay dashboard) look like it never
+        // happened just because we chose not to pass it on.
+        BigDecimal currentFeePercent = orderPaymentService.getRealRazorpayFeePercent();
+
+        return orders.map(order -> {
+            Map<String, Object> row = new HashMap<>();
+            row.put("orderId", order.getId());
+            row.put("orderNumber", order.getOrderNumber());
+            row.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
+            row.put("subtotal", order.getSubtotal());
+            row.put("taxAmount", order.getTaxAmount());
+            row.put("deliveryFee", order.getDeliveryFee());
+            row.put("totalAmount", order.getTotalAmount());
+            row.put("orderStatus", order.getStatus() != null ? order.getStatus().name() : null);
+            row.put("paymentStatus", order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null);
+            row.put("createdAt", order.getCreatedAt());
+
+            boolean isOnline = order.getPaymentMethod() == Order.PaymentMethod.ONLINE_PAYMENT
+                    || order.getPaymentMethod() == Order.PaymentMethod.UPI
+                    || order.getPaymentMethod() == Order.PaymentMethod.CARD;
+            row.put("isOnline", isOnline);
+
+            BigDecimal razorpayMdr = BigDecimal.ZERO;
+            BigDecimal gstOnFee = BigDecimal.ZERO;
+            BigDecimal customerPaid = order.getTotalAmount();
+            String gatewayStatus = null;
+            if (isOnline) {
+                OrderPayment payment = orderPaymentRepository.findByOrder_Id(order.getId()).orElse(null);
+                if (payment != null) {
+                    gatewayStatus = payment.getStatus().name();
+                    customerPaid = payment.getTotalChargedAmount() != null ? payment.getTotalChargedAmount() : order.getTotalAmount();
+                    // Only money that actually moved incurs a real Razorpay fee -
+                    // a CREATED (never completed) or FAILED payment cost nothing.
+                    boolean feeApplies = payment.getStatus() == OrderPayment.OrderPaymentStatus.PAID
+                            || payment.getStatus() == OrderPayment.OrderPaymentStatus.REFUNDED
+                            || payment.getStatus() == OrderPayment.OrderPaymentStatus.PARTIALLY_REFUNDED;
+                    if (feeApplies && currentFeePercent.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal totalFee = order.getTotalAmount()
+                                .multiply(currentFeePercent)
+                                .divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                        // Fee = MDR * 1.18 (2% MDR + 18% GST on that MDR), so MDR = fee / 1.18
+                        razorpayMdr = totalFee.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP);
+                        gstOnFee = totalFee.subtract(razorpayMdr);
+                    }
+                }
+            }
+            row.put("razorpayMdr", razorpayMdr);
+            row.put("gstOnGatewayFee", gstOnFee);
+            row.put("totalGatewayFee", razorpayMdr.add(gstOnFee));
+            row.put("customerPaid", customerPaid);
+            row.put("gatewayStatus", gatewayStatus);
+
+            return row;
+        });
     }
 
     @GetMapping("/shop/balance")
