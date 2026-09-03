@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { PaymentsService, PaymentSummary, OrderPaymentRow } from '../../services/payments.service';
 import { SwalService } from '../../../../core/services/swal.service';
 
+type StatusTab = 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED' | 'ALL';
+
 @Component({
   selector: 'app-payments',
   templateUrl: './payments.component.html',
@@ -9,13 +11,28 @@ import { SwalService } from '../../../../core/services/swal.service';
 })
 export class PaymentsComponent implements OnInit {
   private static readonly SUCCESS_CODE = '0000';
+  // Fetched once per date range and filtered/paginated client-side - a single
+  // shop's order volume in a 30-day window is small enough that this is
+  // simpler and faster than round-tripping the server on every tab click.
+  private static readonly FETCH_SIZE = 1000;
 
   summary: PaymentSummary | null = null;
-  orders: OrderPaymentRow[] = [];
+  private allOrders: OrderPaymentRow[] = [];
+  pagedOrders: OrderPaymentRow[] = [];
+
   displayedColumns = [
     'orderNumber', 'method', 'subtotal', 'taxAmount', 'deliveryFee', 'youReceive',
     'razorpayMdr', 'gstOnGatewayFee', 'status', 'createdAt'
   ];
+
+  statusTabs: { key: StatusTab; label: string }[] = [
+    { key: 'PAID', label: 'Paid' },
+    { key: 'PENDING', label: 'Pending' },
+    { key: 'FAILED', label: 'Failed / Cancelled' },
+    { key: 'REFUNDED', label: 'Refunded' },
+    { key: 'ALL', label: 'All' }
+  ];
+  selectedTab: StatusTab = 'PAID';
 
   selectedDate: string = this.todayIso();
   rangeStart: string = this.daysAgoIso(30);
@@ -26,7 +43,6 @@ export class PaymentsComponent implements OnInit {
 
   currentPage = 0;
   pageSize = 20;
-  totalOrders = 0;
 
   constructor(
     private paymentsService: PaymentsService,
@@ -69,11 +85,12 @@ export class PaymentsComponent implements OnInit {
 
   loadOrders(): void {
     this.isLoadingOrders = true;
-    this.paymentsService.getOrders(this.rangeStart, this.rangeEnd, this.currentPage, this.pageSize).subscribe({
+    this.paymentsService.getOrders(this.rangeStart, this.rangeEnd, 0, PaymentsComponent.FETCH_SIZE).subscribe({
       next: (response) => {
         if (response.statusCode === PaymentsComponent.SUCCESS_CODE) {
-          this.orders = response.data?.content || [];
-          this.totalOrders = response.data?.totalItems ?? this.orders.length;
+          this.allOrders = response.data?.content || [];
+          this.currentPage = 0;
+          this.applyFilter();
         } else {
           this.swal.toast(response.message || 'Failed to load orders', 'error');
         }
@@ -87,19 +104,43 @@ export class PaymentsComponent implements OnInit {
     });
   }
 
+  private applyFilter(): void {
+    const start = this.currentPage * this.pageSize;
+    this.pagedOrders = this.filteredOrders.slice(start, start + this.pageSize);
+  }
+
+  get filteredOrders(): OrderPaymentRow[] {
+    if (this.selectedTab === 'ALL') return this.allOrders;
+    return this.allOrders.filter((row) => this.statusBucket(this.statusFor(row)) === this.selectedTab);
+  }
+
+  get filteredCount(): number {
+    return this.filteredOrders.length;
+  }
+
+  tabCount(tab: StatusTab): number {
+    if (tab === 'ALL') return this.allOrders.length;
+    return this.allOrders.filter((row) => this.statusBucket(this.statusFor(row)) === tab).length;
+  }
+
+  selectTab(tab: StatusTab): void {
+    this.selectedTab = tab;
+    this.currentPage = 0;
+    this.applyFilter();
+  }
+
   onDateChange(): void {
     this.loadSummary();
   }
 
   onRangeChange(): void {
-    this.currentPage = 0;
     this.loadOrders();
   }
 
   onPageChange(event: { pageIndex: number; pageSize: number }): void {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
-    this.loadOrders();
+    this.applyFilter();
   }
 
   methodLabel(row: OrderPaymentRow): string {
@@ -111,32 +152,57 @@ export class PaymentsComponent implements OnInit {
   }
 
   statusFor(row: OrderPaymentRow): string {
-    return row.isOnline ? (row.gatewayStatus || 'PENDING') : row.orderStatus;
+    return row.isOnline ? (row.gatewayStatus || 'CREATED') : row.orderStatus;
   }
 
-  statusClass(status: string): string {
+  private statusBucket(status: string): StatusTab {
     switch (status) {
       case 'PAID':
       case 'DELIVERED':
-      case 'COMPLETED': return 'status-paid';
+      case 'COMPLETED':
+      case 'SELF_PICKUP_COLLECTED':
+        return 'PAID';
       case 'FAILED':
-      case 'CANCELLED': return 'status-failed';
+      case 'CANCELLED':
+        return 'FAILED';
       case 'REFUNDED':
-      case 'PARTIALLY_REFUNDED': return 'status-refunded';
+      case 'PARTIALLY_REFUNDED':
+        return 'REFUNDED';
+      default:
+        return 'PENDING';
+    }
+  }
+
+  statusClass(status: string): string {
+    const bucket = this.statusBucket(status);
+    switch (bucket) {
+      case 'PAID': return 'status-paid';
+      case 'FAILED': return 'status-failed';
+      case 'REFUNDED': return 'status-refunded';
       default: return 'status-pending';
     }
   }
 
   statusLabel(status: string): string {
-    switch (status) {
-      case 'PAID': return 'Paid';
-      case 'FAILED': return 'Failed';
-      case 'REFUNDED': return 'Refunded';
-      case 'PARTIALLY_REFUNDED': return 'Partially Refunded';
-      case 'DELIVERED': return 'Delivered';
-      case 'COMPLETED': return 'Completed';
-      case 'CANCELLED': return 'Cancelled';
-      default: return status ? (status.charAt(0) + status.slice(1).toLowerCase()) : 'Pending';
-    }
+    const labels: Record<string, string> = {
+      PAID: 'Paid',
+      CREATED: 'Awaiting Payment',
+      FAILED: 'Failed',
+      REFUNDED: 'Refunded',
+      PARTIALLY_REFUNDED: 'Partially Refunded',
+      DELIVERED: 'Delivered',
+      COMPLETED: 'Completed',
+      SELF_PICKUP_COLLECTED: 'Picked Up',
+      CANCELLED: 'Cancelled',
+      PENDING: 'Pending',
+      CONFIRMED: 'Confirmed',
+      PREPARING: 'Preparing',
+      READY: 'Ready',
+      READY_FOR_PICKUP: 'Ready for Pickup',
+      OUT_FOR_DELIVERY: 'Out for Delivery',
+      RETURNING_TO_SHOP: 'Returning to Shop',
+      RETURNED_TO_SHOP: 'Returned to Shop'
+    };
+    return labels[status] || status || 'Pending';
   }
 }

@@ -149,6 +149,54 @@
   }
 }
 
+.status-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.status-tab {
+  border: 1.5px solid #ddd;
+  background: #fff;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    border-color: #999;
+  }
+
+  .tab-count {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+  }
+
+  &.active {
+    border-color: transparent;
+    color: #fff;
+
+    .tab-count {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  }
+
+  &.tab-paid.active { background: #1a7f4b; }
+  &.tab-pending.active { background: #8a8f98; }
+  &.tab-failed.active { background: #c0392b; }
+  &.tab-refunded.active { background: #b9770e; }
+  &.tab-all.active { background: #2e5aac; }
+}
+
 .reassurance-banner {
   display: flex;
   align-items: flex-start;
@@ -177,17 +225,34 @@
 
 .transactions-table {
   width: 100%;
-  min-width: 900px;
+  min-width: 1000px;
+  font-size: 15px;
+
+  th.mat-header-cell {
+    font-size: 13px;
+    font-weight: 700;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  td.mat-cell {
+    font-size: 15px;
+    color: #222;
+    white-space: nowrap;
+  }
 }
 
 .you-receive-cell {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 16px;
   color: #1a7f4b;
 }
 
 .fee-cell {
   color: #999;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .info-icon {
@@ -220,10 +285,11 @@
 
 .status-chip {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 
   &.status-paid {
     background: #e0f5ea;
