@@ -128,6 +128,32 @@ public class WalletService {
         return walletTransactionRepository.findByWallet_IdOrderByCreatedAtDesc(wallet.getId(), pageable);
     }
 
+    /**
+     * Payout history for the admin's Shop Payments screen - one row per release (UTR,
+     * amount, when, PENDING/PAID/REJECTED), not the raw per-order ledger. Maps to plain
+     * data inside the transaction since WalletWithdrawal.wallet is a lazy @ManyToOne.
+     */
+    @Transactional(readOnly = true)
+    public Page<Map<String, Object>> getWithdrawalHistoryForAdmin(Wallet.WalletOwnerType ownerType, Long ownerId, Pageable pageable) {
+        Wallet wallet = getWallet(ownerType, ownerId);
+        if (wallet.getId() == null) {
+            return Page.empty(pageable);
+        }
+        return walletWithdrawalRepository.findByWallet_IdOrderByRequestedAtDesc(wallet.getId(), pageable)
+                .map(w -> {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", w.getId());
+                    row.put("amount", w.getAmount());
+                    row.put("status", w.getStatus().name());
+                    row.put("payoutReference", w.getPayoutReference());
+                    row.put("notes", w.getNotes());
+                    row.put("requestedAt", w.getRequestedAt());
+                    row.put("processedAt", w.getProcessedAt());
+                    row.put("processedBy", w.getProcessedBy());
+                    return row;
+                });
+    }
+
     /** Request a withdrawal of the full available balance, or a specific amount if given. */
     @Transactional
     public WalletWithdrawal requestWithdrawal(Wallet.WalletOwnerType ownerType, Long ownerId, BigDecimal amount) {

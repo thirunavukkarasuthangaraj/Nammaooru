@@ -230,6 +230,26 @@ public class WalletController {
     }
 
     /**
+     * Payout history - every release ever made to this shop (UTR, amount, date, who
+     * processed it), regardless of status. What "where can I see history" points to.
+     */
+    @GetMapping("/admin/shop/{shopId}/payout-history")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getShopPayoutHistory(
+            @PathVariable Long shopId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<Map<String, Object>> history = walletService.getWithdrawalHistoryForAdmin(
+                    Wallet.WalletOwnerType.SHOP, shopId, PageRequest.of(page, size));
+            return ResponseUtil.paginated(history);
+        } catch (Exception e) {
+            log.error("Error getting payout history for shop {}", shopId, e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
+    /**
      * Unified order-level view for the Payments screen's transaction table - COD and
      * online orders together (OrderPayment alone only ever covers online orders, so
      * a shop owner using it exclusively would never see their cash sales here),
