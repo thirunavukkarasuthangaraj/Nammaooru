@@ -79,6 +79,29 @@
             <p class="stat-label">You Owe This Shop</p>
             <p class="stat-value">₹{{ summary.walletBalance | number: '1.2-2' }}</p>
             <p class="stat-change">Total earned ₹{{ summary.totalEarned | number: '1.0-0' }} &middot; withdrawn ₹{{ summary.totalWithdrawn | number: '1.0-0' }}</p>
+            <div class="release-inline" *ngIf="summary.walletBalance > 0">
+              <input
+                type="text"
+                class="reference-input"
+                [(ngModel)]="releaseReferenceInput"
+                placeholder="UTR / transaction reference" />
+              <div class="release-buttons">
+                <button
+                  type="button"
+                  class="upi-btn"
+                  *ngIf="summary.upiId"
+                  (click)="payViaUpi(summary.walletBalance)">
+                  <mat-icon>send</mat-icon> Pay via UPI
+                </button>
+                <button
+                  type="button"
+                  class="release-btn"
+                  [disabled]="isReleasing"
+                  (click)="releaseFullBalance()">
+                  {{ isReleasing ? 'Releasing…' : 'Release Full Balance' }}
+                </button>
+              </div>
+            </div>
           </div>
         </mat-card-content>
       </mat-card>
@@ -91,10 +114,16 @@
     <mat-card class="transactions-card">
       <div class="section-header">
         <h2>Transactions</h2>
-        <div class="date-range">
-          <label>From <input type="date" [(ngModel)]="rangeStart" (change)="onRangeChange()" /></label>
-          <label>To <input type="date" [(ngModel)]="rangeEnd" (change)="onRangeChange()" /></label>
-        </div>
+        <button type="button" class="date-range-toggle" (click)="toggleDateRange()">
+          <mat-icon>date_range</mat-icon>
+          {{ rangeStart }} &rarr; {{ rangeEnd }}
+          <mat-icon>{{ isDateRangeExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+      </div>
+
+      <div class="date-range" *ngIf="isDateRangeExpanded">
+        <label>From <input type="date" [(ngModel)]="rangeStart" (change)="onRangeChange()" /></label>
+        <label>To <input type="date" [(ngModel)]="rangeEnd" (change)="onRangeChange()" /></label>
       </div>
 
       <div class="status-tabs" *ngIf="!isLoadingOrders">
@@ -113,8 +142,40 @@
         <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
       </div>
 
+      <div class="release-bar" *ngIf="selectedOrderIds.size > 0">
+        <span class="release-bar-count">{{ selectedOrderIds.size }} selected &mdash; ₹{{ selectedTotal | number: '1.2-2' }}</span>
+        <input
+          type="text"
+          class="reference-input"
+          [(ngModel)]="releaseReferenceInput"
+          placeholder="UTR / transaction reference" />
+        <button type="button" class="upi-btn" *ngIf="summary?.upiId" (click)="payViaUpi(selectedTotal)">
+          <mat-icon>send</mat-icon> Pay via UPI
+        </button>
+        <button type="button" class="release-btn" [disabled]="isReleasing" (click)="releaseSelectedPayment()">
+          {{ isReleasing ? 'Releasing…' : 'Release Selected' }}
+        </button>
+      </div>
+
       <div class="table-scroll" *ngIf="!isLoadingOrders">
         <table mat-table [dataSource]="pagedOrders" class="transactions-table">
+          <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef>
+              <mat-checkbox
+                [checked]="isAllOnPageSelected"
+                [disabled]="selectableRowsOnPage.length === 0"
+                (change)="toggleSelectAllOnPage()">
+              </mat-checkbox>
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <mat-checkbox
+                *ngIf="isSelectable(row)"
+                [checked]="isSelected(row)"
+                (change)="toggleRowSelection(row)">
+              </mat-checkbox>
+            </td>
+          </ng-container>
+
           <ng-container matColumnDef="orderNumber">
             <th mat-header-cell *matHeaderCellDef>Order</th>
             <td mat-cell *matCellDef="let row">#{{ row.orderNumber }}</td>

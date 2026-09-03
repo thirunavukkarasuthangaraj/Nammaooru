@@ -35,4 +35,11 @@ export class ShopPaymentsService {
     if (endDate) params.endDate = endDate;
     return this.http.get(`${this.apiUrl}/shop/${shopId}/orders`, { params });
   }
+
+  // amount omitted = release the full wallet balance
+  releasePayment(shopId: number, payoutReference: string, amount?: number): Observable<any> {
+    const body: { payoutReference: string; amount?: string } = { payoutReference };
+    if (amount != null) body.amount = amount.toFixed(2);
+    return this.http.post(`${this.apiUrl}/shop/${shopId}/release-payment`, body);
+  }
 }

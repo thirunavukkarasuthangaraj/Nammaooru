@@ -128,7 +128,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Revenue Overview', icon: 'payments', route: '/finance/revenue', badge: null },
         { title: 'Post Payment History', icon: 'payment', route: '/admin/payment-history', badge: null },
-        { title: 'Payment Collect', icon: 'request_quote', route: '/admin/payment-collect', badge: null },
+        { title: 'Subscription Pricing', icon: 'request_quote', route: '/admin/payment-collect', badge: null },
         { title: 'Shop Payments', icon: 'storefront', route: '/admin/shop-payments', badge: null },
         { title: 'Withdrawals', icon: 'account_balance_wallet', route: '/admin/withdrawals', badge: null },
         { title: 'Financial Reports', icon: 'assessment', route: '/finance/reports', badge: null }

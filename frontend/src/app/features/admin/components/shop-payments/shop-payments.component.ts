@@ -43,9 +43,14 @@ export class ShopPaymentsComponent implements OnInit {
   pagedOrders: OrderPaymentRow[] = [];
 
   displayedColumns = [
-    'orderNumber', 'method', 'subtotal', 'taxAmount', 'deliveryFee', 'youReceive',
+    'select', 'orderNumber', 'method', 'subtotal', 'taxAmount', 'deliveryFee', 'youReceive',
     'razorpayMdr', 'gstOnGatewayFee', 'status', 'createdAt'
   ];
+
+  isDateRangeExpanded = false;
+  selectedOrderIds = new Set<number>();
+  releaseReferenceInput = '';
+  isReleasing = false;
 
   statusTabs: { key: StatusTab; label: string }[] = [
     { key: 'PAID', label: 'Paid' },
@@ -117,6 +122,8 @@ export class ShopPaymentsComponent implements OnInit {
     this.rangeEnd = this.todayIso();
     this.selectedTab = 'PAID';
     this.currentPage = 0;
+    this.selectedOrderIds.clear();
+    this.releaseReferenceInput = '';
     this.loadSummary();
     this.loadOrders();
   }
@@ -198,7 +205,106 @@ export class ShopPaymentsComponent implements OnInit {
   }
 
   onRangeChange(): void {
+    this.selectedOrderIds.clear();
     this.loadOrders();
+  }
+
+  toggleDateRange(): void {
+    this.isDateRangeExpanded = !this.isDateRangeExpanded;
+  }
+
+  isSelectable(row: OrderPaymentRow): boolean {
+    // Only online, actually-PAID orders contributed to the wallet balance - COD and
+    // pending/failed rows have nothing to "release" against.
+    return row.isOnline && this.statusFor(row) === 'PAID';
+  }
+
+  isSelected(row: OrderPaymentRow): boolean {
+    return this.selectedOrderIds.has(row.orderId);
+  }
+
+  toggleRowSelection(row: OrderPaymentRow): void {
+    if (!this.isSelectable(row)) return;
+    if (this.selectedOrderIds.has(row.orderId)) {
+      this.selectedOrderIds.delete(row.orderId);
+    } else {
+      this.selectedOrderIds.add(row.orderId);
+    }
+  }
+
+  get selectableRowsOnPage(): OrderPaymentRow[] {
+    return this.pagedOrders.filter((r) => this.isSelectable(r));
+  }
+
+  get isAllOnPageSelected(): boolean {
+    const selectable = this.selectableRowsOnPage;
+    return selectable.length > 0 && selectable.every((r) => this.selectedOrderIds.has(r.orderId));
+  }
+
+  toggleSelectAllOnPage(): void {
+    if (this.isAllOnPageSelected) {
+      this.selectableRowsOnPage.forEach((r) => this.selectedOrderIds.delete(r.orderId));
+    } else {
+      this.selectableRowsOnPage.forEach((r) => this.selectedOrderIds.add(r.orderId));
+    }
+  }
+
+  get selectedTotal(): number {
+    return this.allOrders
+      .filter((r) => this.selectedOrderIds.has(r.orderId))
+      .reduce((sum, r) => sum + r.totalAmount, 0);
+  }
+
+  releaseSelectedPayment(): void {
+    if (!this.selectedShop || this.selectedOrderIds.size === 0) return;
+    this.doRelease(this.selectedTotal);
+  }
+
+  releaseFullBalance(): void {
+    if (!this.selectedShop || !this.summary || this.summary.walletBalance <= 0) return;
+    this.doRelease(undefined);
+  }
+
+  private doRelease(amount: number | undefined): void {
+    const reference = this.releaseReferenceInput.trim();
+    if (!reference) {
+      this.swal.toast('Enter the UTR / transaction reference first', 'warning');
+      return;
+    }
+    if (!this.selectedShop) return;
+    this.isReleasing = true;
+    this.shopPaymentsService.releasePayment(this.selectedShop.shopId, reference, amount).subscribe({
+      next: (response) => {
+        this.isReleasing = false;
+        if (response.statusCode === ShopPaymentsComponent.SUCCESS_CODE) {
+          this.swal.toast(`Payment released to ${this.selectedShop!.shopName}`, 'success');
+          this.selectedOrderIds.clear();
+          this.releaseReferenceInput = '';
+          this.loadSummary();
+        } else {
+          this.swal.toast(response.message || 'Failed to release payment', 'error');
+        }
+      },
+      error: (error) => {
+        this.isReleasing = false;
+        console.error('Error releasing payment:', error);
+        this.swal.toast(error?.error?.message || 'Error releasing payment', 'error');
+      }
+    });
+  }
+
+  // Deep-links into whatever UPI app is installed with the amount and payee
+  // pre-filled - the admin still taps to confirm and send from their own account.
+  payViaUpi(amount: number): void {
+    if (!this.summary?.upiId || !this.selectedShop) return;
+    const params = new URLSearchParams({
+      pa: this.summary.upiId,
+      pn: this.selectedShop.shopName,
+      am: amount.toFixed(2),
+      cu: 'INR',
+      tn: `Nammaooru payout - ${this.selectedShop.shopName}`
+    });
+    window.open(`upi://pay?${params.toString()}`, '_blank');
   }
 
   onPageChange(event: { pageIndex: number; pageSize: number }): void {

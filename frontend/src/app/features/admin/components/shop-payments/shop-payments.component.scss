@@ -230,21 +230,121 @@
     margin: 0;
     color: #333;
   }
+}
 
-  .date-range {
-    display: flex;
-    gap: 16px;
-    font-size: 13px;
-    color: #666;
+.date-range-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
 
-    input[type="date"] {
-      margin-left: 6px;
-      padding: 4px 8px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-family: inherit;
-    }
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #888;
   }
+
+  &:hover {
+    border-color: #999;
+  }
+}
+
+.date-range {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+
+  input[type="date"] {
+    margin-left: 6px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: inherit;
+  }
+}
+
+.release-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.release-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0f9f4;
+  border: 1px solid #b8ecd3;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  .release-bar-count {
+    font-weight: 700;
+    color: #1a7f4b;
+    font-size: 14px;
+  }
+}
+
+.release-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.reference-input {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 200px;
+  flex: 1;
+}
+
+.upi-btn,
+.release-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.upi-btn {
+  background: #e3f0ff;
+  color: #1a5fa8;
+}
+
+.release-btn {
+  background: #1a7f4b;
+  color: white;
 }
 
 .status-tabs {
