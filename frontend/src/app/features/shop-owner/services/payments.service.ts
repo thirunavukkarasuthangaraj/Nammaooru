@@ -7,23 +7,36 @@ export interface PaymentSummary {
   date: string;
   daySales: number;
   dayOrderCount: number;
+  dayOnlineSales: number;
+  dayOnlineOrderCount: number;
+  dayCodSales: number;
+  dayCodOrderCount: number;
   totalSales: number;
+  totalOnlineSales: number;
+  totalCodSales: number;
   walletBalance: number;
   totalEarned: number;
   totalWithdrawn: number;
+  expectedSettlementDate: string;
 }
 
-export interface PaymentTransaction {
-  id: number;
+export interface OrderPaymentRow {
   orderId: number;
   orderNumber: string;
-  orderAmount: number;
-  gatewayFeeAmount: number;
-  totalChargedAmount: number;
-  status: 'CREATED' | 'PAID' | 'FAILED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
-  refundAmount: number | null;
-  failureReason: string | null;
+  paymentMethod: string;
+  subtotal: number;
+  taxAmount: number;
+  deliveryFee: number;
+  totalAmount: number;
+  orderStatus: string;
+  paymentStatus: string;
   createdAt: string;
+  isOnline: boolean;
+  razorpayMdr: number;
+  gstOnGatewayFee: number;
+  totalGatewayFee: number;
+  customerPaid: number;
+  gatewayStatus: string | null;
 }
 
 @Injectable({
@@ -31,7 +44,6 @@ export interface PaymentTransaction {
 })
 export class PaymentsService {
   private walletApiUrl = `${environment.apiUrl}/wallet/shop`;
-  private orderPaymentsApiUrl = `${environment.apiUrl}/order-payments/shop`;
 
   constructor(private http: HttpClient) {}
 
@@ -41,11 +53,10 @@ export class PaymentsService {
     return this.http.get(`${this.walletApiUrl}/summary`, { params });
   }
 
-  getTransactions(page: number = 0, size: number = 20): Observable<any> {
-    return this.http.get(`${this.orderPaymentsApiUrl}/transactions`, { params: { page, size } });
-  }
-
-  getWalletTransactions(page: number = 0, size: number = 20): Observable<any> {
-    return this.http.get(`${this.walletApiUrl}/transactions`, { params: { page, size } });
+  getOrders(startDate?: string, endDate?: string, page: number = 0, size: number = 20): Observable<any> {
+    const params: { startDate?: string; endDate?: string; page: number; size: number } = { page, size };
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    return this.http.get(`${this.walletApiUrl}/orders`, { params });
   }
 }

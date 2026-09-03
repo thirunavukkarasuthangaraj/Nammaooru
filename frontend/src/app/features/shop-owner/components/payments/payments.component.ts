@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { PaymentsService, PaymentSummary, PaymentTransaction } from '../../services/payments.service';
+import { PaymentsService, PaymentSummary, OrderPaymentRow } from '../../services/payments.service';
 import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
@@ -8,17 +8,25 @@ import { SwalService } from '../../../../core/services/swal.service';
   styleUrls: ['./payments.component.scss']
 })
 export class PaymentsComponent implements OnInit {
-  summary: PaymentSummary | null = null;
-  transactions: PaymentTransaction[] = [];
-  displayedColumns = ['orderNumber', 'orderAmount', 'gatewayFeeAmount', 'totalChargedAmount', 'status', 'createdAt'];
+  private static readonly SUCCESS_CODE = '0000';
 
-  selectedDate: string = new Date().toISOString().substring(0, 10);
+  summary: PaymentSummary | null = null;
+  orders: OrderPaymentRow[] = [];
+  displayedColumns = [
+    'orderNumber', 'method', 'subtotal', 'taxAmount', 'deliveryFee', 'youReceive',
+    'razorpayMdr', 'gstOnGatewayFee', 'status', 'createdAt'
+  ];
+
+  selectedDate: string = this.todayIso();
+  rangeStart: string = this.daysAgoIso(30);
+  rangeEnd: string = this.todayIso();
+
   isLoadingSummary = false;
-  isLoadingTransactions = false;
+  isLoadingOrders = false;
 
   currentPage = 0;
   pageSize = 20;
-  totalTransactions = 0;
+  totalOrders = 0;
 
   constructor(
     private paymentsService: PaymentsService,
@@ -27,10 +35,18 @@ export class PaymentsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSummary();
-    this.loadTransactions();
+    this.loadOrders();
   }
 
-  private static readonly SUCCESS_CODE = '0000';
+  private todayIso(): string {
+    return new Date().toISOString().substring(0, 10);
+  }
+
+  private daysAgoIso(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d.toISOString().substring(0, 10);
+  }
 
   loadSummary(): void {
     this.isLoadingSummary = true;
@@ -51,22 +67,22 @@ export class PaymentsComponent implements OnInit {
     });
   }
 
-  loadTransactions(): void {
-    this.isLoadingTransactions = true;
-    this.paymentsService.getTransactions(this.currentPage, this.pageSize).subscribe({
+  loadOrders(): void {
+    this.isLoadingOrders = true;
+    this.paymentsService.getOrders(this.rangeStart, this.rangeEnd, this.currentPage, this.pageSize).subscribe({
       next: (response) => {
         if (response.statusCode === PaymentsComponent.SUCCESS_CODE) {
-          this.transactions = response.data?.content || [];
-          this.totalTransactions = response.data?.totalItems ?? this.transactions.length;
+          this.orders = response.data?.content || [];
+          this.totalOrders = response.data?.totalItems ?? this.orders.length;
         } else {
-          this.swal.toast(response.message || 'Failed to load transactions', 'error');
+          this.swal.toast(response.message || 'Failed to load orders', 'error');
         }
-        this.isLoadingTransactions = false;
+        this.isLoadingOrders = false;
       },
       error: (error) => {
-        console.error('Error loading transactions:', error);
-        this.swal.toast('Error loading transactions', 'error');
-        this.isLoadingTransactions = false;
+        console.error('Error loading orders:', error);
+        this.swal.toast('Error loading orders', 'error');
+        this.isLoadingOrders = false;
       }
     });
   }
@@ -75,16 +91,36 @@ export class PaymentsComponent implements OnInit {
     this.loadSummary();
   }
 
+  onRangeChange(): void {
+    this.currentPage = 0;
+    this.loadOrders();
+  }
+
   onPageChange(event: { pageIndex: number; pageSize: number }): void {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
-    this.loadTransactions();
+    this.loadOrders();
+  }
+
+  methodLabel(row: OrderPaymentRow): string {
+    return row.isOnline ? 'UPI / Online' : 'Cash on Delivery';
+  }
+
+  methodClass(row: OrderPaymentRow): string {
+    return row.isOnline ? 'method-online' : 'method-cod';
+  }
+
+  statusFor(row: OrderPaymentRow): string {
+    return row.isOnline ? (row.gatewayStatus || 'PENDING') : row.orderStatus;
   }
 
   statusClass(status: string): string {
     switch (status) {
-      case 'PAID': return 'status-paid';
-      case 'FAILED': return 'status-failed';
+      case 'PAID':
+      case 'DELIVERED':
+      case 'COMPLETED': return 'status-paid';
+      case 'FAILED':
+      case 'CANCELLED': return 'status-failed';
       case 'REFUNDED':
       case 'PARTIALLY_REFUNDED': return 'status-refunded';
       default: return 'status-pending';
@@ -97,7 +133,10 @@ export class PaymentsComponent implements OnInit {
       case 'FAILED': return 'Failed';
       case 'REFUNDED': return 'Refunded';
       case 'PARTIALLY_REFUNDED': return 'Partially Refunded';
-      default: return 'Pending';
+      case 'DELIVERED': return 'Delivered';
+      case 'COMPLETED': return 'Completed';
+      case 'CANCELLED': return 'Cancelled';
+      default: return status ? (status.charAt(0) + status.slice(1).toLowerCase()) : 'Pending';
     }
   }
 }
