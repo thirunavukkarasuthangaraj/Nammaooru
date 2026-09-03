@@ -2088,6 +2088,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final shopData = shopResponse['data'];
       final shopLat = (shopData?['latitude'] as num?)?.toDouble();
       final shopLng = (shopData?['longitude'] as num?)?.toDouble();
+
+      // minOrderAmount otherwise only gets set from the shop details screen -
+      // a cart item added before that fix, or before this shop visit, would
+      // leave it null here and checkout would silently fall back to 100.
+      final minOrderAmount = (shopData?['minOrderAmount'] as num?)?.toDouble();
+      if (minOrderAmount != null && mounted) {
+        cartProvider.setShopStatus(isOpen: cartProvider.isShopOpen, minOrderAmount: minOrderAmount);
+      }
+
       if (shopLat == null || shopLng == null) return;
 
       final result = await DeliveryFeeService.instance.calculateDeliveryFee(

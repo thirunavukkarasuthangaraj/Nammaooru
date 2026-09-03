@@ -76,16 +76,24 @@ class CartProvider with ChangeNotifier {
     if (_items.isEmpty) return;
     final shopId = int.tryParse(_items.first.product.shopDatabaseId.toString());
     if (shopId == null) return;
-    final customerLat = LocationService.cachedLatitude;
-    final customerLng = LocationService.cachedLongitude;
-    if (customerLat == null || customerLng == null) return;
 
     try {
       final shopResponse = await ShopApiService().getShopById(shopId);
       final shopData = shopResponse['data'];
+
+      // Independent of location/distance below - otherwise a cart item added
+      // before minOrderAmount was wired up (or before this shop visit) stays
+      // stuck on the 100 fallback even after the fix ships.
+      final minOrderAmount = (shopData?['minOrderAmount'] as num?)?.toDouble();
+      if (minOrderAmount != null) {
+        setShopStatus(isOpen: _isShopOpen, minOrderAmount: minOrderAmount);
+      }
+
+      final customerLat = LocationService.cachedLatitude;
+      final customerLng = LocationService.cachedLongitude;
       final shopLat = (shopData?['latitude'] as num?)?.toDouble();
       final shopLng = (shopData?['longitude'] as num?)?.toDouble();
-      if (shopLat == null || shopLng == null) return;
+      if (customerLat == null || customerLng == null || shopLat == null || shopLng == null) return;
 
       final result = await DeliveryFeeService.instance.calculateDeliveryFee(
         shopLatitude: shopLat,
