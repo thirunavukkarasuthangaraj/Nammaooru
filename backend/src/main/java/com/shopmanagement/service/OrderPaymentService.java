@@ -45,16 +45,15 @@ public class OrderPaymentService {
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
 
-    // RBI's zero-MDR mandate for UPI only applies to verified small-merchant accounts
-    // under a specific interchange scheme. A personal/non-KYC'd Razorpay account is
-    // charged the standard rate regardless of method - 2% MDR + 18% GST on that MDR =
-    // 2.36% - confirmed against this account's actual Razorpay dashboard figures.
-    // Zeroing this out doesn't make the fee disappear, it just means the platform
-    // silently eats it on every transaction instead of the customer seeing it. Only
-    // drop this back toward 0 once the account genuinely qualifies for zero-MDR UPI
-    // (verified business/current account KYC with Razorpay).
+    // The real Razorpay cost on this (personal, non-zero-MDR) account is 2% MDR + 18%
+    // GST on that MDR = 2.36%, confirmed against the account's actual dashboard figures.
+    // Deliberately set to 0 here rather than surfaced to the customer, matching how
+    // Swiggy/Zomato price - they absorb gateway costs into their own margins instead
+    // of showing a separate "payment fee" line at checkout. This means the platform
+    // (not the customer) eats ~2.36% of every online-paid order's value; that's a
+    // known, accepted tradeoff, not an oversight - see git history for the reasoning.
     private static final String GATEWAY_FEE_PERCENT_KEY = "order_payment.gateway_fee_percent";
-    private static final String DEFAULT_GATEWAY_FEE_PERCENT = "2.36";
+    private static final String DEFAULT_GATEWAY_FEE_PERCENT = "0";
 
     public OrderPaymentService(OrderRepository orderRepository,
                                 OrderPaymentRepository orderPaymentRepository,
