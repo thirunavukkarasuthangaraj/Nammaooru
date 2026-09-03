@@ -84,6 +84,21 @@ public class OrderPaymentController {
         }
     }
 
+    /**
+     * Lets the checkout screen show the gateway fee before the order is placed —
+     * the percent itself isn't sensitive, just the admin ability to change it.
+     */
+    @GetMapping("/customer/order-payments/config")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCustomerConfig() {
+        try {
+            return ResponseUtil.success(Map.of("gatewayFeePercent", orderPaymentService.getGatewayFeePercent()), "Config retrieved");
+        } catch (Exception e) {
+            log.error("Error getting order payment config", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/order-payments/admin/config")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getConfig() {
