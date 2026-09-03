@@ -42,4 +42,8 @@ export class ShopPaymentsService {
     if (amount != null) body.amount = amount.toFixed(2);
     return this.http.post(`${this.apiUrl}/shop/${shopId}/release-payment`, body);
   }
+
+  getPayoutHistory(shopId: number, page: number = 0, size: number = 20): Observable<any> {
+    return this.http.get(`${this.apiUrl}/shop/${shopId}/payout-history`, { params: { page, size } });
+  }
 }

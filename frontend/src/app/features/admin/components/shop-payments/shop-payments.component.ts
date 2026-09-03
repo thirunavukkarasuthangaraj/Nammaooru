@@ -52,6 +52,10 @@ export class ShopPaymentsComponent implements OnInit {
   releaseReferenceInput = '';
   isReleasing = false;
 
+  showPayoutHistory = false;
+  payoutHistory: any[] = [];
+  isLoadingHistory = false;
+
   statusTabs: { key: StatusTab; label: string }[] = [
     { key: 'PAID', label: 'Paid' },
     { key: 'PENDING', label: 'Pending' },
@@ -124,8 +128,37 @@ export class ShopPaymentsComponent implements OnInit {
     this.currentPage = 0;
     this.selectedOrderIds.clear();
     this.releaseReferenceInput = '';
+    this.showPayoutHistory = false;
+    this.payoutHistory = [];
     this.loadSummary();
     this.loadOrders();
+  }
+
+  toggleHistory(): void {
+    this.showPayoutHistory = !this.showPayoutHistory;
+    if (this.showPayoutHistory && this.payoutHistory.length === 0) {
+      this.loadPayoutHistory();
+    }
+  }
+
+  loadPayoutHistory(): void {
+    if (!this.selectedShop) return;
+    this.isLoadingHistory = true;
+    this.shopPaymentsService.getPayoutHistory(this.selectedShop.shopId).subscribe({
+      next: (response) => {
+        if (response.statusCode === ShopPaymentsComponent.SUCCESS_CODE) {
+          this.payoutHistory = response.data?.content || [];
+        } else {
+          this.swal.toast(response.message || 'Failed to load payout history', 'error');
+        }
+        this.isLoadingHistory = false;
+      },
+      error: (error) => {
+        console.error('Error loading payout history:', error);
+        this.swal.toast('Error loading payout history', 'error');
+        this.isLoadingHistory = false;
+      }
+    });
   }
 
   backToList(): void {
@@ -281,6 +314,8 @@ export class ShopPaymentsComponent implements OnInit {
           this.selectedOrderIds.clear();
           this.releaseReferenceInput = '';
           this.loadSummary();
+          this.payoutHistory = [];
+          if (this.showPayoutHistory) this.loadPayoutHistory();
         } else {
           this.swal.toast(response.message || 'Failed to release payment', 'error');
         }

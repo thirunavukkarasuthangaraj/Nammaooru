@@ -37,11 +37,48 @@
 
   <!-- ===== Selected shop detail ===== -->
   <ng-container *ngIf="selectedShop">
-    <button mat-button class="back-btn" (click)="backToList()">
-      <mat-icon>arrow_back</mat-icon> All Shops
-    </button>
+    <div class="top-actions">
+      <button mat-button class="back-btn" (click)="backToList()">
+        <mat-icon>arrow_back</mat-icon> All Shops
+      </button>
+      <button mat-button class="history-btn" (click)="toggleHistory()">
+        <mat-icon>history</mat-icon> Payout History
+        <mat-icon>{{ showPayoutHistory ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+    </div>
 
     <h2 class="shop-detail-title">{{ selectedShop.shopName }}</h2>
+
+    <mat-card class="history-card" *ngIf="showPayoutHistory">
+      <div class="loading-row" *ngIf="isLoadingHistory">
+        <mat-progress-spinner mode="indeterminate" diameter="28"></mat-progress-spinner>
+      </div>
+      <div class="empty-state" *ngIf="!isLoadingHistory && payoutHistory.length === 0">
+        No payouts released to this shop yet.
+      </div>
+      <table class="history-table" *ngIf="!isLoadingHistory && payoutHistory.length > 0">
+        <thead>
+          <tr>
+            <th>Amount</th>
+            <th>UTR / Reference</th>
+            <th>Status</th>
+            <th>Requested</th>
+            <th>Paid</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let h of payoutHistory">
+            <td class="history-amount">₹{{ h.amount | number: '1.2-2' }}</td>
+            <td>{{ h.payoutReference || '—' }}</td>
+            <td><span class="status-chip" [ngClass]="statusClass(h.status)">{{ statusLabel(h.status) }}</span></td>
+            <td>{{ formatDateTime(h.requestedAt) }}</td>
+            <td>{{ h.processedAt ? formatDateTime(h.processedAt) : '—' }}</td>
+            <td>{{ h.processedBy || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </mat-card>
 
     <div class="date-select-row" *ngIf="!isLoadingSummary && summary">
       <mat-icon>calendar_today</mat-icon>
