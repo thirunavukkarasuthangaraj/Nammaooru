@@ -95,6 +95,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _checkAuthentication();
       await _loadUserData(); // Load profile data first
       await _loadSavedAddresses(); // Then load addresses
+      // Previously this only ran once the user tapped "Next" on the address
+      // step, so a cart carried over from an earlier session showed whatever
+      // delivery fee was last saved (e.g. a stale platform-fallback ₹50) until
+      // that tap happened. Running it here too means the bill summary is
+      // correct from the moment checkout opens, using the address that just loaded.
+      await _recalculateDeliveryFee();
     });
     OrderPaymentService.getGatewayFeePercent().then((percent) {
       if (mounted) setState(() => _gatewayFeePercent = percent);

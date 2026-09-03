@@ -4,6 +4,9 @@ import '../models/cart_model.dart';
 import '../../core/storage/local_storage.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/services/device_info_service.dart';
+import '../../core/services/delivery_fee_service.dart';
+import '../../core/services/location_service.dart';
+import '../../services/shop_api_service.dart';
 import '../../core/models/cart_model.dart' as CoreCart;
 import '../../core/config/env_config.dart';
 import 'dart:convert';
@@ -61,6 +64,42 @@ class CartProvider with ChangeNotifier {
   void setDeliveryFee(double fee) {
     _deliveryFee = fee;
     notifyListeners();
+  }
+
+  /// Refreshes the delivery fee for whichever shop is currently in the cart,
+  /// using the shop's self-delivery fee or the platform's distance-based
+  /// table (same resolution checkout uses). The cart screen otherwise only
+  /// ever shows the ₹30 placeholder default above until checkout recalculates
+  /// it, which is confusing when a shop's real fee (or self-delivery fee)
+  /// differs, so this lets the cart screen show the true figure too.
+  Future<void> recalculateDeliveryFeeForCurrentShop() async {
+    if (_items.isEmpty) return;
+    final shopId = int.tryParse(_items.first.product.shopDatabaseId.toString());
+    if (shopId == null) return;
+    final customerLat = LocationService.cachedLatitude;
+    final customerLng = LocationService.cachedLongitude;
+    if (customerLat == null || customerLng == null) return;
+
+    try {
+      final shopResponse = await ShopApiService().getShopById(shopId);
+      final shopData = shopResponse['data'];
+      final shopLat = (shopData?['latitude'] as num?)?.toDouble();
+      final shopLng = (shopData?['longitude'] as num?)?.toDouble();
+      if (shopLat == null || shopLng == null) return;
+
+      final result = await DeliveryFeeService.instance.calculateDeliveryFee(
+        shopLatitude: shopLat,
+        shopLongitude: shopLng,
+        customerLatitude: customerLat,
+        customerLongitude: customerLng,
+        shopId: shopId,
+      );
+      if (result != null && result.success) {
+        setDeliveryFee(result.deliveryFee);
+      }
+    } catch (e) {
+      debugPrint('Cart delivery fee recalculation failed: $e');
+    }
   }
 
   // Shop open status - set when entering shop, checked at checkout

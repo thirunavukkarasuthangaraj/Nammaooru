@@ -16,6 +16,8 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../services/shop_api_service.dart';
 import '../orders/checkout_screen.dart';
+import 'package:showcaseview/showcaseview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -27,6 +29,37 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   final TextEditingController _promoController = TextEditingController();
   bool _isApplyingPromo = false;
+
+  // One-time tour: quantity stepper on the first item → Proceed to Checkout
+  final GlobalKey _tourQuantityKey = GlobalKey();
+  final GlobalKey _tourCheckoutKey = GlobalKey();
+  bool _cartTourChecked = false;
+  BuildContext? _cartShowcaseCtx;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<CartProvider>(context, listen: false)
+          .recalculateDeliveryFeeForCurrentShop();
+    });
+  }
+
+  Future<void> _startCartTourIfNeeded(BuildContext showcaseCtx) async {
+    _cartShowcaseCtx = showcaseCtx;
+    if (_cartTourChecked) return;
+    _cartTourChecked = true;
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('cart_screen_tour_shown') ?? false;
+    if (shown || !mounted) return;
+    await prefs.setBool('cart_screen_tour_shown', true);
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted || _cartShowcaseCtx == null) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      ShowCaseWidget.of(_cartShowcaseCtx!)
+          .startShowCase([_tourQuantityKey, _tourCheckoutKey]);
+    });
+  }
 
   @override
   void dispose() {
@@ -42,6 +75,18 @@ class _CartScreenState extends State<CartScreen> {
     // this screen frozen (cart state changed, no redraw) until re-entered.
     // A direct listener cannot be dropped by tree reparenting.
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    return ShowCaseWidget(
+      builder: (showcaseCtx) {
+        if (!cartProvider.isEmpty) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => _startCartTourIfNeeded(showcaseCtx));
+        }
+        return _buildCartScaffold(cartProvider);
+      },
+    );
+  }
+
+  Widget _buildCartScaffold(CartProvider cartProvider) {
     return ListenableBuilder(
       listenable: cartProvider,
       builder: (context, _) {
@@ -49,6 +94,12 @@ class _CartScreenState extends State<CartScreen> {
           canPop: false,
           onPopInvoked: (didPop) {
             if (!didPop) {
+              // Leaving mid-tour lets the showcase overlay try to find a
+              // target that's no longer in the tree ("inactive element"
+              // crash) — dismiss it first.
+              try {
+                ShowCaseWidget.of(context).dismiss();
+              } catch (_) {}
               // Handle device back button - go to dashboard
               context.go('/customer/dashboard');
             }
@@ -60,6 +111,9 @@ class _CartScreenState extends State<CartScreen> {
               backgroundColor: VillageTheme.primaryGreen,
               foregroundColor: Colors.white,
               onBackPressed: () {
+                try {
+                  ShowCaseWidget.of(context).dismiss();
+                } catch (_) {}
                 // When coming from dashboard (bottom nav), go back to dashboard
                 context.go('/customer/dashboard');
               },
@@ -197,7 +251,10 @@ class _CartScreenState extends State<CartScreen> {
                   ],
                 ),
               ),
-              ...items.map((item) => _buildCartItem(item, cartProvider)).toList(),
+              ...items.asMap().entries.map((e) => _buildCartItem(
+                  e.value, cartProvider,
+                  isFirstOverall: shopId == itemsByShop.keys.first &&
+                      e.key == 0)).toList(),
             ],
           ),
         );
@@ -205,7 +262,36 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCartItem(CartItem item, CartProvider cartProvider) {
+  // Tour target only on the very first cart item — repeating it on every row
+  // would be noisy
+  Widget _maybeShowcaseQuantity(
+      bool isFirst, Widget child, CartItem item, CartProvider cartProvider) {
+    if (!isFirst) return child;
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    return Showcase(
+      key: _tourQuantityKey,
+      title: lang.getText('Change Quantity', 'எண்ணிக்கையை மாற்று'),
+      description: lang.getText(
+          'Use − and + to update how many you want, or the bin icon to remove the item.',
+          '− மற்றும் + பயன்படுத்தி எண்ணிக்கையை மாற்றலாம், அல்லது தொட்டி ஐகான் மூலம் நீக்கலாம்.'),
+      tooltipBackgroundColor: Colors.white,
+      textColor: Colors.grey.shade800,
+      titleTextStyle: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: VillageTheme.primaryGreen,
+      ),
+      descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+      // Otherwise the tour overlay swallows the tap and just advances
+      // instead of actually changing the quantity
+      onTargetClick: () => cartProvider.increaseQuantity(item.product.id),
+      disposeOnTap: true,
+      child: child,
+    );
+  }
+
+  Widget _buildCartItem(CartItem item, CartProvider cartProvider,
+      {bool isFirstOverall = false}) {
     return Container(
       padding: const EdgeInsets.all(10),
       child: Row(
@@ -314,7 +400,7 @@ class _CartScreenState extends State<CartScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
+                    _maybeShowcaseQuantity(isFirstOverall, Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(8),
@@ -395,7 +481,7 @@ class _CartScreenState extends State<CartScreen> {
                           }),
                         ],
                       ),
-                    ),
+                    ), item, cartProvider),
                     IconButton(
                       onPressed: () {
                         _showRemoveDialog(item, cartProvider);
@@ -597,7 +683,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
 
             // Minimum order warning
-            if (cartProvider.subtotal < 100)
+            if (cartProvider.subtotal < (cartProvider.minOrderAmount ?? 100.0))
               Container(
                 margin: const EdgeInsets.only(top: 10),
                 padding: const EdgeInsets.all(10),
@@ -612,7 +698,7 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Add ₹${(100 - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹100',
+                        'Add ₹${((cartProvider.minOrderAmount ?? 100.0) - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹${(cartProvider.minOrderAmount ?? 100.0).toStringAsFixed(0)}',
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.orange.shade700,
@@ -765,29 +851,52 @@ class _CartScreenState extends State<CartScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
-                    onPressed: canCheckout ? _proceedToCheckout : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: VillageTheme.primaryGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 2,
+                  child: Showcase(
+                    key: _tourCheckoutKey,
+                    title: context.loc?.translate('proceed_to_checkout') ??
+                        'Proceed to Checkout',
+                    description: Provider.of<LanguageProvider>(context,
+                            listen: false)
+                        .getText(
+                            'When you\'re ready, tap here to enter your address and place the order.',
+                            'தயாராகும்போது, முகவரியை உள்ளிட்டு ஆர்டர் செய்ய இங்கே தட்டவும்.'),
+                    tooltipBackgroundColor: Colors.white,
+                    textColor: Colors.grey.shade800,
+                    titleTextStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          context.loc?.translate('proceed_to_checkout') ?? 'Proceed to Checkout',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+                    // Otherwise the tour overlay swallows the tap and just
+                    // advances instead of proceeding to checkout
+                    onTargetClick:
+                        canCheckout ? _proceedToCheckout : () {},
+                    disposeOnTap: true,
+                    child: ElevatedButton(
+                      onPressed: canCheckout ? _proceedToCheckout : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: VillageTheme.primaryGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.arrow_forward, size: 16),
-                      ],
+                        elevation: 2,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            context.loc?.translate('proceed_to_checkout') ?? 'Proceed to Checkout',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward, size: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
