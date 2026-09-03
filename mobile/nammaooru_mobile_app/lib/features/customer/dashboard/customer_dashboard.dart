@@ -420,16 +420,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           'subtitleKey': 'description',
           'imageKey': 'imageUrls',
         },
-        'localShops': {
-          'icon': Icons.store_rounded,
-          'color': const Color(0xFFFF6F00),
-          'label': 'Local Shops',
-          'labelTamil': 'கடைகள்',
-          'screen': const LocalShopsScreen(),
-          'titleKey': 'shopName',
-          'subtitleKey': 'address',
-          'imageKey': 'imageUrls',
-        },
       };
 
       // Parse shop promotions/offers from API
@@ -2033,7 +2023,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     if (cached != null) {
       try {
         final List<dynamic> raw = json.decode(cached);
-        final cachedFeatures = raw.map((e) => Map<String, dynamic>.from(e)).toList();
+        final cachedFeatures = raw
+            .map((e) => Map<String, dynamic>.from(e))
+            .where((f) => !(f['route']?.toString().contains('local-shops') ?? false))
+            .toList();
         if (cachedFeatures.isNotEmpty && mounted) {
           for (final f in cachedFeatures) {
             _featureTourKeys.putIfAbsent(f['featureName']?.toString() ?? '', () => GlobalKey());
@@ -2053,7 +2046,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       final provider = Provider.of<FeatureConfigProvider>(context, listen: false);
       await provider.load(lat, lng).timeout(const Duration(seconds: 8));
 
-      final features = provider.serviceFeatures;
+      final features = provider.serviceFeatures
+          .where((f) => !(f['route']?.toString().contains('local-shops') ?? false))
+          .toList();
       if (features.isNotEmpty) {
         // Save to cache for next app open
         await prefs.setString(_featureCacheKey, json.encode(features));
