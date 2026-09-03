@@ -2448,14 +2448,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
-    if (gatewayFee > 0 && mounted) {
-      final proceed = await _confirmGatewayFee(gatewayFee, totalCharged);
-      if (proceed != true) {
-        await _abandonUnpaidOrder(orderId, null);
-        return;
-      }
-    }
-
     _pendingOnlinePayment = _PendingOnlinePayment(orderId, orderNumber, cartProvider);
     _razorpay = Razorpay();
     _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleOrderPaymentSuccess);
@@ -2485,32 +2477,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } catch (e) {
       await _abandonUnpaidOrder(orderId, 'Unable to open payment gateway');
     }
-  }
-
-  /// Shows the Razorpay gateway fee that gets added on top of the order total
-  /// before charging the card/UPI — the app's own bill summary only shows the
-  /// order total, so without this the amount Razorpay asks for looks wrong.
-  Future<bool?> _confirmGatewayFee(double gatewayFee, double totalCharged) {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Payment Gateway Fee'),
-        content: Text(
-          'A payment gateway fee of ₹${gatewayFee.toStringAsFixed(2)} applies to online payments.\n\n'
-          'Total to be charged: ₹${totalCharged.toStringAsFixed(2)}',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _handleTestModeOrderPayment(int orderId, String? orderNumber, String razorpayOrderId,
