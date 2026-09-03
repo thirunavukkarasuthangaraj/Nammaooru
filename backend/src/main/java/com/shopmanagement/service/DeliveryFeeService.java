@@ -2,6 +2,8 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.entity.DeliveryFeeRange;
 import com.shopmanagement.repository.DeliveryFeeRangeRepository;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,24 @@ import java.util.List;
 public class DeliveryFeeService {
 
     private final DeliveryFeeRangeRepository deliveryFeeRangeRepository;
+    private final ShopRepository shopRepository;
+
+    /**
+     * A shop that delivers its own orders sets its own flat fee instead of the
+     * platform's distance-based one — there's no delivery partner to pay a
+     * commission to, so the platform rate doesn't apply.
+     */
+    public BigDecimal resolveDeliveryFee(Long shopId, Double distanceKm) {
+        if (shopId != null) {
+            Shop shop = shopRepository.findById(shopId).orElse(null);
+            if (shop != null && Boolean.TRUE.equals(shop.getSelfDeliveryEnabled())
+                    && shop.getSelfDeliveryFee() != null
+                    && shop.getSelfDeliveryFee().compareTo(BigDecimal.ZERO) >= 0) {
+                return shop.getSelfDeliveryFee();
+            }
+        }
+        return calculateDeliveryFee(distanceKm);
+    }
 
     public List<DeliveryFeeRange> getAllActiveRanges() {
         return deliveryFeeRangeRepository.findByIsActiveTrueOrderByMinDistanceKm();

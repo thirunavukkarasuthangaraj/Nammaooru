@@ -156,15 +156,16 @@ public class DeliveryFeeController {
     }
 
     @PostMapping("/calculate")
-    public ResponseEntity<Map<String, Object>> calculateFee(@RequestBody Map<String, Double> coordinates) {
+    public ResponseEntity<Map<String, Object>> calculateFee(@RequestBody Map<String, Object> request) {
         try {
-            Double shopLat = coordinates.get("shopLat");
-            Double shopLon = coordinates.get("shopLon");
-            Double customerLat = coordinates.get("customerLat");
-            Double customerLon = coordinates.get("customerLon");
+            Double shopLat = toDouble(request.get("shopLat"));
+            Double shopLon = toDouble(request.get("shopLon"));
+            Double customerLat = toDouble(request.get("customerLat"));
+            Double customerLon = toDouble(request.get("customerLon"));
+            Long shopId = request.get("shopId") == null ? null : Long.valueOf(request.get("shopId").toString());
 
             Double distance = deliveryFeeService.calculateDistance(shopLat, shopLon, customerLat, customerLon);
-            BigDecimal deliveryFee = deliveryFeeService.calculateDeliveryFee(distance);
+            BigDecimal deliveryFee = deliveryFeeService.resolveDeliveryFee(shopId, distance);
             BigDecimal partnerCommission = deliveryFeeService.calculatePartnerCommission(distance);
 
             Map<String, Object> response = new HashMap<>();
@@ -183,5 +184,9 @@ public class DeliveryFeeController {
 
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    private Double toDouble(Object value) {
+        return value == null ? null : Double.valueOf(value.toString());
     }
 }

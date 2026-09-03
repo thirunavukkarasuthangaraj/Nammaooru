@@ -40,6 +40,7 @@ public class ShopResponse {
     private BigDecimal deliveryRadius;
     private BigDecimal freeDeliveryAbove;
     private Boolean selfDeliveryEnabled;
+    private BigDecimal selfDeliveryFee;
     private BigDecimal commissionRate;
     
     private String gstNumber;

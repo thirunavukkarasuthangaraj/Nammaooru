@@ -138,6 +138,12 @@ public class Shop {
     @Column(name = "self_delivery_enabled")
     private Boolean selfDeliveryEnabled = false;
 
+    // Flat fee the shop owner charges when self-delivering; null means fall back
+    // to the platform's distance-based delivery_fee_ranges table.
+    @DecimalMin(value = "0.0")
+    @Column(name = "self_delivery_fee", precision = 10, scale = 2)
+    private BigDecimal selfDeliveryFee;
+
     @DecimalMin(value = "0.0")
     @DecimalMax(value = "100.0")
     @Builder.Default
