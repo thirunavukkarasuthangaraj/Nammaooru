@@ -516,10 +516,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     if (productsChangedElsewhere) {
       localStorage.removeItem('pos_products_changed');
     }
-    this.loadProducts(productsChangedElsewhere).then(() => {
+    this.loadProducts(productsChangedElsewhere).then(async () => {
       // Order Management handoff first: when it fills the cart, the refresh
       // backup restore below skips itself (it never overwrites a non-empty cart)
-      this.applyReAddOrder();
+      await this.applyReAddOrder();
       this.restoreCartBackup();
     });
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
@@ -2630,7 +2630,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Weight-sold items (unit 'kg') need the weight picker, so they are reported
    * for manual adding instead of being guessed.
    */
-  private applyReAddOrder(): void {
+  private async applyReAddOrder(): Promise<void> {
     let handoff: any = null;
     try {
       const raw = localStorage.getItem(this.POS_READD_ORDER_KEY);
@@ -2653,6 +2653,27 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     if (handoff.shopId && this.shopId && handoff.shopId !== this.shopId
         && !handoff.whatsappOrderText) return;
 
+    const normalizeName = (name: string) => name.trim().toLowerCase();
+    const findProduct = (it: any) =>
+      this.products.find(p => it.shopProductId && p.id === it.shopProductId)
+      || this.products.find(p => it.name && normalizeName(p.name) === normalizeName(String(it.name)));
+
+    const items: any[] = handoff.items || [];
+
+    // A product added/updated on a different device (or since this terminal's
+    // cache was last synced) may genuinely exist but not be in this device's
+    // local catalog yet. Before reporting any such item as "not added", pull
+    // a fresh delta sync once and re-check - only a true weight-based item or
+    // one truly missing from the catalog should end up in the skipped list.
+    const initiallyMissing = items.filter(it => !findProduct(it));
+    if (initiallyMissing.length > 0 && navigator.onLine) {
+      try {
+        await this.syncProductsInBackground();
+      } catch (e) {
+        console.warn('Re-add order: catch-up sync failed:', e);
+      }
+    }
+
     // A WhatsApp order is a new sale. Do not mix it with an unfinished cart
     // restored from localStorage or with cart state retained by route reuse.
     if (handoff.replaceCart) {
@@ -2660,11 +2681,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       localStorage.removeItem(this.POS_CART_BACKUP_KEY);
     }
 
-    const normalizeName = (name: string) => name.trim().toLowerCase();
     const skipped: string[] = [];
-    for (const it of handoff.items || []) {
-      const product = this.products.find(p => it.shopProductId && p.id === it.shopProductId)
-        || this.products.find(p => it.name && normalizeName(p.name) === normalizeName(String(it.name)));
+    for (const it of items) {
+      const product = findProduct(it);
       if (!product || this.isWeightProduct(product)) {
         skipped.push(it.name || `#${it.shopProductId}`);
         continue;
