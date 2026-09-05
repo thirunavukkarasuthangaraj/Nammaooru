@@ -119,7 +119,7 @@ export class DailyUpdatesComponent implements OnDestroy {
       this.aiKeywords = keywords;
     }
 
-    this.mergeRowsIntoGroups(rows);
+    this.replaceGroupsForSearch(rows);
     this.loading = false;
   }
 
@@ -367,12 +367,31 @@ export class DailyUpdatesComponent implements OnDestroy {
 
   // ---------- Grouping (pack-size variants of the same product) ----------
 
-  // Merges freshly fetched rows into the persistent groups list ("cart"),
-  // so results from an earlier search/voice entry stay visible and their
-  // unsaved edits are never overwritten by a later, unrelated lookup.
-  private mergeRowsIntoGroups(rows: DailyUpdateProduct[]): void {
-    this.groupRows(rows).forEach(freshGroup => this.upsertGroup(freshGroup));
-    this.groups = [...this.groups].sort((a, b) => a.displayName.localeCompare(b.displayName));
+  // A manual search REPLACES what's on screen with just this term's matches,
+  // like any normal search box - it does not keep piling on unrelated groups
+  // from earlier searches. Any row already mid-edit (in `modified`) that still
+  // appears in the fresh results keeps its unsaved value rather than being
+  // reset from the server. Rows that scroll out of view because they belonged
+  // to a now-hidden group are NOT lost - they stay in `modified` and are still
+  // included when Update All is pressed, only their group's card isn't shown
+  // until you search for it again.
+  private replaceGroupsForSearch(rows: DailyUpdateProduct[]): void {
+    const previousGroups = this.groups;
+    this.groups = this.groupRows(rows)
+      .map(freshGroup => {
+        const existing = previousGroups.find(g => g.key === freshGroup.key);
+        if (!existing) {
+          return freshGroup;
+        }
+        freshGroup.rows.forEach((freshRow, idx) => {
+          const existingRow = existing.rows.find(r => r.id === freshRow.id);
+          if (existingRow && this.modified.has(existingRow.id)) {
+            freshGroup.rows[idx] = existingRow;
+          }
+        });
+        return freshGroup;
+      })
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 
   private upsertGroup(freshGroup: ProductGroup): ProductGroup {
