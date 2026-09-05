@@ -24,6 +24,7 @@ import { PosBillingComponent } from './components/pos-billing/pos-billing.compon
 import { BulkEditComponent } from './components/bulk-edit/bulk-edit.component';
 import { BillSettingsComponent } from './components/bill-settings/bill-settings.component';
 import { PaymentsComponent } from './components/payments/payments.component';
+import { DailyUpdatesComponent } from './components/daily-updates/daily-updates.component';
 
 const routes: Routes = [
   {
@@ -116,6 +117,10 @@ const routes: Routes = [
   {
     path: 'bulk-edit',
     component: BulkEditComponent
+  },
+  {
+    path: 'daily-updates',
+    component: DailyUpdatesComponent
   },
   {
     path: 'inventory',

@@ -68,6 +68,7 @@ import { CategoryCreateDialogComponent } from './components/category-create-dial
 import { LabelDatesDialogComponent } from './components/label-dates-dialog/label-dates-dialog.component';
 import { BillSettingsComponent } from './components/bill-settings/bill-settings.component';
 import { PaymentsComponent } from './components/payments/payments.component';
+import { DailyUpdatesComponent } from './components/daily-updates/daily-updates.component';
 
 @NgModule({
   declarations: [
@@ -104,7 +105,8 @@ import { PaymentsComponent } from './components/payments/payments.component';
     BulkEditComponent,
     CategoryCreateDialogComponent,
     LabelDatesDialogComponent,
-    BillSettingsComponent
+    BillSettingsComponent,
+    DailyUpdatesComponent
   ],
   imports: [
     CommonModule,

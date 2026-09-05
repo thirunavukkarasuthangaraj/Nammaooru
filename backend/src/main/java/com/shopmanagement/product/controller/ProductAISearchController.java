@@ -239,6 +239,60 @@ public class ProductAISearchController {
     }
 
     /**
+     * Parse a quick shop-owner price-update phrase — spoken or typed, Tamil/Tanglish/English —
+     * into structured {item, weight, unit, price}. Used by the Daily Updates screen so an owner
+     * can say/type "vengayam 1kg 100 rs" and have it resolve straight to an editable row.
+     * One Gemini call does both the Tamil->English translation and the field extraction.
+     */
+    @GetMapping("/parse-price-entry")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> parsePriceEntry(
+            @RequestParam(name = "text") String text
+    ) {
+        log.info("Parse price entry request: text={}", text);
+        try {
+            String prompt = "Parse this shop-owner price update sentence, spoken in Tamil, Tanglish (romanized Tamil), " +
+                    "or English, for a grocery/household item: \"" + text + "\". " +
+                    "Extract the product name translated to plain English, the pack size if mentioned " +
+                    "(a number plus unit like kg/g/ml/l/pcs), and the price in rupees. " +
+                    "Reply with ONLY valid JSON, no markdown fences, no explanation, in exactly this shape: " +
+                    "{\"item\":\"<english product name>\",\"weight\":<number or null>,\"unit\":\"<kg|g|ml|l|pcs|null>\",\"price\":<number or null>}. " +
+                    "Examples: " +
+                    "'vengayam 1 kg 100 rs' -> {\"item\":\"onion\",\"weight\":1,\"unit\":\"kg\",\"price\":100} | " +
+                    "'thakkali 500g 45' -> {\"item\":\"tomato\",\"weight\":500,\"unit\":\"g\",\"price\":45} | " +
+                    "'muttai 6 pieces 60 rupees' -> {\"item\":\"egg\",\"weight\":6,\"unit\":\"pcs\",\"price\":60} | " +
+                    "'paal 1 litre 55 rupees' -> {\"item\":\"milk\",\"weight\":1,\"unit\":\"l\",\"price\":55} | " +
+                    "'sugar 40' -> {\"item\":\"sugar\",\"weight\":null,\"unit\":null,\"price\":40}. " +
+                    "If no pack size is mentioned, set weight and unit to null. If you cannot find a price, set price to null.";
+
+            String raw;
+            try {
+                raw = geminiSearchService.generateText(prompt);
+            } catch (Exception geminiError) {
+                if (!groqService.isEnabled()) throw geminiError;
+                log.warn("Gemini failed ({}), falling back to Groq", geminiError.getMessage());
+                raw = groqService.generateText(prompt);
+            }
+
+            String jsonStr = raw != null ? raw.trim() : "";
+            if (jsonStr.startsWith("```")) {
+                jsonStr = jsonStr.replaceAll("```json", "").replaceAll("```", "").trim();
+            }
+            if (jsonStr.contains("{")) {
+                jsonStr = jsonStr.substring(jsonStr.indexOf("{"), jsonStr.lastIndexOf("}") + 1);
+            }
+
+            Map<String, Object> parsed = objectMapper.readValue(jsonStr, new TypeReference<Map<String, Object>>() {});
+            return ResponseEntity.ok(ApiResponse.success(parsed, "Parsed price entry"));
+        } catch (Exception e) {
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+            String detail = root.getMessage() != null ? root.getMessage() : e.getMessage();
+            log.error("Error parsing price entry: {}", detail);
+            return ResponseEntity.badRequest().body(ApiResponse.error("Parse failed: " + detail));
+        }
+    }
+
+    /**
      * Parse a photo of a handwritten shopping list using Gemini Vision AI.
      * Supports Tamil and English handwriting.
      * Returns a list of parsed item names.

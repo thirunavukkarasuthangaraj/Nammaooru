@@ -1,0 +1,138 @@
+<div class="daily-updates-page">
+  <div class="page-header">
+    <h1>Daily Price Updates</h1>
+    <p class="subtitle">Speak or type "onion 1kg 45" — AI fills the price for that pack size and suggests the rest</p>
+  </div>
+
+  <div class="quick-entry-bar">
+    <button
+      class="mic-btn"
+      [class.recording]="recording"
+      [disabled]="!micSupported || transcribing || parsingEntry"
+      (click)="toggleRecording()"
+      [title]="micSupported ? (recording ? 'Stop recording' : 'Speak a product and price') : 'Microphone not available — type instead'">
+      <mat-icon>{{ recording ? 'stop' : 'mic' }}</mat-icon>
+    </button>
+    <input
+      type="text"
+      placeholder='e.g. "onion 1kg 45" or "vengayam 500g 25 rs"'
+      [(ngModel)]="quickEntryText"
+      (keyup.enter)="submitQuickEntry()"
+      [disabled]="recording || transcribing || parsingEntry"
+      autocomplete="off">
+    <button class="go-btn" (click)="submitQuickEntry()" [disabled]="!quickEntryText.trim() || recording || transcribing || parsingEntry">
+      Go
+    </button>
+  </div>
+  <div class="quick-entry-status" *ngIf="recording || transcribing || parsingEntry">
+    <mat-progress-spinner diameter="16" mode="indeterminate"></mat-progress-spinner>
+    <span *ngIf="recording">Listening...</span>
+    <span *ngIf="transcribing">Transcribing with AI...</span>
+    <span *ngIf="parsingEntry">Understanding what you meant...</span>
+  </div>
+
+  <div class="search-bar">
+    <mat-icon>search</mat-icon>
+    <input
+      type="text"
+      placeholder="or browse: e.g. onion"
+      [ngModel]="searchTerm"
+      (ngModelChange)="onSearchInput($event)"
+      (keyup.enter)="searchNow()"
+      autocomplete="off">
+  </div>
+
+  <div class="suggestions" *ngIf="showSuggestions">
+    <button
+      class="chip"
+      [class.active]="activeGroupKey === null"
+      (click)="activeGroupKey = null">
+      All ({{ groups.length }})
+    </button>
+    <button
+      *ngFor="let g of groups"
+      class="chip"
+      [class.active]="activeGroupKey === g.key"
+      (click)="selectGroup(g.key)">
+      {{ g.displayName }}
+      <span class="chip-count">{{ g.rows.length }}</span>
+    </button>
+  </div>
+
+  <div class="loading" *ngIf="loading">
+    <mat-progress-spinner diameter="32" mode="indeterminate"></mat-progress-spinner>
+    <span class="loading-label" *ngIf="aiResolving">Asking AI what "{{ searchTerm }}" means...</span>
+  </div>
+
+  <div class="ai-note" *ngIf="!loading && aiKeywords">
+    <mat-icon>auto_awesome</mat-icon>
+    No exact match for "{{ searchTerm }}" — showing AI-matched results for: {{ aiKeywords.join(', ') }}
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && hasSearched && groups.length === 0">
+    No products found for "{{ searchTerm }}", even after AI lookup
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && !hasSearched">
+    Type at least 2 letters of a product name above to start
+  </div>
+
+  <div class="product-group" *ngFor="let group of visibleGroups">
+    <div class="group-header">
+      <img [src]="getProductImageUrl(group.imageUrl)" alt="">
+      <span class="group-name">{{ group.displayName }}</span>
+      <span class="group-count">{{ group.rows.length }} pack size(s)</span>
+    </div>
+
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Pack Size</th>
+          <th>Existing Price</th>
+          <th>Base Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of group.rows" [class.modified]="isModified(row)">
+          <td class="unit">{{ row.unitLabel || '-' }}</td>
+          <td>
+            <div class="price-cell">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="row.price"
+                (ngModelChange)="onPriceChange(row, $event)"
+                [class.invalid]="!isValidPrice(row.price)"
+                [class.suggested]="row.suggested">
+              <span class="suggested-tag" *ngIf="row.suggested" title="AI-estimated from the pack size you gave — review before saving">AI est.</span>
+              <span class="delta" *ngIf="isModified(row) && priceDelta(row) !== 0"
+                    [class.up]="priceDelta(row) > 0" [class.down]="priceDelta(row) < 0">
+                was {{ row.originalValues.price }} ({{ priceDelta(row) > 0 ? '+' : '' }}{{ priceDelta(row) }})
+              </span>
+            </div>
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="row.originalPrice"
+              (ngModelChange)="onBasePriceChange(row, $event)"
+              [class.invalid]="row.originalPrice !== null && !isValidPrice(row.originalPrice)">
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <button class="clear-list-btn" *ngIf="groups.length > 0" (click)="clearList()">Clear list</button>
+
+  <div class="action-bar" *ngIf="modifiedCount > 0">
+    <span class="modified-count">{{ modifiedCount }} product(s) changed</span>
+    <button class="btn-discard" (click)="discardChanges()" [disabled]="saving">Discard</button>
+    <button class="btn-update" (click)="updateAll()" [disabled]="saving">
+      {{ saving ? 'Updating...' : 'Update All' }}
+    </button>
+  </div>
+</div>
