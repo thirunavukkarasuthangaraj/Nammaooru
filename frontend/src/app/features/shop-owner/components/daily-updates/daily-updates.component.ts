@@ -268,12 +268,17 @@ export class DailyUpdatesComponent implements OnDestroy {
     anchor.price = parsed.price!;
     anchor.suggested = false;
     this.markModified(anchor);
+    this.suggestSiblingPrices(group, anchor);
+  }
 
-    // Suggest proportional prices for sibling pack sizes, unless the owner
-    // already has an unsaved manual edit on that row (never clobber that).
+  // Given one row's price just changed, proportionally scale every OTHER row
+  // in the same group by weight ratio (e.g. 1kg=100 -> 500g suggested as 50),
+  // skipping any sibling that already has its own unsaved manual edit so we
+  // never clobber something the owner deliberately typed.
+  private suggestSiblingPrices(group: ProductGroup, anchor: DailyUpdateProduct): void {
     const anchorGrams = anchor.sortWeight;
     if (anchorGrams > 0) {
-      const pricePerGram = parsed.price! / anchorGrams;
+      const pricePerGram = anchor.price / anchorGrams;
       group.rows.forEach(row => {
         if (row.id === anchor.id || row.sortWeight <= 0 || this.modified.has(row.id)) {
           return;
@@ -283,7 +288,6 @@ export class DailyUpdatesComponent implements OnDestroy {
         this.markModified(row);
       });
     }
-
     group.rows.sort((a, b) => a.sortWeight - b.sortWeight);
   }
 
@@ -469,11 +473,15 @@ export class DailyUpdatesComponent implements OnDestroy {
 
   // ---------- Editing ----------
 
-  onPriceChange(row: DailyUpdateProduct, value: string): void {
+  onPriceChange(row: DailyUpdateProduct, value: string, group: ProductGroup): void {
     const parsed = parseFloat(value);
-    row.price = isNaN(parsed) ? row.price : parsed;
+    if (isNaN(parsed)) {
+      return;
+    }
+    row.price = parsed;
     row.suggested = false;
     this.markModified(row);
+    this.suggestSiblingPrices(group, row);
   }
 
   onBasePriceChange(row: DailyUpdateProduct, value: string): void {

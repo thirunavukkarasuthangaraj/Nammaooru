@@ -115,7 +115,7 @@
                   min="0"
                   step="0.01"
                   [ngModel]="row.price"
-                  (ngModelChange)="onPriceChange(row, $event)"
+                  (ngModelChange)="onPriceChange(row, $event, group)"
                   [class.invalid]="!isValidPrice(row.price)"
                   [class.suggested]="row.suggested">
                 <span class="suggested-tag" *ngIf="row.suggested" title="AI-estimated from the pack size you gave — review before saving">AI est.</span>
@@ -166,7 +166,7 @@
                   min="0"
                   step="0.01"
                   [ngModel]="row.price"
-                  (ngModelChange)="onPriceChange(row, $event)"
+                  (ngModelChange)="onPriceChange(row, $event, group)"
                   [class.invalid]="!isValidPrice(row.price)"
                   [class.suggested]="row.suggested">
                 <span class="suggested-tag" *ngIf="row.suggested" title="AI-estimated from the pack size you gave — review before saving">AI est.</span>
