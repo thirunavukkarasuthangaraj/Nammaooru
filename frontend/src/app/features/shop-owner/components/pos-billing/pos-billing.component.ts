@@ -2660,10 +2660,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       localStorage.removeItem(this.POS_CART_BACKUP_KEY);
     }
 
+    const normalizeName = (name: string) => name.trim().toLowerCase();
     const skipped: string[] = [];
     for (const it of handoff.items || []) {
       const product = this.products.find(p => it.shopProductId && p.id === it.shopProductId)
-        || this.products.find(p => it.name && p.name === it.name);
+        || this.products.find(p => it.name && normalizeName(p.name) === normalizeName(String(it.name)));
       if (!product || this.isWeightProduct(product)) {
         skipped.push(it.name || `#${it.shopProductId}`);
         continue;
