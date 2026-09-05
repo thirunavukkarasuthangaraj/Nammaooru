@@ -839,6 +839,13 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * Initialize sync status listener
    */
   private initSyncStatus(): void {
+    // Baseline to already-known failures: getSyncStatus() is a BehaviorSubject
+    // and replays its current value immediately on subscribe. Without this,
+    // any pre-existing failed order (even from days ago) looked like a brand
+    // new one on every single visit to this screen, popping the same warning
+    // dialog over and over.
+    this.lastKnownFailedOrders = this.syncService.getCurrentStatus().failedOrders;
+
     this.syncService.getSyncStatus()
       .pipe(takeUntil(this.destroy$))
       .subscribe(status => {
