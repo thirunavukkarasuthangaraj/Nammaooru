@@ -201,15 +201,15 @@ public class ProductAISearchController {
                     "'கடலை' -> gram,groundnut | 'thakkali' -> tomato. " +
                     "If you cannot map it, reply with the input word unchanged.";
 
-            // Gemini first; if it fails (quota exhausted, key/model problem),
-            // fall back to Groq automatically so Tamil search keeps working.
+            // Groq first — fast and currently the reliable provider in prod.
+            // Gemini is a backup only, so a Gemini outage never slows this down.
             String raw;
             try {
-                raw = geminiSearchService.generateText(prompt);
-            } catch (Exception geminiError) {
-                if (!groqService.isEnabled()) throw geminiError;
-                log.warn("Gemini failed ({}), falling back to Groq", geminiError.getMessage());
+                if (!groqService.isEnabled()) throw new IllegalStateException("Groq not enabled");
                 raw = groqService.generateText(prompt);
+            } catch (Exception groqError) {
+                log.warn("Groq failed ({}), falling back to Gemini", groqError.getMessage());
+                raw = geminiSearchService.generateText(prompt);
             }
             List<String> keywords = new ArrayList<>();
             if (raw != null) {
@@ -264,13 +264,15 @@ public class ProductAISearchController {
                     "'sugar 40' -> {\"item\":\"sugar\",\"weight\":null,\"unit\":null,\"price\":40}. " +
                     "If no pack size is mentioned, set weight and unit to null. If you cannot find a price, set price to null.";
 
+            // Groq first — fast and currently the reliable provider in prod.
+            // Gemini is a backup only, so a Gemini outage never slows this down.
             String raw;
             try {
-                raw = geminiSearchService.generateText(prompt);
-            } catch (Exception geminiError) {
-                if (!groqService.isEnabled()) throw geminiError;
-                log.warn("Gemini failed ({}), falling back to Groq", geminiError.getMessage());
+                if (!groqService.isEnabled()) throw new IllegalStateException("Groq not enabled");
                 raw = groqService.generateText(prompt);
+            } catch (Exception groqError) {
+                log.warn("Groq failed ({}), falling back to Gemini", groqError.getMessage());
+                raw = geminiSearchService.generateText(prompt);
             }
 
             String jsonStr = raw != null ? raw.trim() : "";
@@ -382,7 +384,7 @@ public class ProductAISearchController {
                     usedProvider = fallback.provider + "-fallback";
                 }
             } else {
-                // Default: Gemini first, Groq (Whisper) automatically if Gemini fails
+                // Default: Groq (Whisper) first, Gemini automatically if Groq fails
                 TranscriptionResult result = transcribeWithGeminiOrGroq(audioBytes, mimeType, audio.getOriginalFilename(), context);
                 transcribed = result.text;
                 usedProvider = result.provider;
@@ -406,19 +408,19 @@ public class ProductAISearchController {
     private record TranscriptionResult(String text, String provider) {}
 
     /**
-     * Transcribes with Gemini; if Gemini throws (quota/key issue), automatically
-     * falls back to Groq's Whisper-compatible endpoint so voice entry keeps working.
+     * Transcribes with Groq's Whisper endpoint first — fast and currently the
+     * reliable provider in prod. Falls back to Gemini only if Groq is disabled
+     * or fails, so a Gemini outage never slows voice entry down.
      */
     private TranscriptionResult transcribeWithGeminiOrGroq(byte[] audioBytes, String mimeType, String filename, String context) {
-        try {
-            return new TranscriptionResult(transcribeWithGemini(audioBytes, mimeType, context), "gemini");
-        } catch (Exception geminiError) {
-            if (!groqService.isEnabled()) {
-                throw geminiError;
+        if (groqService.isEnabled()) {
+            try {
+                return new TranscriptionResult(groqService.transcribeAudio(audioBytes, filename), "groq");
+            } catch (Exception groqError) {
+                log.warn("Groq audio transcription failed ({}), falling back to Gemini", groqError.getMessage());
             }
-            log.warn("Gemini audio transcription failed ({}), falling back to Groq Whisper", geminiError.getMessage());
-            return new TranscriptionResult(groqService.transcribeAudio(audioBytes, filename), "groq");
         }
+        return new TranscriptionResult(transcribeWithGemini(audioBytes, mimeType, context), "gemini");
     }
 
     /**
