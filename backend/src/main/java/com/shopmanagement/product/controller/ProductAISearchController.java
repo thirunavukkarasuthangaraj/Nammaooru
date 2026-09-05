@@ -384,7 +384,7 @@ public class ProductAISearchController {
                     usedProvider = fallback.provider + "-fallback";
                 }
             } else {
-                // Default: Groq (Whisper) first, Gemini automatically if Groq fails
+                // Default: Gemini first (better with code-mixed speech), Groq (Whisper) if Gemini fails
                 TranscriptionResult result = transcribeWithGeminiOrGroq(audioBytes, mimeType, audio.getOriginalFilename(), context);
                 transcribed = result.text;
                 usedProvider = result.provider;
@@ -408,19 +408,22 @@ public class ProductAISearchController {
     private record TranscriptionResult(String text, String provider) {}
 
     /**
-     * Transcribes with Groq's Whisper endpoint first — fast and currently the
-     * reliable provider in prod. Falls back to Gemini only if Groq is disabled
-     * or fails, so a Gemini outage never slows voice entry down.
+     * Transcribes with Gemini first — its multimodal understanding handles
+     * code-mixed Tamil/English speech far better than raw Whisper, which was
+     * observed hallucinating fluent-sounding text in the wrong language entirely
+     * on short mixed-language clips. Falls back to Groq's Whisper only if Gemini
+     * fails, so at least something works during a Gemini outage.
      */
     private TranscriptionResult transcribeWithGeminiOrGroq(byte[] audioBytes, String mimeType, String filename, String context) {
-        if (groqService.isEnabled()) {
-            try {
-                return new TranscriptionResult(groqService.transcribeAudio(audioBytes, filename), "groq");
-            } catch (Exception groqError) {
-                log.warn("Groq audio transcription failed ({}), falling back to Gemini", groqError.getMessage());
+        try {
+            return new TranscriptionResult(transcribeWithGemini(audioBytes, mimeType, context), "gemini");
+        } catch (Exception geminiError) {
+            if (!groqService.isEnabled()) {
+                throw geminiError;
             }
+            log.warn("Gemini audio transcription failed ({}), falling back to Groq Whisper", geminiError.getMessage());
+            return new TranscriptionResult(groqService.transcribeAudio(audioBytes, filename), "groq");
         }
-        return new TranscriptionResult(transcribeWithGemini(audioBytes, mimeType, context), "gemini");
     }
 
     /**

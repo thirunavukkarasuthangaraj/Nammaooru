@@ -67,6 +67,8 @@ export class DailyUpdatesComponent implements OnDestroy {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
 
+  viewMode: 'sheet' | 'card' = 'sheet';
+
   groups: ProductGroup[] = [];
   activeGroupKey: string | null = null;
   modified: Map<number, DailyUpdateProduct> = new Map();

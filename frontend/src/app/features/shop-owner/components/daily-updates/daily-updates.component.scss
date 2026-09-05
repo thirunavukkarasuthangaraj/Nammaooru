@@ -239,7 +239,41 @@
   font-size: 14px;
 }
 
-// ---------- Product group cards ----------
+// ---------- View toggle ----------
+
+.view-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    &.active {
+      background: var(--primary-500);
+      border-color: var(--primary-500);
+      color: #fff;
+    }
+  }
+}
+
+// ---------- Card view ----------
 
 .product-group {
   background: var(--surface);
@@ -363,6 +397,167 @@
 
     &.invalid {
       border-color: var(--error-500);
+    }
+
+    &.suggested {
+      border-color: var(--primary-300);
+      background: var(--primary-50);
+    }
+  }
+}
+
+// ---------- Spreadsheet ----------
+
+.sheet-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px var(--shadow);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.sheet {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 10px 14px;
+    background: var(--surface-variant);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  td {
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
+    vertical-align: middle;
+  }
+
+  td:last-child {
+    border-right: none;
+  }
+
+  tbody tr:not(.group-row):nth-child(even) {
+    background: var(--surface-variant);
+  }
+
+  tr.modified {
+    background: var(--warning-50) !important;
+  }
+
+  .col-product {
+    width: 32%;
+  }
+
+  .col-pack {
+    width: 18%;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .col-price {
+    width: 25%;
+  }
+
+  // Section row: product name spans the row, pack-size rows follow directly below it
+  tr.group-row td {
+    padding: 8px 14px;
+    background: var(--primary-50);
+    border-bottom: 1px solid var(--primary-100);
+    border-right: none;
+
+    img {
+      width: 22px;
+      height: 22px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      vertical-align: middle;
+      margin-right: 8px;
+      background: var(--surface);
+    }
+
+    .group-name {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--primary-700);
+    }
+
+    .group-count {
+      margin-left: 8px;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+  }
+
+  .price-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .delta {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+
+    &.up {
+      color: var(--error-600);
+    }
+
+    &.down {
+      color: var(--success-600);
+    }
+  }
+
+  .suggested-tag {
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--primary-100);
+    color: var(--primary-700);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    white-space: nowrap;
+  }
+
+  input[type="number"] {
+    width: 88px;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    color: var(--text-primary);
+    background: transparent;
+    transition: all 0.15s ease;
+
+    &:hover {
+      border-color: var(--border);
+      background: var(--surface);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary-400);
+      background: var(--surface);
+      box-shadow: 0 0 0 2px var(--primary-100);
+    }
+
+    &.invalid {
+      border-color: var(--error-500);
+      background: var(--error-50);
     }
 
     &.suggested {

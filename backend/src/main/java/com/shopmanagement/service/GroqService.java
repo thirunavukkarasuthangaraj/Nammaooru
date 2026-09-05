@@ -122,6 +122,14 @@ public class GroqService {
                 }
             });
             body.add("model", whisperModel);
+            // Without a language hint, Whisper auto-detects from the audio and short/
+            // code-mixed (Tamil+English) clips can get misdetected as an unrelated
+            // language entirely, producing fluent-sounding garbage. Pin it to English
+            // and bias it toward this exact phrase shape with a context prompt.
+            body.add("language", "en");
+            body.add("prompt", "A shop owner saying a grocery item name, its pack size " +
+                    "(like 1kg, 500g), and a price in rupees, e.g. \"onion 1kg 45\". " +
+                    "Some words may be Tamil spelled phonetically in English, e.g. \"vengayam\".");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);

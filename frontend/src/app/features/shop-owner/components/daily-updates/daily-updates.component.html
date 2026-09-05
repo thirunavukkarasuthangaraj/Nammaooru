@@ -77,54 +77,119 @@
     Type at least 2 letters of a product name above to start
   </div>
 
-  <div class="product-group" *ngFor="let group of visibleGroups">
-    <div class="group-header">
-      <img [src]="getProductImageUrl(group.imageUrl)" alt="">
-      <span class="group-name">{{ group.displayName }}</span>
-      <span class="group-count">{{ group.rows.length }} pack size(s)</span>
-    </div>
+  <div class="view-toggle" *ngIf="visibleGroups.length > 0">
+    <button [class.active]="viewMode === 'sheet'" (click)="viewMode = 'sheet'">
+      <mat-icon>table_rows</mat-icon> Sheet
+    </button>
+    <button [class.active]="viewMode === 'card'" (click)="viewMode = 'card'">
+      <mat-icon>view_agenda</mat-icon> Cards
+    </button>
+  </div>
 
-    <table class="results-table">
+  <div class="sheet-wrap" *ngIf="visibleGroups.length > 0 && viewMode === 'sheet'">
+    <table class="sheet">
       <thead>
         <tr>
-          <th>Pack Size</th>
-          <th>Existing Price</th>
-          <th>Base Price</th>
+          <th class="col-product">Product</th>
+          <th class="col-pack">Pack Size</th>
+          <th class="col-price">Existing Price</th>
+          <th class="col-price">Base Price</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let row of group.rows" [class.modified]="isModified(row)">
-          <td class="unit">{{ row.unitLabel || 'Standard pack' }}</td>
-          <td>
-            <div class="price-cell">
+        <ng-container *ngFor="let group of visibleGroups">
+          <tr class="group-row">
+            <td colspan="4">
+              <img [src]="getProductImageUrl(group.imageUrl)" alt="">
+              <span class="group-name">{{ group.displayName }}</span>
+              <span class="group-count">{{ group.rows.length }} pack size(s)</span>
+            </td>
+          </tr>
+          <tr *ngFor="let row of group.rows" [class.modified]="isModified(row)">
+            <td class="col-product"></td>
+            <td class="col-pack">{{ row.unitLabel || 'Standard pack' }}</td>
+            <td class="col-price">
+              <div class="price-cell">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="row.price"
+                  (ngModelChange)="onPriceChange(row, $event)"
+                  [class.invalid]="!isValidPrice(row.price)"
+                  [class.suggested]="row.suggested">
+                <span class="suggested-tag" *ngIf="row.suggested" title="AI-estimated from the pack size you gave — review before saving">AI est.</span>
+                <span class="delta" *ngIf="isModified(row) && priceDelta(row) !== 0"
+                      [class.up]="priceDelta(row) > 0" [class.down]="priceDelta(row) < 0">
+                  was {{ row.originalValues.price }} ({{ priceDelta(row) > 0 ? '+' : '' }}{{ priceDelta(row) }})
+                </span>
+              </div>
+            </td>
+            <td class="col-price">
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                [ngModel]="row.price"
-                (ngModelChange)="onPriceChange(row, $event)"
-                [class.invalid]="!isValidPrice(row.price)"
-                [class.suggested]="row.suggested">
-              <span class="suggested-tag" *ngIf="row.suggested" title="AI-estimated from the pack size you gave — review before saving">AI est.</span>
-              <span class="delta" *ngIf="isModified(row) && priceDelta(row) !== 0"
-                    [class.up]="priceDelta(row) > 0" [class.down]="priceDelta(row) < 0">
-                was {{ row.originalValues.price }} ({{ priceDelta(row) > 0 ? '+' : '' }}{{ priceDelta(row) }})
-              </span>
-            </div>
-          </td>
-          <td>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="row.originalPrice"
-              (ngModelChange)="onBasePriceChange(row, $event)"
-              [class.invalid]="row.originalPrice !== null && !isValidPrice(row.originalPrice)">
-          </td>
-        </tr>
+                [ngModel]="row.originalPrice"
+                (ngModelChange)="onBasePriceChange(row, $event)"
+                [class.invalid]="row.originalPrice !== null && !isValidPrice(row.originalPrice)">
+            </td>
+          </tr>
+        </ng-container>
       </tbody>
     </table>
   </div>
+
+  <ng-container *ngIf="viewMode === 'card'">
+    <div class="product-group" *ngFor="let group of visibleGroups">
+      <div class="group-header">
+        <img [src]="getProductImageUrl(group.imageUrl)" alt="">
+        <span class="group-name">{{ group.displayName }}</span>
+        <span class="group-count">{{ group.rows.length }} pack size(s)</span>
+      </div>
+
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Pack Size</th>
+            <th>Existing Price</th>
+            <th>Base Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of group.rows" [class.modified]="isModified(row)">
+            <td class="unit">{{ row.unitLabel || 'Standard pack' }}</td>
+            <td>
+              <div class="price-cell">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="row.price"
+                  (ngModelChange)="onPriceChange(row, $event)"
+                  [class.invalid]="!isValidPrice(row.price)"
+                  [class.suggested]="row.suggested">
+                <span class="suggested-tag" *ngIf="row.suggested" title="AI-estimated from the pack size you gave — review before saving">AI est.</span>
+                <span class="delta" *ngIf="isModified(row) && priceDelta(row) !== 0"
+                      [class.up]="priceDelta(row) > 0" [class.down]="priceDelta(row) < 0">
+                  was {{ row.originalValues.price }} ({{ priceDelta(row) > 0 ? '+' : '' }}{{ priceDelta(row) }})
+                </span>
+              </div>
+            </td>
+            <td>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="row.originalPrice"
+                (ngModelChange)="onBasePriceChange(row, $event)"
+                [class.invalid]="row.originalPrice !== null && !isValidPrice(row.originalPrice)">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
 
   <button class="clear-list-btn" *ngIf="groups.length > 0" (click)="clearList()">Clear list</button>
 
