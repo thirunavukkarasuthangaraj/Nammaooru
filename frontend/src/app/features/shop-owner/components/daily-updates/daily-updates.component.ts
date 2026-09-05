@@ -285,7 +285,9 @@ export class DailyUpdatesComponent implements OnDestroy {
         if (row.id === anchor.id || row.sortWeight <= 0 || isManuallyEdited) {
           return;
         }
-        row.price = Math.round(pricePerGram * row.sortWeight * 100) / 100;
+        // Round to the nearest whole rupee — Indian grocery pricing is
+        // almost always whole numbers, not paisa-level fractions.
+        row.price = Math.round(pricePerGram * row.sortWeight);
         row.suggested = true;
         this.markModified(row);
       });
