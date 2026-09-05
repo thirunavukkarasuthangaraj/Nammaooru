@@ -245,8 +245,6 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   };
   private lastKnownFailedOrders = 0;
 
-  // Cache validity - only sync from server if cache is older than this
-  private readonly CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5 minutes
   private readonly POS_CACHE_TIMESTAMP_KEY = 'pos_products_last_sync';
   // Delta sync: stale-cache refreshes fetch only changed products; a heavy full
   // re-download happens at most once a day (catches hard-deleted rows the delta can't see)
@@ -509,16 +507,22 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     this.initSyncStatus();
     this.initSearch();
     this.initBarcodeScanner();
-    this.loadProducts().then(() => {
+
+    // Products may have been added/edited on another screen (e.g. Add Product)
+    // since the in-memory warm cache was populated - bypass it and read the
+    // freshly-updated IndexedDB just this once instead of firing a second,
+    // overlapping loadProducts() call after the fact.
+    const productsChangedElsewhere = localStorage.getItem('pos_products_changed') === 'true';
+    if (productsChangedElsewhere) {
+      localStorage.removeItem('pos_products_changed');
+    }
+    this.loadProducts(productsChangedElsewhere).then(() => {
       // Order Management handoff first: when it fills the cart, the refresh
       // backup restore below skips itself (it never overwrites a non-empty cart)
       this.applyReAddOrder();
       this.restoreCartBackup();
     });
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
-
-    // Check if products were added while away - force reload from IndexedDB
-    this.checkForProductChanges();
 
     this.autoSyncOnStartup();
   }
@@ -541,25 +545,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       const { synced } = await this.syncService.runSyncSequence();
 
       if (synced > 0) {
-        await this.loadProducts();
+        await this.syncProductsInBackground();
         this.swal.toast(`${synced} offline record(s) synced to server`, 'success');
       }
     } catch (error) {
       console.error('Startup sync failed (will retry on manual sync):', error);
-    }
-  }
-
-  /**
-   * Check if products were added/changed while user was on another screen
-   * This handles cases where ngOnInit doesn't re-run (component reuse)
-   */
-  private checkForProductChanges(): void {
-    const productsChanged = localStorage.getItem('pos_products_changed');
-    if (productsChanged === 'true') {
-      console.log('POS: Products were changed, reloading from IndexedDB...');
-      localStorage.removeItem('pos_products_changed');
-      // Force reload from IndexedDB to pick up new products
-      this.loadProducts();
     }
   }
 
@@ -1004,27 +994,27 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Load products - first from local cache, then sync from server
+   * Load products - first from local cache, then sync from server.
+   * Offline-first: once a catalog is cached, simply re-opening this screen
+   * must never trigger a network call on its own - a shop owner switching
+   * screens while billing was re-triggering a server sync every few minutes,
+   * which is what made POS feel slow. The server is only asked for data when
+   * there is truly nothing cached yet, or the caller explicitly requests it
+   * (manual sync, or a product changed on another screen).
    */
-  async loadProducts(): Promise<void> {
+  async loadProducts(bypassWarmCache: boolean = false): Promise<void> {
     this.isLoading = true;
     console.log('Loading products for POS...');
 
     // Instant re-entry: reuse the in-memory catalog kept by PosProductCacheService
     // from the previous visit instead of re-reading IndexedDB. In-place edits
     // (stock, price) share the same array, so nothing is lost across navigation.
-    const warmProducts = this.shopId ? this.posProductCache.getFor(this.shopId) : null;
+    const warmProducts = (!bypassWarmCache && this.shopId) ? this.posProductCache.getFor(this.shopId) : null;
     if (warmProducts && warmProducts.length > 0) {
       this.products = warmProducts;
       this.filteredProducts = this.sortProductsWithCartFirst(this.products);
       this.isLoading = false;
       console.log(`POS: reusing ${this.products.length} products from memory`);
-      if (navigator.onLine) {
-        const lastSyncTime = parseInt(localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY) || '0', 10);
-        if (Date.now() - lastSyncTime > this.CACHE_VALIDITY_MS) {
-          this.syncProductsInBackground();
-        }
-      }
       return;
     }
 
@@ -1130,24 +1120,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           }
         }
 
-        // Sync from server if: cache is stale OR no active products found
-        if (navigator.onLine) {
-          const lastSync = localStorage.getItem(this.POS_CACHE_TIMESTAMP_KEY);
-          const lastSyncTime = lastSync ? parseInt(lastSync, 10) : 0;
-          const cacheAge = Date.now() - lastSyncTime;
-          const hasNoActiveProducts = this.products.length === 0;
-
-          if (hasNoActiveProducts) {
-            // No active products - force load from server immediately
-            console.log('POS: No active products in cache, loading from server...');
-            this.loadProductsFromServer();
-            return;
-          } else if (cacheAge > this.CACHE_VALIDITY_MS) {
-            console.log(`POS cache is stale (age: ${Math.round(cacheAge / 1000)}s), syncing from server...`);
-            this.syncProductsInBackground();
-          } else {
-            console.log(`POS using cached data (age: ${Math.round(cacheAge / 1000)}s, max: ${this.CACHE_VALIDITY_MS / 1000}s)`);
-          }
+        // Only hit the server if the cache genuinely has nothing usable in it.
+        if (navigator.onLine && this.products.length === 0) {
+          console.log('POS: No active products in cache, loading from server...');
+          this.loadProductsFromServer();
         }
         return;
       }
@@ -3454,8 +3430,9 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // (orders LAST so offline-created products have real server IDs first)
       const { synced: totalSynced, failed: totalFailed } = await this.syncService.runSyncSequence();
 
-      // Refresh products
-      await this.loadProducts();
+      // Explicit refresh: this is the one place a shop owner asks to hit the
+      // server on demand, so pull real changes rather than reusing the cache.
+      await this.syncProductsInBackground();
       this.swal.close();
 
       if (totalSynced > 0 || totalFailed > 0) {
@@ -3529,7 +3506,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       } else {
         this.swal.success('All synced', `${succeeded} bill(s) synced successfully.`);
       }
-      await this.loadProducts();
+      // Retried orders may have changed stock on the server - pull that now.
+      await this.syncProductsInBackground();
     } else if (result.isDenied) {
       const confirmResult = await this.swal.confirmDelete(`${failed.length} failed bill(s)`);
       if (confirmResult.isConfirmed) {
