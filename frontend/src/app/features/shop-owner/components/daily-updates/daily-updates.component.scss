@@ -436,12 +436,14 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: 0 1px 3px var(--shadow);
-  overflow: hidden;
   margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
   font-size: 13.5px;
 
@@ -651,6 +653,30 @@
     padding: 16px;
   }
 
+  .quick-entry-bar {
+    flex-wrap: wrap;
+
+    input {
+      order: 1;
+      width: 100%;
+      flex-basis: 100%;
+    }
+
+    .go-btn {
+      order: 2;
+      flex: 1;
+    }
+  }
+
+  .list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+
+    .clear-list-btn-top {
+      align-self: flex-end;
+    }
+  }
+
   .results-table {
     th, td {
       padding: 8px 10px;
@@ -658,6 +684,18 @@
 
     input[type="number"] {
       width: 76px;
+    }
+  }
+
+  .sheet {
+    min-width: 420px;
+
+    th, td {
+      padding: 8px 10px;
+    }
+
+    input[type="number"] {
+      width: 70px;
     }
   }
 }
