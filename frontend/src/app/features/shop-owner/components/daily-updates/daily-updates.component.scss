@@ -152,11 +152,34 @@
 
 // ---------- Suggestion chips ----------
 
+.list-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  .clear-list-btn-top {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    padding: 6px 14px;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--error-600);
+      border-color: var(--error-300);
+    }
+  }
+}
+
 .suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 18px;
 
   .chip {
     display: flex;
@@ -566,20 +589,6 @@
   }
 }
 
-.clear-list-btn {
-  display: block;
-  margin: 0 0 16px auto;
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  font-size: 12.5px;
-  text-decoration: underline;
-  cursor: pointer;
-
-  &:hover {
-    color: var(--text-secondary);
-  }
-}
 
 // ---------- Action bar ----------
 

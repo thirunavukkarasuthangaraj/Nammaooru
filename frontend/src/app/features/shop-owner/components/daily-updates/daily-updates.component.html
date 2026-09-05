@@ -42,21 +42,24 @@
       autocomplete="off">
   </div>
 
-  <div class="suggestions" *ngIf="showSuggestions">
-    <button
-      class="chip"
-      [class.active]="activeGroupKey === null"
-      (click)="activeGroupKey = null">
-      All ({{ groups.length }})
-    </button>
-    <button
-      *ngFor="let g of groups"
-      class="chip"
-      [class.active]="activeGroupKey === g.key"
-      (click)="selectGroup(g.key)">
-      {{ g.displayName }}
-      <span class="chip-count">{{ g.rows.length }}</span>
-    </button>
+  <div class="list-toolbar" *ngIf="groups.length > 0">
+    <div class="suggestions" *ngIf="showSuggestions">
+      <button
+        class="chip"
+        [class.active]="activeGroupKey === null"
+        (click)="activeGroupKey = null">
+        All ({{ groups.length }})
+      </button>
+      <button
+        *ngFor="let g of groups"
+        class="chip"
+        [class.active]="activeGroupKey === g.key"
+        (click)="selectGroup(g.key)">
+        {{ g.displayName }}
+        <span class="chip-count">{{ g.rows.length }}</span>
+      </button>
+    </div>
+    <button class="clear-list-btn-top" (click)="clearList()">Clear list</button>
   </div>
 
   <div class="loading" *ngIf="loading">
@@ -190,8 +193,6 @@
       </table>
     </div>
   </ng-container>
-
-  <button class="clear-list-btn" *ngIf="groups.length > 0" (click)="clearList()">Clear list</button>
 
   <div class="action-bar" *ngIf="modifiedCount > 0">
     <span class="modified-count">{{ modifiedCount }} product(s) changed</span>

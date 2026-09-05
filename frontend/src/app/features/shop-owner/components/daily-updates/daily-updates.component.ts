@@ -272,15 +272,17 @@ export class DailyUpdatesComponent implements OnDestroy {
   }
 
   // Given one row's price just changed, proportionally scale every OTHER row
-  // in the same group by weight ratio (e.g. 1kg=100 -> 500g suggested as 50),
-  // skipping any sibling that already has its own unsaved manual edit so we
-  // never clobber something the owner deliberately typed.
+  // in the same group by weight ratio (e.g. 1kg=100 -> 500g suggested as 50).
+  // A sibling the owner has manually typed a value into is left alone; a
+  // sibling only holding an earlier AI suggestion is always refreshed to the
+  // latest number, since a stale suggestion is never worth protecting.
   private suggestSiblingPrices(group: ProductGroup, anchor: DailyUpdateProduct): void {
     const anchorGrams = anchor.sortWeight;
     if (anchorGrams > 0) {
       const pricePerGram = anchor.price / anchorGrams;
       group.rows.forEach(row => {
-        if (row.id === anchor.id || row.sortWeight <= 0 || this.modified.has(row.id)) {
+        const isManuallyEdited = this.modified.has(row.id) && !row.suggested;
+        if (row.id === anchor.id || row.sortWeight <= 0 || isManuallyEdited) {
           return;
         }
         row.price = Math.round(pricePerGram * row.sortWeight * 100) / 100;
