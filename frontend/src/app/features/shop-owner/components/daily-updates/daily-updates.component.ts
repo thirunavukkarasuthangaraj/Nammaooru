@@ -161,7 +161,8 @@ export class DailyUpdatesComponent implements OnDestroy {
       const formData = new FormData();
       formData.append('audio', blob, 'entry.webm');
       const response: any = await this.http.post(
-        `${this.apiUrl}/v1/products/search/voice-audio`, formData
+        `${this.apiUrl}/v1/products/search/voice-audio`, formData,
+        { params: { context: 'price-entry' } }
       ).pipe(takeUntil(this.destroy$)).toPromise();
 
       const transcript = response?.data?.transcription?.trim();

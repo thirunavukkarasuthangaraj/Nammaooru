@@ -356,10 +356,11 @@ public class ProductAISearchController {
      */
     @PostMapping("/voice-audio")
     public ResponseEntity<ApiResponse<Map<String, Object>>> transcribeVoiceAudio(
-            @RequestParam("audio") MultipartFile audio
+            @RequestParam("audio") MultipartFile audio,
+            @RequestParam(name = "context", defaultValue = "grocery-list") String context
     ) {
-        log.info("Voice audio transcription: size={}KB, type={}, provider={}",
-                audio.getSize() / 1024, audio.getContentType(), transcriptionProvider);
+        log.info("Voice audio transcription: size={}KB, type={}, provider={}, context={}",
+                audio.getSize() / 1024, audio.getContentType(), transcriptionProvider, context);
 
         try {
             byte[] audioBytes = audio.getBytes();
@@ -373,16 +374,18 @@ public class ProductAISearchController {
                 transcribed = openAITranscriptionService.transcribeAudio(audioBytes, mimeType);
                 usedProvider = "openai";
 
-                // Fallback to Gemini if OpenAI fails
+                // Fallback to Gemini/Groq if OpenAI fails
                 if (transcribed == null || transcribed.isBlank()) {
-                    log.warn("OpenAI Whisper returned empty, falling back to Gemini");
-                    transcribed = transcribeWithGemini(audioBytes, mimeType);
-                    usedProvider = "gemini-fallback";
+                    log.warn("OpenAI Whisper returned empty, falling back to Gemini/Groq");
+                    TranscriptionResult fallback = transcribeWithGeminiOrGroq(audioBytes, mimeType, audio.getOriginalFilename(), context);
+                    transcribed = fallback.text;
+                    usedProvider = fallback.provider + "-fallback";
                 }
             } else {
-                // Default: use Gemini
-                transcribed = transcribeWithGemini(audioBytes, mimeType);
-                usedProvider = "gemini";
+                // Default: Gemini first, Groq (Whisper) automatically if Gemini fails
+                TranscriptionResult result = transcribeWithGeminiOrGroq(audioBytes, mimeType, audio.getOriginalFilename(), context);
+                transcribed = result.text;
+                usedProvider = result.provider;
             }
 
             transcribed = transcribed != null ? transcribed.trim() : "";
@@ -400,11 +403,36 @@ public class ProductAISearchController {
         }
     }
 
+    private record TranscriptionResult(String text, String provider) {}
+
+    /**
+     * Transcribes with Gemini; if Gemini throws (quota/key issue), automatically
+     * falls back to Groq's Whisper-compatible endpoint so voice entry keeps working.
+     */
+    private TranscriptionResult transcribeWithGeminiOrGroq(byte[] audioBytes, String mimeType, String filename, String context) {
+        try {
+            return new TranscriptionResult(transcribeWithGemini(audioBytes, mimeType, context), "gemini");
+        } catch (Exception geminiError) {
+            if (!groqService.isEnabled()) {
+                throw geminiError;
+            }
+            log.warn("Gemini audio transcription failed ({}), falling back to Groq Whisper", geminiError.getMessage());
+            return new TranscriptionResult(groqService.transcribeAudio(audioBytes, filename), "groq");
+        }
+    }
+
     /**
      * Transcribe audio using Gemini Vision API
      */
-    private String transcribeWithGemini(byte[] audioBytes, String mimeType) {
-        String prompt = "Listen to this audio clip. The person is speaking in Tamil, English, or Tanglish (mixed). " +
+    private String transcribeWithGemini(byte[] audioBytes, String mimeType, String context) {
+        String prompt = "price-entry".equals(context)
+                ? "Listen to this audio clip. A shop owner is speaking a quick price update for a grocery item, " +
+                    "in Tamil, English, or Tanglish (mixed). Transcribe the FULL sentence as plain text, " +
+                    "keeping the item name, pack size (like 1kg, 500g), and price exactly as spoken — " +
+                    "do NOT drop the numbers or the price. Translate any Tamil words to English. " +
+                    "Example: they might say something like \"onion 1kg 100 rupees\" or \"vengayam 500 grams 25 rs\". " +
+                    "Return ONLY the transcribed sentence, nothing else."
+                : "Listen to this audio clip. The person is speaking in Tamil, English, or Tanglish (mixed). " +
                 "They are ordering grocery/household products from a shop. " +
                 "Transcribe ONLY the product names and quantities they mention. " +
                 "Return a simple comma-separated list of product names in English. " +

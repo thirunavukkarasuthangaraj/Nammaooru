@@ -5,12 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -40,6 +43,12 @@ public class GroqService {
 
     @Value("${groq.api-url:https://api.groq.com/openai/v1/chat/completions}")
     private String apiUrl;
+
+    @Value("${groq.whisper-model:whisper-large-v3-turbo}")
+    private String whisperModel;
+
+    @Value("${groq.audio-api-url:https://api.groq.com/openai/v1/audio/transcriptions}")
+    private String audioApiUrl;
 
     public GroqService(RestTemplateBuilder restTemplateBuilder, ObjectMapper objectMapper) {
         // Same timeout convention as GeminiSearchService
@@ -91,6 +100,48 @@ public class GroqService {
         } catch (Exception e) {
             log.error("Error calling Groq API: {}", e.getMessage());
             throw new RuntimeException("Failed to generate text with Groq: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Audio transcription via Groq's Whisper-compatible endpoint. Used as a FALLBACK
+     * when Gemini's audio understanding fails (e.g. Gemini quota/key issue) — same
+     * fallback role as generateText plays for text prompts.
+     */
+    public String transcribeAudio(byte[] audioBytes, String filename) {
+        if (!isEnabled()) {
+            throw new IllegalStateException("Groq is not enabled or has no API key");
+        }
+
+        try {
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", new ByteArrayResource(audioBytes) {
+                @Override
+                public String getFilename() {
+                    return filename != null && !filename.isBlank() ? filename : "audio.webm";
+                }
+            });
+            body.add("model", whisperModel);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.setBearerAuth(apiKey);
+
+            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    audioApiUrl, HttpMethod.POST, entity, String.class);
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            String text = root.path("text").asText();
+            if (text != null && !text.trim().isEmpty()) {
+                log.debug("Groq audio transcription received");
+                return text.trim();
+            }
+            throw new RuntimeException("Empty transcription from Groq API");
+        } catch (Exception e) {
+            log.error("Error calling Groq audio transcription API: {}", e.getMessage());
+            throw new RuntimeException("Failed to transcribe audio with Groq: " + e.getMessage(), e);
         }
     }
 }

@@ -94,7 +94,7 @@
       </thead>
       <tbody>
         <tr *ngFor="let row of group.rows" [class.modified]="isModified(row)">
-          <td class="unit">{{ row.unitLabel || '-' }}</td>
+          <td class="unit">{{ row.unitLabel || 'Standard pack' }}</td>
           <td>
             <div class="price-cell">
               <input
