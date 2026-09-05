@@ -156,6 +156,11 @@ export class DailyUpdatesComponent implements OnDestroy {
   }
 
   private async handleRecordedAudio(blob: Blob): Promise<void> {
+    if (blob.size === 0) {
+      this.swalService.toast('No audio captured — check mic permission and try again', 'warning');
+      return;
+    }
+
     this.transcribing = true;
     try {
       const formData = new FormData();
@@ -166,14 +171,17 @@ export class DailyUpdatesComponent implements OnDestroy {
       ).pipe(takeUntil(this.destroy$)).toPromise();
 
       const transcript = response?.data?.transcription?.trim();
+      console.log('[daily-updates] voice-audio response:', response);
       if (!transcript) {
         this.swalService.toast('Could not hear anything — please try again or type instead', 'warning');
         return;
       }
       this.quickEntryText = transcript;
       await this.submitQuickEntry();
-    } catch {
-      this.swalService.toast('Voice transcription failed — please type instead', 'error');
+    } catch (error: any) {
+      console.error('[daily-updates] voice-audio failed:', error);
+      const detail = error?.error?.message || error?.message || `HTTP ${error?.status ?? '?'}`;
+      this.swalService.toast(`Voice transcription failed (${detail}) — please type instead`, 'error');
     } finally {
       this.transcribing = false;
     }
@@ -223,6 +231,7 @@ export class DailyUpdatesComponent implements OnDestroy {
         `${this.apiUrl}/v1/products/search/parse-price-entry`,
         { params: { text } }
       ).pipe(takeUntil(this.destroy$)).toPromise();
+      console.log('[daily-updates] parse-price-entry response:', response);
       const data = response?.data;
       if (!data) {
         return null;
@@ -233,7 +242,8 @@ export class DailyUpdatesComponent implements OnDestroy {
         unit: data.unit || null,
         price: typeof data.price === 'number' ? data.price : null
       };
-    } catch {
+    } catch (error) {
+      console.error('[daily-updates] parse-price-entry failed:', error);
       return null;
     }
   }
