@@ -930,6 +930,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
   private initBarcodeScanner(): void {
     let lastKeyTime = 0;
     let buffer = '';
+    let bufferStartTime = 0;
 
     // Store the handler reference so we can remove it on destroy
     this.barcodeKeyHandler = (event: KeyboardEvent) => {
@@ -953,7 +954,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // barcode ending in garbage "Ente" and never matching a real product - this
       // is why scans silently failed as "not found").
       if (event.key === 'Enter') {
-        if (buffer.length > 5) {
+        // Judge the whole burst by its average ms/char instead of requiring every
+        // single inter-key gap to be under the threshold. A real scanner's total
+        // burst still finishes in well under a barcode-length's worth of human
+        // typing, but a single keystroke landing while the main thread was briefly
+        // busy (image caching, an IndexedDB write, a list re-sort) could push just
+        // one gap over a strict per-key limit and reset the whole buffer - silently
+        // dropping the scan with no "Not Found" popup, which looked like scanning
+        // had randomly stopped working.
+        const elapsed = currentTime - bufferStartTime;
+        const avgMsPerChar = buffer.length > 0 ? elapsed / buffer.length : Infinity;
+        if (buffer.length > 5 && avgMsPerChar < 80) {
           const barcode = buffer;
           buffer = '';
 
@@ -987,9 +998,17 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
 
-      // If typing very fast (< 30ms between keys), it's likely a scanner
-      // Human typing is typically > 50ms between keys
-      buffer = gapMs < 30 ? buffer + event.key : event.key;
+      // Only start a new burst after a genuine pause (someone starting to type
+      // in a field, or a fresh scan) - a generous 300ms so a scanner isn't cut
+      // off mid-barcode by one slightly-delayed keystroke. The average-ms/char
+      // check above (not this per-key gap) is what actually distinguishes a
+      // scan from human typing.
+      if (gapMs > 300 || buffer.length === 0) {
+        buffer = event.key;
+        bufferStartTime = currentTime;
+      } else {
+        buffer += event.key;
+      }
     };
 
     // Listen outside Angular's zone: this handler fires on EVERY keypress on the
