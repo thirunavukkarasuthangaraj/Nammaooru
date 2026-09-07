@@ -486,81 +486,89 @@ public class ShopService {
         
         if (status == Shop.ShopStatus.APPROVED) {
             shop.setIsVerified(true);
-            
-            // Create shop owner user account and send welcome email
-            try {
-                log.info("Starting user creation process for shop: {}", shop.getName());
-                String username = generateUsername(shop.getOwnerName());
-                String temporaryPassword = generateTemporaryPassword();
-                log.info("Generated credentials - Username: {}, Password length: {}", username, temporaryPassword.length());
 
+            try {
                 // Check if user with this email or mobile number already exists
                 User existingUser = authService.findUserByEmail(shop.getOwnerEmail());
                 if (existingUser == null && shop.getOwnerPhone() != null) {
                     existingUser = authService.findUserByMobileNumber(shop.getOwnerPhone());
                 }
-                User shopOwnerUser;
 
-                if (existingUser != null) {
-                    log.info("User already exists with email/mobile: {} - upgrading to SHOP_OWNER role", shop.getOwnerEmail());
-                    // Upgrade existing user to SHOP_OWNER role (don't update email or mobile number)
-                    shopOwnerUser = authService.upgradeUserToShopOwner(existingUser.getEmail(), temporaryPassword);
-                    username = shopOwnerUser.getUsername();  // Use existing username
-                    log.info("Successfully upgraded user: {} to SHOP_OWNER for shop: {}", username, shop.getName());
-                } else {
-                    // Create new SHOP_OWNER user
-                    shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
-                    log.info("Successfully created shop owner user: {} for shop: {}", username, shop.getName());
-                }
-                
-                // Update shop to be owned by the newly created user
-                shop.setCreatedBy(username);
-                shop.setUpdatedBy(username);
-                
-                // Send welcome email with credentials
-                try {
-                    emailService.sendShopOwnerWelcomeEmail(
-                        shop.getOwnerEmail(),
-                        shop.getOwnerName(),
-                        username,  // FIXED: Use the actual generated username
-                        temporaryPassword,
-                        shop.getName()
-                    );
-                    log.info("Welcome email sent successfully to: {} with username: {}", shop.getOwnerEmail(), username);
-                } catch (Exception emailError) {
-                    log.error("Failed to send welcome email to: {} for shop: {}", shop.getOwnerEmail(), shop.getName(), emailError);
-                    // Email failed but user was created - this is a partial success
-                    // Admin should be notified to manually send credentials
-                }
+                if (existingUser != null && existingUser.getRole() == User.UserRole.SHOP_OWNER) {
+                    // The account was already provisioned at registration time
+                    // (self-registered shops now get a login immediately, see
+                    // createShop()/provisionShopOwnerAccount()). Resetting the
+                    // password here would silently log them out of a session
+                    // they're already using — just confirm approval instead.
+                    log.info("Shop owner account already exists for: {} - sending approval notice only (no credential reset)", shop.getOwnerEmail());
+                    shop.setUpdatedBy(existingUser.getUsername());
 
-                // Send SMS with credentials if mobile number is available
-                if (shop.getOwnerPhone() != null && !shop.getOwnerPhone().isEmpty()) {
                     try {
-                        String smsMessage = String.format(
-                            "Welcome to NammaOoru! Your shop '%s' has been approved.\n\n" +
-                            "Login Credentials:\n" +
-                            "Username: %s\n" +
-                            "Password: %s\n\n" +
-                            "Login at: https://nammaoorudelivary.in\n\n" +
-                            "Please change your password after first login.",
-                            shop.getName(),
-                            username,
-                            temporaryPassword
-                        );
+                        emailService.sendShopApprovalEmail(shop.getOwnerEmail(), shop.getOwnerName(), shop.getName(), "APPROVED");
+                    } catch (Exception emailError) {
+                        log.error("Failed to send shop approval email to: {} for shop: {}", shop.getOwnerEmail(), shop.getName(), emailError);
+                    }
+                } else {
+                    // Legacy path: the shop was created directly by an admin, so
+                    // no login exists yet for this owner — create one now.
+                    log.info("Starting user creation process for shop: {}", shop.getName());
+                    String username = generateUsername(shop.getOwnerName());
+                    String temporaryPassword = generateTemporaryPassword();
+                    User shopOwnerUser;
 
-                        smsService.sendCustomSms(shop.getOwnerPhone(), smsMessage, "SHOP_APPROVAL");
-                        log.info("Credentials SMS sent successfully to: {} for shop: {}", shop.getOwnerPhone(), shop.getName());
-                    } catch (Exception smsError) {
-                        log.error("Failed to send credentials SMS to: {} for shop: {}", shop.getOwnerPhone(), shop.getName(), smsError);
-                        // Continue even if SMS fails - email should have the credentials
+                    if (existingUser != null) {
+                        log.info("User already exists with email/mobile: {} - upgrading to SHOP_OWNER role", shop.getOwnerEmail());
+                        shopOwnerUser = authService.upgradeUserToShopOwner(existingUser.getEmail(), temporaryPassword);
+                        username = shopOwnerUser.getUsername();
+                    } else {
+                        shopOwnerUser = authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
+                    }
+                    log.info("Successfully provisioned shop owner user: {} for shop: {}", username, shop.getName());
+
+                    shop.setCreatedBy(username);
+                    shop.setUpdatedBy(username);
+
+                    try {
+                        emailService.sendShopOwnerWelcomeEmail(
+                            shop.getOwnerEmail(),
+                            shop.getOwnerName(),
+                            username,
+                            temporaryPassword,
+                            shop.getName()
+                        );
+                        log.info("Welcome email sent successfully to: {} with username: {}", shop.getOwnerEmail(), username);
+                    } catch (Exception emailError) {
+                        log.error("Failed to send welcome email to: {} for shop: {}", shop.getOwnerEmail(), shop.getName(), emailError);
+                        // Email failed but user was created - this is a partial success
+                        // Admin should be notified to manually send credentials
+                    }
+
+                    if (shop.getOwnerPhone() != null && !shop.getOwnerPhone().isEmpty()) {
+                        try {
+                            String smsMessage = String.format(
+                                "Welcome to NammaOoru! Your shop '%s' has been approved.\n\n" +
+                                "Login Credentials:\n" +
+                                "Username: %s\n" +
+                                "Password: %s\n\n" +
+                                "Login at: https://nammaoorudelivary.in\n\n" +
+                                "Please change your password after first login.",
+                                shop.getName(),
+                                username,
+                                temporaryPassword
+                            );
+
+                            smsService.sendCustomSms(shop.getOwnerPhone(), smsMessage, "SHOP_APPROVAL");
+                            log.info("Credentials SMS sent successfully to: {} for shop: {}", shop.getOwnerPhone(), shop.getName());
+                        } catch (Exception smsError) {
+                            log.error("Failed to send credentials SMS to: {} for shop: {}", shop.getOwnerPhone(), shop.getName(), smsError);
+                            // Continue even if SMS fails - email should have the credentials
+                        }
                     }
                 }
-                
             } catch (Exception e) {
-                log.error("Failed to create user account for shop: {} - Error: {}", shop.getName(), e.getMessage(), e);
-                // Continue with shop approval even if user creation fails
+                log.error("Failed to finalize shop owner account for shop: {} - Error: {}", shop.getName(), e.getMessage(), e);
+                // Continue with shop approval even if account handling fails
                 // This can be handled manually by admin later
-                // If user creation failed, set updatedBy to current admin
                 shop.setUpdatedBy(getCurrentUsername());
             }
         } else {
