@@ -14,6 +14,8 @@ import '../../../core/utils/image_url_helper.dart';
 import '../widgets/deliver_to_picker.dart';
 import 'shop_details_screen.dart';
 import 'shop_registration_screen.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../auth/screens/login_screen.dart';
 
 class ShopListingScreen extends StatefulWidget {
   final String? category;
@@ -433,6 +435,11 @@ class _ShopListingScreenState extends State<ShopListingScreen>
   }
 
   void _openShopRegistration() {
+    final isCustomer = Provider.of<AuthProvider>(context, listen: false).isCustomer;
+    if (!isCustomer) {
+      _promptLoginBeforeRegistration();
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -442,6 +449,39 @@ class _ShopListingScreenState extends State<ShopListingScreen>
         ),
       ),
     );
+  }
+
+  // Shop registration ties into the caller's own verified mobile number, so
+  // they must already be a signed-in, OTP-verified customer before they can
+  // register a shop.
+  Future<void> _promptLoginBeforeRegistration() async {
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Login Required'),
+        content: const Text(
+          'Please log in (or create a free account) with your mobile number first — '
+          "we'll use your verified number as the shop's registered contact.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50), foregroundColor: Colors.white),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Log In'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogin == true && mounted) {
+      await Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+      if (!mounted) return;
+      if (Provider.of<AuthProvider>(context, listen: false).isCustomer) {
+        _openShopRegistration();
+      }
+    }
   }
 
   /// "Deliver to" bar: shows the active delivery location (GPS or a searched

@@ -44,7 +44,9 @@ public class ShopDocumentController {
     }
 
     @PostMapping("/shop/{shopId}/upload")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    // Intentionally open: a self-registered shop's owner has no login yet at
+    // this point (see ShopService.createShop()). ShopDocumentService guards
+    // against abuse by only allowing this while the shop is still PENDING.
     public ResponseEntity<?> uploadDocument(
             @PathVariable Long shopId,
             @RequestParam("documentType") ShopDocument.DocumentType documentType,

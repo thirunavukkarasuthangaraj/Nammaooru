@@ -66,9 +66,4 @@ public class ShopResponse {
     
     private List<ShopImageResponse> images;
     private List<ShopDocumentResponse> documents;
-
-    // Only populated once, in the createShop() response, so the mobile app can
-    // auto-login immediately and jump to document upload. Never re-sent afterwards.
-    private String ownerAccountUsername;
-    private String ownerAccountTemporaryPassword;
 }

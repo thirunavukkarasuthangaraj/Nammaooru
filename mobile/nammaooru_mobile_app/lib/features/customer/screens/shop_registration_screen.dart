@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../core/auth/auth_provider.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../services/shop_api_service.dart';
@@ -56,7 +55,6 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
   // form) unlocks at that point instead of a separate screen/dialog.
   bool _registered = false;
   int? _createdShopId;
-  bool _loggedIn = false;
   final Map<String, File> _docFiles = {};
   final Map<String, bool> _docUploading = {};
   final Set<String> _docUploaded = {};
@@ -70,6 +68,34 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
   bool get _isFood => (widget.category ?? '').toLowerCase() == 'food';
   String get _businessType => _isFood ? 'RESTAURANT' : 'GROCERY';
   String get _businessTypeLabel => _isFood ? 'Food / Restaurant' : 'Grocery';
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillOwnerDetails();
+  }
+
+  // The caller must already be a verified customer to reach this screen
+  // (see ShopListingScreen._openShopRegistration), so pre-fill their details
+  // and lock the phone number to the one they verified via OTP.
+  Future<void> _prefillOwnerDetails() async {
+    try {
+      final response = await ApiClient.get('/users/me');
+      final data = response.data?['data'];
+      if (data == null || !mounted) return;
+
+      final firstName = data['firstName']?.toString() ?? '';
+      final lastName = data['lastName']?.toString() ?? '';
+      setState(() {
+        _ownerNameController.text = [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
+        _ownerEmailController.text = data['email']?.toString() ?? '';
+        _ownerPhoneController.text = data['mobileNumber']?.toString() ?? '';
+      });
+    } catch (e) {
+      // Prefill is a convenience — if it fails, the owner can still type
+      // their details in manually.
+    }
+  }
 
   @override
   void dispose() {
@@ -199,30 +225,16 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
 
       if (response['success'] == true || response['statusCode'] == '0000') {
         final data = response['data'] as Map<String, dynamic>?;
-        final tempPassword = data?['ownerAccountTemporaryPassword']?.toString();
         final shopId = data?['id'];
 
-        if (tempPassword != null && tempPassword.isNotEmpty) {
-          try {
-            _loggedIn = await Provider.of<AuthProvider>(context, listen: false)
-                .login(_ownerPhoneController.text.trim(), tempPassword);
-          } catch (_) {
-            _loggedIn = false;
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _registered = true;
-            _createdShopId = shopId is int ? shopId : int.tryParse(shopId?.toString() ?? '');
-          });
-          Helpers.showSnackBar(
-            context,
-            _loggedIn
-                ? 'Shop submitted! Upload your documents below to complete the application.'
-                : "Shop submitted! We've emailed you login details — upload documents once you log in.",
-          );
-        }
+        setState(() {
+          _registered = true;
+          _createdShopId = shopId is int ? shopId : int.tryParse(shopId?.toString() ?? '');
+        });
+        Helpers.showSnackBar(
+          context,
+          'Shop submitted! Upload your documents below to complete the application.',
+        );
       } else {
         Helpers.showSnackBar(
           context,
@@ -240,8 +252,8 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
   }
 
   Future<void> _pickAndUploadDocument(String documentType, String documentName) async {
-    if (_createdShopId == null || !_loggedIn) {
-      Helpers.showSnackBar(context, 'Please log in with the details we emailed you to upload documents.', isError: true);
+    if (_createdShopId == null) {
+      Helpers.showSnackBar(context, 'Please register your shop before uploading documents.', isError: true);
       return;
     }
 
@@ -314,7 +326,7 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
                 const SizedBox(height: 12),
                 _textField(_ownerEmailController, 'Owner Email', required: true, keyboardType: TextInputType.emailAddress, isEmail: true),
                 const SizedBox(height: 12),
-                _textField(_ownerPhoneController, 'Owner Phone', required: true, keyboardType: TextInputType.phone),
+                _textField(_ownerPhoneController, 'Owner Phone', required: true, keyboardType: TextInputType.phone, readOnly: true),
               ],
             ),
             _sectionCard(
@@ -599,15 +611,18 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
     int maxLines = 1,
     TextInputType? keyboardType,
     bool isEmail = false,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      readOnly: readOnly,
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
+        helperText: readOnly ? 'Verified via OTP — cannot be changed here' : null,
         filled: true,
-        fillColor: const Color(0xFFF8F9FA),
+        fillColor: readOnly ? Colors.grey.shade200 : const Color(0xFFF8F9FA),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),

@@ -59,6 +59,16 @@ public class ShopDocumentService {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + shopId));
 
+        // This endpoint is intentionally open (no login required) so a
+        // self-registered shop owner can upload documents before any admin
+        // account/login exists for them. To limit abuse of that open access
+        // (anyone guessing a shopId could otherwise overwrite another shop's
+        // documents), only allow it while the shop is still awaiting its
+        // initial review.
+        if (shop.getStatus() != Shop.ShopStatus.PENDING) {
+            throw new IllegalStateException("Documents can only be uploaded while the shop is pending review");
+        }
+
         // Validate file
         validateFile(file);
 

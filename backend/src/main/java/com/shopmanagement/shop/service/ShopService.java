@@ -107,61 +107,11 @@ public class ShopService {
             log.error("Failed to send shop registration confirmation email for shop: {}", savedShop.getShopId(), e);
         }
 
-        // Provision the shop owner's login immediately (don't make them wait for
-        // admin approval) so the mobile app can auto-login and route straight to
-        // document upload. See provisionShopOwnerAccount() for details.
-        ShopResponse response = shopMapper.toResponse(savedShop);
-        try {
-            ShopOwnerCredentials credentials = provisionShopOwnerAccount(savedShop);
-            savedShop.setCreatedBy(credentials.username());
-            savedShop.setUpdatedBy(credentials.username());
-            shopRepository.save(savedShop);
-
-            response.setOwnerAccountUsername(credentials.username());
-            response.setOwnerAccountTemporaryPassword(credentials.temporaryPassword());
-
-            emailService.sendShopOwnerWelcomeEmail(
-                    savedShop.getOwnerEmail(),
-                    savedShop.getOwnerName(),
-                    credentials.username(),
-                    credentials.temporaryPassword(),
-                    savedShop.getName()
-            );
-        } catch (Exception e) {
-            log.error("Failed to provision shop owner account at registration for shop: {}", savedShop.getShopId(), e);
-            // Registration itself still succeeds — the owner can request access
-            // via the normal approval flow if this failed.
-        }
-
-        return response;
-    }
-
-    private record ShopOwnerCredentials(String username, String temporaryPassword) {}
-
-    /**
-     * Creates (or upgrades an existing customer to) a SHOP_OWNER account right at
-     * registration time, instead of waiting for admin approval. This lets the
-     * owner log in from the mobile app immediately after submitting the form and
-     * upload verification documents while the shop is still PENDING review.
-     */
-    private ShopOwnerCredentials provisionShopOwnerAccount(Shop shop) {
-        String username = generateUsername(shop.getOwnerName());
-        String temporaryPassword = generateTemporaryPassword();
-
-        User existingUser = authService.findUserByEmail(shop.getOwnerEmail());
-        if (existingUser == null && shop.getOwnerPhone() != null) {
-            existingUser = authService.findUserByMobileNumber(shop.getOwnerPhone());
-        }
-
-        if (existingUser != null) {
-            log.info("User already exists with email/mobile: {} - upgrading to SHOP_OWNER role", shop.getOwnerEmail());
-            User shopOwnerUser = authService.upgradeUserToShopOwner(existingUser.getEmail(), temporaryPassword);
-            username = shopOwnerUser.getUsername();
-        } else {
-            authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
-        }
-
-        return new ShopOwnerCredentials(username, temporaryPassword);
+        // No login account yet — document upload right after registration is
+        // done anonymously (see ShopDocumentController), and the shop owner's
+        // account + credentials are only created once an admin approves the
+        // shop (see updateShopStatus()).
+        return shopMapper.toResponse(savedShop);
     }
 
     @Transactional(readOnly = true)
@@ -528,15 +478,23 @@ public class ShopService {
                     shop.setCreatedBy(username);
                     shop.setUpdatedBy(username);
 
+                    // Log in with the mobile number/email, not the generated
+                    // username — it's what the owner actually remembers, and
+                    // AuthService.authenticate() already accepts either as
+                    // the login identifier.
+                    String loginIdentifier = (shop.getOwnerPhone() != null && !shop.getOwnerPhone().isEmpty())
+                            ? shop.getOwnerPhone()
+                            : shop.getOwnerEmail();
+
                     try {
                         emailService.sendShopOwnerWelcomeEmail(
                             shop.getOwnerEmail(),
                             shop.getOwnerName(),
-                            username,
+                            loginIdentifier,
                             temporaryPassword,
                             shop.getName()
                         );
-                        log.info("Welcome email sent successfully to: {} with username: {}", shop.getOwnerEmail(), username);
+                        log.info("Welcome email sent successfully to: {} with login identifier: {}", shop.getOwnerEmail(), loginIdentifier);
                     } catch (Exception emailError) {
                         log.error("Failed to send welcome email to: {} for shop: {}", shop.getOwnerEmail(), shop.getName(), emailError);
                         // Email failed but user was created - this is a partial success
@@ -553,7 +511,7 @@ public class ShopService {
                                 "Login at: https://nammaoorudelivary.in\n\n" +
                                 "Please change your password after first login.",
                                 shop.getName(),
-                                username,
+                                loginIdentifier,
                                 temporaryPassword
                             );
 
