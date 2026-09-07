@@ -127,10 +127,11 @@ interface LocalBusinessHour {
                 <mat-card-header>
                   <mat-card-title>
                     <span class="day-name">{{ hour.displayName }}</span>
-                    <mat-slide-toggle 
-                      [(ngModel)]="hour.closed" 
+                    <mat-slide-toggle
+                      color="primary"
+                      [ngModel]="!hour.closed"
                       [ngModelOptions]="{standalone: true}"
-                      (change)="onDayToggle(hour)">
+                      (ngModelChange)="onDayToggle(hour, $event)">
                       {{ hour.closed ? 'Closed' : 'Open' }}
                     </mat-slide-toggle>
                   </mat-card-title>
@@ -386,7 +387,7 @@ interface LocalBusinessHour {
     }
 
     .day-card mat-card-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
       color: white;
       border-radius: 8px 8px 0 0;
       padding: 12px 16px;
@@ -451,6 +452,20 @@ interface LocalBusinessHour {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
+    }
+
+    .action-buttons button {
+      color: #2e7d32;
+      border-color: #c8e6c9;
+    }
+
+    .action-buttons button:hover {
+      background-color: #e8f5e9;
+      border-color: #66bb6a;
+    }
+
+    .action-buttons button mat-icon {
+      color: #2e7d32;
     }
 
     .holiday-info {
@@ -740,7 +755,8 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       });
   }
 
-  onDayToggle(hour: LocalBusinessHour): void {
+  onDayToggle(hour: LocalBusinessHour, isOpen: boolean): void {
+    hour.closed = !isOpen;
     if (hour.closed) {
       // Day is now closed, clear times
       hour.open = '';
