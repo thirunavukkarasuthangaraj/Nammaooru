@@ -30,7 +30,7 @@ interface CloneSelection {
             <mat-form-field appearance="outline" class="selector-field">
               <mat-label>Source Shop (copy from)</mat-label>
               <mat-select [(value)]="sourceShopId" (selectionChange)="onSourceShopChange()">
-                <mat-option *ngFor="let shop of shops" [value]="shop.id" [disabled]="shop.id === targetShopId">
+                <mat-option *ngFor="let shop of activeShops" [value]="shop.id" [disabled]="shop.id === targetShopId">
                   {{ shop.name }} ({{ shop.businessType }})
                 </mat-option>
               </mat-select>
@@ -41,10 +41,11 @@ interface CloneSelection {
             <mat-form-field appearance="outline" class="selector-field">
               <mat-label>Target Shop (copy into)</mat-label>
               <mat-select [(value)]="targetShopId">
-                <mat-option *ngFor="let shop of shops" [value]="shop.id" [disabled]="shop.id === sourceShopId">
+                <mat-option *ngFor="let shop of targetShopOptions" [value]="shop.id" [disabled]="shop.id === sourceShopId">
                   {{ shop.name }} ({{ shop.businessType }})
                 </mat-option>
               </mat-select>
+              <mat-hint *ngIf="sourceShop">Showing {{ sourceShop.businessType }} shops first</mat-hint>
             </mat-form-field>
           </div>
         </mat-card-content>
@@ -149,6 +150,25 @@ export class CloneProductsComponent implements OnInit {
       },
       error: (error) => console.error('Error loading shops:', error)
     });
+  }
+
+  // Suspended/inactive shops aren't valid clone sources or targets.
+  get activeShops(): Shop[] {
+    return this.shops.filter(s => s.isActive !== false && s.status !== ('SUSPENDED' as any));
+  }
+
+  get sourceShop(): Shop | undefined {
+    return this.shops.find(s => s.id === this.sourceShopId);
+  }
+
+  // Same business type as the source shop first (e.g. Grocery -> Grocery),
+  // then everything else, so the common case doesn't require scrolling.
+  get targetShopOptions(): Shop[] {
+    const source = this.sourceShop;
+    if (!source) return this.activeShops;
+    const matching = this.activeShops.filter(s => s.businessType === source.businessType);
+    const rest = this.activeShops.filter(s => s.businessType !== source.businessType);
+    return [...matching, ...rest];
   }
 
   onSourceShopChange(): void {

@@ -147,6 +147,44 @@ public class BulkProductImportController {
     }
 
     /**
+     * Admin/Shop Owner - Import a shop's stock items from a Tally "Masters"
+     * XML export (Gateway of Tally > Export > Masters) directly into a shop's
+     * product list. See BulkProductImportService.importFromTallyXml() for the
+     * expected XML shape.
+     */
+    @PostMapping(value = "/tally/{shopId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<BulkImportResponse>> importFromTally(
+            @PathVariable Long shopId,
+            @RequestParam("file") MultipartFile xmlFile) {
+
+        log.info("Importing Tally XML export for shop: {}", shopId);
+
+        if (xmlFile.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("XML file is required"));
+        }
+
+        String filename = xmlFile.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase().endsWith(".xml")) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Invalid file format. Please upload a Tally XML export (.xml)"
+            ));
+        }
+
+        BulkImportResponse response = bulkProductImportService.importFromTallyXml(shopId, xmlFile);
+
+        if (response.getSuccessCount() > 0) {
+            return ResponseEntity.ok(ApiResponse.success(response, "Tally import completed"));
+        }
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(ApiResponse.<BulkImportResponse>builder()
+                .statusCode("PARTIAL")
+                .message("No products were imported successfully. Check the error details.")
+                .data(response)
+                .build()
+        );
+    }
+
+    /**
      * Get Excel template information
      */
     @GetMapping("/template-info")

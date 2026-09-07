@@ -115,6 +115,155 @@ public class BulkProductImportService {
     }
 
     /**
+     * Import stock items from a Tally "Masters" XML export (Gateway of Tally >
+     * Export > Masters) directly into a shop's product list. Reuses the same
+     * per-row create/update logic as the Excel import (processShopProductImport)
+     * — only the parsing step differs.
+     *
+     * Expected shape (Tally's standard Export > Masters format):
+     *   {@code <ENVELOPE><BODY><IMPORTDATA><REQUESTDATA><TALLYMESSAGE>
+     *     <STOCKITEM NAME="...">
+     *       <NAME>Item Name</NAME>
+     *       <PARENT>Stock Group</PARENT>        (mapped to our category)
+     *       <BASEUNITS>Nos</BASEUNITS>
+     *       <OPENINGBALANCE>100 Nos</OPENINGBALANCE>
+     *       <OPENINGRATE>50/Nos</OPENINGRATE>
+     *       <ALIAS>...</ALIAS>                   (mapped to barcode, if present)
+     *     </STOCKITEM>
+     *   </TALLYMESSAGE></REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>}
+     *
+     * If a real Tally export turns out to use a different layout, only
+     * parseTallyXml() below needs to change.
+     */
+    public BulkImportResponse importFromTallyXml(Long shopId, MultipartFile xmlFile) {
+        log.info("Starting Tally XML import for shop: {}", shopId);
+
+        BulkImportResponse response = BulkImportResponse.builder()
+                .totalRows(0)
+                .successCount(0)
+                .failureCount(0)
+                .results(new ArrayList<>())
+                .build();
+
+        try {
+            List<BulkImportRequest> requests = parseTallyXml(xmlFile);
+            response.setTotalRows(requests.size());
+
+            int updatedCount = 0;
+            int createdCount = 0;
+
+            for (BulkImportRequest request : requests) {
+                BulkImportResponse.ImportResult result = self.processShopProductImport(shopId, request, new ArrayList<>());
+                response.addResult(result);
+
+                if ("SUCCESS".equals(result.getStatus())) {
+                    response.setSuccessCount(response.getSuccessCount() + 1);
+                    if (result.isWasUpdated()) {
+                        updatedCount++;
+                    } else {
+                        createdCount++;
+                    }
+                } else {
+                    response.setFailureCount(response.getFailureCount() + 1);
+                }
+            }
+
+            response.setUpdatedCount(updatedCount);
+            response.setCreatedCount(createdCount);
+            response.setMessage(String.format(
+                    "Tally import completed. Total: %d, Success: %d (Created: %d, Updated: %d), Failed: %d",
+                    response.getTotalRows(), response.getSuccessCount(), createdCount, updatedCount, response.getFailureCount()
+            ));
+
+        } catch (Exception e) {
+            log.error("Error during Tally XML import for shop: {}", shopId, e);
+            response.setMessage("Tally import failed: " + e.getMessage());
+        }
+
+        return response;
+    }
+
+    private List<BulkImportRequest> parseTallyXml(MultipartFile xmlFile) throws Exception {
+        List<BulkImportRequest> requests = new ArrayList<>();
+
+        javax.xml.parsers.DocumentBuilderFactory factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        javax.xml.parsers.DocumentBuilder builder = factory.newDocumentBuilder();
+        org.w3c.dom.Document doc = builder.parse(xmlFile.getInputStream());
+        doc.getDocumentElement().normalize();
+
+        org.w3c.dom.NodeList stockItems = doc.getElementsByTagName("STOCKITEM");
+        int rowNum = 0;
+
+        for (int i = 0; i < stockItems.getLength(); i++) {
+            org.w3c.dom.Element item = (org.w3c.dom.Element) stockItems.item(i);
+            rowNum++;
+
+            String name = getTagText(item, "NAME");
+            if ((name == null || name.isBlank()) && item.hasAttribute("NAME")) {
+                name = item.getAttribute("NAME");
+            }
+            if (name == null || name.isBlank()) {
+                continue; // skip items with no usable name
+            }
+
+            String parent = getTagText(item, "PARENT");
+            String baseUnit = getTagText(item, "BASEUNITS");
+            String alias = getTagText(item, "ALIAS");
+
+            BigDecimal openingRate = parseTallyAmount(getTagText(item, "OPENINGRATE"));
+            Integer openingBalance = parseTallyQuantity(getTagText(item, "OPENINGBALANCE"));
+
+            requests.add(BulkImportRequest.builder()
+                    .name(name.trim())
+                    .categoryName((parent != null && !parent.isBlank()) ? parent.trim() : "General")
+                    .baseUnit((baseUnit != null && !baseUnit.isBlank()) ? baseUnit.trim() : "piece")
+                    .barcode((alias != null && !alias.isBlank()) ? alias.trim() : null)
+                    .sellingPrice(openingRate)
+                    .originalPrice(openingRate)
+                    .stockQuantity(openingBalance != null ? openingBalance : 0)
+                    .trackInventory(true)
+                    .isAvailable(true)
+                    .rowNumber(rowNum)
+                    .build());
+        }
+
+        log.info("Parsed {} stock item(s) from Tally XML export", requests.size());
+        return requests;
+    }
+
+    private String getTagText(org.w3c.dom.Element parent, String tagName) {
+        org.w3c.dom.NodeList nodes = parent.getElementsByTagName(tagName);
+        if (nodes.getLength() == 0) return null;
+        String text = nodes.item(0).getTextContent();
+        return text != null ? text.trim() : null;
+    }
+
+    /** Tally rates are often formatted like "50/Nos" — extract the numeric part before the slash. */
+    private BigDecimal parseTallyAmount(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String numeric = raw.split("/")[0].replaceAll("[^0-9.\\-]", "");
+        if (numeric.isBlank()) return null;
+        try {
+            return new BigDecimal(numeric);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Tally quantities are often formatted like "100 Nos" — extract the leading number. */
+    private Integer parseTallyQuantity(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String numeric = raw.trim().split("\\s+")[0].replaceAll("[^0-9.\\-]", "");
+        if (numeric.isBlank()) return null;
+        try {
+            return (int) Double.parseDouble(numeric);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
      * Import master products (admin only)
      * NO transaction management - each service call handles its own transaction
      */
