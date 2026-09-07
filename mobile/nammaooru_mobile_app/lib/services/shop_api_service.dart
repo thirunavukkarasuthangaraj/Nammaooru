@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import '../core/api/api_client.dart';
 import '../core/services/api_service.dart';
 import '../core/utils/logger.dart';
 
@@ -241,6 +244,45 @@ class ShopApiService {
     } catch (e) {
       Logger.e('Failed to register shop', 'SHOP', e);
       rethrow;
+    }
+  }
+
+  // Upload a verification document (owner photo / shop photo / FSSAI certificate)
+  // for a newly registered shop. Requires the caller to be logged in as the
+  // shop's owner (ApiClient attaches the auth token automatically).
+  Future<Map<String, dynamic>> uploadShopDocument({
+    required int shopId,
+    required String documentType,
+    required String documentName,
+    required File file,
+  }) async {
+    try {
+      Logger.api('Uploading shop document: $documentType for shop $shopId');
+
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: file.path.split(Platform.pathSeparator).last,
+        ),
+        'documentType': documentType,
+        'documentName': documentName,
+      });
+
+      final response = await ApiClient.post(
+        '/documents/shop/$shopId/upload',
+        data: formData,
+      );
+
+      return {'success': true, 'data': response.data};
+    } on DioException catch (e) {
+      Logger.e('Failed to upload shop document', 'SHOP', e);
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? e.response?.data?['error'] ?? 'Failed to upload document',
+      };
+    } catch (e) {
+      Logger.e('Failed to upload shop document', 'SHOP', e);
+      return {'success': false, 'message': 'Failed to upload document: $e'};
     }
   }
 

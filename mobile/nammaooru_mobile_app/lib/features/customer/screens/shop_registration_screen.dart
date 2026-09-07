@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../services/shop_api_service.dart';
+import '../../../shared/services/image_service.dart';
 
 /// Lets a customer register their own shop (grocery or food/restaurant),
 /// mirroring the website's "Add New Shop" form. Reachable from the Grocery
@@ -46,6 +50,21 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
   bool _isLocating = false;
   bool _selfDeliveryEnabled = false;
   bool _isSubmitting = false;
+
+  // Set once the shop is created — the document upload section (below the
+  // form) unlocks at that point instead of a separate screen/dialog.
+  bool _registered = false;
+  int? _createdShopId;
+  bool _loggedIn = false;
+  final Map<String, File> _docFiles = {};
+  final Map<String, bool> _docUploading = {};
+  final Set<String> _docUploaded = {};
+
+  static const List<Map<String, String>> _requiredDocuments = [
+    {'type': 'OWNER_PHOTO', 'name': 'Shop Owner Photo', 'hint': 'Clear photo of you, the owner'},
+    {'type': 'SHOP_PHOTO', 'name': 'Shop Photo', 'hint': 'Clear photo of your shop front'},
+    {'type': 'FSSAI_CERTIFICATE', 'name': 'FSSAI Certificate', 'hint': 'Food safety certification document'},
+  ];
 
   bool get _isFood => (widget.category ?? '').toLowerCase() == 'food';
   String get _businessType => _isFood ? 'RESTAURANT' : 'GROCERY';
@@ -178,7 +197,31 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
       if (!mounted) return;
 
       if (response['success'] == true || response['statusCode'] == '0000') {
-        await _showSuccessDialog();
+        final data = response['data'] as Map<String, dynamic>?;
+        final tempPassword = data?['ownerAccountTemporaryPassword']?.toString();
+        final shopId = data?['id'];
+
+        if (tempPassword != null && tempPassword.isNotEmpty) {
+          try {
+            _loggedIn = await Provider.of<AuthProvider>(context, listen: false)
+                .login(_ownerPhoneController.text.trim(), tempPassword);
+          } catch (_) {
+            _loggedIn = false;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _registered = true;
+            _createdShopId = shopId is int ? shopId : int.tryParse(shopId?.toString() ?? '');
+          });
+          Helpers.showSnackBar(
+            context,
+            _loggedIn
+                ? 'Shop submitted! Upload your documents below to complete the application.'
+                : "Shop submitted! We've emailed you login details — upload documents once you log in.",
+          );
+        }
       } else {
         Helpers.showSnackBar(
           context,
@@ -195,35 +238,44 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
     }
   }
 
-  Future<void> _showSuccessDialog() {
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
-            Icon(Icons.check_circle, color: _green, size: 28),
-            SizedBox(width: 10),
-            Text('Shop Registered'),
-          ],
-        ),
-        content: Text(
-          'Thanks! Your shop has been submitted for review. '
-          'A confirmation email has been sent to ${_ownerEmailController.text.trim()}. '
-          "We'll notify you once it's approved and live.",
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white),
-            onPressed: () {
-              Navigator.of(dialogContext).pop(); // close the dialog
-              Navigator.of(context).pop(); // back to the shop listing screen
-            },
-            child: const Text('Done'),
-          ),
-        ],
-      ),
+  Future<void> _pickAndUploadDocument(String documentType, String documentName) async {
+    if (_createdShopId == null || !_loggedIn) {
+      Helpers.showSnackBar(context, 'Please log in with the details we emailed you to upload documents.', isError: true);
+      return;
+    }
+
+    await ImageService.showImagePickerDialog(
+      context,
+      allowCropping: false,
+      onImageSelected: (file) async {
+        setState(() {
+          _docFiles[documentType] = file;
+          _docUploading[documentType] = true;
+        });
+
+        final response = await _shopApi.uploadShopDocument(
+          shopId: _createdShopId!,
+          documentType: documentType,
+          documentName: documentName,
+          file: file,
+        );
+
+        if (!mounted) return;
+        setState(() {
+          _docUploading[documentType] = false;
+          if (response['success'] == true) {
+            _docUploaded.add(documentType);
+          }
+        });
+
+        if (response['success'] != true) {
+          Helpers.showSnackBar(
+            context,
+            response['message']?.toString() ?? 'Failed to upload $documentName',
+            isError: true,
+          );
+        }
+      },
     );
   }
 
@@ -349,23 +401,132 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _darkGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            if (!_registered)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _darkGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Register Shop', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-                child: _isSubmitting
-                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Register Shop', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ),
+              )
+            else
+              _buildDocumentUploadSection(),
             const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocumentUploadSection() {
+    final allUploaded = _docUploaded.length == _requiredDocuments.length;
+
+    return _sectionCard(
+      title: 'Upload Documents',
+      icon: Icons.upload_file,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: _green.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle, color: _green, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Shop submitted for review! Upload these documents to complete your application.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
+                ),
+              ),
+            ],
+          ),
+        ),
+        for (final doc in _requiredDocuments) ...[
+          _buildDocumentCard(doc['type']!, doc['name']!, doc['hint']!),
+          const SizedBox(height: 12),
+        ],
+        const SizedBox(height: 4),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: allUploaded ? _darkGreen : Colors.grey.shade400,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: Text(
+              allUploaded ? 'Done' : 'Finish Later',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDocumentCard(String type, String name, String hint) {
+    final file = _docFiles[type];
+    final isUploading = _docUploading[type] == true;
+    final isUploaded = _docUploaded.contains(type);
+
+    return Material(
+      color: isUploaded ? _green.withOpacity(0.06) : Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: isUploading ? null : () => _pickAndUploadDocument(type, name),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(color: isUploaded ? _green : Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: file != null
+                    ? Image.file(file, width: 48, height: 48, fit: BoxFit.cover)
+                    : Container(
+                        width: 48,
+                        height: 48,
+                        color: Colors.grey.shade200,
+                        child: Icon(Icons.description_outlined, color: Colors.grey.shade500),
+                      ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(hint, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+              if (isUploading)
+                const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+              else if (isUploaded)
+                Icon(Icons.check_circle, color: _green)
+              else
+                Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade500),
+            ],
+          ),
         ),
       ),
     );

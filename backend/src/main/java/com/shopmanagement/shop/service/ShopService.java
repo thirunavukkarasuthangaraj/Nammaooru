@@ -99,15 +99,69 @@ public class ShopService {
         
         Shop savedShop = shopRepository.save(shop);
         log.info("Shop created successfully with ID: {} - Status: {}", savedShop.getShopId(), savedShop.getStatus());
-        
+
         // Send shop registration confirmation email
         try {
             sendShopRegistrationConfirmationEmail(savedShop);
         } catch (Exception e) {
             log.error("Failed to send shop registration confirmation email for shop: {}", savedShop.getShopId(), e);
         }
-        
-        return shopMapper.toResponse(savedShop);
+
+        // Provision the shop owner's login immediately (don't make them wait for
+        // admin approval) so the mobile app can auto-login and route straight to
+        // document upload. See provisionShopOwnerAccount() for details.
+        ShopResponse response = shopMapper.toResponse(savedShop);
+        try {
+            ShopOwnerCredentials credentials = provisionShopOwnerAccount(savedShop);
+            savedShop.setCreatedBy(credentials.username());
+            savedShop.setUpdatedBy(credentials.username());
+            shopRepository.save(savedShop);
+
+            response.setOwnerAccountUsername(credentials.username());
+            response.setOwnerAccountTemporaryPassword(credentials.temporaryPassword());
+
+            emailService.sendShopOwnerWelcomeEmail(
+                    savedShop.getOwnerEmail(),
+                    savedShop.getOwnerName(),
+                    credentials.username(),
+                    credentials.temporaryPassword(),
+                    savedShop.getName()
+            );
+        } catch (Exception e) {
+            log.error("Failed to provision shop owner account at registration for shop: {}", savedShop.getShopId(), e);
+            // Registration itself still succeeds — the owner can request access
+            // via the normal approval flow if this failed.
+        }
+
+        return response;
+    }
+
+    private record ShopOwnerCredentials(String username, String temporaryPassword) {}
+
+    /**
+     * Creates (or upgrades an existing customer to) a SHOP_OWNER account right at
+     * registration time, instead of waiting for admin approval. This lets the
+     * owner log in from the mobile app immediately after submitting the form and
+     * upload verification documents while the shop is still PENDING review.
+     */
+    private ShopOwnerCredentials provisionShopOwnerAccount(Shop shop) {
+        String username = generateUsername(shop.getOwnerName());
+        String temporaryPassword = generateTemporaryPassword();
+
+        User existingUser = authService.findUserByEmail(shop.getOwnerEmail());
+        if (existingUser == null && shop.getOwnerPhone() != null) {
+            existingUser = authService.findUserByMobileNumber(shop.getOwnerPhone());
+        }
+
+        if (existingUser != null) {
+            log.info("User already exists with email/mobile: {} - upgrading to SHOP_OWNER role", shop.getOwnerEmail());
+            User shopOwnerUser = authService.upgradeUserToShopOwner(existingUser.getEmail(), temporaryPassword);
+            username = shopOwnerUser.getUsername();
+        } else {
+            authService.createShopOwnerUser(username, shop.getOwnerEmail(), shop.getOwnerPhone(), temporaryPassword);
+        }
+
+        return new ShopOwnerCredentials(username, temporaryPassword);
     }
 
     @Transactional(readOnly = true)
