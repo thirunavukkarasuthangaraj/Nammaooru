@@ -862,6 +862,16 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       return;
     }
 
+    // The map tap / search-suggestion handlers kick off reverse geocoding
+    // without awaiting it (so the map stays responsive), which meant tapping
+    // Save quickly after picking a spot could open this dialog before the
+    // pincode lookup finished, leaving the field blank. Make sure it's
+    // actually populated before proceeding — this call is a no-op cost if
+    // it already resolved.
+    if (_selectedPincode.isEmpty) {
+      await _getAddressFromCoordinates(_selectedLatitude!, _selectedLongitude!);
+    }
+
     // Clean up village name - remove Plus Codes and numbers-only
     String cleanVillage = _selectedVillage;
 
@@ -943,21 +953,26 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
   Widget _buildAddressInput() {
     return Column(
       children: [
-        Container(
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: _addressFocusNode.hasFocus
+                ? Colors.white
+                : const Color(0xFFF5F6F8),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
               color: _addressFocusNode.hasFocus
                   ? VillageTheme.primaryGreen
-                  : Colors.grey.shade300,
-              width: _addressFocusNode.hasFocus ? 2 : 1,
+                  : Colors.transparent,
+              width: 1.6,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 6,
+                color: _addressFocusNode.hasFocus
+                    ? VillageTheme.primaryGreen.withOpacity(0.15)
+                    : Colors.black.withOpacity(0.06),
+                blurRadius: _addressFocusNode.hasFocus ? 14 : 8,
                 offset: const Offset(0, 3),
               ),
             ],
@@ -965,13 +980,13 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
           child: Row(
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 16),
+                padding: const EdgeInsets.only(left: 18),
                 child: Icon(
-                  Icons.search,
+                  Icons.search_rounded,
                   color: _addressFocusNode.hasFocus
                       ? VillageTheme.primaryGreen
                       : Colors.grey.shade500,
-                  size: 24,
+                  size: 22,
                 ),
               ),
               Expanded(
@@ -979,21 +994,21 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                   controller: _addressController,
                   style: const TextStyle(
                     color: Colors.black87,
-                    fontSize: 16,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w500,
                   ),
                   cursorColor: VillageTheme.primaryGreen,
                   decoration: InputDecoration(
-                    hintText: 'Type your village name (e.g., Mittur, Marimanikuppam)',
+                    hintText: 'Search your village (e.g., Mittur)',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
-                      fontSize: 15,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w400,
                     ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 16,
+                      vertical: 14,
                     ),
                   ),
                   onChanged: (value) {
@@ -1014,31 +1029,42 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                   },
                 ),
               ),
-              if (_addressController.text.isNotEmpty)
-                IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    color: Colors.grey.shade600,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    _addressController.clear();
-                    setState(() {
-                      _searchSuggestions.clear();
-                      _showSuggestions = false;
-                    });
-                  },
-                ),
               if (_isSearching)
                 const Padding(
                   padding: EdgeInsets.only(right: 12),
                   child: SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         VillageTheme.primaryGreen,
+                      ),
+                    ),
+                  ),
+                )
+              else if (_addressController.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      _addressController.clear();
+                      setState(() {
+                        _searchSuggestions.clear();
+                        _showSuggestions = false;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        color: Colors.grey.shade700,
+                        size: 15,
                       ),
                     ),
                   ),

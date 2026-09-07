@@ -7,6 +7,7 @@ import '../../../services/notification_api_service.dart';
 import '../../../services/firebase_notification_service.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -177,7 +178,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // Show only Firebase local notifications, no demo data
     final firebaseNotifications = FirebaseNotificationService.getLocalNotifications();
     setState(() {
-      _notifications = firebaseNotifications;
+      // getLocalNotifications() returns an unmodifiable list — copy it so it can be sorted.
+      _notifications = List.of(firebaseNotifications);
       // Sort by newest first
       _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     });
@@ -449,9 +451,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
-          'அறிவிப்புகள் / Notifications',
-          style: TextStyle(
+        title: Text(
+          context.loc?.translate('notifications_title') ?? 'Notifications',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -513,9 +515,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'எந்த அறிவிப்பும் இல்லை / No Notifications',
-              style: TextStyle(
+            Text(
+              context.loc?.translate('no_notifications') ?? 'No Notifications',
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF424242),
@@ -524,7 +526,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'You\'re all caught up! New notifications will appear here.',
+              context.loc?.translate('no_notifications_message') ??
+                  "You're all caught up! New notifications will appear here.",
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey.shade600,

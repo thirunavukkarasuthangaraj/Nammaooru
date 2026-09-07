@@ -29,7 +29,8 @@ class ShopListingScreen extends StatefulWidget {
   State<ShopListingScreen> createState() => _ShopListingScreenState();
 }
 
-class _ShopListingScreenState extends State<ShopListingScreen> {
+class _ShopListingScreenState extends State<ShopListingScreen>
+    with SingleTickerProviderStateMixin {
   final ShopApiService _shopApi = ShopApiService();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -47,11 +48,23 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   static const double _serviceAreaSearchRadiusKm = 50.0;
   double _minRating = 0.0;
 
+  // Gentle pulse to draw attention to the "Register Your Shop" CTA.
+  late final AnimationController _ctaPulseController;
+  late final Animation<double> _ctaPulseAnimation;
+
   @override
   void initState() {
     super.initState();
     _loadShops();
     _searchController.addListener(_filterShops);
+
+    _ctaPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _ctaPulseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _ctaPulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -59,6 +72,7 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     _voiceSearchService.stopListening();
     _searchController.dispose();
     _scrollController.dispose();
+    _ctaPulseController.dispose();
     super.dispose();
   }
 
@@ -68,7 +82,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     try {
       // Use cached location from dashboard/login if available (instant, no GPS wait)
       if (LocationService.hasCachedPosition) {
-        await _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
+        await _loadNearbyShops(
+            LocationService.cachedLatitude!, LocationService.cachedLongitude!);
         // The customer may have moved since login. Keep the fast cached result,
         // but refresh it with the phone's current position in the background —
         // unless the customer explicitly picked a place (e.g. their native
@@ -83,7 +98,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Helpers.showSnackBar(context, 'Failed to load shops: $e', isError: true);
+        Helpers.showSnackBar(context, 'Failed to load shops: $e',
+            isError: true);
       }
     } finally {
       if (mounted) {
@@ -100,14 +116,17 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       radius: _serviceAreaSearchRadiusKm,
     );
 
-    if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
+    if (mounted &&
+        (response['success'] == true || response['statusCode'] == '0000') &&
+        response['data'] != null) {
       var shops = response['data']['shops'] ?? [];
 
       // Client-side category filter (nearby API doesn't support category)
       if (widget.category != null && widget.category!.isNotEmpty) {
         final cat = widget.category!.toLowerCase();
         shops = shops.where((shop) {
-          final shopType = (shop['businessType'] ?? '').toString().toLowerCase();
+          final shopType =
+              (shop['businessType'] ?? '').toString().toLowerCase();
           // 'food' category matches both 'food' and 'restaurant' business types
           if (cat == 'food') {
             return shopType == 'food' || shopType == 'restaurant';
@@ -134,7 +153,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
       category: widget.category,
     );
 
-    if (mounted && (response['success'] == true || response['statusCode'] == '0000') && response['data'] != null) {
+    if (mounted &&
+        (response['success'] == true || response['statusCode'] == '0000') &&
+        response['data'] != null) {
       setState(() {
         _shops = response['data']['content'] ?? [];
         _filteredShops = List.from(_shops);
@@ -148,7 +169,9 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   Future<void> _fetchLocationAndRefresh() async {
     try {
       final position = await LocationService.instance.getCurrentPosition();
-      if (position == null || position.latitude == null || position.longitude == null) return;
+      if (position == null ||
+          position.latitude == null ||
+          position.longitude == null) return;
       if (!mounted) return;
 
       await _loadNearbyShops(position.latitude!, position.longitude!);
@@ -164,7 +187,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   Future<void> _openLocationSearch() async {
     final currentLabel = LocationService.isManualLocation
         ? (LocationService.manualLocationLabel ??
-            (context.loc?.translate('selected_location') ?? 'Selected location'))
+            (context.loc?.translate('selected_location') ??
+                'Selected location'))
         : (context.loc?.translate('near_me') ?? 'Near me');
 
     await DeliverToPicker.show(
@@ -183,10 +207,12 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     if (!LocationService.hasCachedPosition) return;
     setState(() => _isLoading = true);
     try {
-      await _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
+      await _loadNearbyShops(
+          LocationService.cachedLatitude!, LocationService.cachedLongitude!);
     } catch (e) {
       if (mounted) {
-        Helpers.showSnackBar(context, 'Failed to load shops: $e', isError: true);
+        Helpers.showSnackBar(context, 'Failed to load shops: $e',
+            isError: true);
       }
     } finally {
       if (mounted) {
@@ -200,8 +226,10 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     setState(() {
       _filteredShops = _shops.where((shop) {
         final shopName = shop['name']?.toString().toLowerCase() ?? '';
-        final shopDescription = shop['description']?.toString().toLowerCase() ?? '';
-        final shopCategory = shop['businessType']?.toString().toLowerCase() ?? '';
+        final shopDescription =
+            shop['description']?.toString().toLowerCase() ?? '';
+        final shopCategory =
+            shop['businessType']?.toString().toLowerCase() ?? '';
         final shopRating = (shop['rating'] ?? 0).toDouble();
         // Use isOpenNow from business hours API, fallback to isActive if not available
         final shopIsOpenNow = shop['isOpenNow'] ?? shop['isActive'] ?? false;
@@ -259,7 +287,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(_voiceSearchService.lastError ?? 'No speech detected'),
+              content:
+                  Text(_voiceSearchService.lastError ?? 'No speech detected'),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 2),
             ),
@@ -286,8 +315,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     final loc = AppLocalizations.of(context);
 
     return Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
-        appBar: AppBar(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
         title: Text(
           widget.categoryTitle ?? 'Grocery',
           style: const TextStyle(
@@ -316,13 +345,17 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
               color: const Color(0xFFE8F5E9),
               child: Row(
                 children: [
-                  const Icon(Icons.location_on, size: 16, color: Color(0xFF4CAF50)),
+                  const Icon(Icons.location_on,
+                      size: 16, color: Color(0xFF4CAF50)),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       LocationService.isManualLocation
-                          ? (context.loc?.translate('shops_delivering_here') ?? 'Shops delivering to this place')
-                          : (context.loc?.translate('shops_delivering_to_you') ?? 'Shops delivering to your location'),
+                          ? (context.loc?.translate('shops_delivering_here') ??
+                              'Shops delivering to this place')
+                          : (context.loc
+                                  ?.translate('shops_delivering_to_you') ??
+                              'Shops delivering to your location'),
                       style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF2E7D32),
@@ -336,7 +369,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
               ),
             ),
           Expanded(
-            child: _isLoading ? const LoadingWidget() : _buildVillageShopsList(),
+            child:
+                _isLoading ? const LoadingWidget() : _buildVillageShopsList(),
           ),
         ],
       ),
@@ -353,22 +387,42 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
               ),
             ],
           ),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _openShopRegistration,
-              icon: const Icon(Icons.add_business, size: 20),
-              label: const Text(
-                'Register Your Shop',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
+          child: AnimatedBuilder(
+            animation: _ctaPulseAnimation,
+            builder: (context, child) {
+              final t = _ctaPulseAnimation.value;
+              return Container(
+                decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          const Color(0xFFFF6D00).withOpacity(0.25 + 0.25 * t),
+                      blurRadius: 8 + 10 * t,
+                      spreadRadius: 1 + 2 * t,
+                    ),
+                  ],
+                ),
+                child: child,
+              );
+            },
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _openShopRegistration,
+                icon: const Icon(Icons.add_business, size: 20),
+                label: const Text(
+                  'Register Your Shop',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6D00),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -395,7 +449,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
   Widget _buildDeliverToBar() {
     final label = LocationService.isManualLocation
         ? (LocationService.manualLocationLabel ??
-            (context.loc?.translate('selected_location') ?? 'Selected location'))
+            (context.loc?.translate('selected_location') ??
+                'Selected location'))
         : (context.loc?.translate('near_me') ?? 'Near me');
 
     return Container(
@@ -432,7 +487,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                const Icon(Icons.keyboard_arrow_down,
+                    color: Colors.white, size: 20),
               ],
             ),
           ),
@@ -454,7 +510,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           controller: _searchController,
           style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
-            hintText: context.loc?.translate('search_shops') ?? 'Search shops...',
+            hintText:
+                context.loc?.translate('search_shops') ?? 'Search shops...',
             hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
             prefixIcon: const Icon(
               Icons.search,
@@ -555,12 +612,14 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                 icon: const Icon(Icons.search, size: 20),
                 label: Text(
                   context.loc?.translate('search_a_place') ?? 'Search a place',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -587,12 +646,15 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
     );
   }
 
-  Widget _buildVillageShopCard(BuildContext context, Map<String, dynamic> shop) {
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+  Widget _buildVillageShopCard(
+      BuildContext context, Map<String, dynamic> shop) {
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
     final shopName = languageProvider.getShopName(shop);
     final shopDescription = shop['description']?.toString() ?? '';
     final businessType = shop['businessType']?.toString() ?? 'Store';
-    final rating = double.tryParse(shop['averageRating']?.toString() ?? '0.0') ?? 0.0;
+    final rating =
+        double.tryParse(shop['averageRating']?.toString() ?? '0.0') ?? 0.0;
     // Use isOpenNow from business hours API for real-time status
     final isOpenNow = shop['isOpenNow'] ?? shop['isActive'] ?? false;
     final address = shop['addressLine1']?.toString() ?? '';
@@ -689,7 +751,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
             child: Row(
               children: [
                 // Shop Logo or Business Icon
-                _buildShopLogo(shop, businessType, getBusinessGradient, getBusinessEmoji),
+                _buildShopLogo(
+                    shop, businessType, getBusinessGradient, getBusinessEmoji),
 
                 const SizedBox(width: 16),
 
@@ -718,11 +781,12 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                           const SizedBox(width: 8),
                           // Status Indicator - Real-time Business Hours
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: isOpenNow
-                                ? const Color(0xFF4CAF50)
-                                : const Color(0xFFFF5252),
+                                  ? const Color(0xFF4CAF50)
+                                  : const Color(0xFFFF5252),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
@@ -739,8 +803,10 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                                 const SizedBox(width: 3),
                                 Text(
                                   isOpenNow
-                                    ? (context.loc?.translate('open') ?? 'Open')
-                                    : (context.loc?.translate('closed') ?? 'Closed'),
+                                      ? (context.loc?.translate('open') ??
+                                          'Open')
+                                      : (context.loc?.translate('closed') ??
+                                          'Closed'),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 9,
@@ -759,9 +825,11 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: getBusinessGradient(businessType)[0].withOpacity(0.15),
+                              color: getBusinessGradient(businessType)[0]
+                                  .withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -776,7 +844,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                           if (rating > 0) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFF3E0),
                                 borderRadius: BorderRadius.circular(6),
@@ -784,7 +853,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('⭐', style: TextStyle(fontSize: 10)),
+                                  const Text('⭐',
+                                      style: TextStyle(fontSize: 10)),
                                   const SizedBox(width: 2),
                                   Text(
                                     rating.toStringAsFixed(1),
@@ -1090,7 +1160,8 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
                       // Re-query because availability is evaluated server-side
                       // against each shop's configured delivery radius.
                       if (LocationService.hasCachedPosition) {
-                        _loadNearbyShops(LocationService.cachedLatitude!, LocationService.cachedLongitude!);
+                        _loadNearbyShops(LocationService.cachedLatitude!,
+                            LocationService.cachedLongitude!);
                       }
                       _filterShops();
                     },

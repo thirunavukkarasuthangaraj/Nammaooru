@@ -89,5 +89,8 @@
   "place_not_found": "Place not found. Try a different name.",
   "no_shops_here": "No shops here yet",
   "search_your_village_hint": "Search your village or town to see its shops",
-  "search_a_place": "Search a place"
+  "search_a_place": "Search a place",
+  "notifications_title": "Notifications",
+  "no_notifications": "No Notifications",
+  "no_notifications_message": "You're all caught up! New notifications will appear here."
 }

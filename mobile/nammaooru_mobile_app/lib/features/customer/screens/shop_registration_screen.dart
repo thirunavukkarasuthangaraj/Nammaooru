@@ -88,19 +88,58 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
         position.longitude!,
       );
 
+      final missing = <String>[];
+
       if (address != null) {
         if (_addressController.text.isEmpty) {
           final street = address['street'] ?? '';
           final locality = address['locality'] ?? '';
-          _addressController.text = [street, locality].where((s) => s.isNotEmpty).join(', ');
+          final combined = [street, locality].where((s) => s.isNotEmpty).join(', ');
+          if (combined.isNotEmpty) {
+            _addressController.text = combined;
+          } else {
+            missing.add('Address Line 1');
+          }
         }
-        if (_cityController.text.isEmpty) _cityController.text = address['locality'] ?? '';
-        if (_stateController.text.isEmpty) _stateController.text = address['administrativeArea'] ?? '';
-        if (_postalCodeController.text.isEmpty) _postalCodeController.text = address['postalCode'] ?? '';
+        if (_cityController.text.isEmpty) {
+          final locality = address['locality'] ?? '';
+          if (locality.isNotEmpty) {
+            _cityController.text = locality;
+          } else {
+            missing.add('City');
+          }
+        }
+        if (_stateController.text.isEmpty) {
+          final state = address['administrativeArea'] ?? '';
+          if (state.isNotEmpty) {
+            _stateController.text = state;
+          } else {
+            missing.add('State');
+          }
+        }
+        if (_postalCodeController.text.isEmpty) {
+          final postal = address['postalCode'] ?? '';
+          if (postal.isNotEmpty) {
+            _postalCodeController.text = postal;
+          } else {
+            missing.add('Postal Code');
+          }
+        }
         if (address['country']?.isNotEmpty == true) _countryController.text = address['country']!;
+      } else {
+        missing.addAll(['Address Line 1', 'City', 'State', 'Postal Code']);
       }
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        if (missing.isNotEmpty) {
+          Helpers.showSnackBar(
+            context,
+            'Got your GPS location, but could not detect ${missing.join(', ')} automatically — please fill ${missing.length > 1 ? 'them' : 'it'} in manually.',
+            isError: true,
+          );
+        }
+      }
     } finally {
       if (mounted) setState(() => _isLocating = false);
     }
@@ -281,20 +320,30 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
                 const SizedBox(height: 12),
                 _textField(_freeDeliveryAboveController, 'Free Delivery Above (₹)', required: false, keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _selfDeliveryEnabled ? _green.withOpacity(0.08) : Colors.grey.shade50,
-                    border: Border.all(color: _selfDeliveryEnabled ? _green : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    activeColor: _green,
-                    title: const Text('Self Delivery', style: TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: const Text("I'll deliver orders myself instead of using platform delivery partners"),
-                    value: _selfDeliveryEnabled,
-                    onChanged: (v) => setState(() => _selfDeliveryEnabled = v),
+                Material(
+                  color: _selfDeliveryEnabled ? _green.withOpacity(0.08) : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _selfDeliveryEnabled ? _green : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeThumbColor: _green,
+                      activeTrackColor: _green.withOpacity(0.4),
+                      inactiveThumbColor: Colors.grey.shade400,
+                      inactiveTrackColor: Colors.grey.shade300,
+                      title: const Text('Self Delivery', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        _selfDeliveryEnabled
+                            ? "On — I'll deliver orders myself instead of using platform delivery partners"
+                            : "Off — platform delivery partners will deliver my orders",
+                      ),
+                      value: _selfDeliveryEnabled,
+                      onChanged: (v) => setState(() => _selfDeliveryEnabled = v),
+                    ),
                   ),
                 ),
               ],
