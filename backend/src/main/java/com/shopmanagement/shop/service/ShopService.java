@@ -461,8 +461,15 @@ public class ShopService {
                 } else {
                     // Legacy path: the shop was created directly by an admin, so
                     // no login exists yet for this owner — create one now.
+                    // Username is the owner's own mobile number (or email if no
+                    // phone) rather than a generated string — it's what they'll
+                    // actually remember, and AuthService.authenticate() already
+                    // accepts either as the login identifier.
                     log.info("Starting user creation process for shop: {}", shop.getName());
-                    String username = generateUsername(shop.getOwnerName());
+                    String loginIdentifier = (shop.getOwnerPhone() != null && !shop.getOwnerPhone().isEmpty())
+                            ? shop.getOwnerPhone()
+                            : shop.getOwnerEmail();
+                    String username = loginIdentifier;
                     String temporaryPassword = generateTemporaryPassword();
                     User shopOwnerUser;
 
@@ -477,14 +484,6 @@ public class ShopService {
 
                     shop.setCreatedBy(username);
                     shop.setUpdatedBy(username);
-
-                    // Log in with the mobile number/email, not the generated
-                    // username — it's what the owner actually remembers, and
-                    // AuthService.authenticate() already accepts either as
-                    // the login identifier.
-                    String loginIdentifier = (shop.getOwnerPhone() != null && !shop.getOwnerPhone().isEmpty())
-                            ? shop.getOwnerPhone()
-                            : shop.getOwnerEmail();
 
                     try {
                         emailService.sendShopOwnerWelcomeEmail(
@@ -557,8 +556,11 @@ public class ShopService {
     }
     
     private String generateTemporaryPassword() {
-        // Generate a secure temporary password
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        // Generate a secure temporary password. Excludes look-alike characters
+        // (0/O, 1/I/l) — an emailed/texted password with those is easy to
+        // mistype when read back off a screen, causing "invalid password"
+        // logins that are actually just transcription errors.
+        String chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
         StringBuilder password = new StringBuilder();
         for (int i = 0; i < 12; i++) {
             password.append(chars.charAt((int) (Math.random() * chars.length())));
