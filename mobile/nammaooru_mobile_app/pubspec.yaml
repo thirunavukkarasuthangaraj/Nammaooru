@@ -1,7 +1,7 @@
 name: nammaooru_mobile_app
 description: Namma Ooru Connect - Hyperlocal Community Platform (Flutter Mobile App)
 publish_to: 'none'
-version: 1.2.72+105
+version: 1.2.74+110
 environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: ">=3.0.0"
@@ -68,6 +68,7 @@ dependencies:
   cached_network_image: ^3.4.1
   image_picker: ^1.1.2
   image_cropper: ^9.1.0
+  file_picker: ^8.1.4
   flutter_image_compress: ^2.1.0
   path_provider: ^2.1.5
   email_validator: ^2.1.17
@@ -80,7 +81,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  flutter_native_splash: ^2.3.5
+  flutter_native_splash: ^2.4.8
   flutter_launcher_icons: ^0.13.1
 
 flutter:
