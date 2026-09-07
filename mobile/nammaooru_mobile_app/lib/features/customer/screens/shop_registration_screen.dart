@@ -48,7 +48,8 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
   double? _latitude;
   double? _longitude;
   bool _isLocating = false;
-  bool _selfDeliveryEnabled = false;
+  // Only self-delivery shops for now — no toggle, always true.
+  final bool _selfDeliveryEnabled = true;
   bool _isSubmitting = false;
 
   // Set once the shop is created — the document upload section (below the
@@ -372,30 +373,33 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
                 const SizedBox(height: 12),
                 _textField(_freeDeliveryAboveController, 'Free Delivery Above (₹)', required: false, keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                Material(
-                  color: _selfDeliveryEnabled ? _green.withOpacity(0.08) : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: _selfDeliveryEnabled ? _green : Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: _green,
-                      activeTrackColor: _green.withOpacity(0.4),
-                      inactiveThumbColor: Colors.grey.shade400,
-                      inactiveTrackColor: Colors.grey.shade300,
-                      title: const Text('Self Delivery', style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(
-                        _selfDeliveryEnabled
-                            ? "On — I'll deliver orders myself instead of using platform delivery partners"
-                            : "Off — platform delivery partners will deliver my orders",
+                // Only self-delivery shops for now — platform delivery partners
+                // aren't offered to self-registered shops yet.
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _green.withOpacity(0.08),
+                    border: Border.all(color: _green),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_shipping, color: _darkGreen),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Self Delivery', style: TextStyle(fontWeight: FontWeight.w600)),
+                            SizedBox(height: 2),
+                            Text(
+                              "You'll deliver your own orders",
+                              style: TextStyle(fontSize: 12, color: Colors.black54),
+                            ),
+                          ],
+                        ),
                       ),
-                      value: _selfDeliveryEnabled,
-                      onChanged: (v) => setState(() => _selfDeliveryEnabled = v),
-                    ),
+                    ],
                   ),
                 ),
               ],
