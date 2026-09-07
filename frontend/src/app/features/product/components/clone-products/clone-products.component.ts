@@ -52,11 +52,27 @@ interface CloneSelection {
 
       <div class="products-section" *ngIf="sourceShopId">
         <div class="toolbar" *ngIf="!isLoading">
-          <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" (change)="toggleSelectAll($event.checked)">
-            Select All ({{ selections.length }} products)
+          <mat-checkbox [checked]="allVisibleSelected" [indeterminate]="someVisibleSelected" (change)="toggleSelectVisible($event.checked)">
+            Select All Shown ({{ visibleSelections.length }})
           </mat-checkbox>
-          <span class="selected-count">{{ getSelectedCount() }} selected</span>
+
+          <mat-form-field appearance="outline" class="category-filter">
+            <mat-label>Category</mat-label>
+            <mat-select [(value)]="categoryFilter">
+              <mat-option [value]="null">All categories ({{ selections.length }})</mat-option>
+              <mat-option *ngFor="let cat of categories" [value]="cat">
+                {{ cat }} ({{ countInCategory(cat) }})
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <span class="selected-count">{{ getSelectedCount() }} of {{ selections.length }} selected overall</span>
         </div>
+
+        <p class="filter-hint" *ngIf="!isLoading">
+          Tip: pick a category above, then use "Select All Shown" to include or exclude just that
+          category &mdash; e.g. filter to "Vegetables" and uncheck it to clone everything except vegetables.
+        </p>
 
         <div class="loading-row" *ngIf="isLoading">
           <mat-spinner diameter="32"></mat-spinner>
@@ -64,12 +80,12 @@ interface CloneSelection {
         </div>
 
         <div class="product-grid" *ngIf="!isLoading">
-          <div class="product-row" *ngFor="let sel of selections" [class.selected]="sel.selected" (click)="sel.selected = !sel.selected">
+          <div class="product-row" *ngFor="let sel of visibleSelections" [class.selected]="sel.selected" (click)="sel.selected = !sel.selected">
             <mat-checkbox [(ngModel)]="sel.selected" (click)="$event.stopPropagation()"></mat-checkbox>
             <img [src]="getImageUrl(sel.product.primaryImageUrl)" class="product-thumb" onerror="this.style.visibility='hidden'" />
             <div class="product-info">
               <div class="product-name">{{ sel.product.displayName }}</div>
-              <div class="product-meta">₹{{ sel.product.price }} &middot; Stock: {{ sel.product.stockQuantity }}</div>
+              <div class="product-meta">₹{{ sel.product.price }} &middot; Stock: {{ sel.product.stockQuantity }} &middot; {{ categoryOf(sel.product) }}</div>
             </div>
           </div>
         </div>
@@ -92,8 +108,10 @@ interface CloneSelection {
     .selector-row { display: flex; align-items: center; gap: 16px; }
     .selector-field { flex: 1; }
     .arrow-icon { color: #999; }
-    .toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; }
-    .selected-count { color: #666; font-size: 14px; }
+    .toolbar { display: flex; align-items: center; gap: 20px; padding: 12px 4px; flex-wrap: wrap; }
+    .category-filter { width: 220px; margin-bottom: -1.25em; }
+    .selected-count { color: #666; font-size: 14px; margin-left: auto; }
+    .filter-hint { color: #888; font-size: 12px; margin: 0 4px 10px; }
     .loading-row { display: flex; align-items: center; gap: 12px; padding: 40px; justify-content: center; color: #666; }
     .product-grid { max-height: 520px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; }
     .product-row {
@@ -115,6 +133,7 @@ export class CloneProductsComponent implements OnInit {
   targetShopId: number | null = null;
 
   selections: CloneSelection[] = [];
+  categoryFilter: string | null = null;
   isLoading = false;
   isCloning = false;
 
@@ -133,6 +152,7 @@ export class CloneProductsComponent implements OnInit {
   }
 
   onSourceShopChange(): void {
+    this.categoryFilter = null;
     if (!this.sourceShopId) {
       this.selections = [];
       return;
@@ -151,16 +171,36 @@ export class CloneProductsComponent implements OnInit {
     });
   }
 
-  get allSelected(): boolean {
-    return this.selections.length > 0 && this.selections.every(s => s.selected);
+  categoryOf(product: ShopProduct): string {
+    return product.masterProduct?.category?.name || 'Uncategorized';
   }
 
-  get someSelected(): boolean {
-    return this.selections.some(s => s.selected) && !this.allSelected;
+  get categories(): string[] {
+    const names = new Set(this.selections.map(s => this.categoryOf(s.product)));
+    return Array.from(names).sort();
   }
 
-  toggleSelectAll(checked: boolean): void {
-    this.selections.forEach(s => s.selected = checked);
+  countInCategory(category: string): number {
+    return this.selections.filter(s => this.categoryOf(s.product) === category).length;
+  }
+
+  get visibleSelections(): CloneSelection[] {
+    if (!this.categoryFilter) return this.selections;
+    return this.selections.filter(s => this.categoryOf(s.product) === this.categoryFilter);
+  }
+
+  get allVisibleSelected(): boolean {
+    const visible = this.visibleSelections;
+    return visible.length > 0 && visible.every(s => s.selected);
+  }
+
+  get someVisibleSelected(): boolean {
+    const visible = this.visibleSelections;
+    return visible.some(s => s.selected) && !this.allVisibleSelected;
+  }
+
+  toggleSelectVisible(checked: boolean): void {
+    this.visibleSelections.forEach(s => s.selected = checked);
   }
 
   getSelectedCount(): number {
