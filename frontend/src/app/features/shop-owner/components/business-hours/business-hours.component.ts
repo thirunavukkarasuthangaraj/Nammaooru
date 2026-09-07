@@ -586,15 +586,7 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
   businessHoursForm: FormGroup;
   loading = false;
   
-  businessHours: LocalBusinessHour[] = [
-    { day: 'monday', displayName: 'Monday', open: '09:00', close: '18:00', closed: false },
-    { day: 'tuesday', displayName: 'Tuesday', open: '09:00', close: '18:00', closed: false },
-    { day: 'wednesday', displayName: 'Wednesday', open: '09:00', close: '18:00', closed: false },
-    { day: 'thursday', displayName: 'Thursday', open: '09:00', close: '18:00', closed: false },
-    { day: 'friday', displayName: 'Friday', open: '09:00', close: '18:00', closed: false },
-    { day: 'saturday', displayName: 'Saturday', open: '09:00', close: '18:00', closed: false },
-    { day: 'sunday', displayName: 'Sunday', open: '09:00', close: '18:00', closed: true }
-  ];
+  businessHours: LocalBusinessHour[] = this.getDefaultBusinessHours();
 
   holidays: any[] = [];
 
@@ -655,7 +647,8 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (hours: BusinessHour[]) => {
           if (hours && hours.length > 0) {
-            this.businessHours = this.businessHoursService.convertFromBackendFormat(hours);
+            const converted = this.businessHoursService.convertFromBackendFormat(hours);
+            this.businessHours = this.mergeWithDefaults(converted);
           } else {
             // Create default hours if none exist
             this.createDefaultBusinessHours(shopId);
@@ -667,6 +660,26 @@ export class BusinessHoursComponent implements OnInit, OnDestroy {
           this.swal.toast('Failed to load business hours. Using defaults.', 'error');
         }
       });
+  }
+
+  private getDefaultBusinessHours(): LocalBusinessHour[] {
+    return [
+      { day: 'monday', displayName: 'Monday', open: '09:00', close: '18:00', closed: false },
+      { day: 'tuesday', displayName: 'Tuesday', open: '09:00', close: '18:00', closed: false },
+      { day: 'wednesday', displayName: 'Wednesday', open: '09:00', close: '18:00', closed: false },
+      { day: 'thursday', displayName: 'Thursday', open: '09:00', close: '18:00', closed: false },
+      { day: 'friday', displayName: 'Friday', open: '09:00', close: '18:00', closed: false },
+      { day: 'saturday', displayName: 'Saturday', open: '09:00', close: '18:00', closed: false },
+      { day: 'sunday', displayName: 'Sunday', open: '09:00', close: '18:00', closed: true }
+    ];
+  }
+
+  // Backend may only have rows for some days (e.g. after a partial save); fill in
+  // any missing days with defaults so the UI always shows all 7 and Save Changes
+  // can't silently drop days that were never persisted.
+  private mergeWithDefaults(existing: LocalBusinessHour[]): LocalBusinessHour[] {
+    const byDay = new Map(existing.map(hour => [hour.day, hour]));
+    return this.getDefaultBusinessHours().map(defaultHour => byDay.get(defaultHour.day) || defaultHour);
   }
 
   private loadShopStatus(shopId: number): void {

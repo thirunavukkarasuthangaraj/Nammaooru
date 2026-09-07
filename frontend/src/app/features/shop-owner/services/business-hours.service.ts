@@ -194,7 +194,7 @@ export class BusinessHoursService {
       'tuesday': 'Tuesday',
       'wednesday': 'Wednesday',
       'thursday': 'Thursday',
-      'friday': 'friday',
+      'friday': 'Friday',
       'saturday': 'Saturday',
       'sunday': 'Sunday'
     };
