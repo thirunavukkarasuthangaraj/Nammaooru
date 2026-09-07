@@ -199,7 +199,7 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
     return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: const [
@@ -217,8 +217,8 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop(); // close the dialog
+              Navigator.of(context).pop(); // back to the shop listing screen
             },
             child: const Text('Done'),
           ),
