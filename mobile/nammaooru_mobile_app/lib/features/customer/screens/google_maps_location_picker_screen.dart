@@ -151,68 +151,53 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     try {
       final address = await LocationService.instance.getAddressFromCoordinates(latitude, longitude);
       if (address != null && mounted) {
-        // Build a complete address string with proper formatting
-        String fullAddress = '';
-        List<String> addressParts = [];
-
         // Get all available components
         String? name = address['name']; // Often contains village/area name
         String? streetNumber = address['streetNumber'];
         String? streetName = address['streetName'];
         String? subLocality = address['subLocality'];
         String? locality = address['locality'];
+        String? district = address['district']; // District/taluk town, e.g. "Tirupattur"
 
-        // Prioritize readable address components
-        // 1. Use 'name' field if it's not a Plus Code and not same as locality
-        if (name?.isNotEmpty == true &&
-            !name!.contains('+') && // Not a Plus Code
-            name != locality) {
-          addressParts.add(name);
-        }
+        // Compute each field ONCE, then reuse the same values everywhere so
+        // Street/Village/City and the combined Address string never disagree.
 
-        // 2. Use subLocality (village/area) if available and different from name
-        if (subLocality?.isNotEmpty == true &&
-            subLocality != name &&
-            subLocality != locality) {
-          addressParts.add(subLocality!);
-        }
+        // Street: actual road/street name only (never a POI/village name)
+        String street = streetName?.isNotEmpty == true
+            ? (streetNumber?.isNotEmpty == true ? '$streetNumber, $streetName' : streetName!)
+            : (streetNumber ?? '');
 
-        // 3. Build street address part
-        if (streetName?.isNotEmpty == true) {
-          if (streetNumber?.isNotEmpty == true) {
-            addressParts.add('$streetNumber, $streetName');
-          } else {
-            addressParts.add(streetName!);
-          }
-        } else if (streetNumber?.isNotEmpty == true) {
-          addressParts.add(streetNumber!);
-        }
+        // Village: the fine-grained place at this exact pin - subLocality if
+        // present, else the locality Google returned (which for rural points
+        // is often the village itself, e.g. "Madapalli"), else the raw 'name'
+        // field as a last resort (nearest POI/landmark).
+        String village = subLocality?.isNotEmpty == true
+            ? subLocality!
+            : (locality?.isNotEmpty == true
+                ? locality!
+                : (name?.isNotEmpty == true && !name!.contains('+') ? name! : ''));
 
-        // 4. Add locality (city)
-        if (locality?.isNotEmpty == true) {
-          addressParts.add(locality!);
-        }
+        // City: the district/taluk town (e.g. "Tirupattur"), NOT the
+        // village-level locality - falls back to village if Google didn't
+        // return a district-level component.
+        String city = district?.isNotEmpty == true ? district! : village;
 
-        fullAddress = addressParts.join(', ');
+        final addressParts = <String>[];
+        if (street.isNotEmpty) addressParts.add(street);
+        if (village.isNotEmpty && village != street) addressParts.add(village);
+        if (city.isNotEmpty && city != village) addressParts.add(city);
+        final fullAddress = addressParts.join(', ');
 
         print('📍 FORMATTED ADDRESS: $fullAddress');
-        print('  - Name: $name');
-        print('  - Street Number: $streetNumber');
-        print('  - Street Name: $streetName');
-        print('  - SubLocality: $subLocality');
-        print('  - Locality: $locality');
+        print('  - Street: $street');
+        print('  - Village: $village');
+        print('  - City: $city');
 
         setState(() {
           _selectedAddress = fullAddress.isNotEmpty ? fullAddress : 'Selected Location';
-          // Store street: use street name if available
-          _selectedStreet = streetName?.isNotEmpty == true
-              ? streetName!
-              : (streetNumber ?? '');
-          _selectedCity = address['locality'] ?? '';
-          // Use 'name' field for village if it's readable, otherwise use subLocality
-          _selectedVillage = (name?.isNotEmpty == true && !name!.contains('+'))
-              ? name!
-              : (address['subLocality'] ?? '');
+          _selectedStreet = street;
+          _selectedVillage = village;
+          _selectedCity = city;
           _selectedState = address['administrativeArea'] ?? 'Tamil Nadu';
           _selectedPincode = address['postalCode'] ?? '635601';
           _addressController.text = _selectedAddress;

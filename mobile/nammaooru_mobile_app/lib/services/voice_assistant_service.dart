@@ -229,6 +229,17 @@ class VoiceAssistantService {
   /// Auto-stops ~3s after the user goes quiet, hard cap 15s — the old
   /// 30s/60s windows made recording feel like it never ended.
   Future<bool> startManualRecording() async {
+    // If the user taps the mic while the assistant is still speaking the
+    // previous reply, TTS is still holding audio focus — the recognizer
+    // then starts against ducked/muffled audio and only a loud voice cuts
+    // through it (matches reports of "works, works, fails, works when
+    // shouted"). Release TTS and give the OS a moment to hand audio focus
+    // back to the mic before listening.
+    if (_tts.isSpeaking) {
+      await _tts.stop();
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+
     final ready = await _initStt();
     if (!ready) return false;
     _sttText = '';

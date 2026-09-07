@@ -761,6 +761,276 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
+  // Zomato/Swiggy-style "Bestsellers" grid: only shows categories the shop
+  // owner has actually uploaded an image for (via Shop Profile > Categories),
+  // so it stays empty/hidden until they opt in. Tapping a tile never
+  // navigates away - it opens a scrollable sheet listing that category's
+  // products in place, on the same screen.
+  Widget _buildFeaturedCategoriesGrid() {
+    if (_isLoadingCategories) return const SizedBox.shrink();
+
+    final featured = _categories.where((c) {
+      final img = c['imageUrl']?.toString();
+      return img != null && img.isNotEmpty;
+    }).toList();
+
+    if (featured.isEmpty) return const SizedBox.shrink();
+
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final isTamil = languageProvider.currentLanguage == 'ta';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            languageProvider.getText('Shop by Category', 'வகை வாரியாக வாங்குங்கள்'),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF212121),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: featured.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.82,
+            ),
+            itemBuilder: (context, index) {
+              final category = featured[index];
+              final categoryName = category['name']?.toString() ?? '';
+              final tamilName =
+                  (category['displayNameTamil'] ?? category['nameTamil'])
+                      ?.toString()
+                      .trim();
+              final displayName =
+                  (isTamil && tamilName != null && tamilName.isNotEmpty)
+                      ? tamilName
+                      : category['displayName']?.toString() ?? categoryName;
+              final imageUrl = category['imageUrl'].toString();
+
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => _openCategoryProductsSheet(categoryName, displayName),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F2F4),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.network(
+                            ImageUrlHelper.getFullImageUrl(imageUrl),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildCategoryPlaceholder(
+                                    displayName, _deepGreen, false),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF212121),
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Filters the already-loaded product list by category name - same
+  // case-insensitive match _filterProducts() uses, so behavior (and
+  // renamed-category safety) stays identical.
+  List<dynamic> _productsInCategory(String categoryName) {
+    final target = categoryName.toLowerCase();
+    return _allProducts.where((product) {
+      final productCategoryName = product['masterProduct']?['category']?['name']
+          ?.toString()
+          .toLowerCase();
+      return productCategoryName == target;
+    }).toList();
+  }
+
+  void _openCategoryProductsSheet(String categoryName, String displayName) {
+    final allCategoryProducts = _productsInCategory(categoryName);
+    final searchController = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (context, setSheetState) {
+                final query = searchController.text.trim().toLowerCase();
+                final products = query.isEmpty
+                    ? allCategoryProducts
+                    : allCategoryProducts.where((product) {
+                        final name = (product['displayName'] ??
+                                product['customName'] ??
+                                '')
+                            .toString()
+                            .toLowerCase();
+                        final description =
+                            (product['displayDescription'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                        return name.contains(query) ||
+                            description.contains(query);
+                      }).toList();
+
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                displayName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: TextField(
+                          controller: searchController,
+                          onChanged: (_) => setSheetState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Search in $displayName',
+                            prefixIcon: const Icon(Icons.search, size: 20),
+                            suffixIcon: query.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: () {
+                                      searchController.clear();
+                                      setSheetState(() {});
+                                    },
+                                  )
+                                : null,
+                            isDense: true,
+                            filled: true,
+                            fillColor: const Color(0xFFF1F2F4),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: products.isEmpty
+                            ? Center(
+                                child: Text(query.isEmpty
+                                    ? 'No products in this category yet'
+                                    : 'No products match "$query"'))
+                            // Same view mode (grid/list) the shop's main product
+                            // section is currently in - toggling it there also
+                            // changes how this sheet looks.
+                            : (_isListView
+                                ? ListView.builder(
+                                    controller: scrollController,
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
+                                    itemCount: products.length,
+                                    itemBuilder: (context, index) =>
+                                        _buildProductListTile(products[index]),
+                                  )
+                                : GridView.builder(
+                                    controller: scrollController,
+                                    padding:
+                                        const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                                    itemCount: products.length,
+                                    gridDelegate:
+                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      mainAxisSpacing: 12,
+                                      crossAxisSpacing: 12,
+                                      mainAxisExtent:
+                                          (MediaQuery.of(context).size.width -
+                                                      36) /
+                                                  2 +
+                                              120,
+                                    ),
+                                    itemBuilder: (context, index) =>
+                                        _buildProductCard(products[index]),
+                                  )),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildCategorySidebar() {
     if (_isLoadingCategories) {
       return const Center(child: CircularProgressIndicator());
@@ -1004,6 +1274,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         if (!_isShopOpen) SliverToBoxAdapter(child: _buildShopClosedBanner()),
         // Unified Offers Carousel (Combos + Promos together)
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
+        // Zomato/Swiggy-style featured category tiles (only shows categories
+        // the shop owner uploaded an image for). Scrolls away with the page,
+        // unlike the pinned chip bar below.
+        SliverToBoxAdapter(child: _buildFeaturedCategoriesGrid()),
         // Categories + search stay pinned at the top while products scroll
         SliverAppBar(
           pinned: true,
@@ -3403,6 +3677,18 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
+          // Once a suggested item is added it's no longer a "suggestion" —
+          // drop it from the strip instead of leaving it there with a
+          // quantity stepper, which read as "why is the thing I just added
+          // still showing here".
+          related.removeWhere(
+              (p) => cartProvider.getQuantity(p['id'].toString()) > 0);
+          if (related.isEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+            });
+            return const SizedBox.shrink();
+          }
           return SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,

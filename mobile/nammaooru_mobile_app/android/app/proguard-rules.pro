@@ -27,3 +27,17 @@
 -keepclassmembers class * {
     native <methods>;
 }
+
+# Play Core classes are referenced by Flutter's deferred-components support but
+# not bundled — tell R8 not to fail on them ("Missing classes" error)
+-dontwarn com.google.android.play.core.**
+
+# Razorpay (known R8 issues without these)
+-dontwarn com.razorpay.**
+-keep class com.razorpay.** { *; }
+-optimizations !method/inlining/*
+-keepclasseswithmembers class * { public void onPayment*(...); }
+-dontwarn proguard.annotation.Keep
+-dontwarn proguard.annotation.KeepClassMembers
+-keep class proguard.annotation.Keep { *; }
+-keep class proguard.annotation.KeepClassMembers { *; }

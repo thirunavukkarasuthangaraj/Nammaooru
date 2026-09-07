@@ -133,34 +133,35 @@ interface Category {
           <!-- Categories Grid -->
           <div *ngIf="categories.length > 0" class="categories-grid">
             <div *ngFor="let category of categories" class="category-card" [class.is-inactive]="!category.isActive">
-              <div class="category-top">
-                <div class="category-icon-wrapper">
-                  <img *ngIf="category.iconUrl"
-                       [src]="getCategoryImageUrl(category.iconUrl)"
-                       alt="{{ category.name }}"
-                       class="category-image"
-                       (error)="onImageError($event, category)">
-                  <mat-icon *ngIf="!category.iconUrl" class="category-main-icon">{{ category.icon }}</mat-icon>
+              <!-- Big group tile - this is what customers see in the app -->
+              <div class="category-tile" (click)="editCategory(category)">
+                <img *ngIf="category.iconUrl"
+                     [src]="getCategoryImageUrl(category.iconUrl)"
+                     alt="{{ category.name }}"
+                     class="category-image"
+                     (error)="onImageError($event, category)">
+                <div *ngIf="!category.iconUrl" class="category-tile-placeholder">
+                  <mat-icon class="category-main-icon">{{ category.icon }}</mat-icon>
+                  <span>No image yet</span>
                 </div>
-                <div class="category-info">
-                  <h3 class="category-name" [title]="category.name">{{ category.name }}</h3>
-                  <div class="category-name-tamil" *ngIf="category.nameTamil">
-                    {{ category.nameTamil }}
-                  </div>
-                  <div class="category-meta">
-                    <span class="meta-item">{{ category.productCount || 0 }} products</span>
-                    <span class="meta-dot"></span>
-                    <span class="status-text" [class.on]="category.isActive">
-                      {{ category.isActive ? 'Active' : 'Inactive' }}
-                    </span>
-                  </div>
-                </div>
+                <span class="status-badge" [class.on]="category.isActive">
+                  {{ category.isActive ? 'Active' : 'Inactive' }}
+                </span>
               </div>
 
-              <p class="category-description"
-                 *ngIf="category.description && category.description.toLowerCase() !== category.name.toLowerCase()">
-                {{ category.description }}
-              </p>
+              <div class="category-info">
+                <h3 class="category-name" [title]="category.name">{{ category.name }}</h3>
+                <div class="category-name-tamil" *ngIf="category.nameTamil">
+                  {{ category.nameTamil }}
+                </div>
+                <div class="category-meta">
+                  <span class="meta-item">{{ category.productCount || 0 }} products</span>
+                </div>
+                <p class="category-description"
+                   *ngIf="category.description && category.description.toLowerCase() !== category.name.toLowerCase()">
+                  {{ category.description }}
+                </p>
+              </div>
 
               <div class="category-actions">
                 <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(category)">
@@ -565,72 +566,99 @@ interface Category {
     .categories-grid {
       padding: 20px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
     }
 
     .category-card {
       background: white;
-      border-radius: 12px;
+      border-radius: 16px;
       border: 1px solid #ECEFF1;
-      padding: 16px;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     }
 
     .category-card:hover {
       border-color: #16a34a;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
     }
 
     .category-card.is-inactive {
       background: #FAFBFC;
     }
 
-    .category-card.is-inactive .category-icon-wrapper,
+    .category-card.is-inactive .category-tile,
     .category-card.is-inactive .category-name {
       opacity: 0.55;
     }
 
-    .category-top {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .category-icon-wrapper {
-      width: 48px;
-      height: 48px;
-      min-width: 48px;
-      border-radius: 10px;
-      background: #ECEFF1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+    /* Big group tile - matches how the customer app shows this category */
+    .category-tile {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
+      cursor: pointer;
     }
 
     .category-image {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
+    }
+
+    .category-tile-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: #9aa5b1;
+    }
+
+    .category-tile-placeholder span {
+      font-size: 12px;
+      font-weight: 500;
     }
 
     .category-main-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+      color: #b0bec5;
+    }
+
+    .status-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.9);
+      color: #90A4AE;
+      backdrop-filter: blur(4px);
+    }
+
+    .status-badge.on {
       color: #16a34a;
     }
 
     .category-info {
       min-width: 0;
+      padding: 12px 14px 4px 14px;
     }
 
     .category-name {
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       margin: 0 0 2px 0;
       color: #1a1a1a;
       white-space: nowrap;

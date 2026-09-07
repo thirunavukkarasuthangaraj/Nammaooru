@@ -252,6 +252,7 @@ class LocationService {
           String subLocalityLevel2 = '';
           String subLocalityLevel3 = '';
           String locality = '';
+          String administrativeAreaLevel2 = ''; // District/taluk town, e.g. "Tirupattur"
           String administrativeArea = '';
           String postalCode = '';
           String country = '';
@@ -278,8 +279,9 @@ class LocationService {
             } else if (types.contains('locality')) {
               locality = longName;
             } else if (types.contains('administrative_area_level_2')) {
-              // This is often the district/city level
-              if (locality.isEmpty) locality = longName;
+              // District/taluk town (e.g. "Tirupattur") - this is what should
+              // show as the City, not the fine-grained village-level locality.
+              administrativeAreaLevel2 = longName;
             } else if (types.contains('administrative_area_level_1')) {
               administrativeArea = longName;
             } else if (types.contains('postal_code')) {
@@ -347,6 +349,10 @@ class LocationService {
             'subLocality': subLocality,
             'neighborhood': neighborhood,
             'locality': locality.isNotEmpty ? locality : (subLocality.isNotEmpty ? subLocality : 'Unknown'),
+            // District/taluk town (e.g. "Tirupattur") - use this for the City field.
+            'district': administrativeAreaLevel2.isNotEmpty
+                ? administrativeAreaLevel2
+                : (locality.isNotEmpty ? locality : 'Unknown'),
             'administrativeArea': administrativeArea.isNotEmpty ? administrativeArea : 'Tamil Nadu',
             'postalCode': postalCode,
             'country': country.isNotEmpty ? country : 'India',
@@ -489,6 +495,10 @@ class LocationService {
           'street': streetName, // Keep for backward compatibility
           'subLocality': place.subLocality ?? '',
           'locality': cityName,
+          // District/taluk town (e.g. "Tirupattur") - use this for the City field.
+          'district': place.subAdministrativeArea?.isNotEmpty == true
+              ? place.subAdministrativeArea!
+              : cityName,
           'administrativeArea': place.administrativeArea ?? 'Tamil Nadu',
           'postalCode': place.postalCode ?? '',
           'country': place.country ?? 'India',

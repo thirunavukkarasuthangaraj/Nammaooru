@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/village_theme.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      // App-wide font — modern rounded sans matching the reference design.
+      // Tamil text falls back to Noto Sans Tamil so both languages look clean.
+      // Inline TextStyles without an explicit fontFamily inherit this.
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
       primaryColor: VillageTheme.primaryGreen,
       scaffoldBackgroundColor: VillageTheme.lightBackground,
       
@@ -39,6 +44,8 @@ class AppTheme {
         ),
         titleTextStyle: VillageTheme.headingMedium.copyWith(
           color: Colors.white,
+          fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+          fontFamilyFallback: [GoogleFonts.notoSansTamil().fontFamily!],
         ),
         iconTheme: const IconThemeData(
           color: Colors.white,
@@ -154,6 +161,9 @@ class AppTheme {
         labelSmall: VillageTheme.bodySmall.copyWith(
           fontSize: 10,
         ),
+      ).apply(
+        fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+        fontFamilyFallback: [GoogleFonts.notoSansTamil().fontFamily!],
       ),
 
       // Divider Theme
@@ -235,6 +245,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
       primaryColor: VillageTheme.primaryGreen,
       scaffoldBackgroundColor: const Color(0xFF121212),
       
@@ -266,6 +277,8 @@ class AppTheme {
         ),
         titleTextStyle: VillageTheme.headingMedium.copyWith(
           color: Colors.white,
+          fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+          fontFamilyFallback: [GoogleFonts.notoSansTamil().fontFamily!],
         ),
       ),
 
@@ -313,6 +326,9 @@ class AppTheme {
           color: const Color(0xFFE1E1E1),
         ),
         // Add more text styles as needed for dark theme
+      ).apply(
+        fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+        fontFamilyFallback: [GoogleFonts.notoSansTamil().fontFamily!],
       ),
     );
   }

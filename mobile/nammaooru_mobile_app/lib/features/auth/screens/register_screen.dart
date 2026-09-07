@@ -451,26 +451,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildLoginLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // Prominent outlined button — the small text link was easy to miss
+    return Column(
       children: [
         Text(
-          'Already have an account? ',
-          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+          'Already have an account?',
+          style: TextStyle(fontSize: 15, color: Colors.grey[700]),
         ),
-        TextButton(
-          onPressed: () => context.go('/login'),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: const Text(
-            'Login',
-            style: TextStyle(
-              fontSize: 14,
-              color: VillageTheme.primaryGreen,
-              fontWeight: FontWeight.w600,
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton(
+            onPressed: () => context.go('/login'),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(
+                  color: VillageTheme.primaryGreen, width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Login',
+              style: TextStyle(
+                fontSize: 17,
+                color: VillageTheme.primaryGreen,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),

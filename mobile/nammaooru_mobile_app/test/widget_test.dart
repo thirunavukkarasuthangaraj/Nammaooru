@@ -1,30 +1,47 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:nammaooru_mobile_app/main.dart';
+import 'package:nammaooru_mobile_app/core/utils/form_validators.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('post mobile field enforces the shared validation rules',
+      (tester) async {
+    final formKey = GlobalKey<FormState>();
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              decoration: const InputDecoration(
+                hintText: FormValidators.mobileExample,
+              ),
+              validator: (value) => FormValidators.isValidIndianMobile(value)
+                  ? null
+                  : 'Enter a valid mobile number',
+            ),
+          ),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    expect(find.text(FormValidators.mobileExample), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField), '1234567890');
+    expect(formKey.currentState!.validate(), isFalse);
     await tester.pump();
+    expect(find.text('Enter a valid mobile number'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField), '9876543210');
+    expect(formKey.currentState!.validate(), isTrue);
   });
 }

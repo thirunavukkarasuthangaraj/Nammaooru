@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../core/utils/form_validators.dart';
 import '../services/real_estate_service.dart';
 import '../widgets/voice_input_button.dart';
 import '../widgets/post_payment_handler.dart';
@@ -24,10 +26,19 @@ class RealEstateScreen extends StatefulWidget {
   State<RealEstateScreen> createState() => _RealEstateScreenState();
 }
 
-class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerProviderStateMixin {
+class _RealEstateScreenState extends State<RealEstateScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'For Sale', 'For Rent', 'Land', 'House', 'Apartment', 'Agriculture'];
+  final List<String> _filters = [
+    'All',
+    'For Sale',
+    'For Rent',
+    'Land',
+    'House',
+    'Apartment',
+    'Agriculture'
+  ];
 
   final RealEstateService _realEstateService = RealEstateService();
   List<Map<String, dynamic>> _listings = [];
@@ -53,7 +64,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
-      if (_tabController.index == 2 && _savedListings.isEmpty && _savedIds.isNotEmpty) {
+      if (_tabController.index == 2 &&
+          _savedListings.isEmpty &&
+          _savedIds.isNotEmpty) {
         _fetchSavedListings();
       }
     });
@@ -83,7 +96,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoading && _hasMore) {
         _loadMore();
       }
@@ -126,7 +140,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
 
       if (response['success'] == true || response['data'] != null) {
         final content = response['data']?['content'] as List? ?? [];
-        final newListings = content.map<Map<String, dynamic>>((item) => _mapApiToLocal(item)).toList();
+        final newListings = content
+            .map<Map<String, dynamic>>((item) => _mapApiToLocal(item))
+            .toList();
 
         setState(() {
           if (refresh || _currentPage == 0) {
@@ -157,13 +173,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     final prefs = await SharedPreferences.getInstance();
     final ids = prefs.getStringList(_savedPrefsKey) ?? [];
     setState(() {
-      _savedIds = ids.map((e) => int.tryParse(e) ?? 0).where((e) => e > 0).toSet();
+      _savedIds =
+          ids.map((e) => int.tryParse(e) ?? 0).where((e) => e > 0).toSet();
     });
   }
 
   Future<void> _saveSavedIds() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_savedPrefsKey, _savedIds.map((e) => e.toString()).toList());
+    await prefs.setStringList(
+        _savedPrefsKey, _savedIds.map((e) => e.toString()).toList());
   }
 
   void _toggleSaved(int postId) {
@@ -174,7 +192,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       } else {
         _savedIds.add(postId);
         // Add from browse listings if available
-        final listing = _listings.firstWhere((l) => l['id'] == postId, orElse: () => <String, dynamic>{});
+        final listing = _listings.firstWhere((l) => l['id'] == postId,
+            orElse: () => <String, dynamic>{});
         if (listing.isNotEmpty) {
           _savedListings.add(listing);
         }
@@ -230,7 +249,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       'videoUrl': api['videoUrl'],
       'postedBy': api['ownerName'] ?? 'Unknown',
       'phone': api['ownerPhone'] ?? '',
-      'postedDate': api['createdAt'] != null ? DateTime.tryParse(api['createdAt']) ?? DateTime.now() : DateTime.now(),
+      'postedDate': api['createdAt'] != null
+          ? DateTime.tryParse(api['createdAt']) ?? DateTime.now()
+          : DateTime.now(),
       'viewsCount': api['viewsCount'] ?? 0,
       'featured': api['featured'] ?? api['isFeatured'] ?? false,
       'imageUrls': api['imageUrls'] ?? '',
@@ -269,7 +290,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     final images = listing['images'];
     if (images == null) return [];
     if (images is List) {
-      return images.where((img) => img != null && img.toString().trim().isNotEmpty)
+      return images
+          .where((img) => img != null && img.toString().trim().isNotEmpty)
           .map<String>((img) => _getFullImageUrl(img.toString().trim()))
           .where((url) => url.isNotEmpty)
           .toList();
@@ -286,7 +308,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Real Estate', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Real Estate',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: VillageTheme.primaryGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -312,7 +335,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final authProvider =
+              Provider.of<AuthProvider>(context, listen: false);
           if (!authProvider.isAuthenticated) {
             GoRouter.of(context).go('/login');
             return;
@@ -371,12 +395,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                             return ListView.builder(
                               controller: _scrollController,
                               padding: const EdgeInsets.all(16),
-                              itemCount: _filteredListings.length + offset + (_hasMore ? 1 : 0),
+                              itemCount: _filteredListings.length +
+                                  offset +
+                                  (_hasMore ? 1 : 0),
                               itemBuilder: (context, index) {
                                 if (hasCarousel && index == 0) {
                                   return _FeaturedBannerCarousel(
                                     posts: carouselPosts,
-                                    onPostTap: (post) => _showPropertyDetails(post),
+                                    onPostTap: (post) =>
+                                        _showPropertyDetails(post),
                                     accentColor: const Color(0xFFAD1457),
                                   );
                                 }
@@ -384,10 +411,12 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                                 if (listIndex == _filteredListings.length) {
                                   return const Padding(
                                     padding: EdgeInsets.all(16),
-                                    child: Center(child: CircularProgressIndicator()),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
                                   );
                                 }
-                                return _buildPropertyCard(_filteredListings[listIndex]);
+                                return _buildPropertyCard(
+                                    _filteredListings[listIndex]);
                               },
                             );
                           }),
@@ -451,33 +480,55 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'PENDING_APPROVAL': return 'Pending Approval';
-      case 'APPROVED': return 'Approved';
-      case 'REJECTED': return 'Rejected';
-      case 'SOLD': return 'Sold';
-      case 'RENTED': return 'Rented';
-      case 'FLAGGED': return 'Flagged';
-      case 'HOLD': return 'On Hold';
-      case 'HIDDEN': return 'Hidden';
-      case 'CORRECTION_REQUIRED': return 'Correction Required';
-      case 'REMOVED': return 'Removed';
-      default: return status;
+      case 'PENDING_APPROVAL':
+        return 'Pending Approval';
+      case 'APPROVED':
+        return 'Approved';
+      case 'REJECTED':
+        return 'Rejected';
+      case 'SOLD':
+        return 'Sold';
+      case 'RENTED':
+        return 'Rented';
+      case 'FLAGGED':
+        return 'Flagged';
+      case 'HOLD':
+        return 'On Hold';
+      case 'HIDDEN':
+        return 'Hidden';
+      case 'CORRECTION_REQUIRED':
+        return 'Correction Required';
+      case 'REMOVED':
+        return 'Removed';
+      default:
+        return status;
     }
   }
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'PENDING_APPROVAL': return Colors.orange;
-      case 'APPROVED': return Colors.green;
-      case 'REJECTED': return Colors.red;
-      case 'SOLD': return Colors.purple;
-      case 'RENTED': return Colors.teal;
-      case 'FLAGGED': return Colors.red[800]!;
-      case 'HOLD': return Colors.amber.shade700;
-      case 'HIDDEN': return Colors.grey;
-      case 'CORRECTION_REQUIRED': return Colors.deepOrange;
-      case 'REMOVED': return Colors.red[900]!;
-      default: return Colors.grey;
+      case 'PENDING_APPROVAL':
+        return Colors.orange;
+      case 'APPROVED':
+        return Colors.green;
+      case 'REJECTED':
+        return Colors.red;
+      case 'SOLD':
+        return Colors.purple;
+      case 'RENTED':
+        return Colors.teal;
+      case 'FLAGGED':
+        return Colors.red[800]!;
+      case 'HOLD':
+        return Colors.amber.shade700;
+      case 'HIDDEN':
+        return Colors.grey;
+      case 'CORRECTION_REQUIRED':
+        return Colors.deepOrange;
+      case 'REMOVED':
+        return Colors.red[900]!;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -490,13 +541,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           children: [
             Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('Login to view your posts', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            Text('Login to view your posts',
+                style: TextStyle(fontSize: 18, color: Colors.grey[600])),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => GoRouter.of(context).go('/login'),
               icon: const Icon(Icons.login),
               label: const Text('Login'),
-              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: VillageTheme.primaryGreen),
             ),
           ],
         ),
@@ -517,9 +570,12 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text('Failed to load your posts', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            Text('Failed to load your posts',
+                style: TextStyle(fontSize: 18, color: Colors.grey[600])),
             const SizedBox(height: 8),
-            Text(_myPostsError ?? '', style: TextStyle(fontSize: 14, color: Colors.grey[500]), textAlign: TextAlign.center),
+            Text(_myPostsError ?? '',
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () {
@@ -528,7 +584,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: VillageTheme.primaryGreen,
+                  foregroundColor: Colors.white),
             ),
           ],
         ),
@@ -542,20 +600,28 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           children: [
             Icon(Icons.home_work_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('No posts yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            Text('No posts yet',
+                style: TextStyle(fontSize: 18, color: Colors.grey[600])),
             const SizedBox(height: 8),
-            Text('Your property listings will appear here', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+            Text('Your property listings will appear here',
+                style: TextStyle(fontSize: 14, color: Colors.grey[500])),
           ],
         ),
       );
     }
 
-    final expiredPostIds = _myPosts.where((p) {
-      final vTo = p['validTo'] != null ? DateTime.tryParse(p['validTo'].toString()) : null;
-      if (vTo == null) return false;
-      final now = DateTime.now();
-      return vTo.isBefore(now) || (vTo.isAfter(now) && vTo.difference(now).inDays <= 3);
-    }).map((p) => p['id'] as int).toList();
+    final expiredPostIds = _myPosts
+        .where((p) {
+          final vTo = p['validTo'] != null
+              ? DateTime.tryParse(p['validTo'].toString())
+              : null;
+          if (vTo == null) return false;
+          final now = DateTime.now();
+          return vTo.isBefore(now) ||
+              (vTo.isAfter(now) && vTo.difference(now).inDays <= 3);
+        })
+        .map((p) => p['id'] as int)
+        .toList();
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -574,7 +640,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                     width: 24,
                     height: 24,
                     child: Checkbox(
-                      value: _selectedForRenewal.length == expiredPostIds.length && expiredPostIds.isNotEmpty,
+                      value:
+                          _selectedForRenewal.length == expiredPostIds.length &&
+                              expiredPostIds.isNotEmpty,
                       onChanged: (val) {
                         setState(() {
                           if (val == true) {
@@ -588,195 +656,253 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Select All (${expiredPostIds.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text('Select All (${expiredPostIds.length})',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
                   const Spacer(),
                   if (_selectedForRenewal.isNotEmpty)
                     ElevatedButton.icon(
                       onPressed: _isRenewing ? null : _renewSelectedPosts,
                       icon: _isRenewing
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.refresh, size: 16),
                       label: Text('Renew All (${_selectedForRenewal.length})'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6)),
                     ),
                 ],
               ),
             ),
           Expanded(
             child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _myPosts.length,
-        itemBuilder: (context, index) {
-          final post = _myPosts[index];
-          final status = post['status'] ?? 'PENDING_APPROVAL';
-          // Validity dates and expiry status
-          final validFrom = post['validFrom'] != null ? DateTime.tryParse(post['validFrom'].toString()) : null;
-          final validTo = post['validTo'] != null ? DateTime.tryParse(post['validTo'].toString()) : null;
-          final now = DateTime.now();
-          final bool isExpiringSoon = validTo != null && validTo.isAfter(now) && validTo.difference(now).inDays <= 3;
-          final bool isExpired = validTo != null && validTo.isBefore(now);
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: InkWell(
-              onTap: () => _showPropertyDetails(post),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            post['title'] ?? '',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            _getStatusLabel(status),
-                            style: TextStyle(
-                              color: _getStatusColor(status),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Validity & expiry info
-                    if (validTo != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
+              padding: const EdgeInsets.all(16),
+              itemCount: _myPosts.length,
+              itemBuilder: (context, index) {
+                final post = _myPosts[index];
+                final status = post['status'] ?? 'PENDING_APPROVAL';
+                // Validity dates and expiry status
+                final validFrom = post['validFrom'] != null
+                    ? DateTime.tryParse(post['validFrom'].toString())
+                    : null;
+                final validTo = post['validTo'] != null
+                    ? DateTime.tryParse(post['validTo'].toString())
+                    : null;
+                final now = DateTime.now();
+                final bool isExpiringSoon = validTo != null &&
+                    validTo.isAfter(now) &&
+                    validTo.difference(now).inDays <= 3;
+                final bool isExpired = validTo != null && validTo.isBefore(now);
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: InkWell(
+                    onTap: () => _showPropertyDetails(post),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.calendar_today, size: 13, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Valid: ${validFrom != null ? "${validFrom.day}/${validFrom.month}/${validFrom.year}" : "—"} - ${validTo.day}/${validTo.month}/${validTo.year}',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  post['title'] ?? '',
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color:
+                                      _getStatusColor(status).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _getStatusLabel(status),
+                                  style: TextStyle(
+                                    color: _getStatusColor(status),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                          if (isExpired)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                              child: const Text('EXPIRED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            )
-                          else if (isExpiringSoon)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(4)),
-                              child: const Text('EXPIRING SOON', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          // Validity & expiry info
+                          if (validTo != null) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today,
+                                    size: 13, color: Colors.grey[600]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Valid: ${validFrom != null ? "${validFrom.day}/${validFrom.month}/${validFrom.year}" : "—"} - ${validTo.day}/${validTo.month}/${validTo.year}',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Colors.grey[600]),
+                                ),
+                                const Spacer(),
+                                if (isExpired)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(4)),
+                                    child: const Text('EXPIRED',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold)),
+                                  )
+                                else if (isExpiringSoon)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        borderRadius: BorderRadius.circular(4)),
+                                    child: const Text('EXPIRING SOON',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                              ],
                             ),
+                          ],
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.category,
+                                  size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(post['type'] ?? '',
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.grey[700])),
+                              const SizedBox(width: 16),
+                              Icon(Icons.location_on,
+                                  size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  post['location'] ?? '',
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.grey[700]),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '₹${_formatPrice(post['price'] ?? 0)}',
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: VillageTheme.primaryGreen),
+                              ),
+                              Text(
+                                _formatDate(
+                                    post['postedDate'] ?? DateTime.now()),
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[500]),
+                              ),
+                            ],
+                          ),
+                          if (isExpiringSoon || isExpired) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _selectedForRenewal
+                                        .contains(post['id']),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        if (val == true) {
+                                          _selectedForRenewal.add(post['id']);
+                                        } else {
+                                          _selectedForRenewal
+                                              .remove(post['id']);
+                                        }
+                                      });
+                                    },
+                                    activeColor: Colors.green,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isRenewing
+                                        ? null
+                                        : () => _renewSinglePost(post['id']),
+                                    icon: const Icon(Icons.refresh, size: 16),
+                                    label: const Text('Renew Post'),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          // Action buttons: Mark Sold/Rented, Delete
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (status == 'APPROVED') ...[
+                                _buildActionChip('Mark Sold', Icons.sell,
+                                    Colors.purple, () => _markAsSold(post)),
+                                const SizedBox(width: 8),
+                                _buildActionChip('Mark Rented', Icons.home,
+                                    Colors.teal, () => _markAsRented(post)),
+                                const SizedBox(width: 8),
+                              ],
+                              _buildActionChip('Edit', Icons.edit, Colors.blue,
+                                  () => _showEditRealEstateSheet(post)),
+                              const SizedBox(width: 8),
+                              _buildActionChip('Delete', Icons.delete,
+                                  Colors.red, () => _deleteMyPost(post)),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.category, size: 14, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(post['type'] ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                        const SizedBox(width: 16),
-                        Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            post['location'] ?? '',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '₹${_formatPrice(post['price'] ?? 0)}',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen),
-                        ),
-                        Text(
-                          _formatDate(post['postedDate'] ?? DateTime.now()),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                        ),
-                      ],
-                    ),
-                    if (isExpiringSoon || isExpired) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _selectedForRenewal.contains(post['id']),
-                              onChanged: (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    _selectedForRenewal.add(post['id']);
-                                  } else {
-                                    _selectedForRenewal.remove(post['id']);
-                                  }
-                                });
-                              },
-                              activeColor: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _isRenewing ? null : () => _renewSinglePost(post['id']),
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: const Text('Renew Post'),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    // Action buttons: Mark Sold/Rented, Delete
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (status == 'APPROVED') ...[
-                          _buildActionChip('Mark Sold', Icons.sell, Colors.purple, () => _markAsSold(post)),
-                          const SizedBox(width: 8),
-                          _buildActionChip('Mark Rented', Icons.home, Colors.teal, () => _markAsRented(post)),
-                          const SizedBox(width: 8),
-                        ],
-                        _buildActionChip('Edit', Icons.edit, Colors.blue, () => _showEditRealEstateSheet(post)),
-                        const SizedBox(width: 8),
-                        _buildActionChip('Delete', Icons.delete, Colors.red, () => _deleteMyPost(post)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionChip(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionChip(
+      String label, IconData icon, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -792,7 +918,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11, color: color, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -808,8 +936,12 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         title: const Text('Mark as Sold'),
         content: Text('Mark "${post['title']}" as sold?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark Sold')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Mark Sold')),
         ],
       ),
     );
@@ -817,9 +949,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       final result = await _realEstateService.markAsSold(postId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Updated'), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+          SnackBar(
+              content: Text(result['message'] ?? 'Updated'),
+              backgroundColor:
+                  result['success'] == true ? Colors.green : Colors.red),
         );
-        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+        if (result['success'] == true) {
+          _myPostsLoaded = false;
+          _fetchMyPosts();
+        }
       }
     }
   }
@@ -833,8 +971,12 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         title: const Text('Mark as Rented'),
         content: Text('Mark "${post['title']}" as rented?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark Rented')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Mark Rented')),
         ],
       ),
     );
@@ -842,9 +984,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       final result = await _realEstateService.markAsRented(postId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Updated'), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+          SnackBar(
+              content: Text(result['message'] ?? 'Updated'),
+              backgroundColor:
+                  result['success'] == true ? Colors.green : Colors.red),
         );
-        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+        if (result['success'] == true) {
+          _myPostsLoaded = false;
+          _fetchMyPosts();
+        }
       }
     }
   }
@@ -858,7 +1006,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
         title: const Text('Delete Post'),
         content: Text('Delete "${post['title']}" permanently?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -871,32 +1021,50 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
       final result = await _realEstateService.deletePost(postId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Deleted'), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+          SnackBar(
+              content: Text(result['message'] ?? 'Deleted'),
+              backgroundColor:
+                  result['success'] == true ? Colors.green : Colors.red),
         );
-        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
+        if (result['success'] == true) {
+          _myPostsLoaded = false;
+          _fetchMyPosts();
+        }
       }
     }
   }
 
   void _showEditRealEstateSheet(Map<String, dynamic> post) {
     final titleController = TextEditingController(text: post['title'] ?? '');
-    final descController = TextEditingController(text: post['description'] ?? '');
-    final priceController = TextEditingController(text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
-    final phoneController = TextEditingController(text: post['ownerPhone'] ?? '');
-    final locationController = TextEditingController(text: post['location'] ?? '');
-    final areaController = TextEditingController(text: post['areaSqft']?.toString() ?? '');
-    final bedroomsController = TextEditingController(text: post['bedrooms']?.toString() ?? '');
-    final bathroomsController = TextEditingController(text: post['bathrooms']?.toString() ?? '');
+    final descController =
+        TextEditingController(text: post['description'] ?? '');
+    final priceController = TextEditingController(
+        text: (post['price']?.toString() ?? '').replaceAll(RegExp(r'.0$'), ''));
+    final phoneController =
+        TextEditingController(text: post['ownerPhone'] ?? '');
+    final locationController =
+        TextEditingController(text: post['location'] ?? '');
+    final areaController =
+        TextEditingController(text: post['areaSqft']?.toString() ?? '');
+    final bedroomsController =
+        TextEditingController(text: post['bedrooms']?.toString() ?? '');
+    final bathroomsController =
+        TextEditingController(text: post['bathrooms']?.toString() ?? '');
     bool isSaving = false;
     bool imageDeleted = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -905,15 +1073,27 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Edit Property', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                    const Text('Edit Property',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: titleController, decoration: InputDecoration(labelText: 'Title', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: titleController))),
+                TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                        labelText: 'Title',
+                        border: const OutlineInputBorder(),
+                        suffixIcon:
+                            VoiceInputButton(controller: titleController))),
                 const SizedBox(height: 12),
-                if (post['imageUrl'] != null && post['imageUrl'].toString().isNotEmpty) ...[
-                  const Text('Current Image', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                if (post['imageUrl'] != null &&
+                    post['imageUrl'].toString().isNotEmpty) ...[
+                  const Text('Current Image',
+                      style: TextStyle(fontSize: 13, color: Colors.grey)),
                   const SizedBox(height: 6),
                   Stack(
                     children: [
@@ -927,7 +1107,8 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                           errorBuilder: (_, __, ___) => Container(
                             height: 80,
                             color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                            child: const Icon(Icons.broken_image,
+                                color: Colors.grey),
                           ),
                         ),
                       ),
@@ -937,69 +1118,147 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                         child: GestureDetector(
                           onTap: () => setSheetState(() => imageDeleted = true),
                           child: Container(
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(
+                                color: Colors.red, shape: BoxShape.circle),
                             padding: const EdgeInsets.all(4),
-                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 16),
                           ),
                         ),
                       ),
                       if (imageDeleted)
                         Container(
                           height: 120,
-                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
-                          child: const Center(child: Text('Image will be removed', style: TextStyle(color: Colors.white))),
+                          decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8)),
+                          child: const Center(
+                              child: Text('Image will be removed',
+                                  style: TextStyle(color: Colors.white))),
                         ),
                     ],
                   ),
                   const SizedBox(height: 12),
                 ],
-                TextField(controller: descController, decoration: InputDecoration(labelText: 'Description', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: descController)), maxLines: null, minLines: 3),
+                TextField(
+                    controller: descController,
+                    decoration: InputDecoration(
+                        labelText: 'Description',
+                        border: const OutlineInputBorder(),
+                        suffixIcon:
+                            VoiceInputButton(controller: descController)),
+                    maxLines: null,
+                    minLines: 3),
                 const SizedBox(height: 12),
-                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                TextField(
+                    controller: priceController,
+                    decoration: const InputDecoration(
+                        labelText: 'Price', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()), keyboardType: TextInputType.phone),
+                TextField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(
+                        labelText: 'Phone', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.phone),
                 const SizedBox(height: 12),
-                TextField(controller: locationController, decoration: InputDecoration(labelText: 'Location', border: const OutlineInputBorder(), suffixIcon: VoiceInputButton(controller: locationController))),
+                TextField(
+                    controller: locationController,
+                    decoration: InputDecoration(
+                        labelText: 'Location',
+                        border: const OutlineInputBorder(),
+                        suffixIcon:
+                            VoiceInputButton(controller: locationController))),
                 const SizedBox(height: 12),
-                TextField(controller: areaController, decoration: const InputDecoration(labelText: 'Area (sq.ft)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                TextField(
+                    controller: areaController,
+                    decoration: const InputDecoration(
+                        labelText: 'Area (sq.ft)',
+                        border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                TextField(controller: bedroomsController, decoration: const InputDecoration(labelText: 'Bedrooms', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                TextField(
+                    controller: bedroomsController,
+                    decoration: const InputDecoration(
+                        labelText: 'Bedrooms', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                TextField(controller: bathroomsController, decoration: const InputDecoration(labelText: 'Bathrooms', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                TextField(
+                    controller: bathroomsController,
+                    decoration: const InputDecoration(
+                        labelText: 'Bathrooms', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: isSaving ? null : () async {
-                      setSheetState(() => isSaving = true);
-                      final updates = <String, dynamic>{};
-                      if (titleController.text != (post['title'] ?? '')) updates['title'] = titleController.text;
-                      if (descController.text != (post['description'] ?? '')) updates['description'] = descController.text;
-                      if (priceController.text != (post['price']?.toString() ?? '')) updates['price'] = priceController.text;
-                      if (phoneController.text != (post['ownerPhone'] ?? '')) updates['phone'] = phoneController.text;
-                      if (locationController.text != (post['location'] ?? '')) updates['location'] = locationController.text;
-                      if (areaController.text != (post['areaSqft']?.toString() ?? '')) {
-                        updates['areaSqft'] = int.tryParse(areaController.text);
-                      }
-                      if (bedroomsController.text != (post['bedrooms']?.toString() ?? '')) {
-                        updates['bedrooms'] = int.tryParse(bedroomsController.text);
-                      }
-                      if (bathroomsController.text != (post['bathrooms']?.toString() ?? '')) {
-                        updates['bathrooms'] = int.tryParse(bathroomsController.text);
-                      }
-                      if (imageDeleted) updates['imageUrl'] = '';
-                      if (updates.isEmpty) { Navigator.pop(ctx); return; }
-                      final result = await _realEstateService.editPost(post['id'], updates);
-                      if (mounted) {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
-                        );
-                        if (result['success'] == true) { _myPostsLoaded = false; _fetchMyPosts(); }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
-                    child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            setSheetState(() => isSaving = true);
+                            final updates = <String, dynamic>{};
+                            if (titleController.text != (post['title'] ?? ''))
+                              updates['title'] = titleController.text;
+                            if (descController.text !=
+                                (post['description'] ?? ''))
+                              updates['description'] = descController.text;
+                            if (priceController.text !=
+                                (post['price']?.toString() ?? ''))
+                              updates['price'] = priceController.text;
+                            if (phoneController.text !=
+                                (post['ownerPhone'] ?? ''))
+                              updates['phone'] = phoneController.text;
+                            if (locationController.text !=
+                                (post['location'] ?? ''))
+                              updates['location'] = locationController.text;
+                            if (areaController.text !=
+                                (post['areaSqft']?.toString() ?? '')) {
+                              updates['areaSqft'] =
+                                  int.tryParse(areaController.text);
+                            }
+                            if (bedroomsController.text !=
+                                (post['bedrooms']?.toString() ?? '')) {
+                              updates['bedrooms'] =
+                                  int.tryParse(bedroomsController.text);
+                            }
+                            if (bathroomsController.text !=
+                                (post['bathrooms']?.toString() ?? '')) {
+                              updates['bathrooms'] =
+                                  int.tryParse(bathroomsController.text);
+                            }
+                            if (imageDeleted) updates['imageUrl'] = '';
+                            if (updates.isEmpty) {
+                              Navigator.pop(ctx);
+                              return;
+                            }
+                            final result = await _realEstateService.editPost(
+                                post['id'], updates);
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(result['message'] ?? ''),
+                                    backgroundColor: result['success'] == true
+                                        ? Colors.green
+                                        : Colors.red),
+                              );
+                              if (result['success'] == true) {
+                                _myPostsLoaded = false;
+                                _fetchMyPosts();
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Text('Save Changes'),
                   ),
                 ),
               ],
@@ -1014,10 +1273,16 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     final result = await _realEstateService.renewPost(postId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+        SnackBar(
+            content: Text(result['message'] ?? ''),
+            backgroundColor:
+                result['success'] == true ? Colors.green : Colors.red),
       );
       if (result['success'] == true) {
-        setState(() { _myPostsLoaded = false; _selectedForRenewal.remove(postId); });
+        setState(() {
+          _myPostsLoaded = false;
+          _selectedForRenewal.remove(postId);
+        });
         _fetchMyPosts();
       }
     }
@@ -1036,9 +1301,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$successCount of $count posts renewed successfully'), backgroundColor: successCount > 0 ? Colors.green : Colors.red),
+        SnackBar(
+            content: Text('$successCount of $count posts renewed successfully'),
+            backgroundColor: successCount > 0 ? Colors.green : Colors.red),
       );
-      setState(() { _isRenewing = false; _selectedForRenewal.clear(); _myPostsLoaded = false; });
+      setState(() {
+        _isRenewing = false;
+        _selectedForRenewal.clear();
+        _myPostsLoaded = false;
+      });
       _fetchMyPosts();
     }
   }
@@ -1052,13 +1323,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
           children: [
             Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('Login to view saved properties', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            Text('Login to view saved properties',
+                style: TextStyle(fontSize: 18, color: Colors.grey[600])),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => GoRouter.of(context).go('/login'),
               icon: const Icon(Icons.login),
               label: const Text('Login'),
-              style: ElevatedButton.styleFrom(backgroundColor: VillageTheme.primaryGreen),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: VillageTheme.primaryGreen),
             ),
           ],
         ),
@@ -1271,8 +1544,10 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
             _ImageCarouselWidget(
               imageUrls: imageUrls,
               height: 180,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              fallbackIcon: listing['type'] == 'Land' ? Icons.landscape : Icons.home,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+              fallbackIcon:
+                  listing['type'] == 'Land' ? Icons.landscape : Icons.home,
             )
           else
             Center(
@@ -1294,7 +1569,10 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
               ),
               child: Text(
                 listing['listingType'] ?? '',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -1328,9 +1606,14 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.photo_library, color: Colors.white, size: 14),
+                    const Icon(Icons.photo_library,
+                        color: Colors.white, size: 14),
                     const SizedBox(width: 4),
-                    Text('${imageUrls.length}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('${imageUrls.length}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -1344,12 +1627,15 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
               radius: 18,
               child: IconButton(
                 icon: Icon(
-                  _isSaved(listing['id']) ? Icons.favorite : Icons.favorite_border,
+                  _isSaved(listing['id'])
+                      ? Icons.favorite
+                      : Icons.favorite_border,
                   size: 18,
                 ),
                 color: _isSaved(listing['id']) ? Colors.red : Colors.grey[600],
                 onPressed: () {
-                  final auth = Provider.of<AuthProvider>(context, listen: false);
+                  final auth =
+                      Provider.of<AuthProvider>(context, listen: false);
                   if (!auth.isAuthenticated) {
                     GoRouter.of(context).go('/login');
                     return;
@@ -1357,7 +1643,9 @@ class _RealEstateScreenState extends State<RealEstateScreen> with SingleTickerPr
                   _toggleSaved(listing['id']);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(_isSaved(listing['id']) ? 'Saved to favorites' : 'Removed from favorites'),
+                      content: Text(_isSaved(listing['id'])
+                          ? 'Saved to favorites'
+                          : 'Removed from favorites'),
                       duration: const Duration(seconds: 1),
                     ),
                   );
@@ -1499,7 +1787,8 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
       children: [
         // Main image with PageView
         GestureDetector(
-          onTap: () => _openFullScreenGallery(context, imageUrls, _currentImageIndex),
+          onTap: () =>
+              _openFullScreenGallery(context, imageUrls, _currentImageIndex),
           child: SizedBox(
             height: 220,
             child: Stack(
@@ -1507,7 +1796,8 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                 PageView.builder(
                   controller: _pageController,
                   itemCount: imageUrls.length,
-                  onPageChanged: (index) => setState(() => _currentImageIndex = index),
+                  onPageChanged: (index) =>
+                      setState(() => _currentImageIndex = index),
                   itemBuilder: (context, index) {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(16),
@@ -1522,7 +1812,9 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                             color: Colors.grey[300],
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Center(child: Icon(Icons.broken_image, size: 60, color: Colors.grey[500])),
+                          child: Center(
+                              child: Icon(Icons.broken_image,
+                                  size: 60, color: Colors.grey[500])),
                         ),
                       ),
                     );
@@ -1534,14 +1826,18 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                     top: 10,
                     right: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${_currentImageIndex + 1}/${imageUrls.length}',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -1550,7 +1846,8 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                   bottom: 10,
                   right: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(12),
@@ -1560,7 +1857,9 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                       children: [
                         Icon(Icons.fullscreen, color: Colors.white, size: 16),
                         SizedBox(width: 4),
-                        Text('View', style: TextStyle(color: Colors.white, fontSize: 11)),
+                        Text('View',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 11)),
                       ],
                     ),
                   ),
@@ -1580,7 +1879,9 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                 height: 8,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
-                  color: _currentImageIndex == index ? VillageTheme.primaryGreen : Colors.grey[350],
+                  color: _currentImageIndex == index
+                      ? VillageTheme.primaryGreen
+                      : Colors.grey[350],
                   borderRadius: BorderRadius.circular(4),
                 ),
               );
@@ -1598,7 +1899,9 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
               itemBuilder: (context, index) {
                 return GestureDetector(
                   onTap: () {
-                    _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                    _pageController.animateToPage(index,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut);
                   },
                   child: Container(
                     width: 60,
@@ -1607,7 +1910,9 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: _currentImageIndex == index ? VillageTheme.primaryGreen : Colors.grey[300]!,
+                        color: _currentImageIndex == index
+                            ? VillageTheme.primaryGreen
+                            : Colors.grey[300]!,
                         width: _currentImageIndex == index ? 2 : 1,
                       ),
                     ),
@@ -1618,7 +1923,8 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: Colors.grey[300],
-                          child: Icon(Icons.broken_image, size: 20, color: Colors.grey[500]),
+                          child: Icon(Icons.broken_image,
+                              size: 20, color: Colors.grey[500]),
                         ),
                       ),
                     ),
@@ -1632,10 +1938,12 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
     );
   }
 
-  void _openFullScreenGallery(BuildContext context, List<String> imageUrls, int initialIndex) {
+  void _openFullScreenGallery(
+      BuildContext context, List<String> imageUrls, int initialIndex) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => _FullScreenGallery(imageUrls: imageUrls, initialIndex: initialIndex),
+        builder: (context) => _FullScreenGallery(
+            imageUrls: imageUrls, initialIndex: initialIndex),
       ),
     );
   }
@@ -1697,7 +2005,8 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: listing['listingType'] == 'For Sale'
                               ? Colors.green
@@ -1726,9 +2035,11 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                   const SizedBox(height: 24),
                   // Details
                   _buildDetailRow(Icons.square_foot, 'Area', listing['area']),
-                  _buildDetailRow(Icons.location_on, 'Location', listing['location']),
+                  _buildDetailRow(
+                      Icons.location_on, 'Location', listing['location']),
                   _buildDetailRow(Icons.category, 'Type', listing['type']),
-                  _buildDetailRow(Icons.person, 'Posted by', listing['postedBy']),
+                  _buildDetailRow(
+                      Icons.person, 'Posted by', listing['postedBy']),
                   const SizedBox(height: 20),
                   const Text(
                     'Description',
@@ -1737,95 +2048,117 @@ class _PropertyDetailsSheetState extends State<PropertyDetailsSheet> {
                   const SizedBox(height: 8),
                   Text(
                     listing['description'],
-                    style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5),
+                    style: TextStyle(
+                        fontSize: 15, color: Colors.grey[700], height: 1.5),
                   ),
                   const SizedBox(height: 30),
                   // Contact buttons
                   Builder(builder: (ctx) {
-                    final isLoggedIn = Provider.of<AuthProvider>(ctx, listen: false).isAuthenticated;
+                    final isLoggedIn =
+                        Provider.of<AuthProvider>(ctx, listen: false)
+                            .isAuthenticated;
                     return Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            if (!isLoggedIn) {
-                              Navigator.of(context).pop();
-                              GoRouter.of(context).go('/login');
-                              return;
-                            }
-                            final phone = listing['phone']?.toString() ?? '';
-                            if (phone.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Phone number not available')),
-                              );
-                              return;
-                            }
-                            final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-                            final uri = Uri.parse('tel:$cleanPhone');
-                            launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Could not open phone dialer')),
-                                );
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              if (!isLoggedIn) {
+                                Navigator.of(context).pop();
+                                GoRouter.of(context).go('/login');
+                                return;
                               }
-                              return false;
-                            });
-                          },
-                          icon: Icon(isLoggedIn ? Icons.call : Icons.login),
-                          label: Text(isLoggedIn ? 'Call' : 'Login to Call'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: VillageTheme.primaryGreen,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              final phone = listing['phone']?.toString() ?? '';
+                              if (phone.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Phone number not available')),
+                                );
+                                return;
+                              }
+                              final cleanPhone =
+                                  phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                              final uri = Uri.parse('tel:$cleanPhone');
+                              launchUrl(uri,
+                                      mode: LaunchMode.externalApplication)
+                                  .catchError((_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Could not open phone dialer')),
+                                  );
+                                }
+                                return false;
+                              });
+                            },
+                            icon: Icon(isLoggedIn ? Icons.call : Icons.login),
+                            label: Text(isLoggedIn ? 'Call' : 'Login to Call'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: VillageTheme.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            if (!isLoggedIn) {
-                              Navigator.of(context).pop();
-                              GoRouter.of(context).go('/login');
-                              return;
-                            }
-                            final phone = listing['phone']?.toString() ?? '';
-                            if (phone.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Phone number not available')),
-                              );
-                              return;
-                            }
-                            final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                            final whatsappPhone = cleanPhone.startsWith('91') ? cleanPhone : '91$cleanPhone';
-                            final message = Uri.encodeComponent('Hi, I am interested in the property: ${listing['title']}');
-                            final uri = Uri.parse('https://wa.me/$whatsappPhone?text=$message');
-                            launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Could not open WhatsApp')),
-                                );
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              if (!isLoggedIn) {
+                                Navigator.of(context).pop();
+                                GoRouter.of(context).go('/login');
+                                return;
                               }
-                              return false;
-                            });
-                          },
-                          icon: Icon(isLoggedIn ? Icons.chat : Icons.login),
-                          label: Text(isLoggedIn ? 'WhatsApp' : 'Login'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: VillageTheme.primaryGreen,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              final phone = listing['phone']?.toString() ?? '';
+                              if (phone.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Phone number not available')),
+                                );
+                                return;
+                              }
+                              final cleanPhone =
+                                  phone.replaceAll(RegExp(r'[^0-9]'), '');
+                              final whatsappPhone = cleanPhone.startsWith('91')
+                                  ? cleanPhone
+                                  : '91$cleanPhone';
+                              final message = Uri.encodeComponent(
+                                  'Hi, I am interested in the property: ${listing['title']}');
+                              final uri = Uri.parse(
+                                  'https://wa.me/$whatsappPhone?text=$message');
+                              launchUrl(uri,
+                                      mode: LaunchMode.externalApplication)
+                                  .catchError((_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('Could not open WhatsApp')),
+                                  );
+                                }
+                                return false;
+                              });
+                            },
+                            icon: Icon(isLoggedIn ? Icons.chat : Icons.login),
+                            label: Text(isLoggedIn ? 'WhatsApp' : 'Login'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: VillageTheme.primaryGreen,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              side:
+                                  BorderSide(color: VillageTheme.primaryGreen),
                             ),
-                            side: BorderSide(color: VillageTheme.primaryGreen),
                           ),
                         ),
-                      ),
-                    ],
-                  );
+                      ],
+                    );
                   }),
                 ],
               ),
@@ -1865,6 +2198,24 @@ class _PostPropertySheet extends StatefulWidget {
 }
 
 class _PostPropertySheetState extends State<_PostPropertySheet> {
+  static const List<String> _propertyTypes = [
+    'Land',
+    'House',
+    'Apartment',
+    'Villa',
+    'Commercial',
+    'Plot',
+    'Farm Land',
+    'PG Hostel',
+  ];
+
+  static const Set<String> _residentialPropertyTypes = {
+    'House',
+    'Apartment',
+    'Villa',
+    'PG Hostel',
+  };
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();
@@ -1949,7 +2300,8 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: VillageTheme.primaryGreen,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Row(
               children: [
@@ -1982,25 +2334,28 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Property Type
-                    const Text('Property Type', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Property Type',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
-                      children: ['Land', 'House', 'Apartment', 'Commercial'].map((type) {
+                      children: _propertyTypes.map((type) {
                         return ChoiceChip(
                           label: Text(type),
                           selected: _propertyType == type,
                           onSelected: (selected) {
                             setState(() => _propertyType = type);
                           },
-                          selectedColor: VillageTheme.primaryGreen.withOpacity(0.2),
+                          selectedColor:
+                              VillageTheme.primaryGreen.withOpacity(0.2),
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 20),
 
                     // Listing Type
-                    const Text('Listing Type', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Listing Type',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Row(
                       children: ['For Sale', 'For Rent'].map((type) {
@@ -2024,15 +2379,20 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     // Title (English or Tamil)
                     TextFormField(
                       controller: _titleController,
+                      maxLength: 200,
                       decoration: InputDecoration(
                         labelText: 'Title / தலைப்பு *',
-                        hintText: 'e.g., 2 BHK House for Sale / 2 BHK வீடு விற்பனைக்கு',
+                        hintText:
+                            'e.g., 2 BHK House for Sale / 2 BHK வீடு விற்பனைக்கு',
                         border: const OutlineInputBorder(),
-                        suffixIcon: VoiceInputButton(controller: _titleController),
+                        suffixIcon:
+                            VoiceInputButton(controller: _titleController),
                       ),
                       validator: (v) {
-                        if (v?.isEmpty ?? true) return 'Required';
-                        if (v!.trim().split(RegExp(r'\s+')).length > 3) return 'Title max 3 words / தலைப்பு அதிகபட்சம் 3 வார்த்தைகள்';
+                        if (v == null || v.trim().isEmpty)
+                          return 'Title is required';
+                        if (v.trim().length < 3)
+                          return 'Enter at least 3 characters';
                         return null;
                       },
                     ),
@@ -2044,31 +2404,110 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                         Expanded(
                           child: TextFormField(
                             controller: _priceController,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[\d.]'))
+                            ],
                             decoration: InputDecoration(
                               labelText: 'Price *',
                               prefixText: '₹ ',
-                              suffixText: _listingType == 'For Rent' ? '/month' : '',
+                              suffixText:
+                                  _listingType == 'For Rent' ? '/month' : '',
                               border: const OutlineInputBorder(),
                             ),
-                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Price is required';
+                              }
+                              return FormValidators.isValidPositiveDecimal(
+                                      value)
+                                  ? null
+                                  : 'Enter a valid price above 0';
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: TextFormField(
                             controller: _areaController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
                             decoration: const InputDecoration(
-                              labelText: 'Area *',
-                              hintText: 'e.g., 1200 sq.ft',
+                              labelText: 'Area (sq.ft) *',
+                              hintText: 'e.g., 1200',
                               border: OutlineInputBorder(),
                             ),
-                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Area is required';
+                              }
+                              return FormValidators.isValidPositiveInteger(
+                                      value)
+                                  ? null
+                                  : 'Enter a valid area above 0';
+                            },
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    if (_residentialPropertyTypes.contains(_propertyType)) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _bedroomsController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Bedrooms',
+                                hintText: 'e.g., 2',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty)
+                                  return null;
+                                return FormValidators.isValidPositiveInteger(
+                                        value)
+                                    ? null
+                                    : 'Enter a number above 0';
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _bathroomsController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Bathrooms',
+                                hintText: 'e.g., 2',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty)
+                                  return null;
+                                return FormValidators.isValidPositiveInteger(
+                                        value)
+                                    ? null
+                                    : 'Enter a number above 0';
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Location
                     TextFormField(
@@ -2078,21 +2517,31 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                         hintText: 'e.g., Thiruvannamalai',
                         prefixIcon: const Icon(Icons.location_on),
                         border: const OutlineInputBorder(),
-                        suffixIcon: VoiceInputButton(controller: _locationController),
+                        suffixIcon:
+                            VoiceInputButton(controller: _locationController),
                       ),
-                      validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Location is required';
+                        }
+                        return value.trim().length <= 500
+                            ? null
+                            : 'Location is too long';
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // Description
                     TextFormField(
                       controller: _descriptionController,
+                      maxLength: 2000,
                       maxLines: 3,
                       decoration: InputDecoration(
                         labelText: 'Description',
                         hintText: 'Describe your property...',
                         border: const OutlineInputBorder(),
-                        suffixIcon: VoiceInputButton(controller: _descriptionController),
+                        suffixIcon: VoiceInputButton(
+                            controller: _descriptionController),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -2101,17 +2550,30 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Contact Phone *',
+                        hintText: FormValidators.mobileExample,
                         prefixIcon: Icon(Icons.phone),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Phone number is required';
+                        }
+                        return FormValidators.isValidIndianMobile(value)
+                            ? null
+                            : 'Enter a valid 10-digit mobile number starting with 6, 7, 8 or 9';
+                      },
                     ),
                     const SizedBox(height: 20),
 
                     // Images
-                    const Text('Photos (up to 5)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Photos (up to 5)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 100,
@@ -2120,8 +2582,10 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                         children: [
                           ..._images.map((img) => _buildImageTile(img)),
                           if (_images.length < 5) ...[
-                            _buildAddMediaTile(Icons.add_photo_alternate, 'Gallery', _pickImages),
-                            _buildAddMediaTile(Icons.camera_alt, 'Camera', _captureImage),
+                            _buildAddMediaTile(Icons.add_photo_alternate,
+                                'Gallery', _pickImages),
+                            _buildAddMediaTile(
+                                Icons.camera_alt, 'Camera', _captureImage),
                           ],
                         ],
                       ),
@@ -2129,13 +2593,15 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                     const SizedBox(height: 16),
 
                     // Video
-                    const Text('Video (optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Video (optional)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 100,
                       child: _video != null
                           ? _buildVideoTile()
-                          : _buildAddMediaTile(Icons.videocam, 'Add Video', _pickVideo),
+                          : _buildAddMediaTile(
+                              Icons.videocam, 'Add Video', _pickVideo),
                     ),
                     const SizedBox(height: 30),
 
@@ -2158,12 +2624,14 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : const Text(
                                 'Post Property',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
@@ -2209,7 +2677,8 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
       ),
       child: Stack(
         children: [
-          const Center(child: Icon(Icons.play_circle, size: 40, color: Colors.white)),
+          const Center(
+              child: Icon(Icons.play_circle, size: 40, color: Colors.white)),
           Align(
             alignment: Alignment.topRight,
             child: IconButton(
@@ -2231,14 +2700,16 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[400]!, style: BorderStyle.solid),
+          border:
+              Border.all(color: Colors.grey[400]!, style: BorderStyle.solid),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 32, color: Colors.grey[600]),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            Text(label,
+                style: TextStyle(fontSize: 11, color: Colors.grey[600])),
           ],
         ),
       ),
@@ -2253,9 +2724,7 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Parse area to integer (remove non-numeric characters)
-      final areaStr = _areaController.text.replaceAll(RegExp(r'[^0-9]'), '');
-      final areaSqft = int.tryParse(areaStr);
+      final areaSqft = int.tryParse(_areaController.text.trim());
 
       final result = await _realEstateService.createPost(
         title: _titleController.text.trim(),
@@ -2314,7 +2783,12 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         _paidTokenId = tokenId;
         _submitForm(paidTokenId: tokenId);
       },
-      onPaymentCancelled: () { if (mounted) setState(() { _isSubmitting = false; }); },
+      onPaymentCancelled: () {
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
+      },
     );
     handler.startPayment();
   }
@@ -2328,7 +2802,8 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: VillageTheme.primaryGreen, size: 64),
+            const Icon(Icons.check_circle,
+                color: VillageTheme.primaryGreen, size: 64),
             const SizedBox(height: 16),
             const Text(
               'Property Submitted!',
@@ -2349,7 +2824,8 @@ class _PostPropertySheetState extends State<_PostPropertySheet> {
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pop(context); // Close dialog
-        Navigator.pop(context, 'success'); // Close bottom sheet (triggers refresh)
+        Navigator.pop(
+            context, 'success'); // Close bottom sheet (triggers refresh)
       }
     });
   }
@@ -2379,7 +2855,8 @@ class _ImageCarouselWidgetState extends State<_ImageCarouselWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.imageUrls.isEmpty) {
-      return Center(child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]));
+      return Center(
+          child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]));
     }
 
     if (widget.imageUrls.length == 1) {
@@ -2393,7 +2870,8 @@ class _ImageCarouselWidgetState extends State<_ImageCarouselWidget> {
             width: double.infinity,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => Center(
-              child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]),
+              child:
+                  Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]),
             ),
           ),
         ),
@@ -2418,7 +2896,8 @@ class _ImageCarouselWidgetState extends State<_ImageCarouselWidget> {
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Center(
-                      child: Icon(widget.fallbackIcon, size: 64, color: Colors.grey[500]),
+                      child: Icon(widget.fallbackIcon,
+                          size: 64, color: Colors.grey[500]),
                     ),
                   ),
                 );
@@ -2438,7 +2917,8 @@ class _ImageCarouselWidgetState extends State<_ImageCarouselWidget> {
                   height: 6,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: BoxDecoration(
-                    color: _currentIndex == index ? Colors.white : Colors.white54,
+                    color:
+                        _currentIndex == index ? Colors.white : Colors.white54,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 );
@@ -2453,7 +2933,8 @@ class _ImageCarouselWidgetState extends State<_ImageCarouselWidget> {
   void _openFullScreen(int index) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => _FullScreenGallery(imageUrls: widget.imageUrls, initialIndex: index),
+        builder: (context) => _FullScreenGallery(
+            imageUrls: widget.imageUrls, initialIndex: index),
       ),
     );
   }
@@ -2464,7 +2945,8 @@ class _FullScreenGallery extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
 
-  const _FullScreenGallery({required this.imageUrls, required this.initialIndex});
+  const _FullScreenGallery(
+      {required this.imageUrls, required this.initialIndex});
 
   @override
   State<_FullScreenGallery> createState() => _FullScreenGalleryState();
@@ -2518,9 +3000,11 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                     errorBuilder: (context, error, stackTrace) => Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.broken_image, size: 80, color: Colors.grey[600]),
+                        Icon(Icons.broken_image,
+                            size: 80, color: Colors.grey[600]),
                         const SizedBox(height: 16),
-                        Text('Failed to load image', style: TextStyle(color: Colors.grey[500])),
+                        Text('Failed to load image',
+                            style: TextStyle(color: Colors.grey[500])),
                       ],
                     ),
                   ),
@@ -2544,7 +3028,9 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                     itemBuilder: (context, index) {
                       return GestureDetector(
                         onTap: () {
-                          _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                          _pageController.animateToPage(index,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut);
                         },
                         child: Container(
                           width: 52,
@@ -2553,7 +3039,9 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: _currentIndex == index ? Colors.white : Colors.transparent,
+                              color: _currentIndex == index
+                                  ? Colors.white
+                                  : Colors.transparent,
                               width: 2,
                             ),
                           ),
@@ -2562,9 +3050,11 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                             child: Image.network(
                               widget.imageUrls[index],
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
                                 color: Colors.grey[800],
-                                child: Icon(Icons.broken_image, size: 20, color: Colors.grey[600]),
+                                child: Icon(Icons.broken_image,
+                                    size: 20, color: Colors.grey[600]),
                               ),
                             ),
                           ),
@@ -2595,7 +3085,8 @@ class _FeaturedBannerCarousel extends StatefulWidget {
   });
 
   @override
-  State<_FeaturedBannerCarousel> createState() => _FeaturedBannerCarouselState();
+  State<_FeaturedBannerCarousel> createState() =>
+      _FeaturedBannerCarouselState();
 }
 
 class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
@@ -2638,7 +3129,10 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
     }
     final images = post['images'];
     if (images is List) {
-      return images.map((e) => e.toString()).where((s) => s.trim().isNotEmpty).toList();
+      return images
+          .map((e) => e.toString())
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
     }
     return [];
   }
@@ -2658,7 +3152,10 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
               const SizedBox(width: 6),
               Text(
                 'Featured Properties',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: widget.accentColor),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: widget.accentColor),
               ),
             ],
           ),
@@ -2672,7 +3169,8 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
             itemBuilder: (context, index) {
               final post = widget.posts[index];
               final imageUrls = _parseImageUrls(post);
-              final firstImage = imageUrls.isNotEmpty ? imageUrls.first.trim() : null;
+              final firstImage =
+                  imageUrls.isNotEmpty ? imageUrls.first.trim() : null;
               final fullImageUrl = firstImage != null && firstImage.isNotEmpty
                   ? ImageUrlHelper.getFullImageUrl(firstImage)
                   : null;
@@ -2684,7 +3182,10 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4)),
                     ],
                   ),
                   child: ClipRRect(
@@ -2696,16 +3197,19 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                           CachedNetworkImage(
                             imageUrl: fullImageUrl,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(color: Colors.grey[300]),
+                            placeholder: (context, url) =>
+                                Container(color: Colors.grey[300]),
                             errorWidget: (context, url, error) => Container(
                               color: Colors.grey[300],
-                              child: const Icon(Icons.home, size: 40, color: Colors.grey),
+                              child: const Icon(Icons.home,
+                                  size: 40, color: Colors.grey),
                             ),
                           )
                         else
                           Container(
                             color: Colors.grey[300],
-                            child: const Icon(Icons.home, size: 40, color: Colors.grey),
+                            child: const Icon(Icons.home,
+                                size: 40, color: Colors.grey),
                           ),
                         // Gradient overlay
                         Container(
@@ -2726,7 +3230,8 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                           top: 10,
                           left: 10,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: widget.accentColor,
                               borderRadius: BorderRadius.circular(20),
@@ -2736,7 +3241,11 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                               children: [
                                 Icon(Icons.star, color: Colors.white, size: 14),
                                 SizedBox(width: 4),
-                                Text('Featured', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                Text('Featured',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
@@ -2747,15 +3256,23 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                             top: 10,
                             right: 10,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4)],
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4)
+                                ],
                               ),
                               child: Text(
                                 '₹${post['price']}${post['priceUnit'] == 'month' ? '/mo' : ''}',
-                                style: TextStyle(color: widget.accentColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    color: widget.accentColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                           ),
@@ -2769,7 +3286,10 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                             children: [
                               Text(
                                 post['title'] ?? '',
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -2777,12 +3297,15 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(Icons.location_on, color: Colors.white70, size: 14),
+                                    const Icon(Icons.location_on,
+                                        color: Colors.white70, size: 14),
                                     const SizedBox(width: 3),
                                     Expanded(
                                       child: Text(
                                         post['location'] ?? '',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -2812,7 +3335,9 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                 height: 6,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
-                  color: _currentPage == index ? widget.accentColor : Colors.grey[350],
+                  color: _currentPage == index
+                      ? widget.accentColor
+                      : Colors.grey[350],
                   borderRadius: BorderRadius.circular(3),
                 ),
               );

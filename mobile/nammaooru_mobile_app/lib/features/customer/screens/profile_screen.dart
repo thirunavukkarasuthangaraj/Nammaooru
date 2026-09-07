@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/constants/colors.dart';
@@ -19,7 +18,6 @@ import 'contact_requests_screen.dart';
 import 'help_support_screen.dart';
 import '../../../core/services/contact_request_service.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
-import '../../../services/contact_config_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -76,10 +74,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// Helper for bilingual text
   String _t(String en, String ta) {
-    return Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
+    return Provider.of<LanguageProvider>(context, listen: false)
+        .getText(en, ta);
   }
-
-  final _contact = ContactConfigService.instance;
 
   @override
   void initState() {
@@ -90,10 +87,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) setState(() => _pendingContactCount = count);
     });
     SharedPreferences.getInstance().then((prefs) {
-      if (mounted) setState(() => _phonePrivacyEnabled = prefs.getBool('phone_privacy_enabled') ?? false);
-    });
-    _contact.fetch().then((_) {
-      if (mounted) setState(() {});
+      if (mounted)
+        setState(() => _phonePrivacyEnabled =
+            prefs.getBool('phone_privacy_enabled') ?? false);
     });
   }
 
@@ -151,7 +147,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               String userAddress = '';
 
               try {
-                final addressesResponse = await ApiClient.get('/customer/delivery-locations');
+                final addressesResponse =
+                    await ApiClient.get('/customer/delivery-locations');
                 if (addressesResponse.statusCode == 200) {
                   final addressData = addressesResponse.data;
 
@@ -171,7 +168,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       if (latitude != null && longitude != null) {
                         try {
-                          final placemarks = await LocationService.getAddressFromCoordinates(
+                          final placemarks =
+                              await LocationService.getAddressFromCoordinates(
                             latitude.toDouble(),
                             longitude.toDouble(),
                           );
@@ -180,7 +178,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final placemark = placemarks.first;
                             // Use subLocality (village), locality (city/town), and administrativeArea (state) from Google
                             final village = placemark.subLocality ?? '';
-                            final city = placemark.locality ?? placemark.subAdministrativeArea ?? '';
+                            final city = placemark.locality ??
+                                placemark.subAdministrativeArea ??
+                                '';
                             final state = placemark.administrativeArea ?? '';
 
                             // Build location string: Village, City format or City, State format
@@ -242,16 +242,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }
 
               // Save individual profile fields to LocalStorage for checkout auto-fill
-              await LocalStorage.setString('firstName', userData['firstName'] ?? '');
-              await LocalStorage.setString('lastName', userData['lastName'] ?? '');
-              await LocalStorage.setString('phoneNumber', userData['mobileNumber'] ?? '');
+              await LocalStorage.setString(
+                  'firstName', userData['firstName'] ?? '');
+              await LocalStorage.setString(
+                  'lastName', userData['lastName'] ?? '');
+              await LocalStorage.setString(
+                  'phoneNumber', userData['mobileNumber'] ?? '');
 
               setState(() {
                 _userInfo = {
                   'userId': userData['id']?.toString() ?? 'N/A',
                   'userRole': userData['role'] ?? 'CUSTOMER',
                   'email': userData['email'] ?? 'N/A',
-                  'name': '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}',
+                  'name':
+                      '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}',
                   'phoneNumber': userData['mobileNumber'] ?? 'N/A',
                   'username': userData['username'] ?? 'N/A',
                   'address': userAddress,
@@ -260,7 +264,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'accountCreated': userData['createdAt'] ?? 'N/A',
                   'location': userLocation,
                   'totalOrders': orderCount.toString(),
-                  'membershipType': userData['role'] == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
+                  'membershipType': userData['role'] == 'SHOP_OWNER'
+                      ? 'Shop Owner'
+                      : 'Customer',
                   'appVersion': '', // loaded async below
                   'lastLogin': userData['lastLoginAt'] ?? 'Just now',
                   'isActive': userData['isActive'] ?? true,
@@ -291,13 +297,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'userId': cachedUserData['id']?.toString() ?? 'N/A',
               'userRole': cachedUserData['role'] ?? 'CUSTOMER',
               'email': cachedUserData['email'] ?? 'N/A',
-              'name': '${cachedUserData['firstName'] ?? ''} ${cachedUserData['lastName'] ?? ''}',
+              'name':
+                  '${cachedUserData['firstName'] ?? ''} ${cachedUserData['lastName'] ?? ''}',
               'phoneNumber': cachedUserData['mobileNumber'] ?? 'N/A',
               'username': cachedUserData['username'] ?? 'N/A',
               'address': 'Chennai, Tamil Nadu',
               'isAuthenticated': true,
               'totalOrders': '0',
-              'membershipType': cachedUserData['role'] == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
+              'membershipType': cachedUserData['role'] == 'SHOP_OWNER'
+                  ? 'Shop Owner'
+                  : 'Customer',
             };
             _isLoading = false;
           });
@@ -318,11 +327,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'username': 'Username not available',
           'address': 'Address not available',
           'isAuthenticated': authProvider.isAuthenticated,
-          'membershipType': authProvider.userRole == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
+          'membershipType':
+              authProvider.userRole == 'SHOP_OWNER' ? 'Shop Owner' : 'Customer',
         };
         _isLoading = false;
       });
-      
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -386,7 +395,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // Parse limits
           final limitsData = statsData['limits'] as Map? ?? {};
-          _postLimits = limitsData.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0));
+          _postLimits = limitsData
+              .map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0));
 
           // Parse pricing (keyed by displayName)
           final pricingData = statsData['pricing'] as Map? ?? {};
@@ -422,7 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _isLoggingOut = true);
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       // Logout via the provider FIRST: it unregisters the FCM token with the
       // backend (needs the still-valid JWT) and then clears the auth session.
       await authProvider.logout();
@@ -454,7 +464,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(_t('Confirm Logout', 'வெளியேற்றத்தை உறுதிசெய்')),
-          content: Text(_t('Are you sure you want to logout?', 'நிச்சயமாக வெளியேற விரும்புகிறீர்களா?')),
+          content: Text(_t('Are you sure you want to logout?',
+              'நிச்சயமாக வெளியேற விரும்புகிறீர்களா?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -523,13 +534,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 24),
                               _buildAccountActionsCard(),
                               const SizedBox(height: 24),
-                              _buildPrivacySettingsCard(),
-                              const SizedBox(height: 24),
                               _buildPostStatsCard(),
-                              const SizedBox(height: 24),
-                              _buildSystemInfoCard(),
-                              const SizedBox(height: 24),
-                              _buildContactSupportCard(),
                               const SizedBox(height: 32),
                               _buildLogoutButton(),
                             ],
@@ -669,7 +674,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  _userInfo['userRole']?.toString().replaceAll('_', ' ') ?? 'Customer',
+                  _userInfo['userRole']?.toString().replaceAll('_', ' ') ??
+                      'Customer',
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 13,
@@ -691,9 +697,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Icons.person_outline,
       [
         _buildDetailRow(_t('Email', 'மின்னஞ்சல்'), _userInfo['email'] ?? 'N/A'),
-        _buildDetailRow(_t('Phone', 'தொலைபேசி'), _userInfo['phoneNumber'] ?? 'N/A'),
+        _buildDetailRow(
+            _t('Phone', 'தொலைபேசி'), _userInfo['phoneNumber'] ?? 'N/A'),
         _buildDetailRow(_t('Address', 'முகவரி'), _userInfo['address'] ?? 'N/A'),
-        _buildDetailRow(_t('Account Created', 'கணக்கு உருவாக்கம்'), _formatDateTime(_userInfo['accountCreated'])),
+        _buildDetailRow(_t('Account Created', 'கணக்கு உருவாக்கம்'),
+            _formatDateTime(_userInfo['accountCreated'])),
       ],
     );
   }
@@ -703,30 +711,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _t('Account Actions', 'கணக்கு செயல்கள்'),
       Icons.settings_outlined,
       [
-        _buildActionRow(_t('Manage Addresses', 'முகவரிகள் நிர்வகி'), Icons.location_on_outlined, () {
+        _buildActionRow(_t('Manage Addresses', 'முகவரிகள் நிர்வகி'),
+            Icons.location_on_outlined, () {
           context.push('/customer/addresses');
         }),
         _buildActionRowWithBadge(
           _t('Contact Requests', 'தொடர்பு கோரிக்கைகள்'),
           Icons.contact_phone_outlined,
           () {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (context) => const ContactRequestsScreen(),
-            ));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ContactRequestsScreen(),
+                ));
           },
         ),
-        _buildActionRow(_t('Payment History', 'பணம் செலுத்திய வரலாறு'), Icons.payment_outlined, () {
-          Navigator.push(context, MaterialPageRoute(
-            builder: (context) => const PaymentHistoryScreen(),
-          ));
+        _buildActionRow(_t('Payment History', 'பணம் செலுத்திய வரலாறு'),
+            Icons.payment_outlined, () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PaymentHistoryScreen(),
+              ));
         }),
-        _buildActionRow(_t('Privacy Policy', 'தனியுரிமை கொள்கை'), Icons.privacy_tip_outlined, () {
+        _buildAccountSectionLabel(
+          _t('Privacy Settings', 'தனியுரிமை அமைப்புகள்'),
+          Icons.shield_outlined,
+        ),
+        _buildPhonePrivacyControl(),
+        _buildActionRow(_t('Privacy Policy', 'தனியுரிமை கொள்கை'),
+            Icons.privacy_tip_outlined, () {
           PrivacyPolicyDialog.show(context);
         }),
-        _buildActionRow(_t('Help & Support', 'உதவி & ஆதரவு'), Icons.help_outline, () {
-          Navigator.push(context, MaterialPageRoute(
-            builder: (context) => const HelpSupportScreen(),
-          ));
+        _buildActionRow(
+            _t('Help & Support', 'உதவி & ஆதரவு'), Icons.help_outline, () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HelpSupportScreen(
+                  systemInformation: _userInfo,
+                ),
+              ));
         }),
       ],
     );
@@ -734,10 +759,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildPostStatsCard() {
     if (_isLoadingPosts) {
-      return _buildCard(_t('My Posts', 'என் பதிவுகள்'), Icons.article_outlined, [
+      return _buildCard(
+          _t('My Posts', 'என் பதிவுகள்'), Icons.article_outlined, [
         const Padding(
           padding: EdgeInsets.all(20),
-          child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+          child: Center(
+              child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2))),
         ),
       ]);
     }
@@ -781,16 +811,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.article_outlined, color: AppColors.primary, size: 22),
+                    child: Icon(Icons.article_outlined,
+                        color: AppColors.primary, size: 22),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: Text(_t('My Posts', 'என் பதிவுகள்'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    child: Text(_t('My Posts', 'என் பதிவுகள்'),
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
                   ),
                   GestureDetector(
                     onTap: () => context.push('/customer/my-posts'),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -798,16 +834,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(_t('View All', 'அனைத்தும்'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          Text(_t('View All', 'அனைத்தும்'),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary)),
                           const SizedBox(width: 2),
-                          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              size: 12, color: AppColors.primary),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Icon(
-                    _postsExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    _postsExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: Colors.grey[400],
                   ),
                 ],
@@ -819,11 +862,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(
               children: [
-                _buildStatChip('$totalAll', _t('Total', 'மொத்தம்'), const Color(0xFF2196F3)),
+                _buildStatChip('$totalAll', _t('Total', 'மொத்தம்'),
+                    const Color(0xFF2196F3)),
                 const SizedBox(width: 10),
-                _buildStatChip('$totalFree', _t('Free', 'இலவசம்'), const Color(0xFF4CAF50)),
+                _buildStatChip('$totalFree', _t('Free', 'இலவசம்'),
+                    const Color(0xFF4CAF50)),
                 const SizedBox(width: 10),
-                _buildStatChip('$totalPaid', _t('Paid', 'கட்டணம்'), const Color(0xFFFF9800)),
+                _buildStatChip('$totalPaid', _t('Paid', 'கட்டணம்'),
+                    const Color(0xFFFF9800)),
               ],
             ),
           ),
@@ -842,32 +888,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.2)),
+                  border: Border.all(
+                      color: const Color(0xFF4CAF50).withOpacity(0.2)),
                 ),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
+                        Icon(Icons.info_outline_rounded,
+                            size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
-                        Text(_t('Post Pricing', 'பதிவு விலை'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                        Text(_t('Post Pricing', 'பதிவு விலை'),
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary)),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    _buildPricingRow(Icons.card_giftcard_rounded, _t('1st Post', 'முதல் பதிவு'), _t('FREE', 'இலவசம்'), const Color(0xFF4CAF50)),
+                    _buildPricingRow(
+                        Icons.card_giftcard_rounded,
+                        _t('1st Post', 'முதல் பதிவு'),
+                        _t('FREE', 'இலவசம்'),
+                        const Color(0xFF4CAF50)),
                     const SizedBox(height: 6),
                     Builder(builder: (_) {
-                      final firstPricing = _postPricing.values.isNotEmpty ? _postPricing.values.first : null;
+                      final firstPricing = _postPricing.values.isNotEmpty
+                          ? _postPricing.values.first
+                          : null;
                       final price = firstPricing?['price'] ?? 15;
                       final days = firstPricing?['durationDays'] ?? 30;
                       final perDay = firstPricing?['perDayRate'] ?? 0.5;
                       return Column(
                         children: [
-                          _buildPricingRow(Icons.currency_rupee_rounded, _t('Next Post', 'அடுத்த பதிவு'), '\u20B9$price ${_t('per post', 'ஒரு பதிவு')}', const Color(0xFFFF9800)),
+                          _buildPricingRow(
+                              Icons.currency_rupee_rounded,
+                              _t('Next Post', 'அடுத்த பதிவு'),
+                              '\u20B9$price ${_t('per post', 'ஒரு பதிவு')}',
+                              const Color(0xFFFF9800)),
                           const SizedBox(height: 6),
-                          _buildPricingRow(Icons.calendar_today_rounded, _t('Validity', 'செல்லுபடி'), '$days ${_t('days', 'நாட்கள்')}', const Color(0xFF2196F3)),
+                          _buildPricingRow(
+                              Icons.calendar_today_rounded,
+                              _t('Validity', 'செல்லுபடி'),
+                              '$days ${_t('days', 'நாட்கள்')}',
+                              const Color(0xFF2196F3)),
                           const SizedBox(height: 6),
-                          _buildPricingRow(Icons.trending_down_rounded, _t('Per Day', 'ஒரு நாள்'), '\u20B9$perDay / ${_t('day', 'நாள்')}', const Color(0xFF9C27B0)),
+                          _buildPricingRow(
+                              Icons.trending_down_rounded,
+                              _t('Per Day', 'ஒரு நாள்'),
+                              '\u20B9$perDay / ${_t('day', 'நாள்')}',
+                              const Color(0xFF9C27B0)),
                         ],
                       );
                     }),
@@ -892,7 +962,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return InkWell(
                 onTap: () => context.push('/customer/my-posts?module=$name'),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: Row(
                     children: [
                       Container(
@@ -909,28 +980,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(name,
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                Text('$free ${_t('free', 'இலவசம்')}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                                Text('  ·  ', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                                Text('$paid ${_t('paid', 'கட்டணம்')}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                                Text('$free ${_t('free', 'இலவசம்')}',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.grey[600])),
+                                Text('  ·  ',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.grey[400])),
+                                Text('$paid ${_t('paid', 'கட்டணம்')}',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.grey[600])),
                               ],
                             ),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('$total', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+                        child: Text('$total',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: color)),
                       ),
                       const SizedBox(width: 4),
-                      Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[400]),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 20, color: Colors.grey[400]),
                     ],
                   ),
                 ),
@@ -943,14 +1030,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPricingRow(IconData icon, String label, String value, Color color) {
+  Widget _buildPricingRow(
+      IconData icon, String label, String value, Color color) {
     return Row(
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500)),
         const Spacer(),
-        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: color)),
       ],
     );
   }
@@ -970,27 +1064,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Column(
           children: [
-            Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
+            Text(count,
+                style: TextStyle(
+                    fontSize: 24, fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11, color: color, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSystemInfoCard() {
-    return _buildCard(
-      _t('System Information', 'கணினி தகவல்'),
-      Icons.info_outline,
-      [
-        _buildDetailRow(_t('Auth Status', 'அங்கீகாரம்'), _userInfo['isAuthenticated'] ? _t('Authenticated', 'அங்கீகரிக்கப்பட்டது') : _t('Not Authenticated', 'அங்கீகரிக்கப்படவில்லை')),
-        _buildDetailRow(_t('Session Started', 'அமர்வு தொடக்கம்'), _formatDateTime(_userInfo['loginTime'])),
-        _buildDetailRow(_t('Last Login', 'கடைசி உள்நுழைவு'), _userInfo['lastLogin'] ?? 'N/A'),
-        _buildDetailRow(_t('App Version', 'பயன்பாட்டு பதிப்பு'), _userInfo['appVersion'] ?? '1.0.0'),
-        _buildDetailRow(_t('Membership', 'உறுப்பினர்'), _userInfo['membershipType'] ?? 'Customer'),
-        _buildDetailRow(_t('Total Orders', 'மொத்த ஆர்டர்கள்'), _userInfo['totalOrders'] ?? '0'),
-      ],
     );
   }
 
@@ -1127,7 +1210,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildActionRowWithBadge(String label, IconData icon, VoidCallback onTap) {
+  Widget _buildActionRowWithBadge(
+      String label, IconData icon, VoidCallback onTap) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1139,7 +1223,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             color: AppColors.primary.withOpacity(0.03),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primary.withOpacity(0.08), width: 1),
+            border: Border.all(
+                color: AppColors.primary.withOpacity(0.08), width: 1),
           ),
           child: Row(
             children: [
@@ -1153,23 +1238,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(label, style: const TextStyle(
-                  fontSize: 15, color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600, letterSpacing: -0.2,
-                )),
+                child: Text(label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    )),
               ),
               if (_pendingContactCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text('$_pendingContactCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
                 ),
               const SizedBox(width: 8),
-              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary.withOpacity(0.6)),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: AppColors.primary.withOpacity(0.6)),
             ],
           ),
         ),
@@ -1177,191 +1270,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPrivacySettingsCard() {
-    return _buildCard(
-      _t('Privacy Settings', 'தனியுரிமை அமைப்புகள்'),
-      Icons.shield_outlined,
-      [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primary.withOpacity(0.08), width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE91E63).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.phone_locked_outlined, color: Color(0xFFE91E63), size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _t('Lock Phone Number', 'தொலைபேசி எண் பூட்டு'),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _t('Buyers must request permission to see your number',
-                         'வாங்குபவர்கள் உங்கள் எண்ணை பார்க்க அனுமதி கோரவேண்டும்'),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                value: _phonePrivacyEnabled,
-                onChanged: (val) async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('phone_privacy_enabled', val);
-                  if (mounted) setState(() => _phonePrivacyEnabled = val);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(val
-                          ? _t('Phone number locked on all new posts', 'புதிய பதிவுகளில் எண் பூட்டப்பட்டது')
-                          : _t('Phone number unlocked', 'தொலைபேசி எண் திறக்கப்பட்டது')),
-                      duration: const Duration(seconds: 2),
-                    ));
-                  }
-                },
-                activeColor: const Color(0xFFE91E63),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildContactSupportCard() {
-    final supportNumber = _contact.phone;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 6),
-            spreadRadius: 0,
+  Widget _buildAccountSectionLabel(String label, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    );
+  }
+
+  Widget _buildPhonePrivacyControl() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border:
+            Border.all(color: AppColors.primary.withOpacity(0.08), width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE91E63).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.phone_locked_outlined,
+                color: Color(0xFFE91E63), size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.support_agent_rounded,
-                    color: AppColors.primary,
-                    size: 26,
-                  ),
+                Text(
+                  _t('Lock Phone Number', 'தொலைபேசி எண் பூட்டு'),
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _t('Contact Support', 'தொடர்பு கொள்ள'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        supportNumber,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 2),
+                Text(
+                  _t('Buyers must request permission to see your number',
+                      'வாங்குபவர்கள் உங்கள் எண்ணை பார்க்க அனுமதி கோரவேண்டும்'),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final Uri launchUri = Uri(scheme: 'tel', path: supportNumber);
-                      try {
-                        if (await canLaunchUrl(launchUri)) {
-                          await launchUrl(launchUri);
-                        } else if (mounted) {
-                          Helpers.showSnackBar(context, 'Could not launch phone call', isError: true);
-                        }
-                      } catch (e) {
-                        if (mounted) Helpers.showSnackBar(context, 'Error: $e', isError: true);
-                      }
-                    },
-                    icon: const Icon(Icons.phone_rounded, size: 20),
-                    label: Text(_t('Call', 'அழைப்பு')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final number = _contact.whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
-                      final whatsappUrl = Uri.parse('https://wa.me/91$number');
-                      try {
-                        if (await canLaunchUrl(whatsappUrl)) {
-                          await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-                        } else if (mounted) {
-                          Helpers.showSnackBar(context, 'WhatsApp not installed', isError: true);
-                        }
-                      } catch (e) {
-                        if (mounted) Helpers.showSnackBar(context, 'Error: $e', isError: true);
-                      }
-                    },
-                    icon: const Icon(Icons.chat_rounded, size: 20),
-                    label: Text(_t('WhatsApp', 'வாட்ஸ்அப்')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          Switch(
+            value: _phonePrivacyEnabled,
+            onChanged: (val) async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('phone_privacy_enabled', val);
+              if (mounted) setState(() => _phonePrivacyEnabled = val);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(val
+                      ? _t('Phone number locked on all new posts',
+                          'புதிய பதிவுகளில் எண் பூட்டப்பட்டது')
+                      : _t('Phone number unlocked',
+                          'தொலைபேசி எண் திறக்கப்பட்டது')),
+                  duration: const Duration(seconds: 2),
+                ));
+              }
+            },
+            activeColor: const Color(0xFFE91E63),
+          ),
+        ],
       ),
     );
   }

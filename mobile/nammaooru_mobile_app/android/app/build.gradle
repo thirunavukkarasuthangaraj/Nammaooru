@@ -27,6 +27,7 @@ android {
     namespace "com.nammaooru.app"
     // Compile SDK 36 required by plugins (doesn't affect device compatibility)
     compileSdk 36
+    ndkVersion "28.2.13676358"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
@@ -51,10 +52,9 @@ android {
         multiDexEnabled true
     }
 
-    // Split APKs by ABI to reduce size
-    splits {
-        abi {
-            enable false
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 
@@ -76,9 +76,12 @@ android {
             debuggable true
         }
         release {
-            // Disabled minification due to Play Core library conflicts
-            minifyEnabled false
-            shrinkResources false
+            // R8 shrinking enabled — the Play Core / Razorpay -dontwarn and
+            // -keep rules in proguard-rules.pro handle the conflicts that
+            // previously forced this off
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 
             // Use release signing config if available, otherwise debug
             signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug

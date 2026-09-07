@@ -34,6 +34,8 @@ NammaOoru_Shop_Owner_Release/
 NammaOoru_Production_APKs_*/
 PlayStore_Release/
 production_apks/
+*.apk
+*.aab
 
 # Backend temp files
 backend/*.md

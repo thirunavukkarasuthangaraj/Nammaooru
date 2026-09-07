@@ -2,15 +2,18 @@ import '../core/api/api_client.dart';
 
 class ContactConfigService {
   static ContactConfigService? _instance;
-  static ContactConfigService get instance => _instance ??= ContactConfigService._();
+  static ContactConfigService get instance =>
+      _instance ??= ContactConfigService._();
   ContactConfigService._();
+
+  static const officialWebsite = 'https://nammaoorudelivary.in/';
 
   // Defaults (fallback when API is unreachable)
   static const _defaults = {
     'support.phone': '6374217724',
     'support.whatsapp': '6374217724',
     'support.email': 'support@nammaooru.com',
-    'support.website': 'https://nammaooru.com',
+    'support.website': officialWebsite,
   };
 
   Map<String, String> _cache = {};
@@ -23,9 +26,10 @@ class ContactConfigService {
       _cache.isNotEmpty;
 
   String get phone => _cache['support.phone'] ?? _defaults['support.phone']!;
-  String get whatsapp => _cache['support.whatsapp'] ?? _defaults['support.whatsapp']!;
+  String get whatsapp =>
+      _cache['support.whatsapp'] ?? _defaults['support.whatsapp']!;
   String get email => _cache['support.email'] ?? _defaults['support.email']!;
-  String get website => _cache['support.website'] ?? _defaults['support.website']!;
+  String get website => officialWebsite;
 
   /// Fetch contact settings from backend. Returns cached values if still fresh.
   Future<void> fetch() async {
@@ -38,7 +42,8 @@ class ContactConfigService {
       );
       if (response.statusCode == 200 && response.data is Map) {
         _cache = Map<String, String>.from(
-          (response.data as Map).map((k, v) => MapEntry(k.toString(), v.toString())),
+          (response.data as Map)
+              .map((k, v) => MapEntry(k.toString(), v.toString())),
         );
         _cacheTime = DateTime.now();
       }

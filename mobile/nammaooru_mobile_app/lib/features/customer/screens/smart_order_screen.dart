@@ -38,6 +38,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
   // Live voice-to-text with real-time suggestions
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
+  bool _speechInitialized = false;
   String _currentLocale = 'ta-IN'; // Toggle between en-IN and ta-IN
 
   @override
@@ -84,32 +85,41 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
 
   /// Start listening — shows partial speech in text field, triggers suggestions live
   Future<void> _startListening() async {
-    final available = await _speech.initialize(
-      onStatus: (status) {
-        debugPrint('STT status: $status | lastWords: $_lastFinalText | controller: ${_textController.text}');
-        if (status == 'done' || status == 'notListening') {
-          if (mounted) setState(() => _isListening = false);
-          // finalResult sometimes never fires — trigger search on done if we have text
-          final text = _textController.text.trim();
-          if (text.isNotEmpty && _lastFinalText.isEmpty) {
-            _lastFinalText = text;
-            _handleFinalSpeech(text);
+    // Re-initializing the native recognizer on every tap (instead of reusing
+    // it once available) made it get stuck after a handful of uses — it
+    // would report "listening" but never actually capture audio, matching
+    // "worked a few times then stopped picking up anything". Initialize once
+    // and reuse, same fix already applied to VoiceSearchService.
+    if (!_speechInitialized || !_speech.isAvailable) {
+      if (_speech.isListening) await _speech.cancel();
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('STT status: $status | lastWords: $_lastFinalText | controller: ${_textController.text}');
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _isListening = false);
+            // finalResult sometimes never fires — trigger search on done if we have text
+            final text = _textController.text.trim();
+            if (text.isNotEmpty && _lastFinalText.isEmpty) {
+              _lastFinalText = text;
+              _handleFinalSpeech(text);
+            }
           }
-        }
-      },
-      onError: (error) {
-        debugPrint('Speech error: ${error.errorMsg}');
-        if (mounted) setState(() => _isListening = false);
-      },
-    );
+        },
+        onError: (error) {
+          debugPrint('Speech error: ${error.errorMsg}');
+          if (mounted) setState(() => _isListening = false);
+        },
+      );
+      _speechInitialized = available;
 
-    if (!available) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone not available'), backgroundColor: Colors.red),
-        );
+      if (!available) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone not available'), backgroundColor: Colors.red),
+          );
+        }
+        return;
       }
-      return;
     }
 
     setState(() => _isListening = true);
@@ -136,7 +146,7 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
       listenMode: stt.ListenMode.search,
       partialResults: true,
       cancelOnError: false,
-      pauseFor: const Duration(seconds: 3),
+      pauseFor: const Duration(seconds: 4),
       listenFor: const Duration(seconds: 15),
     );
   }

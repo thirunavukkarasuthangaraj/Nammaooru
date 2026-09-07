@@ -111,7 +111,7 @@ class EnvConfig {
 
   // Deep Links
   static const String appScheme = 'nammaooru';
-  static const String webUrl = 'https://nammaooru.com';
+  static const String webUrl = 'https://nammaoorudelivary.in/';
 
   // Development Configuration
   static const bool showDebugInfo = false;
