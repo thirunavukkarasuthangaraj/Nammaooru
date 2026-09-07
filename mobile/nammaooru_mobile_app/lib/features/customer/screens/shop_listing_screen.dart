@@ -13,6 +13,7 @@ import '../../../core/utils/helpers.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../widgets/deliver_to_picker.dart';
 import 'shop_details_screen.dart';
+import 'shop_registration_screen.dart';
 
 class ShopListingScreen extends StatefulWidget {
   final String? category;
@@ -338,6 +339,27 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
             child: _isLoading ? const LoadingWidget() : _buildVillageShopsList(),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openShopRegistration,
+        backgroundColor: const Color(0xFF2E7D32),
+        icon: const Icon(Icons.add_business, color: Colors.white),
+        label: const Text(
+          'Register Your Shop',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  void _openShopRegistration() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShopRegistrationScreen(
+          category: widget.category,
+          categoryTitle: widget.categoryTitle,
+        ),
       ),
     );
   }

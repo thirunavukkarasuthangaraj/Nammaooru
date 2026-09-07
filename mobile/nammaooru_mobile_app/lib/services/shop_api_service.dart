@@ -182,6 +182,68 @@ class ShopApiService {
     }
   }
 
+  // Register a new shop (self-service). Hits the same POST /api/shops
+  // endpoint the website's "Add New Shop" form uses, so registrations made
+  // here show up identically in the admin/shop-owner web apps and trigger
+  // the same confirmation email.
+  Future<Map<String, dynamic>> createShop({
+    required String name,
+    String? description,
+    String? businessName,
+    required String businessType,
+    required String ownerName,
+    required String ownerEmail,
+    required String ownerPhone,
+    required String addressLine1,
+    required String city,
+    required String state,
+    required String postalCode,
+    String country = 'India',
+    double? latitude,
+    double? longitude,
+    double? minOrderAmount,
+    double? deliveryRadius,
+    double? freeDeliveryAbove,
+    bool selfDeliveryEnabled = false,
+  }) async {
+    try {
+      Logger.api('Registering new shop: $name ($businessType)');
+
+      final data = <String, dynamic>{
+        'name': name,
+        'businessName': (businessName != null && businessName.isNotEmpty) ? businessName : name,
+        'businessType': businessType,
+        'ownerName': ownerName,
+        'ownerEmail': ownerEmail,
+        'ownerPhone': ownerPhone,
+        'addressLine1': addressLine1,
+        'city': city,
+        'state': state,
+        'postalCode': postalCode,
+        'country': country,
+        'selfDeliveryEnabled': selfDeliveryEnabled,
+      };
+
+      if (description != null && description.isNotEmpty) data['description'] = description;
+      if (latitude != null) data['latitude'] = latitude;
+      if (longitude != null) data['longitude'] = longitude;
+      if (minOrderAmount != null) data['minOrderAmount'] = minOrderAmount;
+      if (deliveryRadius != null) data['deliveryRadius'] = deliveryRadius;
+      if (freeDeliveryAbove != null) data['freeDeliveryAbove'] = freeDeliveryAbove;
+
+      final response = await _apiService.post(
+        '/shops',
+        data: data,
+        includeAuth: false,
+      );
+
+      return response;
+    } catch (e) {
+      Logger.e('Failed to register shop', 'SHOP', e);
+      rethrow;
+    }
+  }
+
   // Get Shop Categories
   Future<Map<String, dynamic>> getShopCategories(int shopId) async {
     try {
