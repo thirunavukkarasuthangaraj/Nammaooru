@@ -19,6 +19,11 @@ interface Category {
   iconUrl?: string;
   imageFile?: File;
   createdAt: Date;
+  parentId?: number;
+  subcategoryCount: number;
+  subcategories?: Category[];
+  expanded?: boolean;
+  loadingSubcategories?: boolean;
 }
 
 @Component({
@@ -80,7 +85,7 @@ interface Category {
             <mat-icon>account_tree</mat-icon>
           </div>
           <div class="stat-content">
-            <div class="stat-value">0</div>
+            <div class="stat-value">{{ getSubcategoryTotal() }}</div>
             <div class="stat-label">Subcategories</div>
           </div>
         </div>
@@ -182,6 +187,35 @@ interface Category {
                   <mat-icon>delete_outline</mat-icon>
                 </button>
               </div>
+
+              <!-- Subgroups (subcategories) nested under this category -->
+              <button type="button" class="subcategory-toggle" (click)="toggleSubcategories(category)">
+                <mat-icon>{{ category.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                <span *ngIf="category.subcategoryCount > 0">{{ category.subcategoryCount }} subgroup{{ category.subcategoryCount === 1 ? '' : 's' }}</span>
+                <span *ngIf="category.subcategoryCount === 0">Add a subgroup</span>
+              </button>
+
+              <div class="subcategory-panel" *ngIf="category.expanded">
+                <div class="subcategory-loading" *ngIf="category.loadingSubcategories">
+                  <mat-spinner diameter="18"></mat-spinner>
+                </div>
+                <div *ngIf="!category.loadingSubcategories" class="subcategory-list">
+                  <div class="subcategory-chip" *ngFor="let sub of category.subcategories">
+                    <span>{{ sub.name }}</span>
+                    <span class="sub-count">{{ sub.productCount || 0 }} products</span>
+                    <button mat-icon-button class="sub-edit-btn" matTooltip="Edit subgroup" (click)="editCategory(sub)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  </div>
+                  <p class="no-subcategories" *ngIf="!category.loadingSubcategories && category.subcategories?.length === 0">
+                    No subgroups yet.
+                  </p>
+                  <button mat-stroked-button class="add-subcategory-btn" type="button" (click)="openAddSubcategoryDialog(category)">
+                    <mat-icon>add</mat-icon>
+                    Add Subgroup to {{ category.name }}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </mat-card>
@@ -213,7 +247,6 @@ interface Category {
 
                 <div class="upload-placeholder"
                      *ngIf="!previewImageUrl"
-                     (click)="fileInput.click()"
                      (dragover)="onDragOver($event)"
                      (dragleave)="onDragLeave($event)"
                      (drop)="onDrop($event)"
@@ -222,6 +255,16 @@ interface Category {
                   <h3>Click to Upload Category Image</h3>
                   <p>or drag and drop</p>
                   <span class="file-info">PNG, JPG, GIF up to 5MB</span>
+                  <div class="upload-choice-row">
+                    <button mat-stroked-button type="button" (click)="fileInput.click()">
+                      <mat-icon>folder_open</mat-icon>
+                      Browse File
+                    </button>
+                    <button mat-stroked-button type="button" (click)="openImageSuggestions()">
+                      <mat-icon>image_search</mat-icon>
+                      Search Images
+                    </button>
+                  </div>
                 </div>
 
                 <div class="image-preview-large" *ngIf="previewImageUrl">
@@ -231,8 +274,15 @@ interface Category {
                             class="change-image-btn"
                             type="button"
                             (click)="fileInput.click()"
-                            matTooltip="Change Image">
+                            matTooltip="Upload a different file">
                       <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button
+                            class="search-image-btn"
+                            type="button"
+                            (click)="openImageSuggestions()"
+                            matTooltip="Search for a different image">
+                      <mat-icon>image_search</mat-icon>
                     </button>
                     <button mat-icon-button
                             class="remove-image-btn"
@@ -280,6 +330,20 @@ interface Category {
             </div>
 
             <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Parent Category (optional)</mat-label>
+                <mat-select formControlName="parentId">
+                  <mat-option [value]="null">None &mdash; top-level category</mat-option>
+                  <mat-option *ngFor="let cat of parentCategoryOptions" [value]="cat.id">
+                    {{ cat.name }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix>account_tree</mat-icon>
+                <mat-hint>Group this under another category, e.g. put "Chips" under "Snacks"</mat-hint>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
               <mat-form-field appearance="outline" class="half-width">
                 <mat-label>Icon (Fallback)</mat-label>
                 <mat-select formControlName="icon">
@@ -322,6 +386,56 @@ interface Category {
           </form>
         </mat-card-content>
       </mat-card>
+    </div>
+
+    <!-- Image Search Modal -->
+    <div class="image-suggest-overlay" *ngIf="imageSuggestOpen" (click)="closeImageSuggestions()">
+      <div class="image-suggest-dialog" (click)="$event.stopPropagation()">
+        <div class="image-suggest-header">
+          <h3>Search Category Images</h3>
+          <button type="button" class="suggest-close-btn" (click)="closeImageSuggestions()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="image-suggest-search-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Search term</mat-label>
+            <input matInput [(ngModel)]="imageSuggestQuery" [ngModelOptions]="{standalone: true}"
+                   (keyup.enter)="runImageSearch()" placeholder="e.g. dry fruits, dairy, snacks">
+            <mat-icon matPrefix>search</mat-icon>
+          </mat-form-field>
+          <button mat-raised-button color="primary" type="button" [disabled]="loadingSuggestions" (click)="runImageSearch()">
+            Search
+          </button>
+        </div>
+
+        <div class="image-suggest-body">
+          <div class="suggest-loading" *ngIf="loadingSuggestions">
+            <mat-spinner diameter="32"></mat-spinner>
+            <span>Searching images...</span>
+          </div>
+
+          <div class="suggest-grid" *ngIf="!loadingSuggestions && imageSuggestions.length">
+            <div class="suggest-card" *ngFor="let s of imageSuggestions" (click)="useSuggestedImage(s)">
+              <img [src]="s.thumb" [alt]="s.label" loading="lazy">
+              <div class="suggest-label" [matTooltip]="s.label">{{ s.label }}</div>
+              <button type="button"
+                      class="suggest-use-btn"
+                      [disabled]="downloadingSuggestionUrl === s.url"
+                      (click)="useSuggestedImage(s); $event.stopPropagation()">
+                <mat-icon>{{ downloadingSuggestionUrl === s.url ? 'hourglass_empty' : 'check' }}</mat-icon>
+                {{ downloadingSuggestionUrl === s.url ? 'Using...' : 'Use This' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="suggest-empty" *ngIf="!loadingSuggestions && !imageSuggestions.length">
+            <mat-icon>image_not_supported</mat-icon>
+            <p>{{ suggestError || 'Search for an image above to see results here.' }}</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Category Actions Menu -->
@@ -749,6 +863,93 @@ interface Category {
       background: #FFEBEE;
     }
 
+    .subcategory-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      background: none;
+      border: none;
+      border-top: 1px solid #ECEFF1;
+      padding: 8px 4px 0;
+      margin-top: 4px;
+      color: #607D8B;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .subcategory-toggle:hover {
+      color: #16a34a;
+    }
+
+    .subcategory-toggle mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .subcategory-panel {
+      padding: 8px 4px 0;
+    }
+
+    .subcategory-loading {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+    }
+
+    .subcategory-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .subcategory-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #F5F7F5;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+
+    .subcategory-chip span:first-child {
+      flex: 1;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .subcategory-chip .sub-count {
+      color: #888;
+      font-size: 11px;
+    }
+
+    .subcategory-chip .sub-edit-btn {
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+    }
+
+    .subcategory-chip .sub-edit-btn mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .no-subcategories {
+      color: #999;
+      font-size: 12px;
+      margin: 0;
+    }
+
+    .add-subcategory-btn {
+      align-self: flex-start;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
     .add-category-card {
       border-radius: 12px;
       border: 2px dashed #d1d5db;
@@ -1010,6 +1211,17 @@ interface Category {
       color: #94a3b8;
     }
 
+    .upload-choice-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .upload-choice-row button mat-icon {
+      margin-right: 4px;
+    }
+
     .image-preview-large {
       position: relative;
       border: 1px solid #e2e8f0;
@@ -1034,17 +1246,180 @@ interface Category {
     }
 
     .change-image-btn,
+    .search-image-btn,
     .remove-image-btn {
       background: white;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .change-image-btn mat-icon {
+    .change-image-btn mat-icon,
+    .search-image-btn mat-icon {
       color: #16a34a;
     }
 
     .remove-image-btn mat-icon {
       color: #ef4444;
+    }
+
+    /* Image Search Modal */
+    .image-suggest-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .image-suggest-dialog {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+
+    .image-suggest-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .image-suggest-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .suggest-close-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 4px;
+      border-radius: 6px;
+      display: flex;
+    }
+
+    .suggest-close-btn:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .image-suggest-search-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 20px 0;
+    }
+
+    .image-suggest-search-row mat-form-field {
+      flex: 1;
+    }
+
+    .image-suggest-body {
+      padding: 0 20px 20px;
+      overflow-y: auto;
+    }
+
+    .suggest-loading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+      padding: 32px 0;
+      color: #6b7280;
+    }
+
+    .suggest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+
+    .suggest-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .suggest-card:hover {
+      border-color: #16a34a;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .suggest-card img {
+      width: 100%;
+      height: 120px;
+      object-fit: contain;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+
+    .suggest-label {
+      font-size: 12px;
+      color: #374151;
+      width: 100%;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .suggest-use-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #16a34a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .suggest-use-btn mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .suggest-use-btn:hover:not(:disabled) {
+      background: #15803d;
+    }
+
+    .suggest-use-btn:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .suggest-empty {
+      text-align: center;
+      padding: 28px 0;
+      color: #6b7280;
+    }
+
+    .suggest-empty mat-icon {
+      font-size: 40px;
+      width: 40px;
+      height: 40px;
+      color: #d1d5db;
     }
 
 
@@ -1104,6 +1479,17 @@ export class CategoriesComponent implements OnInit {
   selectedImageFile: File | null = null;
   isDragging: boolean = false;
 
+  // Image search ("group of images to pick from", same idea as the bulk-edit product image picker)
+  imageSuggestOpen = false;
+  imageSuggestQuery = '';
+  imageSuggestions: { label: string; thumb: string; url: string }[] = [];
+  loadingSuggestions = false;
+  suggestError: string | null = null;
+  downloadingSuggestionUrl: string | null = null;
+  // Set when a searched image is picked for a category that doesn't have an id yet (add mode) -
+  // it's downloaded server-side right after the category is created.
+  pickedImageUrl: string | null = null;
+
   categories: Category[] = [];
 
   showQuickAdd = false;
@@ -1152,6 +1538,7 @@ export class CategoriesComponent implements OnInit {
       name: ['', Validators.required],
       nameTamil: ['', Validators.maxLength(100)],
       description: [''],
+      parentId: [null],
       icon: ['shopping_basket', Validators.required],
       color: ['#10b981', Validators.required]
     });
@@ -1186,7 +1573,9 @@ export class CategoriesComponent implements OnInit {
             color: this.getRandomColor(),
             icon: this.getCategoryIcon(cat.name),
             iconUrl: cat.iconUrl || cat.imageUrl || undefined,
-            createdAt: new Date(cat.createdAt || Date.now())
+            createdAt: new Date(cat.createdAt || Date.now()),
+            parentId: cat.parentId || undefined,
+            subcategoryCount: cat.subcategoryCount || 0
           }));
         },
         error: (error) => {
@@ -1231,6 +1620,19 @@ export class CategoriesComponent implements OnInit {
 
   openAddDialog(): void {
     this.editingCategory = null;
+    this.quickAddForm.patchValue({ parentId: null });
+    this.showQuickAdd = true;
+  }
+
+  /** Opens the add form pre-set to create a subgroup under the given category */
+  openAddSubcategoryDialog(parent: Category): void {
+    this.editingCategory = null;
+    this.quickAddForm.reset({
+      icon: 'shopping_basket',
+      color: '#10b981',
+      parentId: parent.id
+    });
+    this.resetImageUpload();
     this.showQuickAdd = true;
   }
 
@@ -1239,9 +1641,49 @@ export class CategoriesComponent implements OnInit {
     this.editingCategory = null;
     this.quickAddForm.reset({
       icon: 'shopping_basket',
-      color: '#10b981'
+      color: '#10b981',
+      parentId: null
     });
     this.resetImageUpload();
+  }
+
+  /** Root categories available to pick as a parent group (a category can't be its own parent) */
+  get parentCategoryOptions(): Category[] {
+    return this.categories.filter(c => !this.editingCategory || c.id !== this.editingCategory.id);
+  }
+
+  getSubcategoryTotal(): number {
+    return this.categories.reduce((sum, c) => sum + (c.subcategoryCount || 0), 0);
+  }
+
+  toggleSubcategories(category: Category): void {
+    category.expanded = !category.expanded;
+    if (category.expanded && !category.subcategories) {
+      category.loadingSubcategories = true;
+      this.categoryService.getSubcategories(category.id).subscribe({
+        next: (subs: any[]) => {
+          category.subcategories = (subs || []).map((sub: any) => ({
+            id: sub.id,
+            name: sub.name,
+            nameTamil: sub.nameTamil || undefined,
+            description: sub.description || '',
+            productCount: sub.productCount || 0,
+            isActive: sub.active !== false,
+            color: this.getRandomColor(),
+            icon: this.getCategoryIcon(sub.name),
+            iconUrl: sub.iconUrl || sub.imageUrl || undefined,
+            createdAt: new Date(sub.createdAt || Date.now()),
+            parentId: category.id,
+            subcategoryCount: sub.subcategoryCount || 0
+          }));
+          category.loadingSubcategories = false;
+        },
+        error: () => {
+          category.subcategories = [];
+          category.loadingSubcategories = false;
+        }
+      });
+    }
   }
 
   submitQuickAdd(): void {
@@ -1262,25 +1704,27 @@ export class CategoriesComponent implements OnInit {
     this.categoryService.updateCategory(category.id, {
       name: formData.name,
       nameTamil: formData.nameTamil?.trim() || undefined,
-      description: formData.description || ''
+      description: formData.description || '',
+      parentId: formData.parentId || undefined
     } as any).subscribe({
       next: (response: any) => {
-        category.name = response.name;
-        category.nameTamil = response.nameTamil || undefined;
-        category.description = response.description || '';
+        // The parent group may have changed (moved in/out of a subgroup), which
+        // changes which list it belongs to - reload rather than patch in place.
+        const finish = () => {
+          this.loading = false;
+          this.closeQuickAdd();
+          this.loadCategories();
+          this.swal.success('Saved!', 'Category updated successfully.');
+        };
 
         // A new image was picked - upload it as a second step, then finish
         if (this.selectedImageFile) {
           this.categoryService.uploadCategoryImage(category.id, this.selectedImageFile).subscribe({
-            next: (imgResponse: any) => {
-              category.iconUrl = imgResponse.iconUrl || imgResponse.imageUrl || category.iconUrl;
-              this.loading = false;
-              this.closeQuickAdd();
-              this.swal.success('Saved!', 'Category updated successfully.');
-            },
+            next: () => finish(),
             error: (error) => {
               this.loading = false;
               this.closeQuickAdd();
+              this.loadCategories();
               const message = error?.error?.message || error?.message || 'Category saved, but the image failed to upload';
               this.swal.error('Image Upload Failed', message);
             }
@@ -1288,9 +1732,7 @@ export class CategoriesComponent implements OnInit {
           return;
         }
 
-        this.loading = false;
-        this.closeQuickAdd();
-        this.swal.success('Saved!', 'Category updated successfully.');
+        finish();
       },
       error: (error) => {
         this.loading = false;
@@ -1305,32 +1747,69 @@ export class CategoriesComponent implements OnInit {
     formData.append('name', categoryData.name);
     formData.append('nameTamil', categoryData.nameTamil?.trim() || '');
     formData.append('description', categoryData.description || '');
+    if (categoryData.parentId) {
+      formData.append('parentId', categoryData.parentId.toString());
+    }
     if (this.selectedImageFile) {
       formData.append('image', this.selectedImageFile);
     }
 
+    const parentId = categoryData.parentId || null;
+
+    const pickedImageUrl = this.pickedImageUrl;
+
     this.loading = true;
     this.categoryService.createCategoryWithImage(formData).subscribe({
       next: (response: any) => {
-        const newCategory: Category = {
-          id: response.id,
-          name: response.name,
-          nameTamil: response.nameTamil || undefined,
-          description: response.description || '',
-          productCount: 0,
-          isActive: response.isActive !== false,
-          color: categoryData.color || this.getRandomColor(),
-          icon: categoryData.icon || this.getCategoryIcon(response.name),
-          iconUrl: response.iconUrl || undefined,
-          createdAt: new Date(response.createdAt || Date.now())
+        const finalizeCreate = (iconUrl?: string) => {
+          if (parentId) {
+            // It's a subgroup, not a root category - it belongs under its parent's
+            // card, not in the top-level grid. Bump the count and let the panel
+            // refetch next time it's expanded.
+            const parent = this.categories.find(c => c.id === parentId);
+            if (parent) {
+              parent.subcategoryCount = (parent.subcategoryCount || 0) + 1;
+              parent.subcategories = undefined;
+              parent.expanded = false;
+            }
+          } else {
+            const newCategory: Category = {
+              id: response.id,
+              name: response.name,
+              nameTamil: response.nameTamil || undefined,
+              description: response.description || '',
+              productCount: 0,
+              isActive: response.isActive !== false,
+              color: categoryData.color || this.getRandomColor(),
+              icon: categoryData.icon || this.getCategoryIcon(response.name),
+              iconUrl: iconUrl || response.iconUrl || undefined,
+              createdAt: new Date(response.createdAt || Date.now()),
+              parentId: undefined,
+              subcategoryCount: 0
+            };
+            this.categories.unshift(newCategory);
+          }
+
+          this.closeQuickAdd();
+          this.resetImageUpload();
+          this.loading = false;
+
+          this.swal.success('Success!', parentId ? 'Subgroup added successfully!' : 'Category added successfully!');
         };
 
-        this.categories.unshift(newCategory);
-        this.closeQuickAdd();
-        this.resetImageUpload();
-        this.loading = false;
-
-        this.swal.success('Success!', 'Category added successfully with image!');
+        // A searched image was picked (no id existed yet to download it against) -
+        // apply it now that the category exists.
+        if (pickedImageUrl) {
+          this.categoryService.applyCategoryImageFromUrl(response.id, pickedImageUrl).subscribe({
+            next: (updated: any) => finalizeCreate(updated.iconUrl),
+            error: () => {
+              this.swal.toast('Category created, but the picked image could not be applied', 'warning');
+              finalizeCreate();
+            }
+          });
+        } else {
+          finalizeCreate();
+        }
       },
       error: (error) => {
         console.error('Error creating category with image:', error);
@@ -1390,6 +1869,7 @@ export class CategoriesComponent implements OnInit {
     }
 
     this.selectedImageFile = file;
+    this.pickedImageUrl = null;
 
     // Create preview
     const reader = new FileReader();
@@ -1402,11 +1882,77 @@ export class CategoriesComponent implements OnInit {
   removeImage(): void {
     this.previewImageUrl = null;
     this.selectedImageFile = null;
+    this.pickedImageUrl = null;
   }
 
   private resetImageUpload(): void {
     this.previewImageUrl = null;
     this.selectedImageFile = null;
+    this.pickedImageUrl = null;
+  }
+
+  openImageSuggestions(): void {
+    this.imageSuggestOpen = true;
+    this.imageSuggestQuery = this.quickAddForm.get('name')?.value?.trim() || '';
+    this.imageSuggestions = [];
+    this.suggestError = null;
+    if (this.imageSuggestQuery) {
+      this.runImageSearch();
+    }
+  }
+
+  runImageSearch(): void {
+    const query = this.imageSuggestQuery.trim();
+    if (!query) {
+      return;
+    }
+    this.loadingSuggestions = true;
+    this.suggestError = null;
+    this.imageSuggestions = [];
+    this.categoryService.searchImages(query).subscribe({
+      next: (results) => {
+        this.imageSuggestions = results;
+        this.loadingSuggestions = false;
+      },
+      error: (error) => {
+        this.suggestError = error?.error?.message || 'Image search failed - try again';
+        this.loadingSuggestions = false;
+      }
+    });
+  }
+
+  closeImageSuggestions(): void {
+    this.imageSuggestOpen = false;
+    this.imageSuggestions = [];
+    this.suggestError = null;
+  }
+
+  useSuggestedImage(suggestion: { label: string; thumb: string; url: string }): void {
+    if (this.editingCategory) {
+      // Category already exists - download and apply immediately
+      this.downloadingSuggestionUrl = suggestion.url;
+      this.categoryService.applyCategoryImageFromUrl(this.editingCategory.id, suggestion.url).subscribe({
+        next: (updated: any) => {
+          this.editingCategory!.iconUrl = updated.iconUrl;
+          this.previewImageUrl = this.getCategoryImageUrl(updated.iconUrl);
+          this.selectedImageFile = null;
+          this.pickedImageUrl = null;
+          this.downloadingSuggestionUrl = null;
+          this.closeImageSuggestions();
+          this.swal.toast('Image updated', 'success');
+        },
+        error: (error) => {
+          this.downloadingSuggestionUrl = null;
+          this.suggestError = error?.error?.message || 'Could not use this image - try another one';
+        }
+      });
+    } else {
+      // New category has no id yet - remember the pick, download it once the category is created
+      this.selectedImageFile = null;
+      this.pickedImageUrl = suggestion.url;
+      this.previewImageUrl = suggestion.thumb;
+      this.closeImageSuggestions();
+    }
   }
 
   editCategory(category: Category): void {
@@ -1414,7 +1960,8 @@ export class CategoriesComponent implements OnInit {
     this.quickAddForm.patchValue({
       name: category.name,
       nameTamil: category.nameTamil || '',
-      description: category.description || ''
+      description: category.description || '',
+      parentId: category.parentId || null
     });
     // Show the category's current image as the starting preview
     this.previewImageUrl = category.iconUrl ? this.getCategoryImageUrl(category.iconUrl) : null;
@@ -1423,7 +1970,9 @@ export class CategoriesComponent implements OnInit {
   }
 
   viewProducts(category: Category): void {
-    this.router.navigate(['/shop-owner/my-products'], { queryParams: { category: category.name } });
+    this.router.navigate(['/shop-owner/category-products'], {
+      queryParams: { categoryId: category.id, categoryName: category.name }
+    });
   }
 
   duplicateCategory(category: Category): void {

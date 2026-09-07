@@ -17,4 +17,6 @@ public class CategoryResponse {
     private String icon;
     private String color;
     private String imageUrl; // Category image URL
+    private String parentId; // Null for a top-level category
+    private String parentName; // Group header the customer app shows this category under
 }

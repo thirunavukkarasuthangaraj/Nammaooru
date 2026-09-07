@@ -21,7 +21,9 @@ class ImageUrlHelper {
       final uri = Uri.tryParse(imageUrl);
       if (uri != null &&
           !uri.path.startsWith('/uploads/') &&
-          (uri.path.startsWith('/shops/') || uri.path.startsWith('/products/') || uri.path.startsWith('/farmer-products/'))) {
+          (uri.path.startsWith('/shops/') ||
+              uri.path.startsWith('/products/') ||
+              uri.path.startsWith('/farmer-products/'))) {
         return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}/uploads${uri.path}';
       }
 
@@ -36,8 +38,10 @@ class ImageUrlHelper {
       imageUrl = '/$imageUrl';
     }
 
-    // Add /uploads prefix if not already present (static files are served from /uploads/**)
-    if (!imageUrl.startsWith('/uploads/')) {
+    // Uploaded media lives under /uploads. Curated category artwork is served
+    // directly from the backend classpath so web and mobile share one URL.
+    if (!imageUrl.startsWith('/uploads/') &&
+        !imageUrl.startsWith('/category-artwork/')) {
       imageUrl = '/uploads$imageUrl';
     }
 

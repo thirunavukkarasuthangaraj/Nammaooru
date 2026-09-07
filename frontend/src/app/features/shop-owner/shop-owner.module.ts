@@ -45,6 +45,7 @@ import { DeliveryManagementComponent } from './components/delivery-management/de
 import { AddProductComponent } from './components/add-product/add-product.component';
 import { BulkUploadComponent } from './components/bulk-upload/bulk-upload.component';
 import { CategoriesComponent } from './components/categories/categories.component';
+import { CategoryProductsComponent } from './components/category-products/category-products.component';
 import { CustomerManagementComponent } from './components/customer-management/customer-management.component';
 import { ShopSettingsComponent } from './components/shop-settings/shop-settings.component';
 import { NotificationsComponent } from './components/notifications/notifications.component';
@@ -84,6 +85,7 @@ import { DailyUpdatesComponent } from './components/daily-updates/daily-updates.
     AddProductComponent,
     BulkUploadComponent,
     CategoriesComponent,
+    CategoryProductsComponent,
     CustomerManagementComponent,
     ShopSettingsComponent,
     NotificationsComponent,

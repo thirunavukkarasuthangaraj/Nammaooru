@@ -124,11 +124,15 @@ public class CustomerShopController {
 
     private CategoryResponse createCategoryResponse(String categoryName, Long shopId) {
         CategoryResponse category = new CategoryResponse();
-        category.setId(String.valueOf(categoryName.hashCode())); // Simple ID generation
         category.setName(categoryName);
 
         // Fetch actual category from database to get iconUrl, Tamil name, etc. (case-insensitive match)
         Optional<ProductCategory> categoryEntity = categoryRepository.findByNameIgnoreCase(categoryName);
+        // Mobile filters compare this value with masterProduct.category.id, so it
+        // must be the real database id (the old name hash never matched).
+        category.setId(categoryEntity
+                .map(cat -> String.valueOf(cat.getId()))
+                .orElse(String.valueOf(categoryName.hashCode())));
 
         // Names come from the DB (product_categories.name / .name_tamil) — no hardcoded translations.
         category.setDisplayName(categoryEntity.map(ProductCategory::getName).orElse(categoryName));
@@ -146,6 +150,13 @@ public class CustomerShopController {
         categoryEntity.ifPresent(cat -> {
             if (cat.getIconUrl() != null && !cat.getIconUrl().isEmpty()) {
                 category.setImageUrl(cat.getIconUrl());
+            }
+            // Parent group (set via the shop-owner Categories page's "Parent
+            // Category" field) - lets the app show grouped sections instead
+            // of one flat list.
+            if (cat.getParent() != null) {
+                category.setParentId(String.valueOf(cat.getParent().getId()));
+                category.setParentName(cat.getParent().getName());
             }
         });
 

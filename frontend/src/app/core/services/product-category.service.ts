@@ -129,4 +129,17 @@ export class ProductCategoryService {
     return this.http.post<ApiResponse<ProductCategory>>(`${this.API_URL}/${id}/image`, formData)
       .pipe(map(response => response.data));
   }
+
+  /** Reuses the same generic image search backing the bulk-edit product image picker */
+  searchImages(query: string): Observable<{ label: string; thumb: string; url: string }[]> {
+    const params = new HttpParams().set('q', query);
+    return this.http.get<ApiResponse<{ label: string; thumb: string; url: string }[]>>(
+      `${environment.apiUrl}/shop-products/image-search`, { params }
+    ).pipe(map(response => response.data || []));
+  }
+
+  applyCategoryImageFromUrl(id: number, url: string): Observable<ProductCategory> {
+    return this.http.post<ApiResponse<ProductCategory>>(`${this.API_URL}/${id}/image-from-url`, { url })
+      .pipe(map(response => response.data));
+  }
 }

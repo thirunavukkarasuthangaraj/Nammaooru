@@ -27,7 +27,8 @@ class ShopDetailsModernScreen extends StatefulWidget {
   });
 
   @override
-  State<ShopDetailsModernScreen> createState() => _ShopDetailsModernScreenState();
+  State<ShopDetailsModernScreen> createState() =>
+      _ShopDetailsModernScreenState();
 }
 
 class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
@@ -112,7 +113,9 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
     try {
       final response = await _shopApi.getShopById(widget.shopId);
-      if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+      if (mounted &&
+          response['statusCode'] == '0000' &&
+          response['data'] != null) {
         setState(() {
           _shop = response['data'];
           _isLoadingShop = false;
@@ -136,7 +139,9 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
     try {
       final response = await _shopApi.getShopCategories(widget.shopId);
-      if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+      if (mounted &&
+          response['statusCode'] == '0000' &&
+          response['data'] != null) {
         final categoryList = response['data'] as List;
         setState(() {
           _categories = [
@@ -144,12 +149,13 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
               'id': null,
               'name': 'All',
               'displayName': 'All',
+              'displayNameTamil': 'அனைத்தும்',
               'icon': '🏪',
             },
             ...categoryList.map((cat) => {
-              ...cat,
-              'icon': _getCategoryIcon(cat['name']?.toString() ?? ''),
-            }),
+                  ...cat,
+                  'icon': _getCategoryIcon(cat['name']?.toString() ?? ''),
+                }),
           ];
           _selectedCategory = null;
           _isLoadingCategories = false;
@@ -184,12 +190,16 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     });
 
     try {
-      final response = await _shopApi.getShopProducts(shopId: widget.shopId.toString());
-      if (mounted && response['statusCode'] == '0000' && response['data'] != null) {
+      final response =
+          await _shopApi.getShopProducts(shopId: widget.shopId.toString());
+      if (mounted &&
+          response['statusCode'] == '0000' &&
+          response['data'] != null) {
         final responseData = response['data'];
-        final productsList = responseData is Map && responseData.containsKey('content')
-            ? responseData['content'] as List
-            : responseData as List;
+        final productsList =
+            responseData is Map && responseData.containsKey('content')
+                ? responseData['content'] as List
+                : responseData as List;
         setState(() {
           _products = productsList;
           _filteredProducts = _products;
@@ -217,16 +227,21 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
       _filteredProducts = _products.where((product) {
         // Search in both English and Tamil names for better UX
         final englishName = product['customName']?.toString().toLowerCase() ??
-                           product['displayName']?.toString().toLowerCase() ??
-                           product['masterProduct']?['name']?.toString().toLowerCase() ?? '';
-        final tamilName = product['masterProduct']?['nameTamil']?.toString().toLowerCase() ?? '';
+            product['displayName']?.toString().toLowerCase() ??
+            product['masterProduct']?['name']?.toString().toLowerCase() ??
+            '';
+        final tamilName =
+            product['masterProduct']?['nameTamil']?.toString().toLowerCase() ??
+                '';
 
         final matchesSearch = searchTerm.isEmpty ||
-                             englishName.contains(searchTerm) ||
-                             tamilName.contains(searchTerm);
+            englishName.contains(searchTerm) ||
+            tamilName.contains(searchTerm);
 
-        final categoryMatch = _selectedCategory == null ||
-                             product['masterProduct']?['category']?['id'] == _selectedCategory;
+        final productCategoryId =
+            product['masterProduct']?['category']?['id']?.toString();
+        final categoryMatch =
+            _selectedCategory == null || productCategoryId == _selectedCategory;
 
         return matchesSearch && categoryMatch;
       }).toList();
@@ -234,10 +249,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   }
 
   void _selectCategory(String? categoryId) {
-    setState(() {
-      _selectedCategory = categoryId;
-      _filterProducts();
-    });
+    _selectedCategory = categoryId;
+    _filterProducts();
   }
 
   @override
@@ -261,7 +274,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                       elevation: 0,
                       pinned: true,
                       leading: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                        icon:
+                            const Icon(Icons.arrow_back, color: Colors.black87),
                         onPressed: () => Navigator.pop(context),
                       ),
                       title: Text(
@@ -284,7 +298,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                                 },
                                 borderRadius: BorderRadius.circular(20),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF2E7D32),
                                     borderRadius: BorderRadius.circular(20),
@@ -314,7 +329,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.search, color: Colors.black87, size: 28),
+                          icon: const Icon(Icons.search,
+                              color: Colors.black87, size: 28),
                           onPressed: () {
                             // Show search dialog for text search
                             _showSearchDialog();
@@ -328,7 +344,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                     if (_promotions.isNotEmpty)
                       SliverToBoxAdapter(
                         child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           height: 110,
                           child: Column(
                             children: [
@@ -355,14 +372,18 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                                     children: List.generate(
                                       _promotions.length,
                                       (index) => Container(
-                                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                                        width: _currentBannerIndex == index ? 10 : 6,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 4),
+                                        width: _currentBannerIndex == index
+                                            ? 10
+                                            : 6,
                                         height: 6,
                                         decoration: BoxDecoration(
                                           color: _currentBannerIndex == index
                                               ? const Color(0xFF2E7D32)
                                               : Colors.grey[300],
-                                          borderRadius: BorderRadius.circular(3),
+                                          borderRadius:
+                                              BorderRadius.circular(3),
                                         ),
                                       ),
                                     ),
@@ -378,40 +399,57 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                       ),
 
                     // Shop Licenses/Certificates
-                    if (_shop != null && (_shop!['fssaiCertificateNumber'] != null || _shop!['groceryLicenseNumber'] != null))
+                    if (_shop != null &&
+                        (_shop!['fssaiCertificateNumber'] != null ||
+                            _shop!['groceryLicenseNumber'] != null))
                       SliverToBoxAdapter(
                         child: Container(
                           color: Colors.white,
                           margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
                           child: Row(
                             children: [
-                              if (_shop!['fssaiCertificateNumber'] != null && _shop!['fssaiCertificateNumber'].toString().isNotEmpty)
+                              if (_shop!['fssaiCertificateNumber'] != null &&
+                                  _shop!['fssaiCertificateNumber']
+                                      .toString()
+                                      .isNotEmpty)
                                 Expanded(
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.verified_user, size: 16, color: Color(0xFF2E7D32)),
+                                      const Icon(Icons.verified_user,
+                                          size: 16, color: Color(0xFF2E7D32)),
                                       const SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
                                           'FSSAI: ${_shop!['fssaiCertificateNumber']}',
-                                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54,
+                                              fontWeight: FontWeight.w500),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              if (_shop!['groceryLicenseNumber'] != null && _shop!['groceryLicenseNumber'].toString().isNotEmpty)
+                              if (_shop!['groceryLicenseNumber'] != null &&
+                                  _shop!['groceryLicenseNumber']
+                                      .toString()
+                                      .isNotEmpty)
                                 Expanded(
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.description, size: 16, color: Color(0xFF2E7D32)),
+                                      const Icon(Icons.description,
+                                          size: 16, color: Color(0xFF2E7D32)),
                                       const SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
                                           'Grocery Lic: ${_shop!['groceryLicenseNumber']}',
-                                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54,
+                                              fontWeight: FontWeight.w500),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -423,99 +461,11 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                         ),
                       ),
 
-                    // Categories Section
-                    if (_categories.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      'Shop by Category',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    if (_selectedCategory != null)
-                                      InkWell(
-                                        onTap: () {
-                                          _selectCategory(null);
-                                        },
-                                        child: const Text(
-                                          'Clear',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF4CAF50),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                height: 110,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  itemCount: _categories.length,
-                                  itemBuilder: (context, index) {
-                                    final category = _categories[index] as Map<String, dynamic>;
-                                    final isSelected = _selectedCategory == category['id'];
-                                    return _buildCategoryItem(category, isSelected);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // Products Grid
-                    if (_isLoadingProducts)
-                      const SliverFillRemaining(
-                        child: Center(child: LoadingWidget()),
-                      )
-                    else if (_filteredProducts.isEmpty)
-                      const SliverFillRemaining(
-                        child: Center(
-                          child: Text(
-                            'No products available',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.all(12),
-                        sliver: SliverGrid(
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            // Give the product details enough vertical room for
-                            // long names to wrap instead of being cut off early.
-                            childAspectRatio: 0.58,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => _buildModernProductCard(_filteredProducts[index]),
-                            childCount: _filteredProducts.length,
-                          ),
-                        ),
-                      ),
-
-                    // Bottom padding for cart bar
-                    const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+                    // Blinkit-style category rail with a two-column product grid.
+                    SliverFillRemaining(
+                      hasScrollBody: true,
+                      child: _buildCategoryBrowser(),
+                    ),
                   ],
                 ),
 
@@ -532,34 +482,171 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
     );
   }
 
+  Widget _buildCategoryBrowser() {
+    if (_isLoadingCategories || _isLoadingProducts) {
+      return const Center(child: LoadingWidget());
+    }
+
+    Map<String, dynamic>? selected;
+    for (final rawCategory in _categories) {
+      final category = rawCategory as Map<String, dynamic>;
+      if (category['id']?.toString() == _selectedCategory) {
+        selected = category;
+        break;
+      }
+    }
+
+    final language = Provider.of<LanguageProvider>(context);
+    final isTamil = language.currentLanguage == 'ta';
+    final englishTitle = selected?['displayName']?.toString() ?? 'All products';
+    final tamilTitle = selected?['displayNameTamil']?.toString();
+    final title = isTamil && tamilTitle != null && tamilTitle.isNotEmpty
+        ? tamilTitle
+        : englishTitle;
+
+    return Container(
+      color: Colors.white,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 92,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(color: Color(0xFFF7F8F7)),
+              child: ListView.builder(
+                padding: EdgeInsets.only(
+                  top: 8,
+                  bottom: Provider.of<CartProvider>(context).productCount > 0
+                      ? 92
+                      : 16,
+                ),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index] as Map<String, dynamic>;
+                  final isSelected =
+                      _selectedCategory == category['id']?.toString();
+                  return _buildCategoryItem(category, isSelected);
+                },
+              ),
+            ),
+          ),
+          const VerticalDivider(
+              width: 1, thickness: 1, color: Color(0xFFE6E9E7)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFECEFED)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF202421),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${_filteredProducts.length} items',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B746E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _filteredProducts.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No products available',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: EdgeInsets.fromLTRB(
+                            10,
+                            10,
+                            10,
+                            Provider.of<CartProvider>(context).productCount > 0
+                                ? 92
+                                : 16,
+                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.58,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                          ),
+                          itemCount: _filteredProducts.length,
+                          itemBuilder: (context, index) =>
+                              _buildModernProductCard(_filteredProducts[index]),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCategoryItem(Map<String, dynamic> category, bool isSelected) {
+    final imageUrl = category['imageUrl']?.toString();
+    final hasImage = imageUrl != null && imageUrl.trim().isNotEmpty;
+    final language = Provider.of<LanguageProvider>(context);
+    final isTamil = language.currentLanguage == 'ta';
+    final englishName = category['displayName']?.toString() ??
+        category['name']?.toString() ??
+        'Category';
+    final tamilName = category['displayNameTamil']?.toString();
+    final displayName = isTamil && tamilName != null && tamilName.isNotEmpty
+        ? tamilName
+        : englishName;
+
     return GestureDetector(
       onTap: () => _selectCategory(category['id']?.toString()),
       child: Container(
-        width: 90,
-        margin: const EdgeInsets.symmetric(horizontal: 6),
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.fromLTRB(6, 7, 6, 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          border: Border(
+            right: BorderSide(
+              color: isSelected ? const Color(0xFF2E7D32) : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 70,
-              height: 70,
+              width: 62,
+              height: 62,
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : LinearGradient(
-                        colors: [Colors.grey[50]!, Colors.grey[100]!],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFFF1F4F2),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF4CAF50) : Colors.grey[300]!,
-                  width: isSelected ? 3 : 1.5,
+                  color: isSelected
+                      ? const Color(0xFF4CAF50)
+                      : const Color(0xFFE2E7E4),
+                  width: isSelected ? 2 : 1,
                 ),
                 boxShadow: [
                   if (isSelected)
@@ -576,27 +663,48 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                     ),
                 ],
               ),
-              child: Center(
-                child: Text(
-                  category['icon'] ?? '📦',
-                  style: const TextStyle(fontSize: 32),
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: hasImage
+                    ? Image.network(
+                        ImageUrlHelper.getFullImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildCategoryImageFallback(category, isSelected),
+                      )
+                    : _buildCategoryImageFallback(category, isSelected),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 5),
             Text(
-              category['name'] ?? '',
+              displayName,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 10.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: isSelected ? const Color(0xFF2E7D32) : Colors.black87,
+                height: 1.15,
               ),
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              height: 1.3,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryImageFallback(
+      Map<String, dynamic> category, bool isSelected) {
+    return ColoredBox(
+      color: isSelected ? const Color(0xFFE8F5E9) : const Color(0xFFF1F4F2),
+      child: Center(
+        child: Icon(
+          category['id'] == null
+              ? Icons.storefront_rounded
+              : Icons.category_rounded,
+          size: 30,
+          color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[500],
         ),
       ),
     );
@@ -712,7 +820,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                     child: Image.network(
                       ImageUrlHelper.getFullImageUrl(promo.bannerUrl!),
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox(),
                     ),
                   ),
                 ),
@@ -721,7 +830,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+                    filter: ui.ImageFilter.blur(sigmaX: 0, sigmaY: 0),
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -810,7 +919,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 5),
-                          if (promo.minimumOrderAmount != null && promo.minimumOrderAmount! > 0)
+                          if (promo.minimumOrderAmount != null &&
+                              promo.minimumOrderAmount! > 0)
                             Row(
                               children: [
                                 Icon(
@@ -835,10 +945,14 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                     const SizedBox(width: 10),
                     // Premium promo code badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 11, vertical: 10),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [const Color(0xFFFFD600), const Color(0xFFFFC400)],
+                          colors: [
+                            const Color(0xFFFFD600),
+                            const Color(0xFFFFC400)
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -906,7 +1020,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF4CAF50),
                     borderRadius: BorderRadius.circular(16),
@@ -936,7 +1051,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+                border: Border.all(
+                    color: Colors.grey[300]!, style: BorderStyle.solid),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -971,7 +1087,8 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            if (promo.minimumOrderAmount != null && promo.minimumOrderAmount! > 0)
+            if (promo.minimumOrderAmount != null &&
+                promo.minimumOrderAmount! > 0)
               _buildPromoInfoRow(
                 Icons.shopping_cart_outlined,
                 promo.formattedMinOrder,
@@ -1027,16 +1144,21 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
   Widget _buildModernProductCard(Map<String, dynamic> product) {
     final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
-    final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
-    final stockQuantity = int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    final originalPrice =
+        double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
+    final stockQuantity =
+        int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
     // isInStock should be based on actual stock quantity, not just the inStock flag
     final isInStock = stockQuantity > 0;
 
     final imageUrl = product['primaryImageUrl']?.toString() ??
-                    product['masterProduct']?['primaryImageUrl']?.toString() ?? '';
+        product['masterProduct']?['primaryImageUrl']?.toString() ??
+        '';
 
     final hasDiscount = originalPrice > price && originalPrice > 0;
-    final discountPercentage = hasDiscount ? ((originalPrice - price) / originalPrice * 100).round() : 0;
+    final discountPercentage = hasDiscount
+        ? ((originalPrice - price) / originalPrice * 100).round()
+        : 0;
 
     // Get weight and unit
     final weight = product['masterProduct']?['baseWeight'];
@@ -1066,235 +1188,245 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
             final cartQuantity = cartProvider.getQuantity(productModel.id);
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 0,
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Product Image Container
-                  Expanded(
-                    flex: 5,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              ImageUrlHelper.getFullImageUrl(imageUrl),
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.image_not_supported,
-                                             size: 50,
-                                             color: Colors.grey);
-                              },
-                            )
-                          : const Icon(Icons.inventory_2,
-                                   size: 50,
-                                   color: Colors.grey),
-                    ),
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 0,
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
                   ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Product Image Container
+                      Expanded(
+                        flex: 5,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          child: imageUrl.isNotEmpty
+                              ? Image.network(
+                                  ImageUrlHelper.getFullImageUrl(imageUrl),
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(Icons.image_not_supported,
+                                        size: 50, color: Colors.grey);
+                                  },
+                                )
+                              : const Icon(Icons.inventory_2,
+                                  size: 50, color: Colors.grey),
+                        ),
+                      ),
 
-                  // Product Details
-                  Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Product Name - Reactive to language changes
-                          Consumer<LanguageProvider>(
-                            builder: (context, langProvider, child) {
-                              final displayName = langProvider.getDisplayName(product);
-                              print('🔍 PRODUCT DISPLAY: showTamil=${langProvider.showTamil}, name=$displayName');
-                              print('🔍 PRODUCT DATA: ${product['displayName']}, masterProduct.nameTamil=${product['masterProduct']?['nameTamil']}');
-                              return Text(
-                                displayName,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                  height: 1.2,
-                                ),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 2),
-
-                          // Weight/Unit
-                          if (displayUnit.isNotEmpty && displayUnit != 'null')
-                            Text(
-                              displayUnit,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                                height: 1.2,
-                              ),
-                            ),
-
-                          const Spacer(),
-
-                          // Price Row
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                      // Product Details
+                      Expanded(
+                        flex: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
+                              // Product Name - Reactive to language changes
+                              Consumer<LanguageProvider>(
+                                builder: (context, langProvider, child) {
+                                  final displayName =
+                                      langProvider.getDisplayName(product);
+                                  print(
+                                      '🔍 PRODUCT DISPLAY: showTamil=${langProvider.showTamil}, name=$displayName');
+                                  print(
+                                      '🔍 PRODUCT DATA: ${product['displayName']}, masterProduct.nameTamil=${product['masterProduct']?['nameTamil']}');
+                                  return Text(
+                                    displayName,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                },
                               ),
-                              if (hasDiscount) ...[
-                                const SizedBox(width: 4),
+                              const SizedBox(height: 2),
+
+                              // Weight/Unit
+                              if (displayUnit.isNotEmpty &&
+                                  displayUnit != 'null')
                                 Text(
-                                  '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                                  displayUnit,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[500],
-                                    decoration: TextDecoration.lineThrough,
+                                    color: Colors.grey[600],
+                                    height: 1.2,
                                   ),
                                 ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 8),
 
-                      // Add/Remove Button - Blinkit Style
-                      if (!isInStock)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Out of Stock',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        )
-                      else if (cartQuantity == 0)
-                        InkWell(
-                          onTap: () => _handleAddToCart(context, cartProvider, productModel),
-                          child: Container(
-                            width: double.infinity,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFD600),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFFFFD600)),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.add,
-                                size: 20,
-                                color: Colors.black87,
-                                weight: 700,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFD600),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              InkWell(
-                                onTap: () => cartProvider.removeFromCart(productModel.id),
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: const BoxDecoration(
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(6),
-                                      bottomLeft: Radius.circular(6),
-                                    ),
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.remove,
-                                      size: 20,
+                              const Spacer(),
+
+                              // Price Row
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
                                       color: Colors.black87,
                                     ),
                                   ),
-                                ),
-                              ),
-                              Text(
-                                '$cartQuantity',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () {
-                                  if (cartQuantity < stockQuantity) {
-                                    cartProvider.addToCart(productModel);
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Only $stockQuantity items available'),
-                                        backgroundColor: Colors.orange,
+                                  if (hasDiscount) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[500],
+                                        decoration: TextDecoration.lineThrough,
                                       ),
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: const BoxDecoration(
-                                    borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(6),
-                                      bottomRight: Radius.circular(6),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Add/Remove Button - Blinkit Style
+                              if (!isInStock)
+                                Container(
+                                  width: double.infinity,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Out of Stock',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
                                     ),
                                   ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.add,
-                                      size: 20,
-                                      color: Colors.black87,
+                                )
+                              else if (cartQuantity == 0)
+                                InkWell(
+                                  onTap: () => _handleAddToCart(
+                                      context, cartProvider, productModel),
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFD600),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: const Color(0xFFFFD600)),
                                     ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.add,
+                                        size: 20,
+                                        color: Colors.black87,
+                                        weight: 700,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFD600),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => cartProvider
+                                            .removeFromCart(productModel.id),
+                                        child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: const BoxDecoration(
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(6),
+                                              bottomLeft: Radius.circular(6),
+                                            ),
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.remove,
+                                              size: 20,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '$cartQuantity',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      InkWell(
+                                        onTap: () {
+                                          if (cartQuantity < stockQuantity) {
+                                            cartProvider
+                                                .addToCart(productModel);
+                                          } else {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Only $stockQuantity items available'),
+                                                backgroundColor: Colors.orange,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: const BoxDecoration(
+                                            borderRadius: BorderRadius.only(
+                                              topRight: Radius.circular(6),
+                                              bottomRight: Radius.circular(6),
+                                            ),
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.add,
+                                              size: 20,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
+                      ),
                     ],
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-            ],
-          ),
-        );
+            );
           },
         );
       },
@@ -1399,95 +1531,98 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
             builder: (context, setState) => WillPopScope(
               onWillPop: () async => false,
               child: Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Search products...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _isVoiceSearching
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.mic, color: Color(0xFF2E7D32)),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _showVoiceSearchDialog();
-                            },
-                            tooltip: 'Voice Search (Tamil/English)',
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Search products...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _isVoiceSearching
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: const Icon(Icons.mic,
+                                      color: Color(0xFF2E7D32)),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    _showVoiceSearchDialog();
+                                  },
+                                  tooltip: 'Voice Search (Tamil/English)',
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    _onSearchChanged();
-                  },
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '🎤 Tap mic for AI voice search in Tamil or English',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 16),
-                // Large Voice Search Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showVoiceSearchDialog();
-                    },
-                    icon: const Icon(Icons.mic, size: 28),
-                    label: const Text(
-                      'Voice Assistant',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        ),
+                        onChanged: (value) {
+                          _onSearchChanged();
+                        },
                       ),
-                      elevation: 4,
-                    ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '🎤 Tap mic for AI voice search in Tamil or English',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      // Large Voice Search Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showVoiceSearchDialog();
+                          },
+                          icon: const Icon(Icons.mic, size: 28),
+                          label: const Text(
+                            'Voice Assistant',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4CAF50),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4CAF50),
+                        ),
+                        child: const Text('Done'),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
-                  ),
-                  child: const Text('Done'),
-                ),
-              ],
+              ),
             ),
-          ),
-            ),
-            );
-            },
           );
         },
       ),
     );
   }
 
-  Future<void> _handleAddToCart(BuildContext context, CartProvider cartProvider, ProductModel product) async {
+  Future<void> _handleAddToCart(BuildContext context, CartProvider cartProvider,
+      ProductModel product) async {
     cartProvider.addToCart(product);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1545,7 +1680,10 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
   // Old voice search dialog removed — now uses Voice Assistant
   // ignore: unused_element
-  void _showVoiceSearchDialog_old() { return;
+  void _showVoiceSearchDialog_old() {
+    return;
+    /* Retained only as historical reference. The live flow navigates to the
+       dedicated voice-assistant screen above.
     List<dynamic> voiceResults = [];
     bool isSearching = false;
     String searchStatus = '';
@@ -1955,6 +2093,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
         },
       ),
     );
+    */
   }
 }
 

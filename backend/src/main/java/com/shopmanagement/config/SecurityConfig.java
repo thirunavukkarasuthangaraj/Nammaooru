@@ -124,6 +124,7 @@ public class SecurityConfig {
                                 "/api/service-area/**",  // Public: Service area check (no auth needed)
                                 "/api/mobile/delivery-partner/track/**",  // Allow public order tracking for customers
                                 "/uploads/**",
+                                "/category-artwork/**",
                                 "/shops/**",
                                 "/delivery-partners/**",
                                 // SockJS's initial "/ws/info" handshake is a plain GET with no

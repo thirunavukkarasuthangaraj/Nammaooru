@@ -20,10 +20,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -36,6 +43,12 @@ public class ProductCategoryController {
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
+
+    private static final long MAX_DOWNLOAD_IMAGE_BYTES = 8L * 1024 * 1024;
+
+    private static final HttpClient IMAGE_HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductCategoryResponse>>> getAllCategories(
@@ -235,6 +248,88 @@ public class ProductCategoryController {
         Files.copy(file.getInputStream(), filePath);
 
         // Return the URL path
+        return "/uploads/categories/" + filename;
+    }
+
+    /**
+     * Download an image from a URL (picked in the image search dialog) and
+     * store it as the category's icon - same "search & pick" flow as the
+     * bulk-edit product image picker, applied to category images.
+     */
+    @PostMapping("/{id}/image-from-url")
+    public ResponseEntity<ApiResponse<ProductCategoryResponse>> uploadCategoryImageFromUrl(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+
+        String sourceUrl = body != null ? body.get("url") : null;
+        if (sourceUrl == null || !(sourceUrl.startsWith("http://") || sourceUrl.startsWith("https://"))) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("A valid image URL is required"));
+        }
+
+        try {
+            URI uri = URI.create(sourceUrl);
+            // Block SSRF against internal hosts
+            InetAddress address = InetAddress.getByName(uri.getHost());
+            if (address.isLoopbackAddress() || address.isSiteLocalAddress()
+                    || address.isLinkLocalAddress() || address.isAnyLocalAddress()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("URL not allowed"));
+            }
+
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                    .timeout(Duration.ofSeconds(15))
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+                    .header("Accept", "image/*,*/*;q=0.8")
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> response = IMAGE_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (response.statusCode() != 200 || response.body() == null || response.body().length == 0) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "Could not download image (HTTP " + response.statusCode() + ")"));
+            }
+            byte[] bytes = response.body();
+            if (bytes.length > MAX_DOWNLOAD_IMAGE_BYTES) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Image is too large (max 8MB)"));
+            }
+
+            String contentType = response.headers().firstValue("Content-Type").orElse("image/jpeg");
+            int semicolon = contentType.indexOf(';');
+            if (semicolon > 0) {
+                contentType = contentType.substring(0, semicolon).trim();
+            }
+            if (!contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("URL is not an image"));
+            }
+            String extension = switch (contentType) {
+                case "image/png" -> "png";
+                case "image/webp" -> "webp";
+                case "image/gif" -> "gif";
+                default -> "jpg";
+            };
+
+            String imageUrl = saveImageBytes(bytes, extension);
+            ProductCategoryResponse category = categoryService.updateCategoryImage(id, imageUrl);
+
+            return ResponseEntity.ok(ApiResponse.success(category, "Image updated successfully"));
+        } catch (IOException | InterruptedException e) {
+            log.error("Failed to download category image from URL: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Could not download this image - try another one"));
+        }
+    }
+
+    private String saveImageBytes(byte[] bytes, String extension) throws IOException {
+        String categoryUploadDir = uploadDir + "/categories";
+        Path uploadPath = Paths.get(categoryUploadDir);
+
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        String filename = UUID.randomUUID() + "." + extension;
+        Path filePath = uploadPath.resolve(filename);
+        Files.write(filePath, bytes);
+
         return "/uploads/categories/" + filename;
     }
 }

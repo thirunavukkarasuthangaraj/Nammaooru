@@ -68,6 +68,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   bool _hasError = false;
   String? _errorMessage;
 
+  // Marks where the pinned search/tabs bar starts, so tapping a tile in the
+  // grouped category section above can scroll straight to the filtered
+  // products instead of leaving the user to scroll manually.
+  final GlobalKey _productsAnchorKey = GlobalKey();
+
   // Check if shop is currently open
   bool get _isShopOpen {
     if (_shop == null) return true; // Default to open if no data
@@ -540,9 +545,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          _buildViewToggle(),
                           const SizedBox(width: 8),
                         ],
                       ),
@@ -663,13 +668,206 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
-  // Deep green accent from the reference design
-  static const Color _deepGreen = Color(0xFF0F7B23);
+  // "All Items" first, then essentials (maligai) before the rest - shared by
+  // the sidebar so its order matches what shoppers expect.
+  List<dynamic> _sortedCategoriesForBrowse() {
+    return List<dynamic>.of(_categories)
+      ..sort((a, b) {
+        final aAll = a['id'] == null ? 0 : 1;
+        final bAll = b['id'] == null ? 0 : 1;
+        if (aAll != bAll) return aAll - bAll;
+        return _categoryPriority(a['name']?.toString()) -
+            _categoryPriority(b['name']?.toString());
+      });
+  }
 
-  Widget _buildHorizontalCategories() {
+  void _selectCategory(String? categoryId, String? categoryName,
+      {bool scrollToProducts = false}) {
+    setState(() {
+      _selectedCategory = categoryId;
+      _selectedCategoryName = categoryId == null ? null : categoryName;
+      _filterProducts();
+    });
+    if (scrollToProducts) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final anchorContext = _productsAnchorKey.currentContext;
+        if (anchorContext != null) {
+          Scrollable.ensureVisible(
+            anchorContext,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  // A pleasant rotating palette for category tiles that have no shop-uploaded
+  // photo - keeps the grid from looking like one flat wall of grey squares
+  // without needing a large keyword-to-icon lookup table.
+  static const List<Color> _tilePalette = [
+    Color(0xFFEF6C00),
+    Color(0xFF43A047),
+    Color(0xFF1E88E5),
+    Color(0xFFD81B60),
+    Color(0xFF00897B),
+    Color(0xFF8E24AA),
+    Color(0xFF6D4C41),
+    Color(0xFF546E7A),
+  ];
+
+  // Groups this shop's real categories by their parent (set via the
+  // shop-owner web app's Categories page > "Parent Category" field). Shops
+  // that haven't organized categories yet just get one null-keyed group,
+  // rendered without a header.
+  Map<String?, List<dynamic>> _groupCategoriesByParent() {
+    final grouped = <String?, List<dynamic>>{};
+    for (final category in _categories) {
+      if (category['id'] == null) continue; // skip the synthetic "All Items"
+      final parentName = category['parentName']?.toString();
+      grouped.putIfAbsent(parentName, () => []).add(category);
+    }
+    return grouped;
+  }
+
+  Widget _buildGroupedCategorySection() {
+    if (_isLoadingCategories || _categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final grouped = _groupCategoriesByParent();
+    if (grouped.isEmpty) return const SizedBox.shrink();
+
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final isTamil = languageProvider.currentLanguage == 'ta';
+
+    // Named groups first (in the order their first category appears),
+    // ungrouped categories - if any - last, with no header of their own.
+    final groupNames = grouped.keys.where((k) => k != null).toList();
+    final sections = <MapEntry<String?, List<dynamic>>>[
+      for (final name in groupNames) MapEntry(name, grouped[name]!),
+      if (grouped.containsKey(null)) MapEntry(null, grouped[null]!),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final section in sections)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (section.key != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        section.key!,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF212121),
+                        ),
+                      ),
+                    ),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: section.value.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.72,
+                    ),
+                    itemBuilder: (context, index) {
+                      final category = section.value[index];
+                      final categoryName = category['name']?.toString() ?? '';
+                      final tamilName =
+                          (category['displayNameTamil'] ?? category['nameTamil'])
+                              ?.toString()
+                              .trim();
+                      final displayName =
+                          (isTamil && tamilName != null && tamilName.isNotEmpty)
+                              ? tamilName
+                              : category['displayName']?.toString() ?? categoryName;
+                      final imageUrl = category['imageUrl']?.toString();
+                      final categoryId = category['id']?.toString();
+                      final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+                      final tileColor =
+                          _tilePalette[categoryName.hashCode.abs() % _tilePalette.length];
+
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _selectCategory(categoryId, categoryName,
+                              scrollToProducts: true),
+                          child: Column(
+                            children: [
+                              AspectRatio(
+                                aspectRatio: 1,
+                                child: Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3E9EA),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: hasImage
+                                      ? Image.network(
+                                          ImageUrlHelper.getFullImageUrl(imageUrl),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) =>
+                                              Center(
+                                            child: Icon(Icons.category_rounded,
+                                                color: tileColor, size: 28),
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Icon(Icons.category_rounded,
+                                              color: tileColor, size: 28),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                displayName,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF212121),
+                                  height: 1.2,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Horizontal text-tab row of every category (like the reference design's
+  // For You / Fresh / Grocery tabs) - the active tab is bold with a green
+  // underline. Simpler and reads cleaner than icon chips or a sidebar.
+  Widget _buildCategoryTabRow() {
+    final lang = Provider.of<LanguageProvider>(context);
+
     if (_isLoadingCategories) {
       return const SizedBox(
-        height: 52,
+        height: 44,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
@@ -678,22 +876,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       return const SizedBox.shrink();
     }
 
-    // Simple text pill chips, like the reference design.
-    // Order: "All Items" first, then essentials (maligai) before the rest.
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    final isTamil = languageProvider.currentLanguage == 'ta';
-    final sortedCategories = List<dynamic>.of(_categories)
-      ..sort((a, b) {
-        final aAll = a['id'] == null ? 0 : 1;
-        final bAll = b['id'] == null ? 0 : 1;
-        if (aAll != bAll) return aAll - bAll;
-        return _categoryPriority(a['name']?.toString()) -
-            _categoryPriority(b['name']?.toString());
-      });
+    final sortedCategories = _sortedCategoriesForBrowse();
+
     return Showcase(
       key: _tourCategoriesKey,
-      title: languageProvider.getText('Categories', 'வகைகள்'),
-      description: languageProvider.getText(
+      title: lang.getText('Categories', 'வகைகள்'),
+      description: lang.getText(
           'Tap a category to see only those products. Maligai opens first.',
           'ஒரு வகையைத் தட்டினால் அந்தப் பொருட்கள் மட்டும் தெரியும். மளிகை முதலில் திறக்கும்.'),
       tooltipBackgroundColor: Colors.white,
@@ -705,479 +893,49 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
       child: SizedBox(
-      height: 52,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        itemCount: sortedCategories.length,
-        itemBuilder: (context, index) {
-          final category = sortedCategories[index];
-          final categoryId = category['id']?.toString();
-          final categoryName = category['name']?.toString();
-          final isSelected = _selectedCategory == categoryId;
-          // Respect the Tamil/English toggle, falling back to English
-          final tamilName =
-              (category['displayNameTamil'] ?? category['nameTamil'])
-                  ?.toString()
-                  .trim();
-          final displayName = (isTamil && tamilName != null && tamilName.isNotEmpty)
-              ? tamilName
-              : category['displayName']?.toString() ?? categoryName ?? 'Category';
+        height: 44,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          itemCount: sortedCategories.length,
+          itemBuilder: (context, index) {
+            final category = sortedCategories[index];
+            final categoryId = category['id']?.toString();
+            final categoryName = category['name']?.toString();
+            final isSelected = _selectedCategory == categoryId;
+            final displayName = category['displayName']?.toString() ??
+                categoryName ??
+                'Category';
 
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategory = categoryId;
-                // If "All Items" is selected (categoryId is null), set categoryName to null to show all products
-                _selectedCategoryName =
-                    categoryId == null ? null : categoryName;
-                _filterProducts(); // Apply filter immediately without API call
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? _deepGreen : const Color(0xFFF1F2F4),
-                borderRadius: BorderRadius.circular(20),
-                border: isSelected
-                    ? null
-                    : Border.all(color: const Color(0xFFDDDFE2)),
-              ),
-              child: Text(
-                displayName,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF212121),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-      ),
-    );
-  }
-
-  // Zomato/Swiggy-style "Bestsellers" grid: only shows categories the shop
-  // owner has actually uploaded an image for (via Shop Profile > Categories),
-  // so it stays empty/hidden until they opt in. Tapping a tile never
-  // navigates away - it opens a scrollable sheet listing that category's
-  // products in place, on the same screen.
-  Widget _buildFeaturedCategoriesGrid() {
-    if (_isLoadingCategories) return const SizedBox.shrink();
-
-    final featured = _categories.where((c) {
-      final img = c['imageUrl']?.toString();
-      return img != null && img.isNotEmpty;
-    }).toList();
-
-    if (featured.isEmpty) return const SizedBox.shrink();
-
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    final isTamil = languageProvider.currentLanguage == 'ta';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            languageProvider.getText('Shop by Category', 'வகை வாரியாக வாங்குங்கள்'),
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF212121),
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: featured.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.82,
-            ),
-            itemBuilder: (context, index) {
-              final category = featured[index];
-              final categoryName = category['name']?.toString() ?? '';
-              final tamilName =
-                  (category['displayNameTamil'] ?? category['nameTamil'])
-                      ?.toString()
-                      .trim();
-              final displayName =
-                  (isTamil && tamilName != null && tamilName.isNotEmpty)
-                      ? tamilName
-                      : category['displayName']?.toString() ?? categoryName;
-              final imageUrl = category['imageUrl'].toString();
-
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => _openCategoryProductsSheet(categoryName, displayName),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F2F4),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Image.network(
-                            ImageUrlHelper.getFullImageUrl(imageUrl),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildCategoryPlaceholder(
-                                    displayName, _deepGreen, false),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF212121),
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+            return GestureDetector(
+              onTap: () => _selectCategory(categoryId, categoryName),
+              child: Container(
+                margin: const EdgeInsets.only(right: 20),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected
+                          ? VillageTheme.primaryGreen
+                          : Colors.transparent,
+                      width: 2.5,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Filters the already-loaded product list by category name - same
-  // case-insensitive match _filterProducts() uses, so behavior (and
-  // renamed-category safety) stays identical.
-  List<dynamic> _productsInCategory(String categoryName) {
-    final target = categoryName.toLowerCase();
-    return _allProducts.where((product) {
-      final productCategoryName = product['masterProduct']?['category']?['name']
-          ?.toString()
-          .toLowerCase();
-      return productCategoryName == target;
-    }).toList();
-  }
-
-  void _openCategoryProductsSheet(String categoryName, String displayName) {
-    final allCategoryProducts = _productsInCategory(categoryName);
-    final searchController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return StatefulBuilder(
-              builder: (context, setSheetState) {
-                final query = searchController.text.trim().toLowerCase();
-                final products = query.isEmpty
-                    ? allCategoryProducts
-                    : allCategoryProducts.where((product) {
-                        final name = (product['displayName'] ??
-                                product['customName'] ??
-                                '')
-                            .toString()
-                            .toLowerCase();
-                        final description =
-                            (product['displayDescription'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                        return name.contains(query) ||
-                            description.contains(query);
-                      }).toList();
-
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                displayName,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                        child: TextField(
-                          controller: searchController,
-                          onChanged: (_) => setSheetState(() {}),
-                          decoration: InputDecoration(
-                            hintText: 'Search in $displayName',
-                            prefixIcon: const Icon(Icons.search, size: 20),
-                            suffixIcon: query.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear, size: 18),
-                                    onPressed: () {
-                                      searchController.clear();
-                                      setSheetState(() {});
-                                    },
-                                  )
-                                : null,
-                            isDense: true,
-                            filled: true,
-                            fillColor: const Color(0xFFF1F2F4),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: products.isEmpty
-                            ? Center(
-                                child: Text(query.isEmpty
-                                    ? 'No products in this category yet'
-                                    : 'No products match "$query"'))
-                            // Same view mode (grid/list) the shop's main product
-                            // section is currently in - toggling it there also
-                            // changes how this sheet looks.
-                            : (_isListView
-                                ? ListView.builder(
-                                    controller: scrollController,
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 8),
-                                    itemCount: products.length,
-                                    itemBuilder: (context, index) =>
-                                        _buildProductListTile(products[index]),
-                                  )
-                                : GridView.builder(
-                                    controller: scrollController,
-                                    padding:
-                                        const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                                    itemCount: products.length,
-                                    gridDelegate:
-                                        SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      mainAxisSpacing: 12,
-                                      crossAxisSpacing: 12,
-                                      mainAxisExtent:
-                                          (MediaQuery.of(context).size.width -
-                                                      36) /
-                                                  2 +
-                                              120,
-                                    ),
-                                    itemBuilder: (context, index) =>
-                                        _buildProductCard(products[index]),
-                                  )),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildCategorySidebar() {
-    if (_isLoadingCategories) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_categories.isEmpty) {
-      return const Center(
-          child: Text('No categories', style: TextStyle(fontSize: 10)));
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.zero,
-      itemCount: _categories.length,
-      itemBuilder: (context, index) {
-        final category = _categories[index];
-        final categoryId = category['id']?.toString();
-        final categoryName = category['name']?.toString();
-        final isSelected = _selectedCategory == categoryId;
-        final displayName =
-            category['displayName']?.toString() ?? categoryName ?? 'Category';
-        final imageUrl = category['imageUrl']?.toString();
-        final colorHex = category['color']?.toString() ?? '#4CAF50';
-
-        // Check if imageUrl is an actual image path
-        final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
-
-        // Parse color from hex
-        Color categoryColor = VillageTheme.primaryGreen;
-        try {
-          categoryColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-        } catch (e) {
-          categoryColor = VillageTheme.primaryGreen;
-        }
-
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedCategory = categoryId;
-              // If "All Items" is selected (categoryId is null), set categoryName to null to show all products
-              _selectedCategoryName = categoryId == null ? null : categoryName;
-              _filterProducts(); // Apply filter immediately without API call
-            });
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? VillageTheme.primaryGreen.withOpacity(0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: isSelected
-                  ? Border.all(
-                      color: VillageTheme.primaryGreen,
-                      width: 1.5,
-                    )
-                  : null,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Category Image
-                Container(
-                  width: 45,
-                  height: 45,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: hasImage
-                        ? Image.network(
-                            ImageUrlHelper.getFullImageUrl(imageUrl!),
-                            width: 45,
-                            height: 45,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildCategoryPlaceholder(
-                                  categoryName ?? 'Category',
-                                  categoryColor,
-                                  isSelected);
-                            },
-                          )
-                        : _buildCategoryPlaceholder(categoryName ?? 'Category',
-                            categoryColor, isSelected),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                // Category Name
-                Text(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
                   displayName,
                   style: TextStyle(
                     color: isSelected
                         ? VillageTheme.primaryGreen
-                        : Colors.grey[800],
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                    fontSize: 8,
-                    height: 1.0,
+                        : Colors.grey[700],
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    fontSize: 14,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryPlaceholder(
-      String categoryName, Color color, bool isSelected) {
-    // Extract first letter for display
-    String firstLetter = 'C';
-    try {
-      // Get first character that's not a special character
-      final cleanName = categoryName.split('/').last.trim();
-      if (cleanName.isNotEmpty) {
-        firstLetter = cleanName[0].toUpperCase();
-      }
-    } catch (e) {
-      firstLetter = 'C';
-    }
-
-    return Container(
-      width: 70,
-      height: 70,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.7),
-            color,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Text(
-          firstLetter,
-          style: const TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -1262,23 +1020,17 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       return const Center(child: LoadingWidget());
     }
 
-    // Chip row is 52 high; search field ~56 + 16 margin.
-    final double categoriesExtent =
-        _isLoadingCategories ? 52 : (_categories.isEmpty ? 0 : 52);
-    const double searchExtent = 72;
-
+    // Top: search + category tabs (pinned). Bottom: every product, filtered
+    // to the selected tab - "All Items" (the default) shows everything.
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        // Shop Closed Banner
         if (!_isShopOpen) SliverToBoxAdapter(child: _buildShopClosedBanner()),
-        // Unified Offers Carousel (Combos + Promos together)
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
-        // Zomato/Swiggy-style featured category tiles (only shows categories
-        // the shop owner uploaded an image for). Scrolls away with the page,
-        // unlike the pinned chip bar below.
-        SliverToBoxAdapter(child: _buildFeaturedCategoriesGrid()),
-        // Categories + search stay pinned at the top while products scroll
+        SliverToBoxAdapter(child: _buildGroupedCategorySection()),
+        SliverToBoxAdapter(
+          child: KeyedSubtree(key: _productsAnchorKey, child: const SizedBox.shrink()),
+        ),
         SliverAppBar(
           pinned: true,
           primary: false,
@@ -1288,19 +1040,77 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           backgroundColor: Theme.of(context).brightness == Brightness.dark
               ? Colors.black
               : Colors.white,
-          toolbarHeight: categoriesExtent + searchExtent,
+          toolbarHeight: 72 + 44,
           titleSpacing: 0,
           title: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Search first, then category chips
               _buildSearchBar(),
-              _buildHorizontalCategories(),
+              _buildCategoryTabRow(),
             ],
           ),
         ),
+        SliverToBoxAdapter(child: _buildBrowseFilterRow()),
         _buildProductGrid(),
       ],
+    );
+  }
+
+  // Lightweight row above the product grid: item count + grid/list toggle.
+  Widget _buildBrowseFilterRow() {
+    final count = _products.length;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      color: Colors.white,
+      child: Row(
+        children: [
+          const Spacer(),
+          if (!_isLoadingProducts)
+            Text(
+              '$count item${count == 1 ? '' : 's'}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          const SizedBox(width: 10),
+          Builder(builder: (context) {
+            final lang = Provider.of<LanguageProvider>(context);
+            return Showcase(
+              key: _tourToggleKey,
+              title: lang.getText('Card / List View', 'கார்டு / பட்டியல்'),
+              description: lang.getText(
+                  'Tap to switch how products are shown — big cards or a compact list.',
+                  'பொருட்களை கார்டு அல்லது பட்டியல் வடிவில் மாற்றிப் பார்க்க தட்டவும்.'),
+              tooltipBackgroundColor: Colors.white,
+              textColor: Colors.grey.shade800,
+              titleTextStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: VillageTheme.primaryGreen,
+              ),
+              descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+              onTargetClick: () => setState(() => _isListView = !_isListView),
+              disposeOnTap: true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _isListView = !_isListView),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F2F4),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _isListView
+                        ? Icons.grid_view_rounded
+                        : Icons.view_list_rounded,
+                    size: 18,
+                    color: const Color(0xFF424242),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -2331,68 +2141,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   // Card ↔ list view toggle, user-selectable from the header
   bool _isListView = false;
 
-  // Lives in the green app bar: white translucent pill, active mode = white
-  Widget _buildViewToggle() {
-    Widget modeButton(IconData icon, bool active, VoidCallback onTap) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: active ? VillageTheme.primaryGreen : Colors.white,
-          ),
-        ),
-      );
-    }
-
-    final lang = Provider.of<LanguageProvider>(context);
-    return Showcase(
-      key: _tourToggleKey,
-      title: lang.getText('Card / List View', 'கார்டு / பட்டியல்'),
-      description: lang.getText(
-          'Tap to switch how products are shown — big cards or a compact list.',
-          'பொருட்களை கார்டு அல்லது பட்டியல் வடிவில் மாற்றிப் பார்க்க தட்டவும்.'),
-      tooltipBackgroundColor: Colors.white,
-      textColor: Colors.grey.shade800,
-      titleTextStyle: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.bold,
-        color: VillageTheme.primaryGreen,
-      ),
-      descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
-      // While this step is highlighted, the tour overlay would otherwise
-      // swallow the tap and just advance the tour instead of toggling the
-      // view — make the tap do the real thing AND finish this step.
-      onTargetClick: () => setState(() => _isListView = !_isListView),
-      disposeOnTap: true,
-      child: Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.25),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            modeButton(Icons.grid_view_rounded, !_isListView,
-                () => setState(() => _isListView = false)),
-            const SizedBox(width: 2),
-            modeButton(Icons.view_list_rounded, _isListView,
-                () => setState(() => _isListView = true)),
-          ],
-        ),
-      ),
-    );
-  }
-
   // List-view row: same old-design styling as the grid card, horizontal layout
   Widget _buildProductListTile(Map<String, dynamic> product) {
     final languageProvider = Provider.of<LanguageProvider>(context);
@@ -2733,7 +2481,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     // Responsive sizing: card height = image (scales with phone width) + a
     // fixed info budget, so no overflow on small or large screens.
     final itemWidth = (MediaQuery.of(context).size.width - 36) / 2;
-    final cardExtent = itemWidth + 120;
+    final cardExtent = itemWidth + 110;
 
     return SliverPadding(
       padding: const EdgeInsets.only(

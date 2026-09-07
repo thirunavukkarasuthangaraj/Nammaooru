@@ -45,6 +45,13 @@ public class WebConfig implements WebMvcConfigurer {
 // Removed duplicate CORS configuration to avoid conflicts
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Curated defaults used by both Angular and Flutter category views.
+        // Uploaded /uploads/categories images still take priority in the DB.
+        registry.addResourceHandler("/category-artwork/**")
+                .addResourceLocations("classpath:/static/category-artwork/")
+                .setCachePeriod(604800)
+                .resourceChain(true);
+
         // Create upload directory if it doesn't exist
         File uploadDirectory = new File(uploadDir);
         if (!uploadDirectory.exists()) {

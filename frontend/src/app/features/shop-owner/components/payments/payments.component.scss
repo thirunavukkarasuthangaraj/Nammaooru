@@ -130,6 +130,11 @@
       line-height: 32px;
       height: 32px;
       padding: 0 16px;
+      white-space: nowrap;
+
+      .mdc-button__label {
+        white-space: nowrap;
+      }
 
       &:disabled {
         background: #ccc;

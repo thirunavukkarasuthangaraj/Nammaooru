@@ -63,6 +63,25 @@ export class ShopOwnerProductService {
 
   constructor(private http: HttpClient) {}
 
+  /**
+   * Current shop owner's own products, optionally filtered to one category.
+   * Filtering happens server-side (categoryId) - no shopId needed, the backend
+   * resolves it from the authenticated user.
+   */
+  getMyProducts(categoryId?: number, page: number = 0, size: number = 200): Observable<{ content: any[]; totalElements: number }> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    if (categoryId) {
+      params = params.set('categoryId', categoryId.toString());
+    }
+
+    return this.http.get<{ data: { content: any[]; totalElements: number } }>(`${this.apiUrl}/shop-products/my-products`, { params })
+      .pipe(
+        switchMap(response => of(response.data || { content: [], totalElements: 0 }))
+      );
+  }
+
   getShopProducts(shopId: number, page: number = 0, size: number = 20): Observable<ShopProduct[]> {
     const params = new HttpParams()
       .set('page', page.toString())

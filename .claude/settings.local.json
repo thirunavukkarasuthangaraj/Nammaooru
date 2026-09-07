@@ -401,7 +401,8 @@
       "Bash(npx tsc *)",
       "Bash(wc -l /tmp_tsc_out.txt)",
       "Bash(grep -i \"daily-updates\" /tmp_tsc_out.txt)",
-      "PowerShell(Out-Null *)"
+      "PowerShell(Out-Null *)",
+      "Bash(/c/src/flutter/bin/flutter analyze *)"
     ],
     "deny": [],
     "ask": [],

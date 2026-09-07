@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../shared/providers/cart_provider.dart';
-import '../../../shared/widgets/loading_widget.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/localization/language_provider.dart';
 import 'shop_details_modern_screen.dart';
 import 'cart_screen.dart';
@@ -51,17 +51,21 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
       print('🔧 Loading shop details...');
       final shopResponse = await _shopApi.getShopById(int.parse(widget.shopId));
 
-      if (shopResponse['statusCode'] == '0000' && shopResponse['data'] != null) {
+      if (shopResponse['statusCode'] == '0000' &&
+          shopResponse['data'] != null) {
         print('🔧 Shop details loaded successfully');
         _shopDetails = shopResponse['data'];
       }
 
       // Load categories
       print('🔧 Loading categories...');
-      final categoriesResponse = await _shopApi.getShopCategories(int.parse(widget.shopId));
+      final categoriesResponse =
+          await _shopApi.getShopCategories(int.parse(widget.shopId));
 
-      if (categoriesResponse['statusCode'] == '0000' && categoriesResponse['data'] != null) {
-        print('🔧 Raw categories data type: ${categoriesResponse['data'].runtimeType}');
+      if (categoriesResponse['statusCode'] == '0000' &&
+          categoriesResponse['data'] != null) {
+        print(
+            '🔧 Raw categories data type: ${categoriesResponse['data'].runtimeType}');
         print('🔧 Raw categories data: ${categoriesResponse['data']}');
 
         final List<dynamic> categoriesData = categoriesResponse['data'] is List
@@ -73,7 +77,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
         // Handle new CategoryResponse format from API
         try {
           _categories = categoriesData.map((categoryData) {
-            print('🔧 Processing category: $categoryData (type: ${categoryData.runtimeType})');
+            print(
+                '🔧 Processing category: $categoryData (type: ${categoryData.runtimeType})');
 
             // Handle both old string format and new object format
             if (categoryData is String) {
@@ -93,18 +98,22 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
               return <String, dynamic>{
                 'id': categoryData['id']?.toString() ?? '1',
                 'name': categoryData['name'] ?? 'Category',
-                'displayName': categoryData['displayName'] ?? categoryData['name'],
+                'displayName':
+                    categoryData['displayName'] ?? categoryData['name'],
                 'displayNameTamil': categoryData['displayNameTamil'],
-                'searchName': categoryData['name'] ?? 'Category', // Use name for API calls
+                'searchName': categoryData['name'] ??
+                    'Category', // Use name for API calls
                 'description': categoryData['description'] ?? '',
                 'productCount': categoryData['productCount'] ?? 0,
+                'imageUrl': categoryData['imageUrl'],
                 'icon': _getIconFromString(categoryData['icon']),
                 'color': _parseColor(categoryData['color']),
               };
             }
           }).toList();
 
-          print('🔧 Successfully converted ${_categories.length} categories: $_categories');
+          print(
+              '🔧 Successfully converted ${_categories.length} categories: $_categories');
         } catch (conversionError) {
           print('💥 Error converting categories: $conversionError');
           _categories = _getDefaultCategories();
@@ -124,7 +133,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
       print('Error loading shop data: $e');
       _categories = _getDefaultCategories();
       if (mounted) {
-        Helpers.showSnackBar(context, 'Using default categories', isError: false);
+        Helpers.showSnackBar(context, 'Using default categories',
+            isError: false);
       }
     } finally {
       if (mounted) {
@@ -246,7 +256,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
               Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                    icon: const Icon(Icons.shopping_cart_outlined,
+                        color: Colors.white),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -366,7 +377,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
                             padding: const EdgeInsets.all(32),
                             child: Column(
                               children: [
-                                const Text('🏪', style: TextStyle(fontSize: 48)),
+                                const Text('🏪',
+                                    style: TextStyle(fontSize: 48)),
                                 const SizedBox(height: 12),
                                 Text(
                                   'No categories found',
@@ -381,14 +393,16 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
                         ),
                       )
                     : SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           childAspectRatio: 1.1,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildCategoryCard(_categories[index]),
+                          (context, index) =>
+                              _buildCategoryCard(_categories[index]),
                           childCount: _categories.length,
                         ),
                       ),
@@ -400,7 +414,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String value, String label, Color color) {
+  Widget _buildInfoItem(
+      IconData icon, String value, String label, Color color) {
     return Expanded(
       child: Column(
         children: [
@@ -442,12 +457,22 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
         : _getIconFromString(category['icon']?.toString());
     final int productCount = category['productCount'] as int? ?? 0;
     // listen: true (default) so this rebuilds live when the user toggles language
-    final isTamil = Provider.of<LanguageProvider>(context).currentLanguage == 'ta';
+    final isTamil =
+        Provider.of<LanguageProvider>(context).currentLanguage == 'ta';
     final tamilName = category['displayNameTamil']?.toString();
-    final String displayName = (isTamil && tamilName != null && tamilName.isNotEmpty)
-        ? tamilName
-        : (category['displayName']?.toString() ?? category['name']?.toString() ?? 'Category');
+    final String displayName =
+        (isTamil && tamilName != null && tamilName.isNotEmpty)
+            ? tamilName
+            : (category['displayName']?.toString() ??
+                category['name']?.toString() ??
+                'Category');
+    final englishName = category['displayName']?.toString() ??
+        category['name']?.toString() ??
+        'Category';
+    final secondaryName = isTamil ? englishName : tamilName;
     final String description = category['description']?.toString() ?? '';
+    final imageUrl = category['imageUrl']?.toString();
+    final hasImage = imageUrl != null && imageUrl.trim().isNotEmpty;
 
     return GestureDetector(
       onTap: () {
@@ -475,42 +500,44 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Colored header with icon
-            Container(
-              height: 90,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [cardColor, cardColor.withOpacity(0.7)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            // Category artwork shared with the web catalogue.
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Container(
+                height: 90,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cardColor, cardColor.withOpacity(0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Stack(
-                children: [
-                  // Background pattern circle
-                  Positioned(
-                    right: -10,
-                    top: -10,
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (hasImage)
+                      Image.network(
+                        ImageUrlHelper.getFullImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Icon(cardIcon, size: 44, color: Colors.white),
+                        ),
                       ),
-                    ),
-                  ),
-                  Center(
-                    child: Icon(cardIcon, size: 44, color: Colors.white),
-                  ),
-                ],
+                    if (!hasImage)
+                      Center(
+                          child: Icon(cardIcon, size: 44, color: Colors.white)),
+                  ],
+                ),
               ),
             ),
             // Bottom info section
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -525,7 +552,16 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (description.isNotEmpty)
+                    if (secondaryName != null &&
+                        secondaryName.isNotEmpty &&
+                        secondaryName != displayName)
+                      Text(
+                        secondaryName,
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else if (description.isNotEmpty)
                       Text(
                         description,
                         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
@@ -535,7 +571,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: cardColor.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(20),
@@ -550,7 +587,8 @@ class _ShopCategoriesScreenState extends State<ShopCategoriesScreen> {
                           ),
                         ),
                         const Spacer(),
-                        Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey[400]),
+                        Icon(Icons.arrow_forward_ios,
+                            size: 12, color: Colors.grey[400]),
                       ],
                     ),
                   ],
