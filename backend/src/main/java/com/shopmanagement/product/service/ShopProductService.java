@@ -40,6 +40,7 @@ public class ShopProductService {
     private final ShopRepository shopRepository;
     private final ProductCategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final ProductImageService productImageService;
 
     @Transactional(readOnly = true)
     public Page<ShopProductResponse> getShopProducts(Long shopId, Specification<ShopProduct> spec, Pageable pageable) {
@@ -634,6 +635,107 @@ public class ShopProductService {
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + shopId));
 
         return shopProductRepository.countByShopAndCategory(shop, categoryName);
+    }
+
+    /**
+     * Clones selected products (or all of them) from one shop into another,
+     * newly-created shop — same master product reference (name/category stay
+     * shared), but a fully independent ShopProduct row for price/stock/status,
+     * and physically copied image files so editing/deleting an image in one
+     * shop never affects the other's copy.
+     */
+    public com.shopmanagement.product.dto.CloneProductsResponse cloneProductsToShop(
+            Long targetShopId, com.shopmanagement.product.dto.CloneProductsRequest request) {
+
+        if (request.getSourceShopId().equals(targetShopId)) {
+            throw new IllegalArgumentException("Source and target shop must be different");
+        }
+
+        Shop sourceShop = shopRepository.findById(request.getSourceShopId())
+                .orElseThrow(() -> new ShopNotFoundException("Source shop not found with id: " + request.getSourceShopId()));
+        Shop targetShop = shopRepository.findById(targetShopId)
+                .orElseThrow(() -> new ShopNotFoundException("Target shop not found with id: " + targetShopId));
+
+        List<ShopProduct> sourceProducts;
+        if (request.isCloneAll()) {
+            sourceProducts = shopProductRepository.findAll(
+                    (root, query, cb) -> cb.equal(root.get("shop").get("id"), sourceShop.getId()));
+        } else {
+            if (request.getShopProductIds() == null || request.getShopProductIds().isEmpty()) {
+                throw new IllegalArgumentException("Select at least one product to clone, or set cloneAll");
+            }
+            sourceProducts = shopProductRepository.findAllById(request.getShopProductIds()).stream()
+                    .filter(p -> p.getShop().getId().equals(sourceShop.getId()))
+                    .toList();
+        }
+
+        int clonedCount = 0;
+        List<String> skippedReasons = new java.util.ArrayList<>();
+
+        for (ShopProduct source : sourceProducts) {
+            String productLabel = source.getDisplayName();
+
+            if (shopProductRepository.existsByShopAndMasterProduct(targetShop, source.getMasterProduct())) {
+                skippedReasons.add(productLabel + ": already exists in target shop");
+                continue;
+            }
+
+            ShopProduct clone = ShopProduct.builder()
+                    .shop(targetShop)
+                    .masterProduct(source.getMasterProduct())
+                    .price(source.getPrice())
+                    .originalPrice(source.getOriginalPrice())
+                    .costPrice(source.getCostPrice())
+                    .stockQuantity(source.getStockQuantity())
+                    .minStockLevel(source.getMinStockLevel())
+                    .maxStockLevel(source.getMaxStockLevel())
+                    .trackInventory(source.getTrackInventory())
+                    .status(source.getStatus())
+                    .isAvailable(source.getIsAvailable())
+                    .isFeatured(source.getIsFeatured())
+                    .customName(source.getCustomName())
+                    .customDescription(source.getCustomDescription())
+                    .customAttributes(source.getCustomAttributes())
+                    .baseWeight(source.getBaseWeight())
+                    .baseUnit(source.getBaseUnit())
+                    .displayOrder(source.getDisplayOrder())
+                    .tags(source.getTags())
+                    .createdBy(getCurrentUsername())
+                    .updatedBy(getCurrentUsername())
+                    .build();
+
+            clone = shopProductRepository.save(clone);
+
+            for (ShopProductImage sourceImage : source.getShopImages()) {
+                String newUrl = productImageService.copyImageFileForClone(
+                        sourceImage.getImageUrl(), clone.getId(), targetShop.getId());
+                if (newUrl == null) continue;
+
+                ShopProductImage clonedImage = ShopProductImage.builder()
+                        .shopProduct(clone)
+                        .imageUrl(newUrl)
+                        .altText(sourceImage.getAltText())
+                        .isPrimary(sourceImage.getIsPrimary())
+                        .sortOrder(sourceImage.getSortOrder())
+                        .createdBy(getCurrentUsername())
+                        .build();
+                clone.getShopImages().add(clonedImage);
+            }
+            shopProductRepository.save(clone);
+
+            clonedCount++;
+        }
+
+        updateShopProductCount(targetShop);
+
+        log.info("Cloned {} product(s) from shop {} to shop {} ({} skipped)",
+                clonedCount, sourceShop.getId(), targetShop.getId(), skippedReasons.size());
+
+        return com.shopmanagement.product.dto.CloneProductsResponse.builder()
+                .clonedCount(clonedCount)
+                .skippedCount(skippedReasons.size())
+                .skippedReasons(skippedReasons)
+                .build();
     }
 
     private void updateShopProductCount(Shop shop) {

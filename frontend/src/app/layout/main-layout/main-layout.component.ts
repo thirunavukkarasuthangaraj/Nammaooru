@@ -100,6 +100,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
         { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
         { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null },
+        { title: 'Clone Products', icon: 'content_copy', route: '/products/clone', badge: null },
         { title: 'Label Designer', icon: 'qr_code_2', route: '/label-designer', badge: null }
       ]
     },
@@ -206,6 +207,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Product Master', icon: 'inventory_2', route: '/products/master', badge: null },
         { title: 'Categories', icon: 'category', route: '/products/categories', badge: null },
         { title: 'Bulk Import', icon: 'cloud_upload', route: '/products/bulk-import', badge: null },
+        { title: 'Clone Products', icon: 'content_copy', route: '/products/clone', badge: null },
         { title: 'Label Designer', icon: 'qr_code_2', route: '/label-designer', badge: null }
       ]
     },

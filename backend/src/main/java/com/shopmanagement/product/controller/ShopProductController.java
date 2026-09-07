@@ -389,6 +389,19 @@ public class ShopProductController {
         ));
     }
 
+    @PostMapping("/clone")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<ApiResponse<com.shopmanagement.product.dto.CloneProductsResponse>> cloneProducts(
+            @PathVariable Long shopId,
+            @Valid @RequestBody com.shopmanagement.product.dto.CloneProductsRequest request) {
+        log.info("Cloning products from shop {} into shop {}", request.getSourceShopId(), shopId);
+        com.shopmanagement.product.dto.CloneProductsResponse response = shopProductService.cloneProductsToShop(shopId, request);
+        return ResponseEntity.ok(ApiResponse.success(
+                response,
+                response.getClonedCount() + " product(s) cloned successfully"
+        ));
+    }
+
     @PutMapping("/{productId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
     public ResponseEntity<ApiResponse<ShopProductResponse>> updateShopProduct(

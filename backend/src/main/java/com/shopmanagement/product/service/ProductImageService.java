@@ -392,6 +392,46 @@ public class ProductImageService {
         }
     }
 
+    /**
+     * Physically copies an existing product image file to a new file for a
+     * cloned shop product, so the clone's image is fully independent — if the
+     * source shop later deletes/replaces its image, the clone is unaffected
+     * (URLs are otherwise just bare strings shared by reference elsewhere in
+     * this class, which would silently break the clone if not copied here).
+     * Returns the new image's URL, or null if the source file can't be found.
+     */
+    String copyImageFileForClone(String sourceImageUrl, Long newProductId, Long newShopId) {
+        try {
+            String[] parts = sourceImageUrl.split("/");
+            if (parts.length < 4) {
+                log.warn("Cannot clone image, unexpected URL format: {}", sourceImageUrl);
+                return null;
+            }
+            String type = parts[3];
+            String sourceFilename = parts[parts.length - 1];
+            Path sourcePath = Paths.get(productImageDir, type, sourceFilename);
+            if (!Files.exists(sourcePath)) {
+                log.warn("Cannot clone image, source file missing: {}", sourcePath);
+                return null;
+            }
+
+            String extension = sourceFilename.substring(sourceFilename.lastIndexOf("."));
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String uuid = UUID.randomUUID().toString().substring(0, 8);
+            String newFilename = String.format("shop_%d_%d_%s_%s%s", newProductId, newShopId, timestamp, uuid, extension);
+
+            Path targetDir = Paths.get(productImageDir, "shop");
+            Files.createDirectories(targetDir);
+            Path targetPath = targetDir.resolve(newFilename);
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return String.format("/uploads/products/shop/%s", newFilename);
+        } catch (IOException e) {
+            log.error("Failed to copy image file for clone: {}", sourceImageUrl, e);
+            return null;
+        }
+    }
+
     private void deleteImageFile(String imageUrl) {
         try {
             // Extract the filename from the URL path

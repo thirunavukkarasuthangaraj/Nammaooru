@@ -13,6 +13,7 @@ import { ProductDashboardComponent } from './components/product-dashboard/produc
 import { BulkProductAssignmentComponent } from './components/bulk-product-assignment/bulk-product-assignment.component';
 import { ShopOwnerProductsComponent } from './components/shop-owner-products/shop-owner-products.component';
 import { ProductBulkImportComponent } from './components/product-bulk-import/product-bulk-import.component';
+import { CloneProductsComponent } from './components/clone-products/clone-products.component';
 
 const routes: Routes = [
   {
@@ -154,6 +155,15 @@ const routes: Routes = [
         data: {
           title: 'Bulk Import Products',
           roles: ['SUPER_ADMIN', 'ADMIN', 'SHOP_OWNER']
+        }
+      },
+      {
+        path: 'clone',
+        component: CloneProductsComponent,
+        canActivate: [RoleGuard],
+        data: {
+          title: 'Clone Products to Another Shop',
+          roles: ['SUPER_ADMIN', 'ADMIN']
         }
       }
     ]

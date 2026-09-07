@@ -47,6 +47,7 @@ import { ProductImageUploadComponent } from './components/product-image-upload/p
 import { BulkProductAssignmentComponent } from './components/bulk-product-assignment/bulk-product-assignment.component';
 import { ShopOwnerProductsComponent } from './components/shop-owner-products/shop-owner-products.component';
 import { ProductBulkImportComponent } from './components/product-bulk-import/product-bulk-import.component';
+import { CloneProductsComponent } from './components/clone-products/clone-products.component';
 
 @NgModule({
   declarations: [
@@ -65,7 +66,8 @@ import { ProductBulkImportComponent } from './components/product-bulk-import/pro
     ProductImageUploadComponent,
     BulkProductAssignmentComponent,
     ShopOwnerProductsComponent,
-    ProductBulkImportComponent
+    ProductBulkImportComponent,
+    CloneProductsComponent
   ],
   imports: [
     CommonModule,

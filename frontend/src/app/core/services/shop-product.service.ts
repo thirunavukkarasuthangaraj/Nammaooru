@@ -13,6 +13,12 @@ import {
   InventoryOperation
 } from '../models/product.model';
 
+export interface CloneProductsResponse {
+  clonedCount: number;
+  skippedCount: number;
+  skippedReasons: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -66,6 +72,14 @@ export class ShopProductService {
   addProductToShop(shopId: number, product: ShopProductRequest): Observable<ShopProduct> {
     return this.http.post<ApiResponse<ShopProduct>>(`${this.API_URL}/${shopId}/products`, product)
       .pipe(map(response => response.data));
+  }
+
+  cloneProducts(targetShopId: number, sourceShopId: number, shopProductIds: number[] | null, cloneAll: boolean): Observable<CloneProductsResponse> {
+    return this.http.post<ApiResponse<CloneProductsResponse>>(`${this.API_URL}/${targetShopId}/products/clone`, {
+      sourceShopId,
+      shopProductIds,
+      cloneAll
+    }).pipe(map(response => response.data));
   }
 
   updateShopProduct(shopId: number, productId: number, product: ShopProductRequest): Observable<ShopProduct> {
