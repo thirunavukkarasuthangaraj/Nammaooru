@@ -235,28 +235,63 @@ export class CloneProductsComponent implements OnInit {
     return getImageUrlUtil(url);
   }
 
+  // Cloning copies each product's images on disk, which can take a while for
+  // hundreds/thousands of items — one giant request risks the browser or a
+  // reverse proxy timing out (which shows up as a misleading "CORS"/network
+  // error, not a real server error). Send it in smaller batches instead.
+  private static readonly CLONE_BATCH_SIZE = 100;
+
+  cloneProgress = '';
+
   cloneSelected(): void {
     if (!this.canClone() || !this.sourceShopId || !this.targetShopId) return;
 
     const shopProductIds = this.selections.filter(s => s.selected).map(s => s.product.id);
-    this.isCloning = true;
+    const batches: number[][] = [];
+    for (let i = 0; i < shopProductIds.length; i += CloneProductsComponent.CLONE_BATCH_SIZE) {
+      batches.push(shopProductIds.slice(i, i + CloneProductsComponent.CLONE_BATCH_SIZE));
+    }
 
-    this.shopProductService.cloneProducts(this.targetShopId, this.sourceShopId, shopProductIds, false).subscribe({
+    this.isCloning = true;
+    this.runCloneBatches(batches, 0, { clonedCount: 0, skippedCount: 0, skippedReasons: [] });
+  }
+
+  private runCloneBatches(batches: number[][], index: number, totals: CloneProductsResponse): void {
+    if (!this.sourceShopId || !this.targetShopId) return;
+
+    if (index >= batches.length) {
+      this.isCloning = false;
+      this.cloneProgress = '';
+      const skipped = totals.skippedCount > 0
+        ? `<br><br><b>${totals.skippedCount} skipped:</b><br>${totals.skippedReasons.join('<br>')}`
+        : '';
+      Swal.fire({
+        icon: 'success',
+        title: 'Products Cloned',
+        html: `${totals.clonedCount} product(s) cloned into the target shop.${skipped}`
+      });
+      return;
+    }
+
+    this.cloneProgress = `Cloning ${index + 1} of ${batches.length} batches...`;
+
+    this.shopProductService.cloneProducts(this.targetShopId, this.sourceShopId, batches[index], false).subscribe({
       next: (result: CloneProductsResponse) => {
-        this.isCloning = false;
-        const skipped = result.skippedCount > 0
-          ? `<br><br><b>${result.skippedCount} skipped:</b><br>${result.skippedReasons.join('<br>')}`
-          : '';
-        Swal.fire({
-          icon: 'success',
-          title: 'Products Cloned',
-          html: `${result.clonedCount} product(s) cloned into the target shop.${skipped}`
-        });
+        totals.clonedCount += result.clonedCount;
+        totals.skippedCount += result.skippedCount;
+        totals.skippedReasons.push(...(result.skippedReasons || []));
+        this.runCloneBatches(batches, index + 1, totals);
       },
       error: (error) => {
         this.isCloning = false;
-        console.error('Error cloning products:', error);
-        Swal.fire('Error', error?.error?.message || 'Could not clone products', 'error');
+        this.cloneProgress = '';
+        console.error('Error cloning products (batch failed):', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Clone Stopped',
+          html: `${totals.clonedCount} product(s) were cloned before this batch failed: `
+              + `${error?.error?.message || 'Could not reach the server'}.<br><br>You can select the remaining products and try again.`
+        });
       }
     });
   }

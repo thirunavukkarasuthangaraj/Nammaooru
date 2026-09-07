@@ -321,6 +321,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(temporaryPassword))
                 .role(User.UserRole.SHOP_OWNER)
                 .isActive(true)
+                .status(User.UserStatus.ACTIVE)
                 .isTemporaryPassword(true)
                 .passwordChangeRequired(true)
                 .build();
@@ -354,6 +355,14 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(temporaryPassword));
         user.setIsTemporaryPassword(true);
         user.setPasswordChangeRequired(true);
+        // A customer account that never finished OTP verification can be left
+        // with isActive=false/status!=ACTIVE — isEnabled() checks both, and
+        // Spring Security rejects an otherwise-correct password with "User is
+        // disabled" in that case. Becoming a shop owner should always unlock
+        // login, so force both explicitly rather than trust whatever state
+        // the row was already in.
+        user.setIsActive(true);
+        user.setStatus(User.UserStatus.ACTIVE);
 
         // Don't update mobile number - user already has it
         // Updating it causes unique constraint violation even if it's the same value
