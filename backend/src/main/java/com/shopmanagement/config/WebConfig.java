@@ -19,8 +19,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
-    private final MicroserviceRequestInterceptor microserviceRequestInterceptor;
-
     /**
      * Increase max page size to support loading all products at once
      * Default Spring Data max is 2000, we increase to 100000
@@ -40,9 +38,7 @@ public class WebConfig implements WebMvcConfigurer {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
         factory.setReadTimeout(5000);
-        RestTemplate restTemplate = new RestTemplate(factory);
-        restTemplate.getInterceptors().add(microserviceRequestInterceptor);
-        return restTemplate;
+        return new RestTemplate(factory);
     }
 
 // CORS is now handled by SecurityConfig.corsConfigurationSource()

@@ -93,7 +93,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents,bulkheads,ratelimiters
+        include: health,info,metrics,prometheus
       base-path: /actuator
   endpoint:
     health:
@@ -363,61 +363,3 @@ content:
     timeout-seconds: ${CONTENT_MODERATION_TIMEOUT:8}
     fail-open: ${CONTENT_MODERATION_FAIL_OPEN:false}
     max-image-size-bytes: ${CONTENT_MODERATION_MAX_SIZE:5242880}
-
-# Microservice Feature Flag
-# When enabled, monolith calls user-service API instead of local database for user operations
-microservice:
-  user-service:
-    enabled: ${MICROSERVICE_USER_ENABLED:false}
-    url: ${MICROSERVICE_USER_URL:http://46.225.224.191:8081}
-    api-key: ${MICROSERVICE_API_KEY:}
-
-# Resilience4j Configuration for Microservice Calls
-resilience4j:
-  # Circuit Breaker: stops calling user-service when it's down
-  circuitbreaker:
-    instances:
-      userServiceLogin:
-        register-health-indicator: true
-        sliding-window-size: 10           # Track last 10 calls
-        minimum-number-of-calls: 5        # Need at least 5 calls before opening circuit
-        failure-rate-threshold: 50        # Open circuit if 50% calls fail
-        wait-duration-in-open-state: 30s  # Wait 30s before trying again (HALF_OPEN)
-        permitted-number-of-calls-in-half-open-state: 3  # Try 3 calls in half-open
-        sliding-window-type: COUNT_BASED
-        automatic-transition-from-open-to-half-open-enabled: true
-
-  # Retry: retry failed calls before giving up
-  retry:
-    instances:
-      userServiceLogin:
-        max-attempts: 3                   # Try 3 times total
-        wait-duration: 500ms              # Wait 500ms between retries
-        retry-exceptions:
-          - java.net.ConnectException
-          - java.net.SocketTimeoutException
-          - org.springframework.web.client.ResourceAccessException
-        ignore-exceptions:
-          - com.shopmanagement.exception.AuthenticationFailedException
-
-  # Timeout: don't wait forever for user-service response
-  timelimiter:
-    instances:
-      userServiceLogin:
-        timeout-duration: 5s              # Max 5 seconds per call
-        cancel-running-future: true
-
-  # Bulkhead: limit concurrent calls to user-service (prevents overwhelming)
-  bulkhead:
-    instances:
-      userServiceLogin:
-        max-concurrent-calls: 10          # Max 10 parallel login calls
-        max-wait-duration: 500ms          # Wait 500ms if bulkhead full, then reject
-
-  # Rate Limiter: limit login requests per second (prevents brute force)
-  ratelimiter:
-    instances:
-      userServiceLogin:
-        limit-for-period: 50              # Max 50 calls per period
-        limit-refresh-period: 1s          # Period = 1 second
-        timeout-duration: 0s              # Don't wait, reject immediately if limit exceeded

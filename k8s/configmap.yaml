@@ -37,7 +37,3 @@ data:
 
   # Gemini AI
   GEMINI_ENABLED: "true"
-
-  # Microservice
-  MICROSERVICE_USER_ENABLED: "false"
-  MICROSERVICE_USER_URL: "http://46.225.224.191:8081"
