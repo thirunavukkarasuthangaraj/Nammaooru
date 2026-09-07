@@ -340,13 +340,39 @@ class _ShopListingScreenState extends State<ShopListingScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openShopRegistration,
-        backgroundColor: const Color(0xFF2E7D32),
-        icon: const Icon(Icons.add_business, color: Colors.white),
-        label: const Text(
-          'Register Your Shop',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openShopRegistration,
+              icon: const Icon(Icons.add_business, size: 20),
+              label: const Text(
+                'Register Your Shop',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

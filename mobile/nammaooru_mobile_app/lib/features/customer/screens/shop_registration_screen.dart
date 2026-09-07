@@ -366,10 +366,13 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen> {
               Icon(icon, size: 18, color: _darkGreen),
               const SizedBox(width: 8),
               Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1B5E20))),
-              const Spacer(),
-              Text('(based on the menu you opened from)', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
             ],
           ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Based on the menu you opened from',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
         ),
       ],
     );
