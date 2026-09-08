@@ -48,6 +48,7 @@ public class VillageService {
         existing.setDescription(updated.getDescription());
         existing.setIsActive(updated.getIsActive());
         existing.setDisplayOrder(updated.getDisplayOrder());
+        existing.setHiddenRegistrationCategories(updated.getHiddenRegistrationCategories());
         return villageRepository.save(existing);
     }
 
@@ -62,5 +63,22 @@ public class VillageService {
                 .orElseThrow(() -> new RuntimeException("Village not found: " + id));
         village.setIsActive(!village.getIsActive());
         return villageRepository.save(village);
+    }
+
+    /** Public (unauthenticated) check the customer app uses to decide whether to
+     *  show its "Register Your Shop" CTA for the customer's current location name
+     *  and the category they're browsing (e.g. GROCERY, FOOD). */
+    public boolean isShopRegistrationCtaHidden(String villageName, String category) {
+        if (villageName == null || villageName.trim().isEmpty()
+                || category == null || category.trim().isEmpty()) {
+            return false;
+        }
+        return villageRepository
+                .findFirstByIsActiveTrueAndNameIgnoreCase(villageName.trim())
+                .map(Village::getHiddenRegistrationCategories)
+                .map(categories -> java.util.Arrays.stream(categories.split(","))
+                        .map(String::trim)
+                        .anyMatch(c -> c.equalsIgnoreCase(category.trim())))
+                .orElse(false);
     }
 }

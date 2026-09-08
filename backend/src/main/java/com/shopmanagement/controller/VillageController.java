@@ -103,4 +103,20 @@ public class VillageController {
             return ResponseUtil.error(e.getMessage());
         }
     }
+
+    /** PUBLIC — the customer app calls this to decide whether to show its
+     *  "Register Your Shop" CTA for the customer's currently selected location
+     *  name and the category (e.g. GROCERY, FOOD) they're browsing. */
+    @GetMapping("/registration-cta-hidden")
+    public ResponseEntity<ApiResponse<Boolean>> isShopRegistrationCtaHidden(
+            @RequestParam String name,
+            @RequestParam String category) {
+        try {
+            boolean hidden = villageService.isShopRegistrationCtaHidden(name, category);
+            return ResponseUtil.success(hidden, "Registration CTA visibility resolved");
+        } catch (Exception e) {
+            log.error("Error resolving registration CTA visibility for village: {}, category: {}", name, category, e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
 }

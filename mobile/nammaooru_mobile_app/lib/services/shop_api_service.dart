@@ -78,6 +78,59 @@ class ShopApiService {
     }
   }
 
+  // Nearest registered shop's city/pincode/state for a raw coordinate — used
+  // as a fallback when on-device reverse geocoding returns no postal code
+  // for a rural pin, which is common outside well-mapped towns.
+  Future<Map<String, String>?> getNearestShopLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        '/shops/locations/nearest',
+        queryParams: {
+          'lat': latitude.toString(),
+          'lng': longitude.toString(),
+        },
+        includeAuth: true,
+      );
+      final data = response['data'];
+      if (data is! Map || data['postalCode'] == null) return null;
+      return {
+        'city': data['city']?.toString() ?? '',
+        'postalCode': data['postalCode'].toString(),
+        'state': data['state']?.toString() ?? '',
+      };
+    } catch (e) {
+      Logger.e('Nearest shop location lookup failed', 'SHOP', e);
+      return null;
+    }
+  }
+
+  // Whether the "Register Your Shop" CTA should be hidden for this village
+  // name + category (admin-configured per-village in Villages management).
+  // Fails open (false = show the button) on any error, since a broken check
+  // shouldn't silently hide a real CTA from customers.
+  Future<bool> isShopRegistrationCtaHidden({
+    required String villageName,
+    required String category,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        '/villages/registration-cta-hidden',
+        queryParams: {
+          'name': villageName,
+          'category': category,
+        },
+        includeAuth: false,
+      );
+      return response['data'] == true;
+    } catch (e) {
+      Logger.e('Registration CTA visibility check failed', 'SHOP', e);
+      return false;
+    }
+  }
+
   // Search Shops
   Future<Map<String, dynamic>> searchShops({
     required String query,

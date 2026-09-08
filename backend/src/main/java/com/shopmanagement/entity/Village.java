@@ -46,6 +46,15 @@ public class Village {
     @Builder.Default
     private Integer displayOrder = 0;
 
+    // Comma-separated FeatureConfig.featureName keys (e.g. "GROCERY,FOOD")
+    // for which the customer app hides its "Register Your Shop" CTA when the
+    // customer's selected location matches this village - null/empty means
+    // never hidden. Lets an admin hide the CTA only for categories this
+    // village already has enough shops for (e.g. hide for Grocery, still
+    // show for Food).
+    @Column(name = "hidden_registration_categories", length = 500)
+    private String hiddenRegistrationCategories;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

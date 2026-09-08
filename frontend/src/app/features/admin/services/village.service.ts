@@ -13,6 +13,9 @@ export interface Village {
   description?: string;
   isActive?: boolean;
   displayOrder?: number;
+  // Comma-separated FeatureConfig.featureName keys (e.g. "GROCERY,FOOD") for
+  // which the "Register Your Shop" CTA is hidden in this village.
+  hiddenRegistrationCategories?: string;
   createdAt?: string;
   updatedAt?: string;
 }

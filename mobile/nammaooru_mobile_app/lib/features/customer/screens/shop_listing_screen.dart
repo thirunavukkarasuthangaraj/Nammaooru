@@ -50,6 +50,12 @@ class _ShopListingScreenState extends State<ShopListingScreen>
   static const double _serviceAreaSearchRadiusKm = 50.0;
   double _minRating = 0.0;
 
+  // Admin-configured per-village, per-category: hides the "Register Your
+  // Shop" CTA where an area already has enough shops in this category.
+  // Defaults to false (shown) so a check that hasn't resolved yet, or that
+  // fails, never hides a real CTA.
+  bool _hideRegistrationCta = false;
+
   // Gentle pulse to draw attention to the "Register Your Shop" CTA.
   late final AnimationController _ctaPulseController;
   late final Animation<double> _ctaPulseAnimation;
@@ -143,6 +149,42 @@ class _ShopListingScreenState extends State<ShopListingScreen>
         _isLocationBased = true;
         _applySortAndFilter();
       });
+
+      _refreshRegistrationCtaVisibility(latitude, longitude);
+    }
+  }
+
+  /// Resolves the current location's village name (the picked label if the
+  /// customer chose one manually, otherwise reverse-geocoded) and asks the
+  /// backend whether an admin has hidden the "Register Your Shop" CTA for
+  /// this village + category combination. Runs after the shop list so a
+  /// slow/failed check never blocks shops from showing.
+  Future<void> _refreshRegistrationCtaVisibility(
+      double latitude, double longitude) async {
+    if (widget.category == null || widget.category!.isEmpty) return;
+
+    String? villageName = LocationService.isManualLocation
+        ? LocationService.manualLocationLabel
+        : null;
+
+    if (villageName == null || villageName.isEmpty) {
+      try {
+        final address = await LocationService.instance
+            .getAddressFromCoordinates(latitude, longitude);
+        villageName = address?['locality'];
+      } catch (e) {
+        debugPrint('Village name lookup for registration CTA failed: $e');
+      }
+    }
+
+    if (villageName == null || villageName.isEmpty) return;
+
+    final hidden = await _shopApi.isShopRegistrationCtaHidden(
+      villageName: villageName,
+      category: widget.category!,
+    );
+    if (mounted) {
+      setState(() => _hideRegistrationCta = hidden);
     }
   }
 
@@ -376,7 +418,10 @@ class _ShopListingScreenState extends State<ShopListingScreen>
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
+      // Hidden entirely (not just the button) when an admin has marked this
+      // village as already having enough shops for this category - an empty
+      // white bar with shadow would look like a bug otherwise.
+      bottomNavigationBar: _hideRegistrationCta ? null : SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           decoration: BoxDecoration(

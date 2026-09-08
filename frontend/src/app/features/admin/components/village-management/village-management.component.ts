@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { VillageService, Village } from '../../services/village.service';
+import { FeatureConfigService } from '../../services/feature-config.service';
 import { SwalService } from '../../../../core/services/swal.service';
 
 @Component({
@@ -15,13 +16,20 @@ export class VillageManagementComponent implements OnInit {
   editingId: number | null = null;
   villageForm!: FormGroup;
 
+  // Service Menu category tiles (Grocery, Food, etc.) - the same keys shown
+  // in Feature Config's "Service Menu (Home Screen Grid)" table - loaded so
+  // the multi-select always reflects whatever categories currently exist,
+  // instead of a hardcoded list going stale as new ones are added.
+  categoryOptions: { key: string; label: string }[] = [];
+
   displayedColumns: string[] = [
     'displayOrder', 'name', 'nameTamil', 'district', 'panchayatName',
-    'panchayatUrl', 'active', 'actions'
+    'panchayatUrl', 'active', 'hiddenCategories', 'actions'
   ];
 
   constructor(
     private villageService: VillageService,
+    private featureConfigService: FeatureConfigService,
     private fb: FormBuilder,
     private swal: SwalService
   ) {}
@@ -29,6 +37,7 @@ export class VillageManagementComponent implements OnInit {
   ngOnInit(): void {
     this.initForm();
     this.loadVillages();
+    this.loadCategoryOptions();
   }
 
   initForm(): void {
@@ -40,7 +49,8 @@ export class VillageManagementComponent implements OnInit {
       panchayatUrl: [''],
       description: [''],
       displayOrder: [0],
-      isActive: [true]
+      isActive: [true],
+      hiddenRegistrationCategories: [[] as string[]]
     });
   }
 
@@ -58,9 +68,33 @@ export class VillageManagementComponent implements OnInit {
     });
   }
 
+  loadCategoryOptions(): void {
+    // Service Menu tiles are plain uppercase keys (GROCERY, FOOD, ...);
+    // nav_*/section_* entries are unrelated app-visibility toggles from the
+    // same table and must not show up as CTA-hiding options.
+    this.featureConfigService.getAllFeatures().subscribe({
+      next: (response: any) => {
+        const features = response.data || [];
+        this.categoryOptions = features
+          .filter((f: any) => f.featureName && !f.featureName.startsWith('nav_') && !f.featureName.startsWith('section_'))
+          .map((f: any) => ({ key: f.featureName, label: f.displayName || f.featureName }));
+      },
+      error: () => this.swal.toast('Failed to load category options', 'error')
+    });
+  }
+
+  categoryLabel(key: string): string {
+    return this.categoryOptions.find(c => c.key === key)?.label || key;
+  }
+
+  hiddenCategoriesList(village: Village): string[] {
+    if (!village.hiddenRegistrationCategories) return [];
+    return village.hiddenRegistrationCategories.split(',').map(c => c.trim()).filter(Boolean);
+  }
+
   openAddForm(): void {
     this.editingId = null;
-    this.villageForm.reset({ displayOrder: 0, isActive: true });
+    this.villageForm.reset({ displayOrder: 0, isActive: true, hiddenRegistrationCategories: [] });
     this.showForm = true;
   }
 
@@ -74,7 +108,8 @@ export class VillageManagementComponent implements OnInit {
       panchayatUrl: village.panchayatUrl,
       description: village.description,
       displayOrder: village.displayOrder,
-      isActive: village.isActive
+      isActive: village.isActive,
+      hiddenRegistrationCategories: this.hiddenCategoriesList(village)
     });
     this.showForm = true;
   }
@@ -87,7 +122,11 @@ export class VillageManagementComponent implements OnInit {
   saveVillage(): void {
     if (this.villageForm.invalid) return;
 
-    const village: Village = this.villageForm.value;
+    const formValue = this.villageForm.value;
+    const village: Village = {
+      ...formValue,
+      hiddenRegistrationCategories: (formValue.hiddenRegistrationCategories || []).join(',')
+    };
 
     if (this.editingId) {
       this.villageService.updateVillage(this.editingId, village).subscribe({

@@ -50,6 +50,15 @@
             <input matInput type="number" formControlName="displayOrder">
           </mat-form-field>
         </div>
+        <div class="form-row">
+          <mat-form-field class="description-field">
+            <mat-label>Hide "Register Your Shop" button for these categories</mat-label>
+            <mat-select formControlName="hiddenRegistrationCategories" multiple>
+              <mat-option *ngFor="let opt of categoryOptions" [value]="opt.key">{{ opt.label }}</mat-option>
+            </mat-select>
+            <mat-hint>Select categories this village already has enough shops for (e.g. Grocery) — leave Food unselected to keep showing it there.</mat-hint>
+          </mat-form-field>
+        </div>
         <div class="form-actions">
           <button mat-raised-button color="primary" type="submit" [disabled]="villageForm.invalid">
             {{ editingId ? 'Update' : 'Create' }}
@@ -113,6 +122,18 @@
             (change)="toggleActive(v)"
             color="primary">
           </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="hiddenCategories">
+        <th mat-header-cell *matHeaderCellDef matTooltip="Categories for which the &quot;Register Your Shop&quot; button is hidden in this village. Edit via the pencil icon.">
+          Register Button Hidden For
+        </th>
+        <td mat-cell *matCellDef="let v">
+          <span *ngIf="hiddenCategoriesList(v).length === 0" class="text-muted">Shown everywhere</span>
+          <mat-chip-set *ngIf="hiddenCategoriesList(v).length > 0">
+            <mat-chip *ngFor="let cat of hiddenCategoriesList(v)">{{ categoryLabel(cat) }}</mat-chip>
+          </mat-chip-set>
         </td>
       </ng-container>
 
