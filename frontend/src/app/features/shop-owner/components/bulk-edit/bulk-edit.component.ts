@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
@@ -103,8 +104,15 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     private versionService: VersionService,
     private dialog: MatDialog,
     private swalService: SwalService,
-    private categoryService: ProductCategoryService
+    private categoryService: ProductCategoryService,
+    private router: Router
   ) {}
+
+  // Same route My Products' "Add Custom Product" button uses, so bulk-edit
+  // doesn't need its own duplicate add-product form.
+  addNewProduct(): void {
+    this.router.navigate(['/shop-owner/my-products/add']);
+  }
 
   ngOnInit(): void {
     this.clientVersion = this.versionService.getVersion().replace('v', '');
@@ -250,8 +258,10 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     try {
       // Fetch all pages
       while (currentPage < totalPages) {
+        // Newest-added products first, so items just created show up at the
+        // top instead of being buried by the endpoint's updatedAt default.
         const response: any = await this.http.get<any>(
-          `${this.apiUrl}/shop-products/my-products?page=${currentPage}&size=${pageSize}`
+          `${this.apiUrl}/shop-products/my-products?page=${currentPage}&size=${pageSize}&sortBy=createdAt&sortDirection=DESC`
         ).toPromise();
 
         let products = [];
