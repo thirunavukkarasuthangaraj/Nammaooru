@@ -58,6 +58,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   List<CustomerCombo> _combos = []; // Store combos from API
   String? _selectedCategory;
   String? _selectedCategoryName; // Store category name for filtering
+  // Home tab shows just the category grid (screen 1); tapping a category
+  // switches to the product listing for it (screen 2), like a real navigation
+  // even though it's implemented as one continuous screen.
+  bool _showCategoryDetail = false;
   bool _isLoadingShop = false;
   // Starts true so the spinner shows from the first frame until the (slow)
   // products query returns — never a flash of "No Products Found"
@@ -522,6 +526,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             icon: const Icon(Icons.arrow_back,
                                 color: Colors.white, size: 24),
                             onPressed: () {
+                              if (_showCategoryDetail) {
+                                setState(() => _showCategoryDetail = false);
+                                return;
+                              }
                               // Leaving mid-tour lets the showcase overlay
                               // try to find a target that's no longer in the
                               // tree ("inactive element" crash) — dismiss
@@ -539,7 +547,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           ),
                           Expanded(
                             child: Text(
-                              _shop?['name']?.toString() ?? 'Shop',
+                              _showCategoryDetail
+                                  ? (_selectedCategoryName ??
+                                      _shop?['name']?.toString() ??
+                                      'Products')
+                                  : _shop?['name']?.toString() ?? 'Shop',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -716,149 +728,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     Color(0xFF546E7A),
   ];
 
-  // Groups this shop's real categories by their parent (set via the
-  // shop-owner web app's Categories page > "Parent Category" field). Shops
-  // that haven't organized categories yet just get one null-keyed group,
-  // rendered without a header.
-  Map<String?, List<dynamic>> _groupCategoriesByParent() {
-    final grouped = <String?, List<dynamic>>{};
-    for (final category in _categories) {
-      if (category['id'] == null) continue; // skip the synthetic "All Items"
-      final parentName = category['parentName']?.toString();
-      grouped.putIfAbsent(parentName, () => []).add(category);
-    }
-    return grouped;
-  }
-
-  Widget _buildGroupedCategorySection() {
-    if (_isLoadingCategories || _categories.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final grouped = _groupCategoriesByParent();
-    if (grouped.isEmpty) return const SizedBox.shrink();
-
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    final isTamil = languageProvider.currentLanguage == 'ta';
-
-    // Named groups first (in the order their first category appears),
-    // ungrouped categories - if any - last, with no header of their own.
-    final groupNames = grouped.keys.where((k) => k != null).toList();
-    final sections = <MapEntry<String?, List<dynamic>>>[
-      for (final name in groupNames) MapEntry(name, grouped[name]!),
-      if (grouped.containsKey(null)) MapEntry(null, grouped[null]!),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final section in sections)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (section.key != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        section.key!,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF212121),
-                        ),
-                      ),
-                    ),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: section.value.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 0.72,
-                    ),
-                    itemBuilder: (context, index) {
-                      final category = section.value[index];
-                      final categoryName = category['name']?.toString() ?? '';
-                      final tamilName =
-                          (category['displayNameTamil'] ?? category['nameTamil'])
-                              ?.toString()
-                              .trim();
-                      final displayName =
-                          (isTamil && tamilName != null && tamilName.isNotEmpty)
-                              ? tamilName
-                              : category['displayName']?.toString() ?? categoryName;
-                      final imageUrl = category['imageUrl']?.toString();
-                      final categoryId = category['id']?.toString();
-                      final hasImage = imageUrl != null && imageUrl.isNotEmpty;
-                      final tileColor =
-                          _tilePalette[categoryName.hashCode.abs() % _tilePalette.length];
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => _selectCategory(categoryId, categoryName,
-                              scrollToProducts: true),
-                          child: Column(
-                            children: [
-                              AspectRatio(
-                                aspectRatio: 1,
-                                child: Container(
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF3E9EA),
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: hasImage
-                                      ? Image.network(
-                                          ImageUrlHelper.getFullImageUrl(imageUrl),
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) =>
-                                              Center(
-                                            child: Icon(Icons.category_rounded,
-                                                color: tileColor, size: 28),
-                                          ),
-                                        )
-                                      : Center(
-                                          child: Icon(Icons.category_rounded,
-                                              color: tileColor, size: 28),
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                displayName,
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF212121),
-                                  height: 1.2,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   // Horizontal text-tab row of every category (like the reference design's
   // For You / Fresh / Grocery tabs) - the active tab is bold with a green
   // underline. Simpler and reads cleaner than icon chips or a sidebar.
@@ -1019,17 +888,49 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     if (_shop == null) {
       return const Center(child: LoadingWidget());
     }
+    return _showCategoryDetail
+        ? _buildCategoryProductsView()
+        : _buildCategoryBrowseView();
+  }
 
-    // Top: search + category tabs (pinned). Bottom: every product, filtered
-    // to the selected tab - "All Items" (the default) shows everything.
+  // Screen 1: the shop's home tab - active offers and the category grid.
+  // No product list here, so search is hidden on this screen (it has
+  // nowhere to show results) and comes back once the shopper is in a
+  // category's product view.
+  Widget _buildCategoryBrowseView() {
     return CustomScrollView(
+      key: const PageStorageKey('shop-browse'),
       controller: _scrollController,
       slivers: [
         if (!_isShopOpen) SliverToBoxAdapter(child: _buildShopClosedBanner()),
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
-        SliverToBoxAdapter(child: _buildGroupedCategorySection()),
-        SliverToBoxAdapter(
-          child: KeyedSubtree(key: _productsAnchorKey, child: const SizedBox.shrink()),
+        SliverToBoxAdapter(child: _buildCategoryGridHeader()),
+        _buildCategoryGridSliver(),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
+    );
+  }
+
+  // Screen 2: products for whichever category was tapped - its own tab row
+  // (so the shopper can still switch categories without going back) and the
+  // product grid, with no home-page clutter above it.
+  Widget _buildCategoryProductsView() {
+    return CustomScrollView(
+      key: const PageStorageKey('shop-category-products'),
+      controller: _scrollController,
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          primary: false,
+          automaticallyImplyLeading: false,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.black
+              : Colors.white,
+          toolbarHeight: 72,
+          titleSpacing: 0,
+          title: _buildSearchBar(),
         ),
         SliverAppBar(
           pinned: true,
@@ -1040,19 +941,370 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           backgroundColor: Theme.of(context).brightness == Brightness.dark
               ? Colors.black
               : Colors.white,
-          toolbarHeight: 72 + 44,
+          toolbarHeight: 44,
           titleSpacing: 0,
-          title: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildSearchBar(),
-              _buildCategoryTabRow(),
-            ],
-          ),
+          title: _buildCategoryTabRow(),
         ),
         SliverToBoxAdapter(child: _buildBrowseFilterRow()),
         _buildProductGrid(),
       ],
+    );
+  }
+
+  // Hero banner for the shop's best active offer - a promo code takes
+  // priority (it's the shop's deliberate headline offer); if there isn't
+  // one, falls back to the top combo so the banner never sits empty just
+  // because the owner used combos instead of promo codes.
+  Widget _buildHeroOfferBanner() {
+    final promo = _promotions.isNotEmpty ? _promotions.first : null;
+    final combo = _combos.isNotEmpty ? _combos.first : null;
+    if (promo == null && combo == null) return const SizedBox.shrink();
+    final lang = Provider.of<LanguageProvider>(context);
+
+    final String title;
+    final String? subtitle;
+    final String discountLabel;
+    final bool isLimited;
+    if (promo != null) {
+      title = promo.title;
+      subtitle = promo.description;
+      final isPercentage = promo.type.toUpperCase() == 'PERCENTAGE';
+      discountLabel = isPercentage
+          ? 'Up to ${promo.discountValue.toStringAsFixed(0)}% OFF'
+          : '₹${promo.discountValue.toStringAsFixed(0)} OFF';
+      isLimited = (promo.usageLimitPerCustomer ?? 0) > 0;
+    } else {
+      title = combo!.displayName;
+      subtitle =
+          combo.displayDescription.isNotEmpty ? combo.displayDescription : null;
+      discountLabel = combo.discountPercentage > 0
+          ? 'Up to ${combo.discountPercentage.toStringAsFixed(0)}% OFF'
+          : 'Save ₹${combo.savings.toStringAsFixed(0)}';
+      isLimited = combo.endDate.difference(DateTime.now()).inDays <= 3;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFB45309), Color(0xFF7C2D12)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              right: -12,
+              top: -12,
+              child: Icon(Icons.shopping_basket_rounded,
+                  size: 90, color: Colors.white.withOpacity(0.12)),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.local_fire_department,
+                        color: Colors.amberAccent, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      lang.getText(
+                          "Today's Special", 'இன்றைய சிறப்பு சலுகை'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (subtitle != null && subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        discountLabel,
+                        style: const TextStyle(
+                          color: Color(0xFF7C2D12),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    if (isLimited)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'LIMITED',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Section header above the category photo grid: title, live aisle count,
+  // and a short explainer line - mirrors the shop's grocery-aisle framing.
+  Widget _buildCategoryGridHeader() {
+    if (_isLoadingCategories || _categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final lang = Provider.of<LanguageProvider>(context);
+    final aisleCount = _browsableCategories().length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                lang.getText('Shop by Category', 'பொருட்களின் வகைகள்'),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: VillageTheme.primaryGreen.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$aisleCount ${lang.getText('Aisles', 'வகைகள்')}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: VillageTheme.primaryGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            lang.getText(
+                'Explore hyper-local grocery aisles with fresh daily stock',
+                'புதிய பொருட்களுடன் உள்ளூர் கடை வகைகளை பாருங்கள்'),
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Real categories only - the synthetic "All Items" entry has no photo and
+  // stays reachable via the tab row lower down instead.
+  List<dynamic> _browsableCategories() {
+    return _categories
+        .where((c) => (c['name']?.toString() ?? '').toLowerCase() != 'all items')
+        .toList();
+  }
+
+  // 2-column photo grid of aisles, replacing the old slim icon strip so each
+  // category reads as a real destination (photo + name) rather than a tiny
+  // icon you have to guess at.
+  Widget _buildCategoryGridSliver() {
+    if (_isLoadingCategories || _categories.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+    final categories = _browsableCategories();
+    if (categories.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          mainAxisExtent: 190,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildCategoryGridCard(categories[index]),
+          childCount: categories.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryGridCard(Map<String, dynamic> category) {
+    final lang = Provider.of<LanguageProvider>(context);
+    final isTamil = lang.currentLanguage == 'ta';
+    final categoryName = category['name']?.toString() ?? '';
+    final tamilName = (category['displayNameTamil'] ?? category['nameTamil'])
+        ?.toString()
+        .trim();
+    final englishName = category['displayName']?.toString() ?? categoryName;
+    final primaryName = (isTamil && tamilName != null && tamilName.isNotEmpty)
+        ? tamilName
+        : englishName;
+    final imageUrl = category['imageUrl']?.toString();
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final categoryId = category['id']?.toString();
+    final isSelected = _selectedCategory == categoryId;
+    final tileColor =
+        _tilePalette[categoryName.hashCode.abs() % _tilePalette.length];
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      elevation: isSelected ? 3 : 1,
+      shadowColor: Colors.black26,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          _selectCategory(categoryId, categoryName);
+          setState(() => _showCategoryDetail = true);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected
+                  ? VillageTheme.primaryGreen
+                  : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(13)),
+                child: SizedBox(
+                  height: 100,
+                  width: double.infinity,
+                  child: hasImage
+                      ? Image.network(
+                          ImageUrlHelper.getFullImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            color: const Color(0xFFF3E9EA),
+                            child: Center(
+                              child: Icon(Icons.category_rounded,
+                                  color: tileColor, size: 32),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: const Color(0xFFF3E9EA),
+                          child: Center(
+                            child: Icon(Icons.category_rounded,
+                                color: tileColor, size: 32),
+                          ),
+                        ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      primaryName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF212121),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      englishName,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.circle,
+                            size: 6, color: VillageTheme.primaryGreen),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            lang.getText('Tap to browse', 'பார்க்க தட்டவும்'),
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: VillageTheme.primaryGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward,
+                            size: 13, color: VillageTheme.primaryGreen),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -3425,18 +3677,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
-          // Once a suggested item is added it's no longer a "suggestion" —
-          // drop it from the strip instead of leaving it there with a
-          // quantity stepper, which read as "why is the thing I just added
-          // still showing here".
-          related.removeWhere(
-              (p) => cartProvider.getQuantity(p['id'].toString()) > 0);
-          if (related.isEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-            });
-            return const SizedBox.shrink();
-          }
           return SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
