@@ -264,6 +264,10 @@ interface Category {
                       <mat-icon>image_search</mat-icon>
                       Search Images
                     </button>
+                    <button mat-stroked-button type="button" (click)="pasteImageFromClipboard()">
+                      <mat-icon>content_paste</mat-icon>
+                      Paste Image
+                    </button>
                   </div>
                 </div>
 
@@ -283,6 +287,13 @@ interface Category {
                             (click)="openImageSuggestions()"
                             matTooltip="Search for a different image">
                       <mat-icon>image_search</mat-icon>
+                    </button>
+                    <button mat-icon-button
+                            class="paste-image-btn"
+                            type="button"
+                            (click)="pasteImageFromClipboard()"
+                            matTooltip="Paste image from clipboard">
+                      <mat-icon>content_paste</mat-icon>
                     </button>
                     <button mat-icon-button
                             class="remove-image-btn"
@@ -1247,13 +1258,15 @@ interface Category {
 
     .change-image-btn,
     .search-image-btn,
+    .paste-image-btn,
     .remove-image-btn {
       background: white;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
     .change-image-btn mat-icon,
-    .search-image-btn mat-icon {
+    .search-image-btn mat-icon,
+    .paste-image-btn mat-icon {
       color: #16a34a;
     }
 
@@ -1851,6 +1864,35 @@ export class CategoriesComponent implements OnInit {
       } else {
         this.swal.error('Invalid File', 'Please drop an image file');
       }
+    }
+  }
+
+  // Same button-triggered navigator.clipboard.read() pattern used in
+  // Bulk Edit's "Paste Image" - there's no real OS paste-event listener,
+  // clipboard access requires a user gesture like this click. Routes
+  // through processImageFile() so it gets the same validation/preview and
+  // save-on-submit behavior as a browsed or dropped file.
+  async pasteImageFromClipboard(): Promise<void> {
+    if (!navigator.clipboard?.read) {
+      this.swal.error('Not Supported', 'Clipboard paste is not supported in this browser');
+      return;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find(t => t.startsWith('image/'));
+        if (type) {
+          const blob = await item.getType(type);
+          const ext = type.split('/')[1] || 'png';
+          const file = new File([blob], `pasted-image.${ext}`, { type });
+          this.processImageFile(file);
+          return;
+        }
+      }
+      this.swal.error('No Image Found', 'Copy an image first, then click Paste Image');
+    } catch (error) {
+      console.error('Clipboard paste failed:', error);
+      this.swal.error('Paste Failed', 'Could not read image from clipboard. Your browser may require clipboard permission.');
     }
   }
 
