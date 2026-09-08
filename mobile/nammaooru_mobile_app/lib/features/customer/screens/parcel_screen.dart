@@ -1187,18 +1187,31 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                   padding: const EdgeInsets.all(12),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: fullImageUrl,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        width: 80, height: 80, color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        width: 80, height: 80, color: _parcelOrange.withOpacity(0.1),
-                        child: Icon(serviceTypeIcon, size: 30, color: _parcelOrange),
+                    child: ColorFiltered(
+                      colorFilter: status == 'SOLD'
+                          ? const ColorFilter.matrix(<double>[
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0, 0, 0, 1, 0,
+                            ])
+                          : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                      child: Opacity(
+                        opacity: status == 'SOLD' ? 0.5 : 1.0,
+                        child: CachedNetworkImage(
+                          imageUrl: fullImageUrl,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: 80, height: 80, color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 80, height: 80, color: _parcelOrange.withOpacity(0.1),
+                            child: Icon(serviceTypeIcon, size: 30, color: _parcelOrange),
+                          ),
+                        ),
                       ),
                     ),
                   ),

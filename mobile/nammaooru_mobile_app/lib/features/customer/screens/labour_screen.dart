@@ -1216,18 +1216,35 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                   padding: const EdgeInsets.all(12),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: fullImageUrl,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        width: 80, height: 80, color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        width: 80, height: 80, color: _labourBlue.withOpacity(0.1),
-                        child: Icon(categoryIcon, size: 30, color: _labourBlue),
+                    // At this small thumbnail size a ribbon (used on the
+                    // full-width cards in Marketplace/Farmer/Women's Corner)
+                    // wouldn't be legible - a greyscale + dim treatment is the
+                    // same "unavailable" signal that still reads clearly here.
+                    child: ColorFiltered(
+                      colorFilter: status == 'SOLD'
+                          ? const ColorFilter.matrix(<double>[
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0, 0, 0, 1, 0,
+                            ])
+                          : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                      child: Opacity(
+                        opacity: status == 'SOLD' ? 0.5 : 1.0,
+                        child: CachedNetworkImage(
+                          imageUrl: fullImageUrl,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: 80, height: 80, color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 80, height: 80, color: _labourBlue.withOpacity(0.1),
+                            child: Icon(categoryIcon, size: 30, color: _labourBlue),
+                          ),
+                        ),
                       ),
                     ),
                   ),

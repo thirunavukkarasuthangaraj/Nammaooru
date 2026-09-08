@@ -699,14 +699,26 @@ class _RealEstateScreenState extends State<RealEstateScreen>
                     validTo.isAfter(now) &&
                     validTo.difference(now).inDays <= 3;
                 final bool isExpired = validTo != null && validTo.isBefore(now);
+                // This card has no image to put a SOLD OUT ribbon on (unlike
+                // Marketplace/Farmer/Women's Corner), so a sold/rented listing
+                // is signaled instead by muting the whole card - a plain
+                // colored status chip alone was too easy to miss.
+                final isGone = status == 'SOLD' || status == 'RENTED';
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
+                  color: isGone ? Colors.grey[100] : null,
+                  elevation: isGone ? 0 : null,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                      side: isGone
+                          ? BorderSide(color: Colors.grey.shade300)
+                          : BorderSide.none),
                   child: InkWell(
                     onTap: () => _showPropertyDetails(post),
                     borderRadius: BorderRadius.circular(12),
-                    child: Padding(
+                    child: Opacity(
+                      opacity: isGone ? 0.6 : 1.0,
+                      child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,6 +902,7 @@ class _RealEstateScreenState extends State<RealEstateScreen>
                           ),
                         ],
                       ),
+                    ),
                     ),
                   ),
                 );

@@ -602,19 +602,46 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
             ),
           // Image
           if (firstImage != null)
-            CachedNetworkImage(
-              imageUrl: firstImage,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                height: 180, color: Colors.grey[200],
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => Container(
-                height: 180, color: Colors.grey[200],
-                child: Icon(Icons.auto_awesome, size: 50, color: _primaryColor.withOpacity(0.3)),
-              ),
+            Stack(
+              children: [
+                CachedNetworkImage(
+                  imageUrl: firstImage,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 180, color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 180, color: Colors.grey[200],
+                    child: Icon(Icons.auto_awesome, size: 50, color: _primaryColor.withOpacity(0.3)),
+                  ),
+                ),
+                // Matches the SOLD OUT ribbon already used in Marketplace/
+                // Farmer Products - a small text banner alone (the status
+                // strip above) was too easy to miss scrolling past a card.
+                if (status == 'SOLD')
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'SOLD OUT',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           // Details
           Padding(

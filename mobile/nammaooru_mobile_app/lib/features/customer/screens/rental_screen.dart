@@ -859,19 +859,32 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
                   child: SizedBox(
                     width: 100,
                     height: 100,
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[200],
-                              child: Icon(categoryIcon, size: 30, color: Colors.grey),
-                            ),
-                          )
-                        : Container(
-                            color: _rentalOrange.withOpacity(0.1),
-                            child: Icon(categoryIcon, size: 30, color: _rentalOrange),
-                          ),
+                    child: ColorFiltered(
+                      colorFilter: status == 'RENTED'
+                          ? const ColorFilter.matrix(<double>[
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0, 0, 0, 1, 0,
+                            ])
+                          : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                      child: Opacity(
+                        opacity: status == 'RENTED' ? 0.5 : 1.0,
+                        child: imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => Container(
+                                  color: Colors.grey[200],
+                                  child: Icon(categoryIcon, size: 30, color: Colors.grey),
+                                ),
+                              )
+                            : Container(
+                                color: _rentalOrange.withOpacity(0.1),
+                                child: Icon(categoryIcon, size: 30, color: _rentalOrange),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
