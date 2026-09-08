@@ -44,6 +44,7 @@ public class OrderPaymentService {
     private final RazorpayClient razorpayClient;
     private final RazorpayConfig razorpayConfig;
     private final SettingService settingService;
+    private final ShopOrderNotificationService shopOrderNotificationService;
 
     // The real Razorpay cost on this (personal, non-zero-MDR) account is 2% MDR + 18%
     // GST on that MDR = 2.36%, confirmed against the account's actual dashboard figures.
@@ -69,13 +70,15 @@ public class OrderPaymentService {
                                 UserRepository userRepository,
                                 @Autowired(required = false) RazorpayClient razorpayClient,
                                 RazorpayConfig razorpayConfig,
-                                SettingService settingService) {
+                                SettingService settingService,
+                                ShopOrderNotificationService shopOrderNotificationService) {
         this.orderRepository = orderRepository;
         this.orderPaymentRepository = orderPaymentRepository;
         this.userRepository = userRepository;
         this.razorpayClient = razorpayClient;
         this.razorpayConfig = razorpayConfig;
         this.settingService = settingService;
+        this.shopOrderNotificationService = shopOrderNotificationService;
     }
 
     /**
@@ -224,6 +227,12 @@ public class OrderPaymentService {
         orderRepository.save(order);
         log.info("Order payment confirmed: orderId={}, razorpayOrderId={}, razorpayPaymentId={}",
                 order.getId(), payment.getRazorpayOrderId(), payment.getRazorpayPaymentId());
+
+        // The order was created as unpaid PENDING with the shop owner deliberately
+        // NOT notified yet (see OrderService.createCustomerOrder) — this is the
+        // first moment the shop actually learns about it, now that money has
+        // genuinely moved.
+        shopOrderNotificationService.notifyNewOrder(order);
     }
 
     /**

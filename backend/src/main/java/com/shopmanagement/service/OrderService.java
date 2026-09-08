@@ -80,6 +80,7 @@ public class OrderService {
     private final com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils;
     private final OrderPaymentService orderPaymentService;
     private final WalletService walletService;
+    private final ShopOrderNotificationService shopOrderNotificationService;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -101,7 +102,8 @@ public class OrderService {
             BusinessHoursService businessHoursService,
             com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils,
             OrderPaymentService orderPaymentService,
-            WalletService walletService) {
+            WalletService walletService,
+            ShopOrderNotificationService shopOrderNotificationService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -122,6 +124,7 @@ public class OrderService {
         this.geoLocationUtils = geoLocationUtils;
         this.orderPaymentService = orderPaymentService;
         this.walletService = walletService;
+        this.shopOrderNotificationService = shopOrderNotificationService;
     }
 
     @Transactional
@@ -310,78 +313,13 @@ public class OrderService {
             log.error("Failed to send order confirmation email", e);
         }
         
-        // Send new order notification to shop owner
-        try {
-            String itemsSummary = orderItems.stream()
-                .map(item -> String.format("%s x%d (₹%.2f)",
-                    item.getProductName(),
-                    item.getQuantity(),
-                    item.getTotalPrice()))
-                .collect(Collectors.joining(", "));
-
-            emailService.sendOrderPlacedNotificationToShop(
-                shop.getOwnerEmail(),
-                shop.getOwnerName(),
-                savedOrder.getOrderNumber(),
-                customer.getFullName(),
-                String.format("₹%.2f", savedOrder.getTotalAmount()),
-                itemsSummary
-            );
-        } catch (Exception e) {
-            log.error("Failed to send order notification to shop owner", e);
-        }
-
-        // Send FCM push notification to shop owner
-        try {
-            log.info("🔔 Attempting to send FCM notification to shop owner: {}", shop.getOwnerEmail());
-
-            // Find shop owner's user record
-            Optional<User> shopOwnerOpt = userRepository.findByEmail(shop.getOwnerEmail());
-            if (shopOwnerOpt.isPresent()) {
-                User shopOwner = shopOwnerOpt.get();
-                log.info("✅ Found shop owner user: ID={}, Role={}", shopOwner.getId(), shopOwner.getRole());
-
-                // Get all active FCM tokens for shop owner
-                List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
-                log.info("📱 Found {} active FCM token(s) for shop owner", fcmTokens.size());
-
-                if (!fcmTokens.isEmpty()) {
-                    // Send notification to all active devices
-                    for (UserFcmToken fcmToken : fcmTokens) {
-                        try {
-                            log.info("📤 Sending new order FCM to shop owner device: {}", fcmToken.getDeviceType());
-                            firebaseNotificationService.sendNewOrderNotificationToShopOwner(
-                                savedOrder.getOrderNumber(),
-                                fcmToken.getFcmToken(),
-                                shopOwner.getId(),
-                                customer.getFullName(),
-                                savedOrder.getTotalAmount().doubleValue(),
-                                orderItems.size()
-                            );
-                            log.info("✅ New order FCM notification sent successfully to shop owner's device");
-                        } catch (Exception e) {
-                            log.error("❌ Failed to send FCM to device {}: {}", fcmToken.getDeviceType(), e.getMessage());
-                        }
-                    }
-                } else {
-                    log.warn("⚠️ No active FCM tokens found for shop owner {}", shop.getOwnerEmail());
-                }
-            } else {
-                log.warn("⚠️ Shop owner user not found for email: {}", shop.getOwnerEmail());
-            }
-        } catch (Exception e) {
-            log.error("❌ Failed to send FCM notification to shop owner", e);
-        }
-
-        // Send WebSocket notification to shop owner for real-time web updates
-        try {
-            log.info("📡 Sending WebSocket notification for new order to shop: {}", shop.getId());
-            sendNewOrderWebSocketNotification(savedOrder.getId(), savedOrder.getOrderNumber(), customer.getFullName(),
-                    customer.getMobileNumber(), savedOrder.getTotalAmount(), savedOrder.getStatus().name(),
-                    savedOrder.getDeliveryType() != null ? savedOrder.getDeliveryType().name() : null,
-                    savedOrder.getPaymentMethod(), savedOrder.getCreatedAt().toString(), shop.getId(), orderItems.size());
-        } catch (Exception e) {
-            log.error("❌ Failed to send WebSocket notification to shop", e);
+        // Tell the shop owner a real order exists. For online payments this
+        // must wait until OrderPaymentService.markPaid confirms the payment
+        // actually went through - notifying now, while the order is still
+        // unpaid PENDING, would tell the shop about work that may never
+        // happen if the customer abandons or fails checkout.
+        if (savedOrder.getPaymentMethod() != Order.PaymentMethod.ONLINE_PAYMENT) {
+            shopOrderNotificationService.notifyNewOrderWithEmail(savedOrder);
         }
 
         log.info("Order created successfully: {}", savedOrder.getOrderNumber());
@@ -1968,88 +1906,14 @@ public class OrderService {
             }
         }
 
-        // Send FCM push notification to shop owner
-        try {
-            log.info("🔔 Attempting to send FCM notification to shop owner: {}", shop.getOwnerEmail());
-
-            // Find shop owner's user record
-            Optional<User> shopOwnerOpt = userRepository.findByEmail(shop.getOwnerEmail());
-            if (shopOwnerOpt.isPresent()) {
-                User shopOwner = shopOwnerOpt.get();
-                log.info("✅ Found shop owner user: ID={}, Role={}", shopOwner.getId(), shopOwner.getRole());
-
-                // Get all active FCM tokens for shop owner
-                List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(shopOwner.getId());
-                log.info("📱 Found {} active FCM token(s) for shop owner", fcmTokens.size());
-
-                if (!fcmTokens.isEmpty()) {
-                    // Send notification to all active devices
-                    for (UserFcmToken fcmToken : fcmTokens) {
-                        try {
-                            log.info("📤 Sending new order FCM to shop owner device: {}", fcmToken.getDeviceType());
-                            firebaseNotificationService.sendNewOrderNotificationToShopOwner(
-                                savedOrder.getOrderNumber(),
-                                fcmToken.getFcmToken(),
-                                shopOwner.getId(),
-                                customer.getFullName(),
-                                savedOrder.getTotalAmount().doubleValue(),
-                                orderItems.size()
-                            );
-                            log.info("✅ New order FCM notification sent successfully to shop owner's device");
-                        } catch (Exception e) {
-                            log.error("❌ Failed to send FCM to device {}: {}", fcmToken.getDeviceType(), e.getMessage());
-                        }
-                    }
-                } else {
-                    log.warn("⚠️ No active FCM tokens found for shop owner {}", shop.getOwnerEmail());
-                }
-            } else {
-                log.warn("⚠️ Shop owner user not found for email: {}", shop.getOwnerEmail());
-            }
-        } catch (Exception e) {
-            log.error("❌ Failed to send FCM notification to shop owner", e);
-        }
-
-        // Real-time notification to the shop owner's web dashboard. The legacy
-        // createOrder path always sent this; the customer path never did, so
-        // web owners only saw new orders on manual refresh. Published after
-        // commit so the browser's follow-up loadOrders() can see the row.
-        //
-        // Values are resolved to plain primitives HERE, while the transaction/
-        // Hibernate session is still open — afterCommit() runs after the session
-        // closes, so passing live entities (order.getCustomer(), a lazy proxy)
-        // into that closure instead would throw LazyInitializationException
-        // ("could not initialize proxy ... no Session") the moment a field on
-        // them is touched post-commit.
-        final Long orderIdForWs = savedOrder.getId();
-        final String orderNumberForWs = savedOrder.getOrderNumber();
-        final String customerNameForWs = customer.getFullName();
-        final String customerPhoneForWs = customer.getMobileNumber();
-        final BigDecimal totalAmountForWs = savedOrder.getTotalAmount();
-        final String statusForWs = savedOrder.getStatus().name();
-        final String deliveryTypeForWs = savedOrder.getDeliveryType() != null ? savedOrder.getDeliveryType().name() : null;
-        final Order.PaymentMethod paymentMethodForWs = savedOrder.getPaymentMethod();
-        final String createdAtForWs = savedOrder.getCreatedAt().toString();
-        final Long shopIdForWs = shop.getId();
-        final int itemCountForWs = orderItems.size();
-        try {
-            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
-                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                        new org.springframework.transaction.support.TransactionSynchronization() {
-                            @Override
-                            public void afterCommit() {
-                                sendNewOrderWebSocketNotification(orderIdForWs, orderNumberForWs, customerNameForWs,
-                                        customerPhoneForWs, totalAmountForWs, statusForWs, deliveryTypeForWs,
-                                        paymentMethodForWs, createdAtForWs, shopIdForWs, itemCountForWs);
-                            }
-                        });
-            } else {
-                sendNewOrderWebSocketNotification(orderIdForWs, orderNumberForWs, customerNameForWs,
-                        customerPhoneForWs, totalAmountForWs, statusForWs, deliveryTypeForWs,
-                        paymentMethodForWs, createdAtForWs, shopIdForWs, itemCountForWs);
-            }
-        } catch (Exception e) {
-            log.error("❌ Failed to schedule WebSocket notification to shop", e);
+        // Tell the shop owner a real order exists (FCM push + web dashboard
+        // WebSocket). For online payments this must wait until
+        // OrderPaymentService.markPaid confirms the payment actually went
+        // through - notifying now, while the order is still unpaid PENDING,
+        // would tell the shop about work that may never happen if the
+        // customer abandons or fails checkout.
+        if (savedOrder.getPaymentMethod() != Order.PaymentMethod.ONLINE_PAYMENT) {
+            shopOrderNotificationService.notifyNewOrder(savedOrder);
         }
 
         log.info("Customer order created successfully: {}", savedOrder.getOrderNumber());
