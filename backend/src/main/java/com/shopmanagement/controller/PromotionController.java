@@ -100,17 +100,23 @@ public class PromotionController {
      * @param shopId Shop ID for shop-specific promotions (optional)
      * @param customerId Customer ID (optional, for filtering used promos)
      * @param phone Customer phone (optional, for filtering used promos)
+     * @param latitude Customer's current location (optional) - when shopId is not given,
+     *                  limits shop-tied promotions to shops the customer is within
+     *                  delivery range of; platform-wide promotions are unaffected
+     * @param longitude Customer's current location (optional)
      */
     @GetMapping("/active")
     public ResponseEntity<Map<String, Object>> getActivePromotions(
             @RequestParam(required = false) Long shopId,
             @RequestParam(required = false) Long customerId,
-            @RequestParam(required = false) String phone) {
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) java.math.BigDecimal latitude,
+            @RequestParam(required = false) java.math.BigDecimal longitude) {
 
-        log.debug("Fetching active promotions for shopId: {}, customerId: {}, phone: {}",
-                shopId, customerId, phone);
+        log.debug("Fetching active promotions for shopId: {}, customerId: {}, phone: {}, lat: {}, lng: {}",
+                shopId, customerId, phone, latitude, longitude);
 
-        List<Promotion> promotions = promotionService.getActivePromotions(shopId, customerId, phone);
+        List<Promotion> promotions = promotionService.getActivePromotions(shopId, customerId, phone, latitude, longitude);
 
         // Enrich promotions with shop name
         List<Map<String, Object>> enrichedPromotions = promotions.stream()

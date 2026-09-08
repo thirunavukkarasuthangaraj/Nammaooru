@@ -72,6 +72,8 @@ class PromoCodeService {
     String? shopId,
     String? customerId,
     String? phone,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       // Build URL with query parameters
@@ -79,6 +81,11 @@ class PromoCodeService {
       if (shopId != null) queryParams['shopId'] = shopId;
       if (customerId != null) queryParams['customerId'] = customerId;
       if (phone != null) queryParams['phone'] = phone;
+      // Lets the backend drop shop-tied promotions for shops outside that
+      // shop's own delivery radius from this location; ignored server-side
+      // when shopId is set, since that promo is already scoped to one shop.
+      if (latitude != null) queryParams['latitude'] = latitude.toString();
+      if (longitude != null) queryParams['longitude'] = longitude.toString();
 
       final url = Uri.parse('$_baseUrl/promotions/active')
           .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);

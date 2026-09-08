@@ -7,6 +7,9 @@ import com.shopmanagement.entity.PromotionUsage;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.PromotionRepository;
 import com.shopmanagement.repository.PromotionUsageRepository;
+import com.shopmanagement.shop.entity.Shop;
+import com.shopmanagement.shop.repository.ShopRepository;
+import com.shopmanagement.shop.util.GeoLocationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +33,8 @@ public class PromotionService {
     private final PromotionRepository promotionRepository;
     private final PromotionUsageRepository promotionUsageRepository;
     private final CustomerRepository customerRepository;
+    private final ShopRepository shopRepository;
+    private final GeoLocationUtils geoLocationUtils;
 
     /**
      * Validate if a promo code can be used by a customer
@@ -216,16 +222,24 @@ public class PromotionService {
      * @param shopId Shop ID for shop-specific promotions
      * @param customerId Customer ID (optional)
      * @param phone Customer phone (optional)
+     * @param latitude Customer's current location (optional) - when provided together with
+     *                 longitude, shop-tied promotions are only shown for shops near this point;
+     *                 promotions with no shop (platform-wide) are unaffected
+     * @param longitude Customer's current location (optional)
      * @return List of active promotions that the user is eligible to use
      */
     @Transactional(readOnly = true)
-    public List<Promotion> getActivePromotions(Long shopId, Long customerId, String phone) {
+    public List<Promotion> getActivePromotions(Long shopId, Long customerId, String phone,
+                                                BigDecimal latitude, BigDecimal longitude) {
         List<Promotion> allPromotions;
 
         if (shopId != null) {
             allPromotions = promotionRepository.findActiveByShopId(shopId, LocalDateTime.now());
         } else {
             allPromotions = promotionRepository.findAllPublicActive(LocalDateTime.now());
+            if (latitude != null && longitude != null) {
+                allPromotions = filterByShopProximity(allPromotions, latitude, longitude);
+            }
         }
 
         // If no user identifiers provided, return all promotions (for unauthenticated users)
@@ -273,6 +287,34 @@ public class PromotionService {
                     return true; // Show this promotion
                 })
                 .toList();
+    }
+
+    /**
+     * Drops promotions tied to a shop the customer isn't actually within delivery
+     * range of, using that shop's own delivery radius as set on its profile
+     * (Shop.deliveryRadius) rather than one fixed cutoff for every shop.
+     * Platform-wide promotions (shopId == null) always pass through unfiltered.
+     * A promo whose shop can't be resolved, or has no radius on file, is dropped
+     * rather than shown with no reliable way to judge distance.
+     */
+    private List<Promotion> filterByShopProximity(List<Promotion> promotions, BigDecimal latitude, BigDecimal longitude) {
+        return promotions.stream()
+                .filter(promotion -> {
+                    if (promotion.getShopId() == null) {
+                        return true;
+                    }
+                    Optional<Shop> shopOpt = shopRepository.findById(promotion.getShopId());
+                    if (shopOpt.isEmpty()) {
+                        return false;
+                    }
+                    Shop shop = shopOpt.get();
+                    BigDecimal radius = shop.getDeliveryRadius();
+                    if (radius == null || radius.doubleValue() <= 0) {
+                        return false;
+                    }
+                    return geoLocationUtils.isWithinRadius(latitude, longitude, shop.getLatitude(), shop.getLongitude(), radius.doubleValue());
+                })
+                .collect(Collectors.toList());
     }
 
     /**

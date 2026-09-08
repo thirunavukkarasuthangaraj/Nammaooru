@@ -290,9 +290,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         onLocationSelected: (selectedLocation) {
           setState(() {
             _selectedLocation = selectedLocation;
+            // DeliverToPicker only returns a display label; the actual
+            // coordinates it just picked are stashed in LocationService's
+            // cache (setManualPosition/getCurrentPosition) - pick them up
+            // here so offers/shops filter by the newly selected location
+            // instead of the stale one from app startup.
+            if (LocationService.hasCachedPosition) {
+              _userLatitude = LocationService.cachedLatitude;
+              _userLongitude = LocationService.cachedLongitude;
+            }
           });
-          // Reload shops around the newly chosen location
+          // Reload shops and offers around the newly chosen location
           _loadFeaturedShops();
+          _loadPromos();
         },
         onAddressBookUpdated: _getCurrentLocationOnStartup,
       );
@@ -561,7 +571,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   Future<void> _loadPromos() async {
     try {
-      final promos = await _promoService.getActivePromotions();
+      // Location-filtered: shop-tied offers only show when the customer is
+      // within that shop's own delivery radius of the selected location.
+      final promos = await _promoService.getActivePromotions(
+        latitude: _userLatitude,
+        longitude: _userLongitude,
+      );
       if (mounted) {
         setState(() {
           _promos = promos;
@@ -2454,6 +2469,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       builder: (context, lang, _) {
         final shops = _featuredShops.where((s) => s['isActive'] != false).toList();
 
+        // Nothing to browse yet - skip the whole section (header included)
+        // instead of showing a "Browse local shops" placeholder prompt.
+        if (!_isLoadingShops && shops.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2485,54 +2506,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Center(child: LoadingWidget()),
-              )
-            else if (shops.isEmpty)
-              Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  onTap: () => context.push('/customer/shops'),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: VillageTheme.primaryGreen.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.storefront, color: VillageTheme.primaryGreen),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                lang.getText('Browse local shops', 'உள்ளூர் கடைகளைப் பார்க்க'),
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                lang.getText('Grocery from shops near you', 'அருகிலுள்ள கடைகளில் மளிகை'),
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                ),
               )
             else
               SizedBox(
