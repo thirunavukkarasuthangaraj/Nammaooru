@@ -138,6 +138,14 @@ public class Shop {
     @Column(name = "self_delivery_enabled")
     private Boolean selfDeliveryEnabled = false;
 
+    // Whether this shop accepts Razorpay online payment at checkout. Defaults
+    // true so existing shops keep today's behavior (every shop currently
+    // shows Online Payment); shop owners can opt out from their profile if
+    // they don't want to deal with gateway settlement.
+    @Builder.Default
+    @Column(name = "online_payment_enabled")
+    private Boolean onlinePaymentEnabled = true;
+
     // Flat fee the shop owner charges when self-delivering; null means fall back
     // to the platform's distance-based delivery_fee_ranges table.
     @DecimalMin(value = "0.0")

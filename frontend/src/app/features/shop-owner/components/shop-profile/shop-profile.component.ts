@@ -963,7 +963,8 @@ export class ShopProfileComponent implements OnInit {
       minOrderAmount: [0],
       freeDeliveryAbove: [0],
       selfDeliveryEnabled: [{ value: false, disabled: true }],
-      selfDeliveryFee: [null]
+      selfDeliveryFee: [null],
+      onlinePaymentEnabled: [true]
     });
   }
 
@@ -1098,6 +1099,12 @@ export class ShopProfileComponent implements OnInit {
         type: 'number',
         placeholder: 'e.g., 30',
         hint: 'Charged to customers instead of the platform\'s distance-based fee when Self Delivery is on. Leave blank to use the platform fee.'
+      },
+      {
+        label: 'Accept Online Payment',
+        control: 'onlinePaymentEnabled',
+        type: 'toggle',
+        hint: 'When off, customers only see Cash on Delivery at checkout for your shop. Also requires the platform-wide Online Payment setting to be on.'
       }
     ];
   }

@@ -26,7 +26,7 @@
           <div class="tab-content">
             <mat-card *ngFor="let setting of getSettingsByCategory(category)" class="setting-card">
               <mat-card-content>
-                <div class="setting-item">
+                <div class="setting-item" [class.setting-item--stacked]="isLargeContentSetting(setting)">
                   <div class="setting-info">
                     <h4>{{ getSettingDisplayName(setting.key) }}</h4>
                     <p class="setting-description">{{ setting.description }}</p>
@@ -42,7 +42,11 @@
                         <mat-option *ngFor="let opt of channelOptions" [value]="opt.value">{{ opt.label }}</mat-option>
                       </mat-select>
                     </mat-form-field>
-                    <mat-form-field *ngIf="!isToggleSetting(setting.key) && !isChannelSetting(setting.key)" appearance="outline" class="setting-field">
+                    <mat-form-field *ngIf="isLargeContentSetting(setting) && !isToggleSetting(setting.key) && !isChannelSetting(setting.key)" appearance="outline" class="setting-field setting-field--full">
+                      <mat-label>{{ getSettingDisplayName(setting.key) }}</mat-label>
+                      <textarea matInput rows="8" [formControlName]="setting.key"></textarea>
+                    </mat-form-field>
+                    <mat-form-field *ngIf="!isLargeContentSetting(setting) && !isToggleSetting(setting.key) && !isChannelSetting(setting.key)" appearance="outline" class="setting-field">
                       <mat-label>{{ getSettingDisplayName(setting.key) }}</mat-label>
                       <input matInput [formControlName]="setting.key">
                     </mat-form-field>

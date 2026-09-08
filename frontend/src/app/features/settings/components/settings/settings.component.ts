@@ -524,6 +524,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return key === 'otp.delivery.channel';
   }
 
+  // Long-form content (privacy policy, terms, etc.) doesn't fit the narrow
+  // single-line input every other setting uses - render those as a full-width
+  // textarea instead. Keyed off value length so this generalizes to any
+  // setting that grows long, not just the ones named *_POLICY today.
+  isLargeContentSetting(setting: { key: string; value: string }): boolean {
+    return (setting.value || '').length > 100 || setting.key.includes('POLICY');
+  }
+
   sendTestOtp(): void {
     const mobile = (this.testMobile || '').trim();
     if (!/^[6-9]\d{9}$/.test(mobile)) {

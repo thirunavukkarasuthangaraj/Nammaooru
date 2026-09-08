@@ -81,6 +81,9 @@ public class OrderService {
     private final OrderPaymentService orderPaymentService;
     private final WalletService walletService;
     private final ShopOrderNotificationService shopOrderNotificationService;
+    private final SettingService settingService;
+
+    private static final String ONLINE_PAYMENT_ENABLED_KEY = "payment.online_payment_enabled";
 
     public OrderService(
             OrderRepository orderRepository,
@@ -103,7 +106,8 @@ public class OrderService {
             com.shopmanagement.shop.util.GeoLocationUtils geoLocationUtils,
             OrderPaymentService orderPaymentService,
             WalletService walletService,
-            ShopOrderNotificationService shopOrderNotificationService) {
+            ShopOrderNotificationService shopOrderNotificationService,
+            SettingService settingService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -125,6 +129,23 @@ public class OrderService {
         this.orderPaymentService = orderPaymentService;
         this.walletService = walletService;
         this.shopOrderNotificationService = shopOrderNotificationService;
+        this.settingService = settingService;
+    }
+
+    /** Blocks an ONLINE_PAYMENT order when either the platform-wide kill switch or the
+     *  shop's own toggle (set from its profile) has it disabled. COD is never affected. */
+    private void validateOnlinePaymentAllowed(Order.PaymentMethod paymentMethod, Shop shop) {
+        if (paymentMethod != Order.PaymentMethod.ONLINE_PAYMENT) {
+            return;
+        }
+        boolean globallyEnabled = Boolean.parseBoolean(
+                settingService.getSettingValue(ONLINE_PAYMENT_ENABLED_KEY, "true"));
+        if (!globallyEnabled) {
+            throw new RuntimeException("Online payment is currently unavailable. Please choose Cash on Delivery.");
+        }
+        if (shop.getOnlinePaymentEnabled() != null && !shop.getOnlinePaymentEnabled()) {
+            throw new RuntimeException(shop.getName() + " does not accept online payment. Please choose Cash on Delivery.");
+        }
     }
 
     @Transactional
@@ -161,6 +182,8 @@ public class OrderService {
             log.warn("Order rejected - Shop {} ({}) is currently closed", shop.getName(), shop.getId());
             throw new RuntimeException("Shop is currently closed. Please try again during business hours.");
         }
+
+        validateOnlinePaymentAllowed(request.getPaymentMethod(), shop);
 
         // Calculate order totals and validate stock
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -1762,6 +1785,8 @@ public class OrderService {
         // Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
+
+        validateOnlinePaymentAllowed(Order.PaymentMethod.valueOf(request.getPaymentMethod()), shop);
 
         // For home delivery, the delivery address must be within the shop's delivery radius.
         // Checked before any stock is reduced. Skipped when coordinates are unavailable

@@ -1315,6 +1315,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentMethodStep() {
+    final cartProvider = Provider.of<CartProvider>(context);
+    // Shop disabled online payment (or we're now on a shop that never
+    // enabled it) after the customer had it selected - fall back to COD
+    // rather than leaving a hidden, unselectable option chosen.
+    if (!cartProvider.isOnlinePaymentEnabled && _selectedPaymentMethod == 'ONLINE_PAYMENT') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedPaymentMethod = 'CASH_ON_DELIVERY');
+      });
+    }
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.all(12),
@@ -1377,14 +1386,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Icons.local_shipping,
                 Colors.orange,
               ),
-              const SizedBox(height: 10),
-              _buildModernPaymentOption(
-                'ONLINE_PAYMENT',
-                'Online Payment',
-                'Pay now via UPI, card or wallet',
-                Icons.credit_card,
-                Colors.blue,
-              ),
+              if (cartProvider.isOnlinePaymentEnabled) ...[
+                const SizedBox(height: 10),
+                _buildModernPaymentOption(
+                  'ONLINE_PAYMENT',
+                  'Online Payment',
+                  'Pay now via UPI, card or wallet',
+                  Icons.credit_card,
+                  Colors.blue,
+                ),
+              ],
             ],
           ),
 
@@ -2382,14 +2393,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           }
         }
       } else {
-        // Surface the real underlying error (order_service.dart tucks it into
-        // 'error' but the generic 'message' hides it) so failures are debuggable
-        // from the UI alone instead of needing browser/device console access.
-        final baseMessage = result['message'] ?? 'Failed to place order';
-        final detail = result['error']?.toString();
-        final displayMessage = (detail != null && detail.isNotEmpty && detail != baseMessage)
-            ? '$baseMessage\n($detail)'
-            : baseMessage;
+        // order_service.dart now surfaces the backend's actual rejection
+        // reason (out of stock, outside delivery radius, etc.) as 'message'
+        // directly - appending the raw DioException 'error' on top of that
+        // just re-adds the unreadable "(DioException [bad response]: ...)"
+        // noise we're trying to get rid of, so it's dropped here.
+        final displayMessage = result['message'] ?? 'Failed to place order';
         print('❌ Order placement failed: $result');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -77,6 +77,8 @@ public class ShopUpdateRequest {
     @DecimalMin(value = "0.0", message = "Self delivery fee cannot be negative")
     private BigDecimal selfDeliveryFee;
 
+    private Boolean onlinePaymentEnabled;
+
     @DecimalMin(value = "0.0", message = "Commission rate cannot be negative")
     @DecimalMax(value = "100.0", message = "Commission rate cannot exceed 100")
     private BigDecimal commissionRate;

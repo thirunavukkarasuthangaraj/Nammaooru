@@ -56,6 +56,19 @@
           align-items: center;
           gap: 24px;
 
+          // Large-content settings (privacy policy, terms, etc.): stack the
+          // textarea below the label/description full-width instead of
+          // squeezing it into the narrow side-by-side control column.
+          &.setting-item--stacked {
+            flex-direction: column;
+            align-items: stretch;
+
+            .setting-control {
+              justify-content: stretch;
+              min-width: 0;
+            }
+          }
+
           .setting-info {
             flex: 1;
 
@@ -87,6 +100,10 @@
 
             .setting-field {
               width: 100%;
+            }
+
+            .setting-field--full textarea {
+              min-height: 140px;
             }
 
             mat-slide-toggle {

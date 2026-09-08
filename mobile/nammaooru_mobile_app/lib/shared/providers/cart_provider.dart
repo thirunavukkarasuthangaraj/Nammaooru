@@ -27,6 +27,11 @@ class CartProvider with ChangeNotifier {
   // Null until a shop's details are loaded; checkout falls back to a safe
   // default in that case rather than treating "unknown" as "no minimum".
   double? _minOrderAmount;
+  // Whether the current shop accepts online payment (shop.onlinePaymentEnabled
+  // from the backend, set from the shop owner's own profile). Defaults true
+  // so shops that haven't loaded this field yet still show the option -
+  // the backend enforces the real check regardless at order creation.
+  bool _onlinePaymentEnabled = true;
 
   List<CartItem> get items => List.unmodifiable(_items);
   /// Total units across the cart (sum of quantities) - for order payloads etc.
@@ -114,11 +119,18 @@ class CartProvider with ChangeNotifier {
   bool get isShopOpen => _isShopOpen;
   String? get shopName => _shopName;
   double? get minOrderAmount => _minOrderAmount;
+  bool get isOnlinePaymentEnabled => _onlinePaymentEnabled;
 
-  void setShopStatus({required bool isOpen, String? shopName, double? minOrderAmount}) {
+  void setShopStatus({
+    required bool isOpen,
+    String? shopName,
+    double? minOrderAmount,
+    bool? onlinePaymentEnabled,
+  }) {
     _isShopOpen = isOpen;
     if (shopName != null) _shopName = shopName;
     if (minOrderAmount != null) _minOrderAmount = minOrderAmount;
+    if (onlinePaymentEnabled != null) _onlinePaymentEnabled = onlinePaymentEnabled;
     _saveCartToStorage();
     notifyListeners();
   }
@@ -308,6 +320,7 @@ class CartProvider with ChangeNotifier {
     _isShopOpen = true;
     _shopName = null;
     _minOrderAmount = null;
+    _onlinePaymentEnabled = true;
     _saveCartToStorage();
     notifyListeners();
 
@@ -387,6 +400,7 @@ class CartProvider with ChangeNotifier {
         'isShopOpen': _isShopOpen,
         'shopName': _shopName,
         'minOrderAmount': _minOrderAmount,
+        'onlinePaymentEnabled': _onlinePaymentEnabled,
       };
       LocalStorage.setString('cart_data', jsonEncode(cartData));
     } catch (e) {
@@ -486,6 +500,7 @@ class CartProvider with ChangeNotifier {
         _isShopOpen = cartData['isShopOpen'] ?? true;
         _shopName = cartData['shopName'];
         _minOrderAmount = (cartData['minOrderAmount'] as num?)?.toDouble();
+        _onlinePaymentEnabled = cartData['onlinePaymentEnabled'] ?? true;
         notifyListeners();
       } catch (e) {
         print('Error loading cart from storage: $e');

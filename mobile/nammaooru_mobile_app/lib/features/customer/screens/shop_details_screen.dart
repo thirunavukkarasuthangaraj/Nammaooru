@@ -282,6 +282,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         isOpen: _isShopOpen,
         shopName: shop['name'],
         minOrderAmount: (shop['minOrderAmount'] as num?)?.toDouble(),
+        onlinePaymentEnabled: shop['onlinePaymentEnabled'] as bool? ?? true,
       );
     });
   }
@@ -3442,6 +3443,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         isOpen: _isShopOpen,
         shopName: _shop?['name'],
         minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
+        onlinePaymentEnabled: _shop?['onlinePaymentEnabled'] as bool? ?? true,
       );
       return true;
     }
@@ -3485,6 +3487,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           isOpen: _isShopOpen,
           shopName: _shop?['name'],
           minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
+          onlinePaymentEnabled: _shop?['onlinePaymentEnabled'] as bool? ?? true,
         );
         return added;
       }
@@ -3531,6 +3534,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         isOpen: _isShopOpen,
         shopName: _shop?['name'],
         minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
+        onlinePaymentEnabled: _shop?['onlinePaymentEnabled'] as bool? ?? true,
       );
 
       // First ADD of this product (not stepper +): suggest same-category
@@ -3576,6 +3580,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               isOpen: _isShopOpen,
               shopName: _shop?['name'],
               minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
+              onlinePaymentEnabled: _shop?['onlinePaymentEnabled'] as bool? ?? true,
             );
           }
           if (context.mounted) {
