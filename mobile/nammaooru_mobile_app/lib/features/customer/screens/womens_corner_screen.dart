@@ -975,6 +975,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
     final location = post['location'] ?? '';
     final title = post['title'] ?? '';
     final description = post['description'] ?? '';
+    final status = post['status']?.toString() ?? '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1043,6 +1044,27 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
                         child: Text(
                           price,
                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _primaryColor),
+                        ),
+                      ),
+                    ),
+                  // SOLD OUT badge
+                  if (status == 'SOLD')
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'SOLD OUT',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),

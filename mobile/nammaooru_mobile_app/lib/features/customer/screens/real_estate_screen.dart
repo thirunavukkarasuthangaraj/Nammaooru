@@ -1544,6 +1544,8 @@ class _RealEstateScreenState extends State<RealEstateScreen>
 
   Widget _buildImageCarousel(Map<String, dynamic> listing, bool isForSale) {
     final imageUrls = _getImageUrls(listing);
+    final status = listing['status']?.toString() ?? '';
+    final isGone = status == 'SOLD' || status == 'RENTED';
     return Container(
       height: 180,
       decoration: BoxDecoration(
@@ -1568,6 +1570,23 @@ class _RealEstateScreenState extends State<RealEstateScreen>
                 listing['type'] == 'Land' ? Icons.landscape : Icons.home,
                 size: 64,
                 color: Colors.grey[500],
+              ),
+            ),
+          if (isGone)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black45,
+                child: Center(
+                  child: Text(
+                    status,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
               ),
             ),
           // Type badge

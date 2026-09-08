@@ -245,21 +245,32 @@ public class ShopService {
     public ShopResponse getShopById(Long id) {
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with id: " + id));
-        return shopMapper.toResponse(shop);
+        return toResponseWithOpenStatus(shop);
     }
 
     @Transactional(readOnly = true)
     public ShopResponse getShopByShopId(String shopId) {
         Shop shop = shopRepository.findByShopId(shopId)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with shop ID: " + shopId));
-        return shopMapper.toResponse(shop);
+        return toResponseWithOpenStatus(shop);
     }
 
     @Transactional(readOnly = true)
     public ShopResponse getShopBySlug(String slug) {
         Shop shop = shopRepository.findBySlug(slug)
                 .orElseThrow(() -> new ShopNotFoundException("Shop not found with slug: " + slug));
-        return shopMapper.toResponse(shop);
+        return toResponseWithOpenStatus(shop);
+    }
+
+    private ShopResponse toResponseWithOpenStatus(Shop shop) {
+        ShopResponse response = shopMapper.toResponse(shop);
+        try {
+            response.setIsOpenNow(resolveIsOpenNow(shop));
+        } catch (Exception e) {
+            log.warn("Failed to check business hours for shop {}: {}", shop.getId(), e.getMessage());
+            response.setIsOpenNow(shop.getIsActive());
+        }
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -375,9 +386,8 @@ public class ShopService {
         Page<Shop> shops = shopRepository.findAll(spec, pageable);
         return shops.map(shop -> {
             ShopResponse response = shopMapper.toResponse(shop);
-            // Calculate real-time business hours status
             try {
-                boolean isOpenNow = businessHoursService.isShopOpenNow(shop.getId());
+                boolean isOpenNow = resolveIsOpenNow(shop);
                 response.setIsOpenNow(isOpenNow);
                 log.debug("Shop {} ({}) - isOpenNow: {}", shop.getName(), shop.getId(), isOpenNow);
             } catch (Exception e) {
@@ -387,6 +397,17 @@ public class ShopService {
             }
             return response;
         });
+    }
+
+    /**
+     * Resolves whether a shop is currently open, honoring the shop owner's manual
+     * closed/open override before falling back to the business-hours schedule.
+     */
+    private boolean resolveIsOpenNow(Shop shop) {
+        if (Boolean.TRUE.equals(shop.getIsManualOverride())) {
+            return Boolean.TRUE.equals(shop.getIsAvailable());
+        }
+        return businessHoursService.isShopOpenNow(shop.getId());
     }
 
     public ShopResponse approveShop(Long id) {
@@ -581,6 +602,23 @@ public class ShopService {
           .collect(Collectors.toList());
     }
 
+    /** Nearest registered shop's city/pincode/state for a raw coordinate — fallback
+     *  when on-device reverse geocoding returns no postal code for a rural pin. */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> findNearestShopLocation(double lat, double lng) {
+        List<Object[]> rows = shopRepository.findNearestShopLocation(lat, lng);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Object[] row = rows.get(0);
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("city", row[0]);
+        result.put("postalCode", row[1]);
+        result.put("state", row[2]);
+        result.put("distanceKm", row[3] != null ? ((Number) row[3]).doubleValue() : null);
+        return result;
+    }
+
     @Transactional(readOnly = true)
     public List<ShopResponse> getNearbyShops(double latitude, double longitude, double radiusInKm) {
         List<Shop> nearbyShops = shopRepository.findShopsWithinRadius(latitude, longitude, radiusInKm);
@@ -588,7 +626,7 @@ public class ShopService {
                 .map(shop -> {
                     ShopResponse response = shopMapper.toResponse(shop);
                     try {
-                        response.setIsOpenNow(businessHoursService.isShopOpenNow(shop.getId()));
+                        response.setIsOpenNow(resolveIsOpenNow(shop));
                     } catch (Exception e) {
                         log.warn("Failed to check business hours for shop {}: {}", shop.getId(), e.getMessage());
                         response.setIsOpenNow(shop.getIsActive());
