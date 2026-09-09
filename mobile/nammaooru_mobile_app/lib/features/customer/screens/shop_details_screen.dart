@@ -2992,8 +2992,17 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       sliver: _isListView
           ? SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildProductListTile(_products[index]),
-                childCount: _products.length,
+                (context, index) {
+                  final item = _displayItems[index];
+                  if (item is _VariantGroup) {
+                    return _buildVariantGroupListTile(item);
+                  }
+                  if (_isWeightPriced(item)) {
+                    return _buildWeightPricedListTile(item);
+                  }
+                  return _buildProductListTile(item);
+                },
+                childCount: _displayItems.length,
               ),
             )
           : SliverGrid(
@@ -3004,10 +3013,947 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 mainAxisExtent: cardExtent,
               ),
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildProductCard(_products[index]),
-                childCount: _products.length,
+                (context, index) {
+                  final item = _displayItems[index];
+                  if (item is _VariantGroup) {
+                    return _buildVariantGroupCard(item);
+                  }
+                  if (_isWeightPriced(item)) {
+                    return _buildWeightPricedCard(item);
+                  }
+                  return _buildProductCard(item);
+                },
+                childCount: _displayItems.length,
               ),
             ),
+    );
+  }
+
+  // ===== Vegetable weight variants =====
+  // A vegetable listed as "Tomato 1kg" / "Tomato 500g" / "Tomato 250g" is
+  // really one product in three pack sizes. In the Vegetables category only,
+  // such products collapse into a single card and the shopper picks the
+  // weight (and quantity) from a bottom sheet. Each weight stays a real
+  // product underneath, so cart/orders/stock are untouched.
+  static final RegExp _weightSuffixRe = RegExp(
+      r'[\s\-(]*(\d+(?:\.\d+)?)\s*(kg|கிலோ|gm|g|கிராம்)\.?\)?\s*$',
+      caseSensitive: false);
+
+  List<dynamic> get _displayItems => _groupedDisplayProducts();
+
+  bool _isVegetableProduct(Map<String, dynamic> product) {
+    final cat = product['masterProduct']?['category']?['name']
+            ?.toString()
+            .toLowerCase() ??
+        '';
+    return cat.contains('vegetable') || cat.contains('காய்கறி');
+  }
+
+  // A vegetable priced per 250g (shop owner sets unit=g, weight=250, and the
+  // 250g price). The picker sells it as 250g/500g/1kg... where each step is
+  // just cart quantity 1/2/4 of this one product, so backend billing
+  // (price x qty) and stock deduction stay exactly correct with no backend
+  // change. Stock is entered in 250g units (20kg = 80).
+  bool _isWeightPriced(Map<String, dynamic> product) {
+    // Explicit flag from Bulk Edit's "Sell By: Weight (250g price)" - works
+    // in any category, the shop owner opted this product in.
+    final unit = (product['baseUnit'] ?? '').toString().toLowerCase();
+    final weight =
+        double.tryParse(product['baseWeight']?.toString() ?? '');
+    if (unit == 'g' && weight == 250) return true;
+
+    // Convention fallback for vegetables: a product named "... 250g"
+    // (e.g. "Beans 250g") is priced per 250g.
+    if (!_isVegetableProduct(product)) return false;
+    final name = (product['displayName'] ?? product['customName'] ?? '')
+        .toString();
+    final split = _weightSplit(name);
+    return split != null && split['grams'] == 250.0;
+  }
+
+  String _weightPricedTitle(Map<String, dynamic> product) {
+    final name = (product['displayName'] ?? product['customName'] ?? '')
+        .toString();
+    final split = _weightSplit(name);
+    return split != null ? split['base'] as String : name;
+  }
+
+  static const List<Map<String, Object>> _weightSteps = [
+    {'label': '250g', 'qty': 1},
+    {'label': '500g', 'qty': 2},
+    {'label': '750g', 'qty': 3},
+    {'label': '1kg', 'qty': 4},
+    {'label': '2kg', 'qty': 8},
+  ];
+
+  void _showWeightQtyPicker(Map<String, dynamic> product) {
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
+    final name = _weightPricedTitle(product);
+    final unitPrice =
+        double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final stock =
+        int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    final pm = _variantProductModel(product);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF212121),
+                ),
+              ),
+              Consumer<CartProvider>(
+                builder: (_, cart, __) {
+                  final grams = cart.getQuantity(pm.id) * 250;
+                  final inCart = grams >= 1000
+                      ? '${(grams / 1000).toStringAsFixed(grams % 1000 == 0 ? 0 : 2)}kg'
+                      : '${grams}g';
+                  return Text(
+                    grams > 0
+                        ? languageProvider.getText(
+                            'In cart: $inCart', 'கூடையில்: $inCart')
+                        : languageProvider.getText(
+                            'Choose weight', 'எடையைத் தேர்ந்தெடுக்கவும்'),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              ..._weightSteps.map((step) {
+                final qty = step['qty'] as int;
+                final rowPrice = unitPrice * qty;
+                final available = stock <= 0 || qty <= stock;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          step['label'] as String,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: VillageTheme.primaryGreen,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '₹${rowPrice.toStringAsFixed(rowPrice == rowPrice.roundToDouble() ? 0 : 2)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF212121),
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: 92,
+                        child: !available
+                            ? Text(
+                                languageProvider.getText(
+                                    'No stock', 'இருப்பு இல்லை'),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[600]),
+                              )
+                            : GestureDetector(
+                                onTap: () async {
+                                  final cart = Provider.of<CartProvider>(
+                                      context,
+                                      listen: false);
+                                  await _handleAddToCartQty(
+                                      cart, pm, qty);
+                                  if (mounted) setState(() {});
+                                },
+                                child: Container(
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF4CAF50),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      languageProvider.getText('ADD', 'சேர்'),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleAddToCartQty(
+      CartProvider cart, ProductModel pm, int qty) async {
+    final existing = cart.getQuantity(pm.id);
+    if (existing > 0) {
+      cart.updateQuantity(pm.id, existing + qty);
+    } else {
+      await _handleAddToCart(context, cart, pm);
+      if (qty > 1) cart.updateQuantity(pm.id, qty);
+    }
+  }
+
+  Map<String, Object>? _weightSplit(String name) {
+    final trimmed = name.trim();
+    final m = _weightSuffixRe.firstMatch(trimmed);
+    if (m == null) return null;
+    final qty = double.tryParse(m.group(1)!);
+    if (qty == null) return null;
+    final unitRaw = m.group(2)!.toLowerCase();
+    final isKg = unitRaw == 'kg' || unitRaw == 'கிலோ';
+    final base = trimmed.substring(0, m.start).trim();
+    if (base.isEmpty) return null;
+    final qtyLabel =
+        qty == qty.roundToDouble() ? qty.toInt().toString() : qty.toString();
+    return {
+      'base': base,
+      'label': '$qtyLabel${isKg ? 'kg' : 'g'}',
+      'grams': isKg ? qty * 1000 : qty,
+    };
+  }
+
+  List<dynamic> _groupedDisplayProducts() {
+    final List<dynamic> out = [];
+    final Map<String, _VariantGroup> groups = {};
+    final List<Map<String, dynamic>> plainVegetables = [];
+
+    for (final p in _products) {
+      final map = p as Map<String, dynamic>;
+      if (_isVegetableProduct(map)) {
+        final name =
+            (map['displayName'] ?? map['customName'] ?? '').toString();
+        final split = _weightSplit(name);
+        if (split != null) {
+          final key = (split['base'] as String).toLowerCase();
+          final existing = groups[key];
+          if (existing != null) {
+            existing.add(map, split['label'] as String, split['grams'] as double);
+            continue;
+          }
+          final group = _VariantGroup(split['base'] as String)
+            ..add(map, split['label'] as String, split['grams'] as double);
+          groups[key] = group;
+          out.add(group);
+          continue;
+        }
+        plainVegetables.add(map);
+      }
+      out.add(map);
+    }
+
+    // Second pass: a product named exactly like a group's base ("Beans"
+    // next to "Beans 500g"/"Beans 1kg") is the same vegetable's old
+    // un-suffixed listing - fold it into the group instead of showing a
+    // duplicate card. Label comes from its own base weight when present.
+    for (final map in plainVegetables) {
+      final name = (map['displayName'] ?? map['customName'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final group = groups[name];
+      if (group == null) continue;
+      final baseWeight = map['baseWeight'] ??
+          map['masterProduct']?['baseWeight'];
+      final baseUnit = (map['baseUnit'] ??
+              map['masterProduct']?['baseUnit'] ??
+              '')
+          .toString()
+          .toLowerCase();
+      String label;
+      double grams;
+      if (baseWeight != null && (baseUnit == 'kg' || baseUnit == 'g')) {
+        final qty = double.tryParse(baseWeight.toString()) ?? 1;
+        grams = baseUnit == 'kg' ? qty * 1000 : qty;
+        label =
+            '${qty == qty.roundToDouble() ? qty.toInt() : qty}$baseUnit';
+      } else {
+        grams = double.maxFinite; // unknown size sorts last
+        label = 'Regular';
+      }
+      group.add(map, label, grams);
+      out.remove(map);
+    }
+
+    for (var i = 0; i < out.length; i++) {
+      final entry = out[i];
+      if (entry is _VariantGroup) {
+        if (entry.variants.length == 1) {
+          out[i] = entry.variants.first; // lone size - plain card
+        } else {
+          entry.sortByWeight();
+        }
+      }
+    }
+    return out;
+  }
+
+  ProductModel _variantProductModel(Map<String, dynamic> product) {
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
+    final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final stockQuantity =
+        int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    final imageUrl = product['primaryImageUrl']?.toString() ??
+        product['masterProduct']?['primaryImageUrl']?.toString() ??
+        '';
+    return ProductModel(
+      id: product['id'].toString(),
+      name: languageProvider.getDisplayName(product),
+      description: '',
+      price: price,
+      category: product['masterProduct']?['category']?.toString() ?? '',
+      shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
+      shopDatabaseId: _shop?['id'] ?? widget.shopId,
+      shopName: _shop?['name']?.toString() ?? 'Shop',
+      images: imageUrl.isNotEmpty ? [imageUrl] : [],
+      stockQuantity: stockQuantity,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  void _showVariantPicker(_VariantGroup group) {
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                group.baseName,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF212121),
+                ),
+              ),
+              Text(
+                languageProvider.getText(
+                    'Choose weight', 'எடையைத் தேர்ந்தெடுக்கவும்'),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 10),
+              ...List.generate(group.variants.length, (i) {
+                final variant = group.variants[i];
+                final price =
+                    double.tryParse(variant['price']?.toString() ?? '0') ?? 0.0;
+                final originalPrice = double.tryParse(
+                        variant['originalPrice']?.toString() ?? '0') ??
+                    0.0;
+                final stock =
+                    int.tryParse(variant['stockQuantity']?.toString() ?? '0') ??
+                        0;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          group.labels[i],
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: VillageTheme.primaryGreen,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF212121),
+                        ),
+                      ),
+                      if (originalPrice > price) ...[
+                        const SizedBox(width: 5),
+                        Text(
+                          '₹${originalPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      SizedBox(
+                        width: 92,
+                        child: _buildListCartControl(
+                            _variantProductModel(variant), stock > 0),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantGroupCard(_VariantGroup group) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final prices = group.variants
+        .map((v) => double.tryParse(v['price']?.toString() ?? '0') ?? 0.0)
+        .toList();
+    final minPrice = prices.reduce((a, b) => a < b ? a : b);
+    final anyInStock = group.variants.any((v) =>
+        (int.tryParse(v['stockQuantity']?.toString() ?? '0') ?? 0) > 0);
+    final imageUrl = group.variants
+        .map((v) =>
+            v['primaryImageUrl']?.toString() ??
+            v['masterProduct']?['primaryImageUrl']?.toString() ??
+            '')
+        .firstWhere((u) => u.isNotEmpty, orElse: () => '');
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showVariantPicker(group),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.inventory_2,
+                                  size: 30, color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.inventory_2,
+                                size: 40, color: Colors.grey),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    group.baseName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121),
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    group.labels.join(' · '),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${languageProvider.getText('From', 'முதல்')} ₹${minPrice.toStringAsFixed(minPrice == minPrice.roundToDouble() ? 0 : 2)}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: anyInStock ? () => _showVariantPicker(group) : null,
+                    child: Container(
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: anyInStock
+                            ? const Color(0xFF4CAF50)
+                            : Colors.grey[400],
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Center(
+                        child: Text(
+                          anyInStock
+                              ? languageProvider.getText('SELECT', 'தேர்வு')
+                              : languageProvider.getText(
+                                  'Out of Stock', 'இருப்பு இல்லை'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeightPricedCard(Map<String, dynamic> product) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final name = _weightPricedTitle(product);
+    final unitPrice =
+        double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final stock =
+        int.tryParse(product['stockQuantity']?.toString() ?? '0') ?? 0;
+    final trackInventory = product['trackInventory'] != false;
+    final inStock = !trackInventory || stock > 0;
+    final imageUrl = product['primaryImageUrl']?.toString() ??
+        product['masterProduct']?['primaryImageUrl']?.toString() ??
+        '';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showWeightQtyPicker(product),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.inventory_2,
+                                  size: 30, color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.inventory_2,
+                                size: 40, color: Colors.grey),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121),
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '₹${unitPrice.toStringAsFixed(unitPrice == unitPrice.roundToDouble() ? 0 : 2)} / 250g',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Consumer<CartProvider>(
+                    builder: (_, cart, __) {
+                      final grams =
+                          cart.getQuantity(product['id'].toString()) * 250;
+                      final weightLabel = grams >= 1000
+                          ? '${(grams / 1000).toStringAsFixed(grams % 1000 == 0 ? 0 : 2)}kg'
+                          : '${grams}g';
+                      return GestureDetector(
+                        onTap: inStock
+                            ? () => _showWeightQtyPicker(product)
+                            : null,
+                        child: Container(
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: inStock
+                                ? const Color(0xFF4CAF50)
+                                : Colors.grey[400],
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Center(
+                            child: !inStock
+                                ? Text(
+                                    languageProvider.getText(
+                                        'Out of Stock', 'இருப்பு இல்லை'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : grams > 0
+                                    ? Text(
+                                        '$weightLabel ▾',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.add_rounded,
+                                              color: Colors.white, size: 16),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            languageProvider.getText(
+                                                'ADD', 'சேர்'),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeightPricedListTile(Map<String, dynamic> product) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final name = _weightPricedTitle(product);
+    final unitPrice =
+        double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final imageUrl = product['primaryImageUrl']?.toString() ??
+        product['masterProduct']?['primaryImageUrl']?.toString() ??
+        '';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showWeightQtyPicker(product),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.inventory_2,
+                              size: 24, color: Colors.grey),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.inventory_2,
+                            size: 24, color: Colors.grey),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121),
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '₹${unitPrice.toStringAsFixed(0)} / 250g',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 82,
+              child: Consumer<CartProvider>(
+                builder: (_, cart, __) {
+                  final grams =
+                      cart.getQuantity(product['id'].toString()) * 250;
+                  final weightLabel = grams >= 1000
+                      ? '${(grams / 1000).toStringAsFixed(grams % 1000 == 0 ? 0 : 2)}kg'
+                      : '${grams}g';
+                  return GestureDetector(
+                    onTap: () => _showWeightQtyPicker(product),
+                    child: Container(
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Center(
+                        child: grams > 0
+                            ? Text(
+                                '$weightLabel ▾',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.add_rounded,
+                                      color: Colors.white, size: 14),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    languageProvider.getText('ADD', 'சேர்'),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantGroupListTile(_VariantGroup group) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final prices = group.variants
+        .map((v) => double.tryParse(v['price']?.toString() ?? '0') ?? 0.0)
+        .toList();
+    final minPrice = prices.reduce((a, b) => a < b ? a : b);
+    final imageUrl = group.variants
+        .map((v) =>
+            v['primaryImageUrl']?.toString() ??
+            v['masterProduct']?['primaryImageUrl']?.toString() ??
+            '')
+        .firstWhere((u) => u.isNotEmpty, orElse: () => '');
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showVariantPicker(group),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.inventory_2,
+                              size: 24, color: Colors.grey),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.inventory_2,
+                            size: 24, color: Colors.grey),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.baseName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121),
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    group.labels.join(' · '),
+                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${languageProvider.getText('From', 'முதல்')} ₹${minPrice.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 82,
+              child: GestureDetector(
+                onTap: () => _showVariantPicker(group),
+                child: Container(
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Center(
+                    child: Text(
+                      languageProvider.getText('SELECT', 'தேர்வு'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -4495,5 +5441,35 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
         ),
       ),
     );
+  }
+}
+
+/// One vegetable sold in several pack sizes ("Tomato 1kg/500g/250g") -
+/// groups the underlying products so the browse grid shows a single card.
+class _VariantGroup {
+  _VariantGroup(this.baseName);
+
+  final String baseName;
+  final List<Map<String, dynamic>> variants = [];
+  final List<String> labels = [];
+  final List<double> grams = [];
+
+  void add(Map<String, dynamic> product, String label, double weightGrams) {
+    variants.add(product);
+    labels.add(label);
+    grams.add(weightGrams);
+  }
+
+  void sortByWeight() {
+    final order = List<int>.generate(variants.length, (i) => i)
+      ..sort((a, b) => grams[a].compareTo(grams[b]));
+    final v = List.of(variants);
+    final l = List.of(labels);
+    final g = List.of(grams);
+    for (var i = 0; i < order.length; i++) {
+      variants[i] = v[order[i]];
+      labels[i] = l[order[i]];
+      grams[i] = g[order[i]];
+    }
   }
 }

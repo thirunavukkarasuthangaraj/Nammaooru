@@ -667,6 +667,18 @@ public class ShopOwnerProductController {
                 request.setCategoryName(categoryObj != null ? categoryObj.toString() : null);
             }
 
+            if (updates.containsKey("baseUnit")) {
+                Object unitObj = updates.get("baseUnit");
+                request.setBaseUnit(unitObj != null ? unitObj.toString() : "");
+            }
+
+            if (updates.containsKey("baseWeight")) {
+                Object weightObj = updates.get("baseWeight");
+                request.setBaseWeight(weightObj != null
+                        ? Double.valueOf(weightObj.toString())
+                        : 0d);
+            }
+
             if (updates.containsKey("voiceSearchTags")) {
                 Object tagsObj = updates.get("voiceSearchTags");
                 request.setVoiceSearchTags(tagsObj != null ? tagsObj.toString() : null);

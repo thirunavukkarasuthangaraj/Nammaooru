@@ -924,6 +924,17 @@ public class ShopProductService {
             shopProduct.setCustomName(request.getCustomName().trim());
         }
 
+        // "Sell by weight" from Bulk Edit: unit=g + weight=250 marks a product
+        // priced per 250g (the customer app then shows a weight picker whose
+        // steps are plain cart quantities). Stored on ShopProduct so shared
+        // master products aren't affected. weight <= 0 clears the flag.
+        if (request.getBaseUnit() != null) {
+            shopProduct.setBaseUnit(request.getBaseUnit().trim().isEmpty() ? null : request.getBaseUnit().trim());
+        }
+        if (request.getBaseWeight() != null) {
+            shopProduct.setBaseWeight(request.getBaseWeight() <= 0 ? null : request.getBaseWeight());
+        }
+
         // Resolve category FIRST - it may clone the master product (shared master
         // products must not have one shop's quick-edit leak into another shop's
         // category), and every field below must land on the resolved instance.

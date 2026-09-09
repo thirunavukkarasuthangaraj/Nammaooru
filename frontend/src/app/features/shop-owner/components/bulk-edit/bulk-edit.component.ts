@@ -12,6 +12,7 @@ import { SwalService } from '../../../../core/services/swal.service';
 import { getImageUrl as getImageUrlUtil } from '../../../../core/utils/image-url.util';
 import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineCategories } from '../category-create-dialog/category-create-dialog.component';
 import { ProductCategoryService } from '../../../../core/services/product-category.service';
+import Swal from 'sweetalert2';
 
 interface BulkEditProduct {
   id: number;
@@ -30,6 +31,9 @@ interface BulkEditProduct {
   tags?: string;
   category?: string;
   imageUrl?: string;
+  // True = priced per 250g; customer app shows a weight picker
+  // (250g/500g/1kg... as plain quantities of this product).
+  sellByWeight?: boolean;
   // Track original values for change detection
   originalValues: {
     customName: string;
@@ -45,6 +49,7 @@ interface BulkEditProduct {
     barcode2?: string;
     barcode3?: string;
     nameTamil?: string;
+    sellByWeight?: boolean;
   };
 }
 
@@ -315,6 +320,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         tags: p.masterProduct?.tags || '',
         category: p.masterProduct?.category?.name || '',
         imageUrl: p.primaryImageUrl || '',
+        sellByWeight: p.baseUnit === 'g' && Number(p.baseWeight) === 250,
         originalValues: {
           customName: p.displayName || p.customName || p.masterProduct?.name,
           category: p.masterProduct?.category?.name || '',
@@ -328,7 +334,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           barcode1: p.barcode1 || '',
           barcode2: p.barcode2 || '',
           barcode3: p.barcode3 || '',
-          nameTamil: p.masterProduct?.nameTamil || ''
+          nameTamil: p.masterProduct?.nameTamil || '',
+          sellByWeight: p.baseUnit === 'g' && Number(p.baseWeight) === 250
         }
       }));
 
@@ -556,6 +563,51 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.markModified(product);
   }
 
+  // One click converts a per-kg product to weight-selling: price /4 (250g),
+  // stock x4 (250g units), "1kg" stripped from the name - so the owner keeps
+  // one product and one stock number, and the customer app offers
+  // 250g/500g/1kg/2kg with exact billing. Reversible.
+  async onSellByWeightChange(product: BulkEditProduct, selectElement: HTMLSelectElement): Promise<void> {
+    const toWeight = selectElement.value === '250g';
+    if (toWeight === !!product.sellByWeight) return;
+
+    if (toWeight) {
+      const newPrice = +(product.price / 4).toFixed(2);
+      const newStock = product.stockQuantity * 4;
+      const result = await Swal.fire({
+        title: 'Sell by weight?',
+        html:
+          `Price becomes <b>₹${newPrice} per 250g</b> (1kg still ₹${product.price})<br>` +
+          `Stock becomes <b>${newStock}</b> × 250g units (= ${product.stockQuantity}kg)<br>` +
+          `Customers will pick 250g / 500g / 750g / 1kg / 2kg in the app.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Convert',
+        cancelButtonText: 'Cancel'
+      });
+      if (!result.isConfirmed) {
+        selectElement.value = 'normal';
+        return;
+      }
+      product.price = newPrice;
+      if (product.originalPrice) {
+        product.originalPrice = +(product.originalPrice / 4).toFixed(2);
+      }
+      product.stockQuantity = newStock;
+      const stripped = (product.customName || '').replace(/\s*1\s*kg\s*$/i, '').trim();
+      if (stripped) product.customName = stripped;
+      product.sellByWeight = true;
+    } else {
+      product.price = +(product.price * 4).toFixed(2);
+      if (product.originalPrice) {
+        product.originalPrice = +(product.originalPrice * 4).toFixed(2);
+      }
+      product.stockQuantity = Math.round(product.stockQuantity / 4);
+      product.sellByWeight = false;
+    }
+    this.markModified(product);
+  }
+
   onRootCategoryDropdownChange(product: BulkEditProduct, selectElement: HTMLSelectElement): void {
     const value = selectElement.value;
     if (value === '__NEW__') {
@@ -639,7 +691,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       product.barcode1 !== orig.barcode1 ||
       product.barcode2 !== orig.barcode2 ||
       product.barcode3 !== orig.barcode3 ||
-      product.nameTamil !== orig.nameTamil;
+      product.nameTamil !== orig.nameTamil ||
+      product.sellByWeight !== orig.sellByWeight;
 
     if (isModified) {
       this.modifiedProducts.set(product.id, product);
@@ -668,6 +721,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       case 'barcode2': return product.barcode2 !== orig.barcode2;
       case 'barcode3': return product.barcode3 !== orig.barcode3;
       case 'nameTamil': return product.nameTamil !== orig.nameTamil;
+      case 'sellByWeight': return product.sellByWeight !== orig.sellByWeight;
       default: return false;
     }
   }
@@ -832,7 +886,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           barcode1: product.barcode1,
           barcode2: product.barcode2,
           barcode3: product.barcode3,
-          nameTamil: product.nameTamil
+          nameTamil: product.nameTamil,
+          sellByWeight: product.sellByWeight
         };
         this.modifiedProducts.delete(product.id);
         return { success: true, product };
@@ -877,7 +932,15 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         barcode3: product.barcode3,
         nameTamil: product.nameTamil,
         // Backend stores these on masterProduct.tags (used by voice/AI search)
-        voiceSearchTags: product.tags
+        voiceSearchTags: product.tags,
+        // Only sent when toggled, so offline-cached rows (which don't carry
+        // baseUnit/baseWeight) can never accidentally clear the flag.
+        ...(product.sellByWeight !== product.originalValues.sellByWeight
+            ? {
+                baseUnit: product.sellByWeight ? 'g' : 'piece',
+                baseWeight: product.sellByWeight ? 250 : 0
+              }
+            : {})
       };
 
       this.http.put(`${this.apiUrl}/shop-products/${product.id}`, updateData)
