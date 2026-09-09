@@ -74,6 +74,7 @@ class PromoCodeService {
     String? phone,
     double? latitude,
     double? longitude,
+    String? category,
   }) async {
     try {
       // Build URL with query parameters
@@ -86,6 +87,9 @@ class PromoCodeService {
       // when shopId is set, since that promo is already scoped to one shop.
       if (latitude != null) queryParams['latitude'] = latitude.toString();
       if (longitude != null) queryParams['longitude'] = longitude.toString();
+      // Scopes shop-tied promotions to shops in this category (e.g. Grocery
+      // listing page only shows Grocery shop offers); ignored when shopId is set.
+      if (category != null) queryParams['category'] = category;
 
       final url = Uri.parse('$_baseUrl/promotions/active')
           .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);

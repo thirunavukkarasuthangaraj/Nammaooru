@@ -17,7 +17,6 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/order_api_service.dart';
 import '../../../shared/services/notification_service.dart';
-import '../screens/shop_listing_screen.dart';
 import '../screens/shop_details_screen.dart';
 // import '../screens/shop_details_modern_screen.dart';
 import '../screens/location_picker_screen.dart';
@@ -2181,13 +2180,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
     // Map backend routes to actual navigation
     if (route.contains('category=grocery')) {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (context) => const ShopListingScreen(category: 'grocery', categoryTitle: 'Grocery'),
-      ));
+      context.push('/customer/shops?category=grocery&categoryTitle=Grocery');
     } else if (route.contains('category=food')) {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (context) => const ShopListingScreen(category: 'food', categoryTitle: 'Food'),
-      ));
+      context.push('/customer/shops?category=food&categoryTitle=Food');
     } else if (route.contains('marketplace')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const MarketplaceScreen()));
     } else if (route.contains('farmer-products')) {
@@ -2685,15 +2680,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildCategoryCard(String name, String nameEn, String imageUrl) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ShopListingScreen(
-              category: nameEn.toLowerCase(),
-              categoryTitle: nameEn,
-            ),
-          ),
-        );
+        final category = Uri.encodeComponent(nameEn.toLowerCase());
+        final title = Uri.encodeComponent(nameEn);
+        context.push('/customer/shops?category=$category&categoryTitle=$title');
       },
       child: Container(
         decoration: BoxDecoration(

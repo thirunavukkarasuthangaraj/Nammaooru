@@ -111,12 +111,13 @@ public class PromotionController {
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) String phone,
             @RequestParam(required = false) java.math.BigDecimal latitude,
-            @RequestParam(required = false) java.math.BigDecimal longitude) {
+            @RequestParam(required = false) java.math.BigDecimal longitude,
+            @RequestParam(required = false) String category) {
 
-        log.debug("Fetching active promotions for shopId: {}, customerId: {}, phone: {}, lat: {}, lng: {}",
-                shopId, customerId, phone, latitude, longitude);
+        log.debug("Fetching active promotions for shopId: {}, customerId: {}, phone: {}, lat: {}, lng: {}, category: {}",
+                shopId, customerId, phone, latitude, longitude, category);
 
-        List<Promotion> promotions = promotionService.getActivePromotions(shopId, customerId, phone, latitude, longitude);
+        List<Promotion> promotions = promotionService.getActivePromotions(shopId, customerId, phone, latitude, longitude, category);
 
         // Enrich promotions with shop name
         List<Map<String, Object>> enrichedPromotions = promotions.stream()

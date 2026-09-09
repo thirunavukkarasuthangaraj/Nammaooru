@@ -231,13 +231,19 @@ public class PromotionService {
     @Transactional(readOnly = true)
     public List<Promotion> getActivePromotions(Long shopId, Long customerId, String phone,
                                                 BigDecimal latitude, BigDecimal longitude) {
+        return getActivePromotions(shopId, customerId, phone, latitude, longitude, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Promotion> getActivePromotions(Long shopId, Long customerId, String phone,
+                                                BigDecimal latitude, BigDecimal longitude, String category) {
         List<Promotion> allPromotions;
 
         if (shopId != null) {
             allPromotions = promotionRepository.findActiveByShopId(shopId, LocalDateTime.now());
         } else {
             allPromotions = promotionRepository.findAllPublicActive(LocalDateTime.now());
-            allPromotions = filterByShopProximity(allPromotions, latitude, longitude);
+            allPromotions = filterByShopProximity(allPromotions, latitude, longitude, category);
         }
 
         // If no user identifiers provided, return all promotions (for unauthenticated users)
@@ -293,21 +299,27 @@ public class PromotionService {
      * without duplicating the distance math.
      */
     public List<Promotion> filterPromotionsByShopProximity(List<Promotion> promotions, Double latitude, Double longitude) {
+        return filterPromotionsByShopProximity(promotions, latitude, longitude, null);
+    }
+
+    public List<Promotion> filterPromotionsByShopProximity(List<Promotion> promotions, Double latitude, Double longitude, String category) {
         BigDecimal lat = latitude != null ? BigDecimal.valueOf(latitude) : null;
         BigDecimal lng = longitude != null ? BigDecimal.valueOf(longitude) : null;
-        return filterByShopProximity(promotions, lat, lng);
+        return filterByShopProximity(promotions, lat, lng, category);
     }
 
     /**
      * Drops promotions tied to a shop the customer isn't actually within delivery
      * range of, using that shop's own delivery radius as set on its profile
-     * (Shop.deliveryRadius) rather than one fixed cutoff for every shop.
+     * (Shop.deliveryRadius) rather than one fixed cutoff for every shop, and
+     * (when category is given, e.g. browsing the Grocery or Food listing page)
+     * promotions whose shop isn't in that category.
      * Platform-wide promotions (shopId == null) always pass through unfiltered.
      * A promo whose shop can't be resolved, has no radius on file, or whose
      * customer location isn't known yet, is dropped rather than shown with no
      * reliable way to judge distance.
      */
-    private List<Promotion> filterByShopProximity(List<Promotion> promotions, BigDecimal latitude, BigDecimal longitude) {
+    private List<Promotion> filterByShopProximity(List<Promotion> promotions, BigDecimal latitude, BigDecimal longitude, String category) {
         return promotions.stream()
                 .filter(promotion -> {
                     if (promotion.getShopId() == null) {
@@ -321,6 +333,9 @@ public class PromotionService {
                         return false;
                     }
                     Shop shop = shopOpt.get();
+                    if (category != null && !category.isEmpty() && !matchesCategory(shop, category)) {
+                        return false;
+                    }
                     BigDecimal radius = shop.getDeliveryRadius();
                     if (radius == null || radius.doubleValue() <= 0) {
                         return false;
@@ -328,6 +343,20 @@ public class PromotionService {
                     return geoLocationUtils.isWithinRadius(latitude, longitude, shop.getLatitude(), shop.getLongitude(), radius.doubleValue());
                 })
                 .collect(Collectors.toList());
+    }
+
+    // Mirrors ShopService's category filter so "food" matches both FOOD and
+    // RESTAURANT shops the same way it does on the shop listing screen.
+    private boolean matchesCategory(Shop shop, String category) {
+        String upperCategory = category.toUpperCase();
+        if ("FOOD".equals(upperCategory)) {
+            return shop.getBusinessType() == Shop.BusinessType.FOOD || shop.getBusinessType() == Shop.BusinessType.RESTAURANT;
+        }
+        try {
+            return shop.getBusinessType() == Shop.BusinessType.valueOf(upperCategory);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**

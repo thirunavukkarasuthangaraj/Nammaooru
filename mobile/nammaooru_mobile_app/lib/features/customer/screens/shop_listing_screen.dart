@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/promo_code_service.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -34,6 +35,8 @@ class ShopListingScreen extends StatefulWidget {
 class _ShopListingScreenState extends State<ShopListingScreen>
     with SingleTickerProviderStateMixin {
   final ShopApiService _shopApi = ShopApiService();
+  final PromoCodeService _promoService = PromoCodeService();
+  List<PromoCode> _promos = [];
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final VoiceSearchService _voiceSearchService = VoiceSearchService();
@@ -151,6 +154,25 @@ class _ShopListingScreenState extends State<ShopListingScreen>
       });
 
       _refreshRegistrationCtaVisibility(latitude, longitude);
+    }
+
+    _loadPromos(latitude, longitude);
+  }
+
+  /// Offer banners scoped to this category (e.g. only Grocery shop offers on
+  /// the Grocery listing page) and to shops within delivery range of here.
+  Future<void> _loadPromos(double latitude, double longitude) async {
+    try {
+      final promos = await _promoService.getActivePromotions(
+        latitude: latitude,
+        longitude: longitude,
+        category: widget.category,
+      );
+      if (mounted) {
+        setState(() => _promos = promos);
+      }
+    } catch (e) {
+      // Non-critical - the shop list still works without offer banners.
     }
   }
 
@@ -382,6 +404,7 @@ class _ShopListingScreenState extends State<ShopListingScreen>
         children: [
           _buildDeliverToBar(),
           _buildVillageSearchBar(),
+          if (_promos.isNotEmpty) _buildPromoBanner(),
           if (_isLocationBased && !_isLoading)
             Container(
               width: double.infinity,
@@ -644,6 +667,76 @@ class _ShopListingScreenState extends State<ShopListingScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPromoBanner() {
+    return SizedBox(
+      height: 110,
+      child: PageView.builder(
+        padEnds: false,
+        controller: PageController(viewportFraction: 0.9),
+        itemCount: _promos.length,
+        itemBuilder: (context, index) {
+          final promo = _promos[index];
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+            child: Material(
+              color: const Color(0xFF2E7D32),
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (promo.shopName != null)
+                            Text(
+                              promo.shopName!,
+                              style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            promo.formattedDiscount,
+                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            promo.title,
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (promo.imageUrl != null) ...[
+                      const SizedBox(width: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: promo.imageUrl!,
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => const SizedBox(width: 70, height: 70),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
