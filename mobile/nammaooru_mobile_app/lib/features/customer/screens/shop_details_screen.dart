@@ -899,11 +899,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   child: Column(
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F4F2),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isSelected
                                 ? VillageTheme.primaryGreen
@@ -911,7 +911,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             width: isSelected ? 1.5 : 1,
                           ),
                         ),
-                        child: ClipOval(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
                           child: hasImage
                               ? Image.network(
                                   ImageUrlHelper.getFullImageUrl(imageUrl),
