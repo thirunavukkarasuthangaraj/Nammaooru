@@ -418,61 +418,34 @@ class _ShopListingScreenState extends State<ShopListingScreen>
           ),
         ],
       ),
-      // Hidden entirely (not just the button) when an admin has marked this
-      // village as already having enough shops for this category - an empty
-      // white bar with shadow would look like a bug otherwise.
-      bottomNavigationBar: _hideRegistrationCta ? null : SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: AnimatedBuilder(
-            animation: _ctaPulseAnimation,
-            builder: (context, child) {
-              final t = _ctaPulseAnimation.value;
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          const Color(0xFFFF6D00).withOpacity(0.25 + 0.25 * t),
-                      blurRadius: 8 + 10 * t,
-                      spreadRadius: 1 + 2 * t,
-                    ),
-                  ],
+      // Hidden entirely when an admin has marked this village as already
+      // having enough shops for this category.
+      floatingActionButton: _hideRegistrationCta ? null : AnimatedBuilder(
+        animation: _ctaPulseAnimation,
+        builder: (context, child) {
+          final t = _ctaPulseAnimation.value;
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF6D00).withOpacity(0.25 + 0.25 * t),
+                  blurRadius: 8 + 10 * t,
+                  spreadRadius: 1 + 2 * t,
                 ),
-                child: child,
-              );
-            },
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _openShopRegistration,
-                icon: const Icon(Icons.add_business, size: 20),
-                label: const Text(
-                  'Register Your Shop',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6D00),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              ],
             ),
+            child: child,
+          );
+        },
+        child: FloatingActionButton.extended(
+          onPressed: _openShopRegistration,
+          backgroundColor: const Color(0xFFFF6D00),
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_business, size: 20),
+          label: const Text(
+            'Register Your Shop',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ),
       ),
