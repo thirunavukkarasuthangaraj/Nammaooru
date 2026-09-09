@@ -438,15 +438,12 @@ class _ShopListingScreenState extends State<ShopListingScreen>
             child: child,
           );
         },
-        child: FloatingActionButton.extended(
+        child: FloatingActionButton(
           onPressed: _openShopRegistration,
           backgroundColor: const Color(0xFFFF6D00),
           foregroundColor: Colors.white,
-          icon: const Icon(Icons.add_business, size: 20),
-          label: const Text(
-            'Register Your Shop',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          ),
+          tooltip: 'Register Your Shop',
+          child: const Icon(Icons.add_business),
         ),
       ),
     );
