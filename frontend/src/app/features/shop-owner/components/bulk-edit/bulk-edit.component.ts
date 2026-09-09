@@ -74,6 +74,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // hierarchy while the stored value stays the plain category name the
   // backend matches against.
   categoryDisplayMap: Map<string, string> = new Map();
+  // Category and Subcategory render as two separate short dropdowns per row
+  // instead of one combined list, mirroring Add Product.
+  rootCategoryOptions: { id: number; name: string }[] = [];
+  categoryChildrenMap: Map<string, string[]> = new Map();
+  categoryParentMap: Map<string, string> = new Map();
   loading = false;
   saving = false;
 
@@ -361,14 +366,26 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   private buildCategoryOptions(roots: ProductCategory[], productNames: string[]): void {
     const displayMap = new Map<string, string>();
     roots.forEach(c => displayMap.set(c.name, c.fullPath || c.name));
+    this.rootCategoryOptions = roots.map(c => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name));
 
     const withSubs = roots.filter(c => c.hasSubcategories);
     const finish = (subLists: ProductCategory[][]) => {
-      subLists.flat().forEach(sub => displayMap.set(sub.name, sub.fullPath || sub.name));
+      const childrenMap = new Map<string, string[]>();
+      const parentMap = new Map<string, string>();
+
+      withSubs.forEach((root, i) => {
+        const subNames = subLists[i].map(s => s.name);
+        subLists[i].forEach(sub => displayMap.set(sub.name, sub.fullPath || sub.name));
+        if (subNames.length) childrenMap.set(root.name, subNames);
+        subNames.forEach(subName => parentMap.set(subName, root.name));
+      });
+
       productNames.forEach(name => {
         if (!displayMap.has(name)) displayMap.set(name, name);
       });
 
+      this.categoryChildrenMap = childrenMap;
+      this.categoryParentMap = parentMap;
       this.categoryDisplayMap = displayMap;
       this.categories = [...displayMap.keys()].sort((a, b) =>
         (displayMap.get(a) || a).localeCompare(displayMap.get(b) || b));
@@ -387,6 +404,20 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         )
       )
     ).subscribe(finish);
+  }
+
+  getRootCategoryOf(product: BulkEditProduct): string {
+    const cat = product.category || '';
+    return this.categoryParentMap.get(cat) || cat;
+  }
+
+  getSubcategoryOptions(product: BulkEditProduct): string[] {
+    return this.categoryChildrenMap.get(this.getRootCategoryOf(product)) || [];
+  }
+
+  getSubcategoryValue(product: BulkEditProduct): string {
+    const cat = product.category || '';
+    return this.categoryParentMap.has(cat) ? cat : '';
   }
 
   categoryLabel(name: string): string {
@@ -525,36 +556,72 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.markModified(product);
   }
 
-  onCategoryDropdownChange(product: BulkEditProduct, selectElement: HTMLSelectElement): void {
+  onRootCategoryDropdownChange(product: BulkEditProduct, selectElement: HTMLSelectElement): void {
     const value = selectElement.value;
     if (value === '__NEW__') {
-      // Reset dropdown to previous value
-      selectElement.value = product.category || '';
-
-      const dialogRef = this.dialog.open(CategoryCreateDialogComponent, {
-        width: '420px',
-        maxWidth: '95vw',
-        data: { existingCategories: this.categories },
-        disableClose: false
-      });
-
-      dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
-        if (result?.name) {
-          if (!this.categories.includes(result.name)) {
-            this.categories.push(result.name);
-            this.categories.sort();
-          }
-          product.category = result.name;
-          this.markModified(product);
-          // Update cache
-          try {
-            localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
-          } catch (e) {}
-        }
-      });
-    } else {
-      this.onCategoryFieldChange(product, value);
+      selectElement.value = this.getRootCategoryOf(product);
+      this.openCategoryDialogForRow(product);
+      return;
     }
+    // Switching the category clears any subgroup that belonged to the old one.
+    this.onCategoryFieldChange(product, value);
+  }
+
+  onSubcategoryDropdownChange(product: BulkEditProduct, selectElement: HTMLSelectElement): void {
+    const value = selectElement.value;
+    if (value === '__NEW__') {
+      selectElement.value = this.getSubcategoryValue(product);
+      this.openCategoryDialogForRow(product, this.getRootCategoryOf(product));
+      return;
+    }
+    this.onCategoryFieldChange(product, value || this.getRootCategoryOf(product));
+  }
+
+  // Shared by both the Category and Subcategory "+ Add New" options.
+  // presetRootName scopes the new entry under that root (subgroup creation);
+  // omit it to create a new top-level category.
+  private openCategoryDialogForRow(product: BulkEditProduct, presetRootName?: string): void {
+    const presetRoot = presetRootName ? this.rootCategoryOptions.find(r => r.name === presetRootName) : undefined;
+
+    const dialogRef = this.dialog.open(CategoryCreateDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      data: {
+        existingCategories: this.categories,
+        parentOptions: this.rootCategoryOptions,
+        defaultParentId: presetRoot?.id ?? null
+      },
+      disableClose: false
+    });
+
+    dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
+      if (!result?.name) return;
+
+      const parent = result.parentId ? this.rootCategoryOptions.find(r => r.id === result.parentId) : undefined;
+
+      if (!this.categories.includes(result.name)) {
+        this.categories.push(result.name);
+      }
+      this.categoryDisplayMap.set(result.name, parent ? `${parent.name} > ${result.name}` : result.name);
+      this.categories.sort((a, b) => (this.categoryDisplayMap.get(a) || a).localeCompare(this.categoryDisplayMap.get(b) || b));
+      this.filteredCategories = this.categories;
+
+      if (parent) {
+        const children = this.categoryChildrenMap.get(parent.name) || [];
+        children.push(result.name);
+        this.categoryChildrenMap.set(parent.name, children);
+        this.categoryParentMap.set(result.name, parent.name);
+      } else {
+        this.rootCategoryOptions.push({ id: result.id || -(Date.now()), name: result.name });
+        this.rootCategoryOptions.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      this.onCategoryFieldChange(product, result.name);
+
+      try {
+        localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
+      } catch (e) {}
+    });
   }
 
   private markModified(product: BulkEditProduct): void {

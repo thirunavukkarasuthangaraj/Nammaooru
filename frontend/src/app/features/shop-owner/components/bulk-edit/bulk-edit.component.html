@@ -114,6 +114,7 @@
             <th class="col-image">IMG</th>
             <th class="col-product-name">PRODUCT NAME</th>
             <th class="col-category">CATEGORY</th>
+            <th class="col-subcategory">SUBCATEGORY</th>
             <th class="col-tamil-name">TAMIL NAME</th>
             <th class="col-sku">SKU</th>
             <th class="col-price">PRICE</th>
@@ -210,14 +211,30 @@
             <td class="col-category">
               <select class="cell-input category-dropdown"
                       [class.modified]="isCellModified(product, 'category')"
-                      [value]="product.category || ''"
-                      (change)="onCategoryDropdownChange(product, $any($event.target))">
+                      [value]="getRootCategoryOf(product)"
+                      (change)="onRootCategoryDropdownChange(product, $any($event.target))">
                 <option value="">-</option>
-                <option *ngFor="let cat of categories" [value]="cat" [selected]="product.category === cat">
-                  {{ categoryLabel(cat) }}
+                <option *ngFor="let root of rootCategoryOptions" [value]="root.name" [selected]="getRootCategoryOf(product) === root.name">
+                  {{ root.name }}
                 </option>
                 <option value="__NEW__" style="color: #4caf50; font-weight: bold;">+ Add New Category</option>
               </select>
+            </td>
+
+            <!-- Subcategory (Editable Dropdown, scoped to the row's Category) -->
+            <td class="col-subcategory">
+              <select class="cell-input category-dropdown"
+                      *ngIf="getSubcategoryOptions(product).length"
+                      [class.modified]="isCellModified(product, 'category')"
+                      [value]="getSubcategoryValue(product)"
+                      (change)="onSubcategoryDropdownChange(product, $any($event.target))">
+                <option value="">None</option>
+                <option *ngFor="let sub of getSubcategoryOptions(product)" [value]="sub" [selected]="getSubcategoryValue(product) === sub">
+                  {{ sub }}
+                </option>
+                <option value="__NEW__" style="color: #4caf50; font-weight: bold;">+ Add New Subcategory</option>
+              </select>
+              <span *ngIf="!getSubcategoryOptions(product).length" class="no-subcategory">-</span>
             </td>
 
             <!-- Tamil Name (Editable with Translate Link) -->
