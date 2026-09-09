@@ -274,12 +274,12 @@ public class ShopProductService {
         if (request.getBarcode() != null) {
             String newBarcode = request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim();
 
-            // Check for duplicate barcode (only if setting a non-null value)
-            if (newBarcode != null) {
-                boolean barcodeExists = masterProductRepository.existsByBarcodeAndIdNot(newBarcode, masterProduct.getId());
-                if (barcodeExists) {
-                    throw new RuntimeException("Barcode already exists: " + newBarcode + ". Please use a unique barcode.");
-                }
+            // Scoped to this shop - the same barcode is a normal, common
+            // occurrence across different shops' independent catalogs and
+            // must not block one shop just because another already used it.
+            if (newBarcode != null
+                    && shopProductRepository.existsByShopIdAndMasterBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
             }
 
             masterProduct.setBarcode(newBarcode);
@@ -465,12 +465,21 @@ public class ShopProductService {
 
         // Get shop before updating the product
         Shop shop = shopProduct.getShop();
+        Long masterProductId = shopProduct.getMasterProduct().getId();
 
         // Hard delete: order_items keep their productName/price snapshot (FK is nullable),
         // combo items referencing this product are removed, images cascade on delete
         int detachedOrderItems = shopProductRepository.detachOrderItemsFromProduct(productId);
         int removedComboItems = shopProductRepository.deleteComboItemsForProduct(productId);
         shopProductRepository.delete(shopProduct);
+
+        // If no other shop still carries this master product, delete it too -
+        // otherwise its barcode/SKU stay permanently "taken" for every shop, even
+        // though the product that used them is gone.
+        if (shopProductRepository.countByMasterProductId(masterProductId) == 0) {
+            masterProductRepository.deleteById(masterProductId);
+            log.info("Deleted orphaned master product {} (no shops reference it after removal)", masterProductId);
+        }
 
         // Update shop's product count
         updateShopProductCount(shop);
@@ -931,16 +940,13 @@ public class ShopProductService {
             masterProductUpdated = true;
         }
 
-        // Update barcode on master product (with duplicate validation)
+        // Update barcode on master product (with duplicate validation, scoped to this shop)
         if (request.getBarcode() != null) {
             String newBarcode = request.getBarcode().trim().isEmpty() ? null : request.getBarcode().trim();
 
-            // Check for duplicate barcode (only if setting a non-null value)
-            if (newBarcode != null) {
-                boolean barcodeExists = masterProductRepository.existsByBarcodeAndIdNot(newBarcode, masterProduct.getId());
-                if (barcodeExists) {
-                    throw new RuntimeException("Barcode already exists: " + newBarcode + ". Please use a unique barcode.");
-                }
+            if (newBarcode != null
+                    && shopProductRepository.existsByShopIdAndMasterBarcodeAndIdNot(shopId, newBarcode, productId)) {
+                throw new RuntimeException("Barcode '" + newBarcode + "' already exists in this shop. Please use a unique barcode.");
             }
 
             masterProduct.setBarcode(newBarcode);
