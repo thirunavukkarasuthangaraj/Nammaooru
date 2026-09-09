@@ -1789,12 +1789,20 @@ public class OrderService {
         validateOnlinePaymentAllowed(Order.PaymentMethod.valueOf(request.getPaymentMethod()), shop);
 
         // For home delivery, the delivery address must be within the shop's delivery radius.
-        // Checked before any stock is reduced. Skipped when coordinates are unavailable
-        // (older app versions don't send them).
+        // Checked before any stock is reduced. Fails closed: if we can't verify the
+        // distance (missing address or shop coordinates) the order is rejected rather
+        // than silently let through - that gap previously let orders through to shops
+        // far outside their delivery range.
         CustomerOrderRequest.DeliveryAddressRequest addr = request.getDeliveryAddress();
-        if ("HOME_DELIVERY".equals(deliveryType) && addr != null
-                && addr.getLatitude() != null && addr.getLongitude() != null
-                && shop.getLatitude() != null && shop.getLongitude() != null) {
+        if ("HOME_DELIVERY".equals(deliveryType)) {
+            if (addr == null || addr.getLatitude() == null || addr.getLongitude() == null) {
+                throw new RuntimeException(
+                        "Unable to verify your delivery address location. Please re-select your address using the location picker and try again.");
+            }
+            if (shop.getLatitude() == null || shop.getLongitude() == null) {
+                throw new RuntimeException(
+                        shop.getName() + " has not set up its location yet, so delivery distance can't be verified. Please contact the shop or choose another shop.");
+            }
             double radiusKm = shop.getDeliveryRadius() != null ? shop.getDeliveryRadius().doubleValue() : 5.0;
             boolean withinRadius = geoLocationUtils.isWithinRadius(
                     shop.getLatitude(), shop.getLongitude(),
