@@ -64,7 +64,7 @@ import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineC
                   <mat-label>Category</mat-label>
                   <mat-select formControlName="category" (selectionChange)="onCategorySelectChange($event.value)">
                     <mat-option *ngFor="let category of productCategories" [value]="category.id">
-                      {{ category.name }}
+                      {{ category.fullPath || category.name }}
                     </mat-option>
                     <mat-option [value]="'__NEW__'" class="add-new-category-option">
                       <mat-icon>add</mat-icon> Add New Category
@@ -767,7 +767,7 @@ export class AddProductComponent implements OnInit {
 
   private cacheCategories(categories: ProductCategory[]): void {
     try {
-      const toCache = categories.map(c => ({ id: c.id, name: c.name, slug: c.slug }));
+      const toCache = categories.map(c => ({ id: c.id, name: c.name, slug: c.slug, fullPath: c.fullPath }));
       localStorage.setItem('cached_product_categories', JSON.stringify(toCache));
       // Also cache names list for edit dialog
       const names = categories.map(c => c.name).filter(n => !!n);
@@ -790,7 +790,7 @@ export class AddProductComponent implements OnInit {
             slug: c.slug || c.name.toLowerCase().replace(/\s+/g, '-'),
             parentId: undefined,
             parentName: undefined,
-            fullPath: c.name,
+            fullPath: c.fullPath || c.name,
             isActive: true,
             sortOrder: index,
             iconUrl: undefined,
@@ -830,19 +830,52 @@ export class AddProductComponent implements OnInit {
     this.categoryService.getCategories(undefined, true, undefined, 0, 200).subscribe({
       next: (page) => {
         if (page && page.content && page.content.length > 0) {
-          this.productCategories = page.content;
-          this.cacheCategories(this.productCategories);
-          console.log('Loaded', this.productCategories.length, 'categories from API');
+          this.loadSubcategoriesFor(page.content);
         } else {
           this.loadCategoriesFallback();
+          this.isLoading = false;
         }
-        this.isLoading = false;
       },
       error: (err) => {
         console.warn('Failed to load categories from API:', err);
         this.loadCategoriesFallback();
         this.isLoading = false;
       }
+    });
+  }
+
+  // Root categories only show a "Category*" picker - subgroups shop owners create
+  // (e.g. Rice Bag, Loose Rice under Rice) need to be selectable too, so fetch each
+  // root's children and flatten them in right after their parent.
+  private loadSubcategoriesFor(roots: ProductCategory[]): void {
+    const withSubs = roots.filter(c => c.hasSubcategories);
+    if (withSubs.length === 0) {
+      this.productCategories = roots;
+      this.cacheCategories(this.productCategories);
+      this.isLoading = false;
+      return;
+    }
+
+    forkJoin(
+      withSubs.map(root =>
+        this.categoryService.getSubcategories(root.id, true).pipe(
+          catchError(() => of([] as ProductCategory[]))
+        )
+      )
+    ).subscribe(subLists => {
+      const flat: ProductCategory[] = [];
+      const subsByParent = new Map<number, ProductCategory[]>();
+      withSubs.forEach((root, i) => subsByParent.set(root.id, subLists[i]));
+
+      roots.forEach(root => {
+        flat.push(root);
+        (subsByParent.get(root.id) || []).forEach(sub => flat.push(sub));
+      });
+
+      this.productCategories = flat;
+      this.cacheCategories(this.productCategories);
+      console.log('Loaded', this.productCategories.length, 'categories (incl. subgroups) from API');
+      this.isLoading = false;
     });
   }
 

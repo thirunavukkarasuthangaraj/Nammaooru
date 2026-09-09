@@ -2,8 +2,9 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
-import { Subject } from 'rxjs';
-import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, forkJoin, of } from 'rxjs';
+import { takeUntil, debounceTime, distinctUntilChanged, catchError } from 'rxjs/operators';
+import { ProductCategory } from '../../../../core/models/product.model';
 import { environment } from '../../../../../environments/environment';
 import { OfflineStorageService, CachedProduct } from '../../../../core/services/offline-storage.service';
 import { VersionService } from '../../../../core/services/version.service';
@@ -69,6 +70,10 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   categories: string[] = [];
   filteredCategories: string[] = [];
   categoryFilterText = '';
+  // Subgroup name -> "Parent > Subgroup" for display, so the dropdown shows
+  // hierarchy while the stored value stays the plain category name the
+  // backend matches against.
+  categoryDisplayMap: Map<string, string> = new Map();
   loading = false;
   saving = false;
 
@@ -339,10 +344,9 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     // Master category list (includes newly created categories with no products assigned yet)
     this.categoryService.getCategories(undefined, true, undefined, 0, 500).subscribe({
       next: (page) => {
-        const masterNames = (page.content || []).map(c => c.name);
+        const roots = page.content || [];
         const productNames = this.products.map(p => p.category).filter(Boolean) as string[];
-        this.categories = [...new Set([...masterNames, ...productNames])].sort();
-        this.filteredCategories = this.categories;
+        this.buildCategoryOptions(roots, productNames);
       },
       error: () => {
         // Fall back to categories in use if the master list can't be fetched
@@ -350,6 +354,43 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         this.filteredCategories = this.categories;
       }
     });
+  }
+
+  // Fetches subgroups for every root category that has them, so subgroups a
+  // shop owner created (e.g. Rice Bag under Rice) are selectable here too.
+  private buildCategoryOptions(roots: ProductCategory[], productNames: string[]): void {
+    const displayMap = new Map<string, string>();
+    roots.forEach(c => displayMap.set(c.name, c.fullPath || c.name));
+
+    const withSubs = roots.filter(c => c.hasSubcategories);
+    const finish = (subLists: ProductCategory[][]) => {
+      subLists.flat().forEach(sub => displayMap.set(sub.name, sub.fullPath || sub.name));
+      productNames.forEach(name => {
+        if (!displayMap.has(name)) displayMap.set(name, name);
+      });
+
+      this.categoryDisplayMap = displayMap;
+      this.categories = [...displayMap.keys()].sort((a, b) =>
+        (displayMap.get(a) || a).localeCompare(displayMap.get(b) || b));
+      this.filteredCategories = this.categories;
+    };
+
+    if (withSubs.length === 0) {
+      finish([]);
+      return;
+    }
+
+    forkJoin(
+      withSubs.map(root =>
+        this.categoryService.getSubcategories(root.id, true).pipe(
+          catchError(() => of([] as ProductCategory[]))
+        )
+      )
+    ).subscribe(finish);
+  }
+
+  categoryLabel(name: string): string {
+    return this.categoryDisplayMap.get(name) || name;
   }
 
   /** Filters the Category autocomplete options as the user types directly in the field. */

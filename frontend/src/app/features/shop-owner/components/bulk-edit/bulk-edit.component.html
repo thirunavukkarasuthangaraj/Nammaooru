@@ -41,7 +41,7 @@
         <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryChange($event.option.value)">
           <mat-option value="">All Categories</mat-option>
           <mat-option *ngFor="let category of filteredCategories" [value]="category">
-            {{ category }}
+            {{ categoryLabel(category) }}
           </mat-option>
           <mat-option *ngIf="categoryFilterText && filteredCategories.length === 0" disabled>
             No categories match "{{ categoryFilterText }}"
@@ -214,7 +214,7 @@
                       (change)="onCategoryDropdownChange(product, $any($event.target))">
                 <option value="">-</option>
                 <option *ngFor="let cat of categories" [value]="cat" [selected]="product.category === cat">
-                  {{ cat }}
+                  {{ categoryLabel(cat) }}
                 </option>
                 <option value="__NEW__" style="color: #4caf50; font-weight: bold;">+ Add New Category</option>
               </select>
