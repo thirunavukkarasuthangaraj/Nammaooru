@@ -5,6 +5,7 @@ import '../../../core/services/address_service.dart';
 import '../../../core/services/location_service.dart';
 import '../screens/address_management_screen.dart';
 import '../screens/google_maps_location_picker_screen.dart';
+import 'location_search_sheet.dart';
 
 class AddressSelectionDialog extends StatefulWidget {
   final String? currentLocation;
@@ -246,6 +247,103 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                         ),
                         const Icon(Icons.arrow_forward_ios,
                             color: VillageTheme.primaryGreen, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Search by village/town name - looks up the shop network's
+                // own known locations (e.g. "Mittur") alongside the geocoder,
+                // so small villages a plain address form can't resolve still
+                // work here instead of silently falling back to a wrong
+                // default location.
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(dialogContext).pop();
+                    await Future<void>.delayed(
+                        const Duration(milliseconds: 150));
+                    if (!context.mounted) return;
+                    final result = await LocationSearchSheet.show(context);
+                    if (result == null) return;
+                    if (result['useCurrentLocation'] == true) {
+                      LocationService.clearManualPosition();
+                      final position =
+                          await LocationService.instance.getCurrentPosition();
+                      if (position?.latitude == null ||
+                          position?.longitude == null) {
+                        return;
+                      }
+                      final address =
+                          await LocationService.instance.getAddressFromCoordinates(
+                        position!.latitude!,
+                        position.longitude!,
+                      );
+                      final label = address != null
+                          ? '${address['locality'] ?? ''}${address['administrativeArea'] != null ? ', ${address['administrativeArea']}' : ''}'
+                          : 'Current location';
+                      widget.onLocationSelected(
+                          label.isNotEmpty ? label : 'Current location');
+                    } else {
+                      final latitude = result['latitude'] as double;
+                      final longitude = result['longitude'] as double;
+                      final name = result['name'] as String;
+                      LocationService.setManualPosition(latitude, longitude);
+                      LocationService.manualLocationLabel = name;
+                      widget.onLocationSelected(name);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.orange, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.orange.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.search,
+                              color: Colors.orange, size: 32),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Search Location',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Find your village or town by name',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios,
+                            color: Colors.orange, size: 16),
                       ],
                     ),
                   ),

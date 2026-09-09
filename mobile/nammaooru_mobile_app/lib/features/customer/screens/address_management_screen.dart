@@ -5,6 +5,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../services/address_api_service.dart';
+import '../../../services/shop_api_service.dart';
 import 'google_maps_location_picker_screen.dart';
 import '../../../core/services/address_service.dart';
 import '../widgets/address_selection_dialog.dart';
@@ -1278,18 +1279,47 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 
   /// Tries each candidate query in order (most to least specific) and returns
-  /// the first one that geocodes successfully, or null if all fail.
-  Future<Location?> _geocodeWithFallbacks(List<String> candidates) async {
+  /// the first one that geocodes successfully. Small villages (e.g. "Mittur")
+  /// often aren't in the geocoder's index at all, even though they're a
+  /// known shop location - so once every candidate fails there, the same
+  /// candidates are tried against the shop network's own locations (the
+  /// same source LocationSearchSheet uses) before finally giving up. A
+  /// silent Chennai-default fallback was worse than showing no result: it
+  /// broke delivery-radius checks for that address forever with no sign
+  /// anything was wrong.
+  Future<({double latitude, double longitude})?> _geocodeWithFallbacks(
+      List<String> candidates) async {
     for (final candidate in candidates) {
       if (candidate.trim().isEmpty) continue;
       try {
         final locations = await locationFromAddress(candidate);
         if (locations.isNotEmpty) {
           print('✅ Geocoded "$candidate" to: ${locations.first.latitude}, ${locations.first.longitude}');
-          return locations.first;
+          return (
+            latitude: locations.first.latitude,
+            longitude: locations.first.longitude
+          );
         }
       } catch (e) {
         print('⚠️ Geocoding failed for "$candidate": $e');
+      }
+    }
+
+    for (final candidate in candidates) {
+      if (candidate.trim().isEmpty) continue;
+      try {
+        final matches = await ShopApiService().searchShopLocations(candidate);
+        if (matches.isNotEmpty) {
+          final match = matches.first;
+          print('✅ Resolved "$candidate" via shop locations to: '
+              '${match['latitude']}, ${match['longitude']}');
+          return (
+            latitude: match['latitude'] as double,
+            longitude: match['longitude'] as double
+          );
+        }
+      } catch (e) {
+        print('⚠️ Shop location lookup failed for "$candidate": $e');
       }
     }
     return null;

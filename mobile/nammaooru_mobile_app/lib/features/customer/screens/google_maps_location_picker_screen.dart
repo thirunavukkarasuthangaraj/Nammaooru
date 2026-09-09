@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart' as loc;
 import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import '../../../core/services/location_service.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../core/utils/helpers.dart';
-import '../../../core/services/delivery_location_service.dart';
+import '../../../services/shop_api_service.dart';
 import '../widgets/save_address_dialog.dart';
 
 class GoogleMapsLocationPickerScreen extends StatefulWidget {
@@ -59,6 +56,17 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
   List<Map<String, dynamic>> _searchSuggestions = [];
   bool _showSuggestions = false;
   bool _isMapMoving = false; // Track when user is moving the map
+
+  // Hybrid (satellite + roads) shows real terrain/houses where Google's
+  // vector map has little to no road data for a village — plain vector
+  // view is the more familiar default, so this is opt-in via a toggle.
+  MapType _mapType = MapType.normal;
+
+  void _toggleMapType() {
+    setState(() {
+      _mapType = _mapType == MapType.normal ? MapType.hybrid : MapType.normal;
+    });
+  }
 
   @override
   void initState() {
@@ -193,26 +201,56 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
         print('  - Village: $village');
         print('  - City: $city');
 
+        String state = address['administrativeArea'] ?? '';
+        String pincode = address['postalCode'] ?? '';
+
+        // Google's on-device geocoder frequently returns no PIN code at all
+        // for rural coordinates. Rather than silently guessing a fixed
+        // default pincode (wrong for most of the delivery area), ask our own
+        // shop network for the nearest registered shop's city/state/pincode.
+        if (pincode.isEmpty) {
+          final nearest = await ShopApiService().getNearestShopLocation(
+            latitude: latitude,
+            longitude: longitude,
+          );
+          if (nearest != null) {
+            pincode = nearest['postalCode'] ?? pincode;
+            if (state.isEmpty) state = nearest['state'] ?? state;
+          }
+        }
+
+        if (!mounted) return;
         setState(() {
           _selectedAddress = fullAddress.isNotEmpty ? fullAddress : 'Selected Location';
           _selectedStreet = street;
           _selectedVillage = village;
           _selectedCity = city;
-          _selectedState = address['administrativeArea'] ?? 'Tamil Nadu';
-          _selectedPincode = address['postalCode'] ?? '635601';
+          _selectedState = state.isNotEmpty ? state : 'Tamil Nadu';
+          _selectedPincode = pincode;
           _addressController.text = _selectedAddress;
         });
       }
     } catch (e) {
       print('Error getting address: $e');
-      // Set fallback values if address lookup fails
+      // Reverse geocoding failed entirely — still try the shop-network
+      // fallback for a pincode before giving up, instead of guessing one.
+      String pincode = '';
+      String state = '';
+      try {
+        final nearest = await ShopApiService()
+            .getNearestShopLocation(latitude: latitude, longitude: longitude);
+        if (nearest != null) {
+          pincode = nearest['postalCode'] ?? '';
+          state = nearest['state'] ?? '';
+        }
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _selectedAddress = 'Selected Location';
           _selectedCity = '';
           _selectedVillage = '';
-          _selectedState = 'Tamil Nadu';
-          _selectedPincode = '635601';
+          _selectedState = state.isNotEmpty ? state : 'Tamil Nadu';
+          _selectedPincode = pincode;
           _addressController.text = _selectedAddress;
         });
       }
@@ -361,86 +399,6 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     }
   }
 
-  void _onMapLongPress(LatLng position) {
-    // Show quick save dialog on long press (like Swiggy/Zomato)
-    _onMapTap(position);
-    _showQuickSaveDialog(position);
-  }
-
-  Future<void> _showQuickSaveDialog(LatLng position) async {
-    await Future.delayed(const Duration(milliseconds: 500)); // Wait for address to load
-
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.location_on,
-                color: VillageTheme.primaryGreen,
-                size: 32,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Save this location?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _selectedAddress.isNotEmpty
-                  ? _selectedAddress
-                  : 'Selected location on map',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _saveLocation();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: VillageTheme.primaryGreen,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Save'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   void _onSearchChanged(String query) {
     // Store user's original query (before it gets replaced with formatted address)
@@ -508,267 +466,208 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       _showSuggestions = false; // Hide while searching
     });
 
+    final suggestions = <Map<String, dynamic>>[];
+    final processedLocations = <String>{}; // Track unique lat/lng keys
+
+    // Use user's actual current location for distance calculation (not
+    // selected location). Best-effort — search still works without it.
+    double? currentLat;
+    double? currentLng;
     try {
-      // Use geocoding to search for locations
-      List<Location> locations = [];
-
-      // Try different search strategies - prioritize exact matches
-      try {
-        // Search for locations - try with a broader context first
-        print('Calling locationFromAddress with query: $query'); // Debug log
-
-        // Try searching without additional context first
-        try {
-          locations = await locationFromAddress(query).timeout(
-            const Duration(seconds: 5),
-            onTimeout: () => [],
-          );
-        } catch (e) {
-          print('First attempt failed: $e');
-          // If that fails, try with India context
-          locations = await locationFromAddress('$query, India').timeout(
-            const Duration(seconds: 5),
-            onTimeout: () => [],
-          );
-        }
-
-        print('Found ${locations.length} locations'); // Debug log
-
-        // Filter out irrelevant results that don't contain the search query
-        final filteredLocations = <Location>[];
-        for (final location in locations) {
-          try {
-            final placemarks = await placemarkFromCoordinates(
-              location.latitude,
-              location.longitude,
-            );
-
-            if (placemarks.isNotEmpty) {
-              // Add all locations - let user see all results from geocoding
-              // This makes search less restrictive and shows more places
-              filteredLocations.add(location);
-            }
-          } catch (e) {
-            // Skip this location if placemark lookup fails
-          }
-        }
-
-        locations = filteredLocations;
-
-      } catch (e) {
-        // Log the error for debugging
-        print('Error in locationFromAddress: $e');
-        locations = [];
-      }
-
-      if (locations.isNotEmpty && mounted) {
-        final suggestions = <Map<String, dynamic>>[];
-        final processedLocations = <String>{};  // Track unique locations
-
-        // Use user's actual current location for distance calculation (not selected location)
-        double? currentLat;
-        double? currentLng;
-
-        // Always try to get fresh current location for accurate distance
-        try {
-          final currentPos = await LocationService.instance.getCurrentPosition();
-          if (currentPos != null && currentPos.latitude != null && currentPos.longitude != null) {
-            currentLat = currentPos.latitude!;
-            currentLng = currentPos.longitude!;
-            _userActualLocation = currentPos; // Update stored location
-          }
-        } catch (e) {
-          // Use previously stored actual location if fresh location fails
-          if (_userActualLocation != null) {
-            currentLat = _userActualLocation!.latitude;
-            currentLng = _userActualLocation!.longitude;
-          } else {
-            // Use fallback location for distance calculation only
-            currentLat = _searchFallbackLat;
-            currentLng = _searchFallbackLng;
-          }
-        }
-
-        for (int i = 0; i < locations.length && suggestions.length < 10; i++) {
-          final location = locations[i];
-          try {
-            final placemarks = await placemarkFromCoordinates(
-              location.latitude,
-              location.longitude,
-            );
-
-            if (placemarks.isNotEmpty) {
-              final placemark = placemarks.first;
-
-              // Build location identifier
-              String businessName = query;
-              String locationArea = '';
-              String cityName = placemark.locality ?? '';
-
-              // Extract business/place name - show any match
-              String searchLower = query.toLowerCase();
-
-              if (placemark.name != null && placemark.name!.toLowerCase().contains(searchLower)) {
-                businessName = placemark.name!;
-              } else if (placemark.street != null && placemark.street!.toLowerCase().contains(searchLower)) {
-                businessName = placemark.street!;
-              } else if (placemark.subLocality != null && placemark.subLocality!.toLowerCase().contains(searchLower)) {
-                businessName = placemark.subLocality!;
-              } else if (placemark.locality != null && placemark.locality!.toLowerCase().contains(searchLower)) {
-                businessName = placemark.locality!;
-              }
-              // No need to skip - show all geocoding results
-
-              // Extract street name and area
-              String streetName = placemark.street ?? '';
-
-              // Extract area/location name (different from business name and street)
-              if (placemark.subLocality != null &&
-                  placemark.subLocality!.isNotEmpty &&
-                  placemark.subLocality != businessName &&
-                  placemark.subLocality != streetName) {
-                locationArea = placemark.subLocality!;
-              } else if (placemark.street != null &&
-                        placemark.street!.isNotEmpty &&
-                        placemark.street != businessName) {
-                locationArea = placemark.street!;
-              }
-
-              // Format display name with street - like "Apollo Hospital - Greams Road, Chennai"
-              String displayName;
-              if (businessName.toLowerCase().contains(query.toLowerCase())) {
-                // Business name matches search - show street if available
-                if (streetName.isNotEmpty && streetName != businessName) {
-                  displayName = '$businessName - $streetName, $cityName';
-                } else if (locationArea.isNotEmpty && locationArea != businessName) {
-                  displayName = '$businessName - $locationArea, $cityName';
-                } else {
-                  displayName = '$businessName - $cityName';
-                }
-              } else {
-                // Show street with area/city
-                if (streetName.isNotEmpty) {
-                  displayName = '$query - $streetName, $cityName';
-                } else if (locationArea.isNotEmpty) {
-                  displayName = '$query - $locationArea, $cityName';
-                } else {
-                  displayName = '$query - $cityName';
-                }
-              }
-
-              // Build full address
-              final address = _formatAddress(placemark);
-
-              // Check for duplicates
-              final locationKey = '${location.latitude.toStringAsFixed(4)}_${location.longitude.toStringAsFixed(4)}';
-              if (!processedLocations.contains(locationKey)) {
-                processedLocations.add(locationKey);
-
-                // Calculate distance from current location if available
-                double distance = 0.0;
-                if (currentLat != null && currentLng != null) {
-                  distance = _calculateDistance(
-                    currentLat,
-                    currentLng,
-                    location.latitude,
-                    location.longitude,
-                  );
-                } else {
-                  // Default distance if no current location available
-                  distance = 0.0;
-                }
-
-                // Calculate relevance score (exact match gets higher score)
-                int relevanceScore = 0;
-                String searchLower = query.toLowerCase();
-
-                if (businessName.toLowerCase().contains(searchLower)) {
-                  relevanceScore += 100;
-                }
-                if (businessName.toLowerCase().startsWith(searchLower)) {
-                  relevanceScore += 50;
-                }
-                if (streetName.toLowerCase().contains(searchLower)) {
-                  relevanceScore += 40;
-                }
-                if (locationArea.toLowerCase().contains(searchLower)) {
-                  relevanceScore += 30;
-                }
-
-                suggestions.add({
-                  'name': displayName,
-                  'full': address,
-                  'lat': location.latitude,
-                  'lng': location.longitude,
-                  'placemark': placemark,
-                  'street': streetName,
-                  'area': locationArea,
-                  'city': cityName,
-                  'distance': distance,
-                  'relevance': relevanceScore,
-                });
-              }
-            }
-          } catch (e) {
-            print('Error getting placemark: $e');
-          }
-        }
-
-        // Sort suggestions by relevance first, then by distance
-        suggestions.sort((a, b) {
-          int relevanceA = a['relevance'] ?? 0;
-          int relevanceB = b['relevance'] ?? 0;
-
-          // First sort by relevance (higher is better)
-          if (relevanceA != relevanceB) {
-            return relevanceB.compareTo(relevanceA);
-          }
-
-          // If same relevance, sort by distance (closer is better)
-          double distA = a['distance'] ?? double.infinity;
-          double distB = b['distance'] ?? double.infinity;
-          return distA.compareTo(distB);
-        });
-
-        // Add distance info to display names (only if we have user's location)
-        for (var suggestion in suggestions) {
-          double distance = suggestion['distance'] ?? 0;
-          String? distanceStr;
-          if (currentLat != null && currentLng != null && distance > 0) {
-            if (distance < 1) {
-              distanceStr = '${(distance * 1000).toStringAsFixed(0)} m';
-            } else {
-              distanceStr = '${distance.toStringAsFixed(1)} km';
-            }
-          }
-          suggestion['distanceStr'] = distanceStr;
-        }
-
-        setState(() {
-          _searchSuggestions = suggestions;
-          _showSuggestions = suggestions.isNotEmpty;
-          print('Set ${suggestions.length} suggestions, showing: $_showSuggestions'); // Debug log
-        });
-      } else {
-        // No results found
-        print('No locations found for query: $query'); // Debug log
-        setState(() {
-          _searchSuggestions = [];
-          _showSuggestions = false;
-        });
+      final currentPos = await LocationService.instance.getCurrentPosition();
+      if (currentPos != null && currentPos.latitude != null && currentPos.longitude != null) {
+        currentLat = currentPos.latitude!;
+        currentLng = currentPos.longitude!;
+        _userActualLocation = currentPos;
       }
     } catch (e) {
-      print('Error in _searchPlaces: $e'); // Better error logging
-      setState(() {
-        _searchSuggestions = [];
-        _showSuggestions = false;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSearching = false;
-        });
+      if (_userActualLocation != null) {
+        currentLat = _userActualLocation!.latitude;
+        currentLng = _userActualLocation!.longitude;
+      } else {
+        currentLat = _searchFallbackLat;
+        currentLng = _searchFallbackLng;
       }
+    }
+
+    void addSuggestion({
+      required String name,
+      required String full,
+      required double lat,
+      required double lng,
+      String street = '',
+      String area = '',
+      String city = '',
+      int relevance = 0,
+      bool isKnownVillage = false,
+    }) {
+      final locationKey = '${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}';
+      if (processedLocations.contains(locationKey)) return;
+      processedLocations.add(locationKey);
+
+      final distance = (currentLat != null && currentLng != null)
+          ? _calculateDistance(currentLat, currentLng, lat, lng)
+          : 0.0;
+
+      suggestions.add({
+        'name': name,
+        'full': full,
+        'lat': lat,
+        'lng': lng,
+        'street': street,
+        'area': area,
+        'city': city,
+        'distance': distance,
+        'relevance': relevance,
+        'isKnownVillage': isKnownVillage,
+      });
+    }
+
+    // Source 1: Google's geocoder — good for cities, streets, well-mapped areas.
+    try {
+      List<Location> locations = [];
+      try {
+        locations = await locationFromAddress(query).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => [],
+        );
+      } catch (e) {
+        locations = await locationFromAddress('$query, India').timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => [],
+        );
+      }
+
+      String searchLower = query.toLowerCase();
+
+      for (int i = 0; i < locations.length && suggestions.length < 10; i++) {
+        final location = locations[i];
+        try {
+          final placemarks = await placemarkFromCoordinates(
+            location.latitude,
+            location.longitude,
+          );
+          if (placemarks.isEmpty) continue;
+          final placemark = placemarks.first;
+
+          String businessName = query;
+          String locationArea = '';
+          String cityName = placemark.locality ?? '';
+
+          if (placemark.name != null && placemark.name!.toLowerCase().contains(searchLower)) {
+            businessName = placemark.name!;
+          } else if (placemark.street != null && placemark.street!.toLowerCase().contains(searchLower)) {
+            businessName = placemark.street!;
+          } else if (placemark.subLocality != null && placemark.subLocality!.toLowerCase().contains(searchLower)) {
+            businessName = placemark.subLocality!;
+          } else if (placemark.locality != null && placemark.locality!.toLowerCase().contains(searchLower)) {
+            businessName = placemark.locality!;
+          }
+
+          String streetName = placemark.street ?? '';
+          if (placemark.subLocality != null &&
+              placemark.subLocality!.isNotEmpty &&
+              placemark.subLocality != businessName &&
+              placemark.subLocality != streetName) {
+            locationArea = placemark.subLocality!;
+          } else if (placemark.street != null &&
+              placemark.street!.isNotEmpty &&
+              placemark.street != businessName) {
+            locationArea = placemark.street!;
+          }
+
+          String displayName;
+          if (businessName.toLowerCase().contains(searchLower)) {
+            if (streetName.isNotEmpty && streetName != businessName) {
+              displayName = '$businessName - $streetName, $cityName';
+            } else if (locationArea.isNotEmpty && locationArea != businessName) {
+              displayName = '$businessName - $locationArea, $cityName';
+            } else {
+              displayName = '$businessName - $cityName';
+            }
+          } else {
+            if (streetName.isNotEmpty) {
+              displayName = '$query - $streetName, $cityName';
+            } else if (locationArea.isNotEmpty) {
+              displayName = '$query - $locationArea, $cityName';
+            } else {
+              displayName = '$query - $cityName';
+            }
+          }
+
+          int relevanceScore = 0;
+          if (businessName.toLowerCase().contains(searchLower)) relevanceScore += 100;
+          if (businessName.toLowerCase().startsWith(searchLower)) relevanceScore += 50;
+          if (streetName.toLowerCase().contains(searchLower)) relevanceScore += 40;
+          if (locationArea.toLowerCase().contains(searchLower)) relevanceScore += 30;
+
+          addSuggestion(
+            name: displayName,
+            full: _formatAddress(placemark),
+            lat: location.latitude,
+            lng: location.longitude,
+            street: streetName,
+            area: locationArea,
+            city: cityName,
+            relevance: relevanceScore,
+          );
+        } catch (e) {
+          print('Error getting placemark: $e');
+        }
+      }
+    } catch (e) {
+      print('Error in locationFromAddress: $e');
+    }
+
+    // Source 2: this app's own shop/delivery-village database. Google's
+    // geocoder frequently has NO entry at all for small villages, so for
+    // rural queries this is often the only source that finds anything —
+    // always check it, not just as a fallback when geocoding fails.
+    try {
+      final shopMatches = await ShopApiService().searchShopLocations(query);
+      for (final match in shopMatches) {
+        final name = match['name'] as String;
+        addSuggestion(
+          name: name,
+          full: name,
+          lat: match['latitude'] as double,
+          lng: match['longitude'] as double,
+          area: name,
+          relevance: name.toLowerCase().contains(query.toLowerCase()) ? 90 : 20,
+          isKnownVillage: true,
+        );
+      }
+    } catch (e) {
+      print('Shop location search failed: $e');
+    }
+
+    // Sort by relevance first, then by distance
+    suggestions.sort((a, b) {
+      int relevanceA = a['relevance'] ?? 0;
+      int relevanceB = b['relevance'] ?? 0;
+      if (relevanceA != relevanceB) return relevanceB.compareTo(relevanceA);
+      double distA = a['distance'] ?? double.infinity;
+      double distB = b['distance'] ?? double.infinity;
+      return distA.compareTo(distB);
+    });
+
+    for (var suggestion in suggestions) {
+      double distance = suggestion['distance'] ?? 0;
+      String? distanceStr;
+      if (currentLat != null && currentLng != null && distance > 0) {
+        distanceStr = distance < 1
+            ? '${(distance * 1000).toStringAsFixed(0)} m'
+            : '${distance.toStringAsFixed(1)} km';
+      }
+      suggestion['distanceStr'] = distanceStr;
+    }
+
+    if (mounted) {
+      setState(() {
+        _searchSuggestions = suggestions;
+        _showSuggestions = suggestions.isNotEmpty;
+        _isSearching = false;
+      });
     }
   }
 
@@ -1103,6 +1002,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
             ),
             itemBuilder: (context, index) {
               final suggestion = _searchSuggestions[index];
+              final isKnownVillage = suggestion['isKnownVillage'] == true;
               return InkWell(
                 onTap: () => _selectSuggestion(suggestion),
                 child: Container(
@@ -1115,12 +1015,13 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: VillageTheme.primaryGreen.withOpacity(0.1),
+                          color: (isKnownVillage ? Colors.orange : VillageTheme.primaryGreen)
+                              .withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          Icons.location_on,
-                          color: VillageTheme.primaryGreen,
+                          isKnownVillage ? Icons.holiday_village : Icons.location_on,
+                          color: isKnownVillage ? Colors.orange.shade700 : VillageTheme.primaryGreen,
                           size: 20,
                         ),
                       ),
@@ -1142,6 +1043,31 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                             const SizedBox(height: 2),
                             Row(
                               children: [
+                                if (isKnownVillage) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: Colors.orange.shade300,
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Known village',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.orange.shade800,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
                                 if (suggestion['distanceStr'] != null) ...[
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -1289,7 +1215,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                 buildingsEnabled: true,
                 indoorViewEnabled: true,
                 trafficEnabled: false,
-                mapType: MapType.normal,
+                mapType: _mapType,
               ),
               // Center marker overlay
               Center(
@@ -1299,6 +1225,23 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                     Icons.location_on,
                     size: 40,
                     color: _isMapMoving ? Colors.grey.shade600 : VillageTheme.primaryGreen,
+                  ),
+                ),
+              ),
+              // Satellite/hybrid toggle — helps when a village has no road
+              // data on the plain map so there's nothing else to see.
+              Positioned(
+                bottom: 76,
+                right: 20,
+                child: FloatingActionButton.small(
+                  heroTag: "map_type_toggle",
+                  onPressed: _toggleMapType,
+                  backgroundColor: Colors.white,
+                  foregroundColor: VillageTheme.primaryGreen,
+                  elevation: 3,
+                  child: Icon(
+                    _mapType == MapType.normal ? Icons.satellite_alt_outlined : Icons.map_outlined,
+                    size: 20,
                   ),
                 ),
               ),
@@ -1332,98 +1275,131 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
 
 
   Widget _buildBottomActions() {
+    final canConfirm = _selectedAddress.isNotEmpty && !_isMapMoving;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: SafeArea(
+        top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Quick actions row
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _getCurrentLocation,
-                    icon: const Icon(Icons.my_location, size: 18),
-                    label: const Text('Current Location'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: VillageTheme.primaryGreen,
-                      side: BorderSide(color: VillageTheme.primaryGreen),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('Cancel'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.grey[700],
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Save button
+            _buildAddressPreview(),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _selectedAddress.isNotEmpty ? _saveLocation : null,
+                onPressed: canConfirm ? _saveLocation : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: VillageTheme.primaryGreen,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  disabledForegroundColor: Colors.grey.shade500,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 2,
+                  elevation: 0,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.bookmark_add, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      _selectedAddress.isNotEmpty
-                        ? 'Save Location'
-                        : 'Select a location to save',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  _isMapMoving ? 'Locating...' : 'Confirm Location',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // Zomato/Swiggy-style confirmation strip: bold locality on top, full
+  // detected address below in grey — read at a glance before confirming,
+  // instead of a raw comma-separated geocoder string.
+  Widget _buildAddressPreview() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: VillageTheme.primaryGreen.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.location_on,
+            color: VillageTheme.primaryGreen,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Delivering your order to',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              _isMapMoving
+                  ? Text(
+                      'Locating your address...',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        color: Colors.grey.shade400,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
+                  : Text(
+                      _selectedVillage.isNotEmpty
+                          ? _selectedVillage
+                          : (_selectedAddress.isNotEmpty
+                              ? _selectedAddress
+                              : 'Move the map to select a location'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+              if (!_isMapMoving && _selectedAddress.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  _selectedAddress,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: Colors.grey.shade600,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

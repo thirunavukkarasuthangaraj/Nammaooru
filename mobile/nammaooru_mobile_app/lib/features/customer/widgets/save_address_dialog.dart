@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/village_theme.dart';
-import '../../../core/services/delivery_location_service.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../services/address_api_service.dart';
-import '../../../core/services/address_service.dart';
 
 class SaveAddressDialog extends StatefulWidget {
   final double latitude;
@@ -36,8 +34,8 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
   final _flatHouseController = TextEditingController();
   final _floorController = TextEditingController();
   final _streetController = TextEditingController(); // Street input field
-  final _areaController = TextEditingController();
-  final _villageController = TextEditingController(); // Village input field
+  final _villageController =
+      TextEditingController(); // Area / Locality / Village (single field)
   final _landmarkController = TextEditingController();
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
@@ -62,23 +60,21 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
   }
 
   void _initializeFields() {
-    // Pre-fill fields with detected data
+    // Pre-fill fields with detected data. detectedAddress and detectedVillage
+    // are the same cleaned locality name from the map picker, so only one
+    // field is kept instead of showing the identical value twice.
     _streetController.text = widget.detectedStreet;
-    _areaController.text = widget.detectedAddress;
-    _villageController.text = widget.detectedVillage;
+    _villageController.text = widget.detectedVillage.isNotEmpty
+        ? widget.detectedVillage
+        : widget.detectedAddress;
     _cityController.text = widget.detectedCity;
     _stateController.text = widget.detectedState;
+    // Deliberately NOT falling back to a previously-used pincode here: a
+    // customer's last address could be in a different town/district, and
+    // silently reusing that pincode for an unrelated location (e.g. showing
+    // a Tirupattur pincode for a Chennai pin) is worse than leaving it blank
+    // and letting the required-field validation prompt for the real one.
     _pincodeController.text = widget.detectedPincode;
-
-    // If geocoding didn't give us a pincode, reuse the one the customer entered
-    // last time so they don't have to re-type it on every new address.
-    if (widget.detectedPincode.trim().isEmpty) {
-      AddressService.instance.getLastUsedPincode().then((saved) {
-        if (saved.isNotEmpty && _pincodeController.text.trim().isEmpty && mounted) {
-          setState(() => _pincodeController.text = saved);
-        }
-      });
-    }
   }
 
   @override
@@ -86,7 +82,6 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
     _flatHouseController.dispose();
     _floorController.dispose();
     _streetController.dispose();
-    _areaController.dispose();
     _villageController.dispose();
     _landmarkController.dispose();
     _cityController.dispose();
@@ -126,31 +121,11 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
         addressParts.add(_streetController.text.trim());
       }
 
-      if (_areaController.text.trim().isNotEmpty) {
-        addressParts.add(_areaController.text.trim());
-      }
-
       if (_villageController.text.trim().isNotEmpty) {
         addressParts.add(_villageController.text.trim());
       }
 
       String fullAddress = addressParts.join(', ');
-
-      // Send data in the format expected by backend
-      final addressData = {
-        'addressType': _selectedAddressType,
-        'flatHouse': _flatHouseController.text.trim(),
-        'floor': _floorController.text.trim(),
-        'street': _streetController.text.trim(),
-        'area': _areaController.text.trim(),
-        'village': _villageController.text.trim(),
-        'landmark': _landmarkController.text.trim(),
-        'latitude': widget.latitude,
-        'longitude': widget.longitude,
-        'city': _cityController.text.trim().isEmpty ? 'Chennai' : _cityController.text.trim(),
-        'state': _stateController.text.trim().isEmpty ? 'Tamil Nadu' : _stateController.text.trim(),
-        'pincode': _pincodeController.text.trim().isEmpty ? '600001' : _pincodeController.text.trim(),
-      };
 
       final result = await AddressApiService.addAddress(
         label: _selectedAddressType,
@@ -167,12 +142,6 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
         street: _streetController.text.trim(),
         village: _villageController.text.trim(),
       );
-
-      if (result['success']) {
-        // Remember this pincode so the next new-address form pre-fills it.
-        await AddressService.instance
-            .saveLastUsedPincode(_pincodeController.text.trim());
-      }
 
       if (mounted) {
         if (result['success']) {
@@ -232,26 +201,20 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
+                  const SizedBox(height: 16),
+                  _buildDetectedLocationPreview(),
                   const SizedBox(height: 20),
                   _buildOrderingForSection(),
-                  const SizedBox(height: 20),
-                  _buildAddressTypeSection(),
                   const SizedBox(height: 20),
                   _buildFlatHouseField(),
                   const SizedBox(height: 16),
                   _buildFloorField(),
                   const SizedBox(height: 16),
-                  _buildAreaField(),
-                  const SizedBox(height: 16),
-                  _buildStreetField(),
-                  const SizedBox(height: 16),
-                  _buildVillageField(),
-                  const SizedBox(height: 16),
                   _buildLandmarkField(),
                   const SizedBox(height: 16),
-                  _buildCityStateRow(),
-                  const SizedBox(height: 16),
-                  _buildPincodeField(),
+                  _buildAddressDetailsExpander(),
+                  const SizedBox(height: 20),
+                  _buildAddressTypeSection(),
                   const SizedBox(height: 24),
                   _buildSaveButton(),
                 ],
@@ -509,53 +472,106 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
     );
   }
 
-  Widget _buildAreaField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: const TextSpan(
-            text: 'Area / Sector / Locality ',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.black,
-              fontWeight: FontWeight.w400,
-            ),
-            children: [
-              TextSpan(
-                text: '*',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+  // Read-only echo of the pin-dropped location — lets the user confirm at a
+  // glance (Zomato/Swiggy pattern) instead of re-reading scattered form
+  // fields. To fix a wrong address they go back and move the pin, not edit
+  // text here.
+  Widget _buildDetectedLocationPreview() {
+    final parts = <String>[
+      if (widget.detectedStreet.isNotEmpty) widget.detectedStreet,
+      if (widget.detectedVillage.isNotEmpty) widget.detectedVillage,
+      if (widget.detectedCity.isNotEmpty &&
+          widget.detectedCity != widget.detectedVillage)
+        widget.detectedCity,
+    ];
+    final headline = widget.detectedVillage.isNotEmpty
+        ? widget.detectedVillage
+        : (widget.detectedAddress.isNotEmpty
+            ? widget.detectedAddress
+            : 'Selected location');
+    final subline = parts.join(', ');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: VillageTheme.primaryGreen.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: VillageTheme.primaryGreen.withOpacity(0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.location_on, color: VillageTheme.primaryGreen, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  headline,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                if (subline.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subline,
+                    style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Street / area / city / state / PIN, collapsed by default so the primary
+  // flow (house no. + landmark + save-as) reads clean like Zomato/Swiggy —
+  // still reachable for the rural addresses where geocoding gets it wrong.
+  Widget _buildAddressDetailsExpander() {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        // Auto-open when geocoding didn't resolve a locality or pincode —
+        // those fields are required, so they can't stay hidden in that case.
+        initiallyExpanded: _villageController.text.trim().isEmpty ||
+            _pincodeController.text.trim().isEmpty,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(top: 12),
+        title: Row(
+          children: [
+            Icon(Icons.edit_location_alt_outlined,
+                size: 16, color: Colors.grey.shade600),
+            const SizedBox(width: 6),
+            Text(
+              'Edit street, area, city & PIN',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _areaController,
-          style: const TextStyle(color: Colors.black),
-          decoration: InputDecoration(
-            hintText: 'Enter area/locality',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: VillageTheme.primaryGreen),
-            ),
-            contentPadding: const EdgeInsets.all(12),
-          ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Area is required';
-            }
-            return null;
-          },
+          ],
         ),
-      ],
+        children: [
+          _buildStreetField(),
+          const SizedBox(height: 16),
+          _buildVillageField(),
+          const SizedBox(height: 16),
+          _buildCityStateRow(),
+          const SizedBox(height: 16),
+          _buildPincodeField(),
+        ],
+      ),
     );
   }
 
@@ -800,12 +816,20 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Village',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black,
-            fontWeight: FontWeight.w400,
+        RichText(
+          text: const TextSpan(
+            text: 'Area / Locality / Village ',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black,
+              fontWeight: FontWeight.w400,
+            ),
+            children: [
+              TextSpan(
+                text: '*',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -813,7 +837,7 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
           controller: _villageController,
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
-            hintText: 'Enter village name',
+            hintText: 'Enter area / locality / village name',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -824,6 +848,12 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
             ),
             contentPadding: const EdgeInsets.all(12),
           ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Area / locality is required';
+            }
+            return null;
+          },
         ),
       ],
     );
