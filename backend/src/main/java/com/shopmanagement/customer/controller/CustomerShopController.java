@@ -18,8 +18,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController("customerShopControllerUnique")
 @RequestMapping("/api/customer")
@@ -100,10 +103,31 @@ public class CustomerShopController {
     }
 
     @GetMapping("/shops/{shopId}/categories")
-    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getShopCategories(@PathVariable Long shopId) {
-        log.info("Customer fetching categories for shop: {}", shopId);
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getShopCategories(
+            @PathVariable Long shopId,
+            @RequestParam(defaultValue = "false") boolean includeSubgroups) {
+        log.info("Customer fetching categories for shop: {} (includeSubgroups: {})", shopId, includeSubgroups);
 
-        List<String> categoryNames = shopProductService.getShopProductCategories(shopId);
+        List<String> categoryNames = new ArrayList<>(shopProductService.getShopProductCategories(shopId));
+
+        // Newer app versions ask for subgroups too, so a shop owner's freshly
+        // created subcategories (e.g. Rice Bag under Rice) show as filter chips
+        // even before any product is assigned to them. Old app versions don't
+        // send the flag and keep the products-only list.
+        if (includeSubgroups) {
+            Set<String> seen = categoryNames.stream()
+                    .map(String::toLowerCase)
+                    .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+            for (String categoryName : List.copyOf(categoryNames)) {
+                categoryRepository.findByNameIgnoreCase(categoryName).ifPresent(cat ->
+                        categoryRepository.findActiveSubcategoriesOrderedBySort(cat.getId()).forEach(sub -> {
+                            if (seen.add(sub.getName().toLowerCase())) {
+                                categoryNames.add(sub.getName());
+                            }
+                        }));
+            }
+        }
+
         List<CategoryResponse> categories = categoryNames.stream()
                 .map(categoryName -> createCategoryResponse(categoryName, shopId))
                 .sorted((c1, c2) -> {

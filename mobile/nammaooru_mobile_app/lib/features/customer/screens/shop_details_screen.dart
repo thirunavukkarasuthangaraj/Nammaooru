@@ -58,6 +58,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   List<CustomerCombo> _combos = []; // Store combos from API
   String? _selectedCategory;
   String? _selectedCategoryName; // Store category name for filtering
+  // Subgroups per rail category (parent id -> children from the API's
+  // parentId links). Selecting a subgroup chip narrows the parent's products;
+  // null subgroup selection = "All" = parent's own + every subgroup's.
+  Map<String, List<Map<String, dynamic>>> _subcategoriesByParent = {};
+  String? _selectedSubcategoryId;
+  String? _selectedSubcategoryName;
   // Home tab shows just the category grid (screen 1); tapping a category
   // switches to the product listing for it (screen 2), like a real navigation
   // even though it's implemented as one continuous screen.
@@ -185,7 +191,40 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           response['data'] != null) {
         final categoryList = response['data'] as List;
 
+        // Flat API list -> hierarchy: roots go in the rail/grid, subgroups go
+        // in a chip bar under their parent. A subgroup whose parent has no
+        // directly-assigned products still needs its parent visible, so
+        // synthesize that entry from the subgroup's parentId/parentName.
+        final roots = <Map<String, dynamic>>[];
+        final rootIds = <String>{};
+        final childrenByParent = <String, List<Map<String, dynamic>>>{};
+
+        for (final raw in categoryList) {
+          final cat = Map<String, dynamic>.from(raw as Map);
+          final parentId = cat['parentId']?.toString();
+          if (parentId == null || parentId.isEmpty) {
+            roots.add(cat);
+            rootIds.add(cat['id'].toString());
+          } else {
+            childrenByParent.putIfAbsent(parentId, () => []).add(cat);
+          }
+        }
+
+        for (final entry in childrenByParent.entries) {
+          if (!rootIds.contains(entry.key)) {
+            final parentName =
+                entry.value.first['parentName']?.toString() ?? 'Category';
+            roots.add({
+              'id': entry.key,
+              'name': parentName,
+              'displayName': parentName,
+            });
+            rootIds.add(entry.key);
+          }
+        }
+
         setState(() {
+          _subcategoriesByParent = childrenByParent;
           // Add "All Items" as first category
           _categories = [
             {
@@ -196,19 +235,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               'imageUrl': null,
               'color': '#4CAF50',
             },
-            ...categoryList,
+            ...roots,
           ];
           // Default to the maligai (essentials) category when the shop has
           // one; otherwise start on "All Items"
           Map<String, dynamic>? essentials;
-          for (final c in categoryList) {
+          for (final c in roots) {
             if (_categoryPriority(c['name']?.toString()) == 0) {
-              essentials = Map<String, dynamic>.from(c as Map);
+              essentials = c;
               break;
             }
           }
           _selectedCategory = essentials?['id']?.toString();
           _selectedCategoryName = essentials?['name']?.toString();
+          _selectedSubcategoryId = null;
+          _selectedSubcategoryName = null;
           _isLoadingCategories = false;
         });
         // Re-filter in case products finished loading before categories
@@ -392,12 +433,26 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     // Apply category filter if category is selected (and no search query)
     else if (_selectedCategoryName != null &&
         _selectedCategoryName!.isNotEmpty) {
+      // Names this selection covers: a chosen subgroup narrows to just that
+      // subgroup; otherwise the parent plus all its subgroups, so products
+      // assigned to "Rice Bag" still show under "Rice".
+      final Set<String> matchNames;
+      if (_selectedSubcategoryName != null) {
+        matchNames = {_selectedSubcategoryName!.toLowerCase()};
+      } else {
+        matchNames = {
+          _selectedCategoryName!.toLowerCase(),
+          ...(_subcategoriesByParent[_selectedCategory] ?? [])
+              .map((sub) => (sub['name']?.toString() ?? '').toLowerCase()),
+        };
+      }
       filteredProducts = filteredProducts.where((product) {
         final productCategoryName = product['masterProduct']?['category']
                 ?['name']
             ?.toString()
             .toLowerCase();
-        return productCategoryName == _selectedCategoryName!.toLowerCase();
+        return productCategoryName != null &&
+            matchNames.contains(productCategoryName);
       }).toList();
     }
 
@@ -508,7 +563,18 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       builder: (showcaseCtx) {
         WidgetsBinding.instance
             .addPostFrameCallback((_) => _startShopTourIfNeeded(showcaseCtx));
-        return Scaffold(
+        // System/browser back from the product list returns to the category
+        // grid (screen 1) instead of leaving the shop - mirrors the toolbar
+        // back arrow's behavior.
+        return WillPopScope(
+          onWillPop: () async {
+            if (_showCategoryDetail) {
+              setState(() => _showCategoryDetail = false);
+              return false;
+            }
+            return true;
+          },
+          child: Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       body: _isLoadingShop
           ? const Center(child: LoadingWidget())
@@ -676,6 +742,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         },
       ),
       floatingActionButtonLocation: const _RightFloatingButtonLocation(),
+          ),
         );
       },
     );
@@ -699,6 +766,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     setState(() {
       _selectedCategory = categoryId;
       _selectedCategoryName = categoryId == null ? null : categoryName;
+      _selectedSubcategoryId = null;
+      _selectedSubcategoryName = null;
       _filterProducts();
     });
     if (scrollToProducts) {
@@ -729,15 +798,32 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     Color(0xFF546E7A),
   ];
 
-  // Horizontal text-tab row of every category (like the reference design's
-  // For You / Fresh / Grocery tabs) - the active tab is bold with a green
-  // underline. Simpler and reads cleaner than icon chips or a sidebar.
-  Widget _buildCategoryTabRow() {
+  // DB category names arrive in mixed shouting-case ("DRY FRUITS", "Grocery",
+  // "VEGETABLES") - normalize to Title Case so the rail reads as one set.
+  // Tamil labels are left untouched.
+  String _titleCaseLabel(String value) {
+    if (value.trim().isEmpty) return value;
+    return value
+        .split(' ')
+        .map((word) => word.isEmpty
+            ? word
+            : word.length == 1
+                ? word.toUpperCase()
+                : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}')
+        .join(' ');
+  }
+
+  // Left rail of category tiles with images (like the reference design) -
+  // the shopper can switch categories without going back; the selected one
+  // gets a white background and green edge, and its name becomes the
+  // toolbar title.
+  Widget _buildCategoryRail() {
     final lang = Provider.of<LanguageProvider>(context);
+    final isTamil = lang.currentLanguage == 'ta';
 
     if (_isLoadingCategories) {
       return const SizedBox(
-        height: 44,
+        width: 88,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
@@ -763,50 +849,193 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
       child: SizedBox(
-        height: 44,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          itemCount: sortedCategories.length,
-          itemBuilder: (context, index) {
-            final category = sortedCategories[index];
-            final categoryId = category['id']?.toString();
-            final categoryName = category['name']?.toString();
-            final isSelected = _selectedCategory == categoryId;
-            final displayName = category['displayName']?.toString() ??
-                categoryName ??
-                'Category';
+        width: 88,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(color: Color(0xFFF7F8F7)),
+          child: ListView.builder(
+            padding: const EdgeInsets.only(top: 8, bottom: 90),
+            itemCount: sortedCategories.length,
+            itemBuilder: (context, index) {
+              final category = sortedCategories[index] as Map<String, dynamic>;
+              final categoryId = category['id']?.toString();
+              final categoryName = category['name']?.toString();
+              final isSelected = _selectedCategory == categoryId;
+              final englishName = _titleCaseLabel(
+                  category['displayName']?.toString() ??
+                      categoryName ??
+                      'Category');
+              final tamilName = category['displayNameTamil']?.toString();
+              final displayName =
+                  isTamil && tamilName != null && tamilName.isNotEmpty
+                      ? tamilName
+                      : englishName;
+              final imageUrl = category['imageUrl']?.toString();
+              final hasImage = imageUrl != null && imageUrl.trim().isNotEmpty;
 
-            return GestureDetector(
-              onTap: () => _selectCategory(categoryId, categoryName),
-              child: Container(
-                margin: const EdgeInsets.only(right: 20),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
+              return GestureDetector(
+                onTap: () => _selectCategory(categoryId, categoryName),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
                       color: isSelected
                           ? VillageTheme.primaryGreen
                           : Colors.transparent,
-                      width: 2.5,
+                      width: 1.5,
                     ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: VillageTheme.primaryGreen.withOpacity(0.18),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F4F2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? VillageTheme.primaryGreen
+                                : const Color(0xFFE2E7E4),
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: hasImage
+                              ? Image.network(
+                                  ImageUrlHelper.getFullImageUrl(imageUrl),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildRailImageFallback(
+                                          category, isSelected),
+                                )
+                              : _buildRailImageFallback(category, isSelected),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w600,
+                            color: isSelected
+                                ? VillageTheme.primaryGreen
+                                : const Color(0xFF41473F),
+                            height: 1.15,
+                          ),
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  displayName,
-                  style: TextStyle(
-                    color: isSelected
-                        ? VillageTheme.primaryGreen
-                        : Colors.grey[700],
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    fontSize: 14,
-                  ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRailImageFallback(
+      Map<String, dynamic> category, bool isSelected) {
+    return ColoredBox(
+      color: isSelected ? const Color(0xFFE8F5E9) : const Color(0xFFF1F4F2),
+      child: Center(
+        child: Icon(
+          category['id'] == null
+              ? Icons.storefront_rounded
+              : Icons.category_rounded,
+          size: 26,
+          color: isSelected ? VillageTheme.primaryGreen : Colors.grey[500],
+        ),
+      ),
+    );
+  }
+
+  // Horizontal subgroup chips for the selected category (All | Rice Bag |
+  // Millets ...) - only rendered when the category actually has subgroups.
+  Widget _buildSubcategoryChipRow() {
+    final subs = _subcategoriesByParent[_selectedCategory];
+    if (subs == null || subs.isEmpty) return const SizedBox.shrink();
+
+    final lang = Provider.of<LanguageProvider>(context);
+    final isTamil = lang.currentLanguage == 'ta';
+
+    final chips = <Map<String, String?>>[
+      {'id': null, 'name': null, 'label': isTamil ? 'அனைத்தும்' : 'All'},
+      ...subs.map((sub) {
+        final english = _titleCaseLabel(
+            sub['displayName']?.toString() ?? sub['name']?.toString() ?? '');
+        final tamil = sub['displayNameTamil']?.toString();
+        return {
+          'id': sub['id']?.toString(),
+          'name': sub['name']?.toString(),
+          'label':
+              isTamil && tamil != null && tamil.isNotEmpty ? tamil : english,
+        };
+      }),
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        itemCount: chips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final chip = chips[index];
+          final isSelected = _selectedSubcategoryId == chip['id'];
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedSubcategoryId = chip['id'];
+                _selectedSubcategoryName = chip['name'];
+                _filterProducts();
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? VillageTheme.primaryGreen
+                    : const Color(0xFFF1F4F2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? VillageTheme.primaryGreen
+                      : const Color(0xFFE2E7E4),
                 ),
               ),
-            );
-          },
-        ),
+              child: Text(
+                chip['label'] ?? '',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : const Color(0xFF41473F),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -912,42 +1141,55 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
-  // Screen 2: products for whichever category was tapped - its own tab row
-  // (so the shopper can still switch categories without going back) and the
-  // product grid, with no home-page clutter above it.
+  // Screen 2: products for whichever category was tapped - category rail with
+  // images down the left (so the shopper can still switch categories without
+  // going back), subgroup chips across the top, and the product grid.
   Widget _buildCategoryProductsView() {
-    return CustomScrollView(
-      key: const PageStorageKey('shop-category-products'),
-      controller: _scrollController,
-      slivers: [
-        SliverAppBar(
-          pinned: true,
-          primary: false,
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? Colors.black
-              : Colors.white,
-          toolbarHeight: 72,
-          titleSpacing: 0,
-          title: _buildSearchBar(),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildCategoryRail(),
+        const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE6E9E7)),
+        Expanded(
+          child: CustomScrollView(
+            key: const PageStorageKey('shop-category-products'),
+            controller: _scrollController,
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                primary: false,
+                automaticallyImplyLeading: false,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black
+                    : Colors.white,
+                toolbarHeight: 72,
+                titleSpacing: 0,
+                title: _buildSearchBar(),
+              ),
+              if (_selectedCategory != null &&
+                  (_subcategoriesByParent[_selectedCategory]?.isNotEmpty ??
+                      false))
+                SliverAppBar(
+                  pinned: true,
+                  primary: false,
+                  automaticallyImplyLeading: false,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  backgroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.black
+                          : Colors.white,
+                  toolbarHeight: 44,
+                  titleSpacing: 0,
+                  title: _buildSubcategoryChipRow(),
+                ),
+              SliverToBoxAdapter(child: _buildBrowseFilterRow()),
+              _buildProductGrid(),
+            ],
+          ),
         ),
-        SliverAppBar(
-          pinned: true,
-          primary: false,
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? Colors.black
-              : Colors.white,
-          toolbarHeight: 44,
-          titleSpacing: 0,
-          title: _buildCategoryTabRow(),
-        ),
-        SliverToBoxAdapter(child: _buildBrowseFilterRow()),
-        _buildProductGrid(),
       ],
     );
   }
@@ -1191,9 +1433,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final tamilName = (category['displayNameTamil'] ?? category['nameTamil'])
         ?.toString()
         .trim();
-    final englishName = category['displayName']?.toString() ?? categoryName;
+    final englishName =
+        _titleCaseLabel(category['displayName']?.toString() ?? categoryName);
     final primaryName = (isTamil && tamilName != null && tamilName.isNotEmpty)
         ? tamilName
+        : englishName;
+    // Second line shows the OTHER language; showing the same text twice
+    // (English title + identical English subtitle) just reads as a mistake.
+    final secondaryName = primaryName == englishName
+        ? (tamilName != null && tamilName.isNotEmpty ? tamilName : null)
         : englishName;
     final imageUrl = category['imageUrl']?.toString();
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
@@ -1270,13 +1518,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      englishName,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    if (secondaryName != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        secondaryName,
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Row(
                       children: [

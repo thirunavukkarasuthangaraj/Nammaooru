@@ -46,6 +46,10 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
   List<PromoCode> _promotions = [];
   int _currentBannerIndex = 0;
   String? _selectedCategory;
+  // Subgroups of each rail category (parent id -> children), shown as a chip
+  // bar above the grid. Null selection = "All" chip = parent + all children.
+  Map<String, List<Map<String, dynamic>>> _subcategoriesByParent = {};
+  String? _selectedSubcategory;
   bool _isLoadingShop = false;
   bool _isLoadingProducts = false;
   bool _isLoadingCategories = false;
@@ -143,7 +147,41 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
           response['statusCode'] == '0000' &&
           response['data'] != null) {
         final categoryList = response['data'] as List;
+
+        // The API returns a flat list where subgroups carry parentId/parentName.
+        // Roots go in the left rail; children go in a chip bar per parent. A
+        // subgroup whose parent has no products of its own still needs its
+        // parent in the rail, so synthesize that entry from parentId/parentName.
+        final roots = <Map<String, dynamic>>[];
+        final rootIds = <String>{};
+        final childrenByParent = <String, List<Map<String, dynamic>>>{};
+
+        for (final raw in categoryList) {
+          final cat = Map<String, dynamic>.from(raw as Map);
+          final parentId = cat['parentId']?.toString();
+          if (parentId == null || parentId.isEmpty) {
+            roots.add(cat);
+            rootIds.add(cat['id'].toString());
+          } else {
+            childrenByParent.putIfAbsent(parentId, () => []).add(cat);
+          }
+        }
+
+        for (final entry in childrenByParent.entries) {
+          if (!rootIds.contains(entry.key)) {
+            final parentName =
+                entry.value.first['parentName']?.toString() ?? 'Category';
+            roots.add({
+              'id': entry.key,
+              'name': parentName,
+              'displayName': parentName,
+            });
+            rootIds.add(entry.key);
+          }
+        }
+
         setState(() {
+          _subcategoriesByParent = childrenByParent;
           _categories = [
             {
               'id': null,
@@ -152,12 +190,13 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
               'displayNameTamil': 'அனைத்தும்',
               'icon': '🏪',
             },
-            ...categoryList.map((cat) => {
+            ...roots.map((cat) => {
                   ...cat,
                   'icon': _getCategoryIcon(cat['name']?.toString() ?? ''),
                 }),
           ];
           _selectedCategory = null;
+          _selectedSubcategory = null;
           _isLoadingCategories = false;
         });
       }
@@ -240,8 +279,18 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
         final productCategoryId =
             product['masterProduct']?['category']?['id']?.toString();
-        final categoryMatch =
-            _selectedCategory == null || productCategoryId == _selectedCategory;
+        final bool categoryMatch;
+        if (_selectedCategory == null) {
+          categoryMatch = true;
+        } else if (_selectedSubcategory != null) {
+          categoryMatch = productCategoryId == _selectedSubcategory;
+        } else {
+          // "All" within a category: products assigned directly to the parent
+          // AND products assigned to any of its subgroups.
+          categoryMatch = productCategoryId == _selectedCategory ||
+              (_subcategoriesByParent[_selectedCategory] ?? [])
+                  .any((sub) => sub['id']?.toString() == productCategoryId);
+        }
 
         return matchesSearch && categoryMatch;
       }).toList();
@@ -250,6 +299,12 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
 
   void _selectCategory(String? categoryId) {
     _selectedCategory = categoryId;
+    _selectedSubcategory = null;
+    _filterProducts();
+  }
+
+  void _selectSubcategory(String? subcategoryId) {
+    _selectedSubcategory = subcategoryId;
     _filterProducts();
   }
 
@@ -569,6 +624,7 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
                     ],
                   ),
                 ),
+                _buildSubcategoryBar(),
                 Expanded(
                   child: _filteredProducts.isEmpty
                       ? const Center(
@@ -602,6 +658,73 @@ class _ShopDetailsModernScreenState extends State<ShopDetailsModernScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Horizontal subgroup chips for the selected rail category (e.g. Rice ->
+  // All | Rice Bag | Millets). Hidden entirely when the category has no
+  // subgroups, so plain categories look exactly as before.
+  Widget _buildSubcategoryBar() {
+    final parentId = _selectedCategory;
+    final subs = parentId == null ? null : _subcategoriesByParent[parentId];
+    if (subs == null || subs.isEmpty) return const SizedBox.shrink();
+
+    final language = Provider.of<LanguageProvider>(context);
+    final isTamil = language.currentLanguage == 'ta';
+
+    final chips = <Map<String, String?>>[
+      {'id': null, 'label': isTamil ? 'அனைத்தும்' : 'All'},
+      ...subs.map((sub) {
+        final english = sub['displayName']?.toString() ??
+            sub['name']?.toString() ??
+            'Subcategory';
+        final tamil = sub['displayNameTamil']?.toString();
+        return {
+          'id': sub['id']?.toString(),
+          'label': isTamil && tamil != null && tamil.isNotEmpty ? tamil : english,
+        };
+      }),
+    ];
+
+    return Container(
+      height: 44,
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFECEFED))),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        itemCount: chips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final chip = chips[index];
+          final isSelected = _selectedSubcategory == chip['id'];
+          return GestureDetector(
+            onTap: () => _selectSubcategory(chip['id']),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF2E7D32) : const Color(0xFFF1F4F2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF2E7D32)
+                      : const Color(0xFFE2E7E4),
+                ),
+              ),
+              child: Text(
+                chip['label'] ?? '',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : const Color(0xFF41473F),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -344,8 +344,11 @@ class ShopApiService {
     try {
       Logger.api('Fetching shop categories: $shopId');
 
+      // includeSubgroups: newer backend returns the shop's subcategories
+      // (e.g. Rice Bag under Rice) even before products are assigned to them,
+      // so the app can render them as filter chips.
       final response = await _apiService.get(
-        '/customer/shops/$shopId/categories',
+        '/customer/shops/$shopId/categories?includeSubgroups=true',
         includeAuth: true,
       );
 
