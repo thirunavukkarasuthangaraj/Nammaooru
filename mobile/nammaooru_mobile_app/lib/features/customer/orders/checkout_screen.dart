@@ -393,6 +393,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       addressType: _selectedAddressType,
       isDefault: isDefault,
       createdAt: _selectedSavedAddress?.createdAt ?? DateTime.now(),
+      latitude: _selectedSavedAddress?.latitude,
+      longitude: _selectedSavedAddress?.longitude,
     );
 
     print('💾 Saving address with name=${address.name}, lastName=${address.lastName}, phone=${address.phone}, isDefault=$isDefault');
