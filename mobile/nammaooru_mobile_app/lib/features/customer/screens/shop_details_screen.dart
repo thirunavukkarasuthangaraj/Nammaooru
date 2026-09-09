@@ -4442,21 +4442,27 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
                     const Spacer(),
                     Row(
                       children: [
-                        Text(
-                          '₹${widget.combo.comboPrice.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Color(0xFF2E7D32),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            '₹${widget.combo.comboPrice.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Color(0xFF2E7D32),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          '₹${widget.combo.originalPrice.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                            decoration: TextDecoration.lineThrough,
+                        Flexible(
+                          child: Text(
+                            '₹${widget.combo.originalPrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const Spacer(),
