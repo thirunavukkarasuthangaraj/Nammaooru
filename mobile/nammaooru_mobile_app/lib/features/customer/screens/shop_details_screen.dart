@@ -3616,15 +3616,17 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final languageProvider =
         Provider.of<LanguageProvider>(context, listen: false);
 
+    // Includes the product just added, and anything already in the cart -
+    // shown with its live quantity stepper so the customer can bump it
+    // again right here instead of closing the sheet and reopening it.
     final candidates = _allProducts.where((p) {
-      if (p['id'].toString() == added.id) return false;
       final cat = p['masterProduct']?['category']?['name']?.toString();
       if (cat == null || cat.toLowerCase() != categoryName.toLowerCase()) {
         return false;
       }
       final stock = int.tryParse(p['stockQuantity']?.toString() ?? '0') ?? 0;
       if (stock <= 0) return false;
-      return cartProvider.getQuantity(p['id'].toString()) == 0;
+      return true;
     }).toList();
     if (candidates.isEmpty) return;
 
