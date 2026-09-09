@@ -695,7 +695,7 @@ class _ShopListingScreenState extends State<ShopListingScreen>
 
   Widget _buildPromoBanner() {
     return SizedBox(
-      height: 110,
+      height: 132,
       child: PageView.builder(
         padEnds: false,
         controller: PageController(viewportFraction: 0.9),
