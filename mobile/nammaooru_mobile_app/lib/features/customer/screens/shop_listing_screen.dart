@@ -553,7 +553,8 @@ class _ShopListingScreenState extends State<ShopListingScreen>
   }
 
   /// "Deliver to" bar: shows the active delivery location (GPS or a searched
-  /// village) and opens the place search when tapped.
+  /// village) and opens the place search when tapped. Styled to match the
+  /// white card used on the home screen's own deliver-to selector.
   Widget _buildDeliverToBar() {
     final label = LocationService.isManualLocation
         ? (LocationService.manualLocationLabel ??
@@ -563,42 +564,63 @@ class _ShopListingScreenState extends State<ShopListingScreen>
 
     return Container(
       color: const Color(0xFF4CAF50),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-      child: Material(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: _openLocationSearch,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  '${context.loc?.translate('deliver_to') ?? 'Deliver to'}: ',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: InkWell(
+        onTap: _openLocationSearch,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                child: const Icon(Icons.location_on, color: Color(0xFF4CAF50), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (context.loc?.translate('deliver_to') ?? 'Deliver to').toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1a1a1a),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const Icon(Icons.keyboard_arrow_down,
-                    color: Colors.white, size: 20),
-              ],
-            ),
+              ),
+              Icon(Icons.keyboard_arrow_down, color: Colors.grey[600], size: 24),
+            ],
           ),
         ),
       ),
