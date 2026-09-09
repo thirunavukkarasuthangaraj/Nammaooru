@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/location_service.dart';
-import '../../../core/services/promo_code_service.dart';
 import '../../../services/shop_api_service.dart';
 import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -36,10 +34,6 @@ class ShopListingScreen extends StatefulWidget {
 class _ShopListingScreenState extends State<ShopListingScreen>
     with SingleTickerProviderStateMixin {
   final ShopApiService _shopApi = ShopApiService();
-  final PromoCodeService _promoService = PromoCodeService();
-  List<PromoCode> _promos = [];
-  final PageController _promoPageController = PageController();
-  int _currentPromoPage = 0;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final VoiceSearchService _voiceSearchService = VoiceSearchService();
@@ -87,7 +81,6 @@ class _ShopListingScreenState extends State<ShopListingScreen>
     _searchController.dispose();
     _scrollController.dispose();
     _ctaPulseController.dispose();
-    _promoPageController.dispose();
     super.dispose();
   }
 
@@ -158,25 +151,6 @@ class _ShopListingScreenState extends State<ShopListingScreen>
       });
 
       _refreshRegistrationCtaVisibility(latitude, longitude);
-    }
-
-    _loadPromos(latitude, longitude);
-  }
-
-  /// Offer banners scoped to this category (e.g. only Grocery shop offers on
-  /// the Grocery listing page) and to shops within delivery range of here.
-  Future<void> _loadPromos(double latitude, double longitude) async {
-    try {
-      final promos = await _promoService.getActivePromotions(
-        latitude: latitude,
-        longitude: longitude,
-        category: widget.category,
-      );
-      if (mounted) {
-        setState(() => _promos = promos);
-      }
-    } catch (e) {
-      // Non-critical - the shop list still works without offer banners.
     }
   }
 
@@ -408,7 +382,6 @@ class _ShopListingScreenState extends State<ShopListingScreen>
         children: [
           _buildDeliverToBar(),
           _buildVillageSearchBar(),
-          if (_promos.isNotEmpty) _buildPromoBanner(),
           if (_isLocationBased && !_isLoading)
             Container(
               width: double.infinity,
@@ -693,196 +666,6 @@ class _ShopListingScreenState extends State<ShopListingScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  // Matches the "Special Offers" carousel design used on the shop detail
-  // page (header + orange coupon card with Copy Code) for visual
-  // consistency, instead of a one-off banner style just for this screen.
-  Widget _buildPromoBanner() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.local_offer, color: Colors.green[700], size: 20),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                context.loc?.translate('special_offers') ?? 'Special Offers',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800]),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
-                child: Text(
-                  '${_promos.length}',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 200,
-          child: PageView.builder(
-            controller: _promoPageController,
-            onPageChanged: (index) => setState(() => _currentPromoPage = index),
-            itemCount: _promos.length,
-            itemBuilder: (context, index) => _buildPromoCard(_promos[index]),
-          ),
-        ),
-        if (_promos.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _promos.length,
-                (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _currentPromoPage == index ? 16 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(3),
-                    color: _currentPromoPage == index ? Colors.green[700] : Colors.grey.withOpacity(0.3),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPromoCard(PromoCode promo) {
-    final code = promo.code;
-    final offerText = promo.formattedDiscount;
-    final minOrderAmount = promo.minimumOrderAmount ?? 0;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              gradient: LinearGradient(
-                colors: [Colors.orange[700]!, Colors.orange[500]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.local_offer, color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          code,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        Text(
-                          offerText,
-                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          offerText,
-                          style: TextStyle(color: Colors.orange[700], fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          minOrderAmount > 0
-                              ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
-                              : 'No minimum order',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Code "$code" copied!'),
-                          backgroundColor: const Color(0xFF2E7D32),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.orange[700], borderRadius: BorderRadius.circular(20)),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.copy, color: Colors.white, size: 14),
-                          SizedBox(width: 6),
-                          Text('Copy Code',
-                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
