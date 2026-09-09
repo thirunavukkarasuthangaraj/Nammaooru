@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -103,6 +104,11 @@ public class CustomerShopController {
     }
 
     @GetMapping("/shops/{shopId}/categories")
+    // Read-only transaction keeps the Hibernate session open while
+    // createCategoryResponse touches the lazy parent proxy - without it,
+    // the first shop with a product in a subcategory 500s with
+    // "could not initialize proxy ... no Session".
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> getShopCategories(
             @PathVariable Long shopId,
             @RequestParam(defaultValue = "false") boolean includeSubgroups) {
