@@ -823,7 +823,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     if (_isLoadingCategories) {
       return const SizedBox(
-        width: 88,
+        width: 66,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
@@ -849,7 +849,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
       child: SizedBox(
-        width: 88,
+        width: 66,
         child: DecoratedBox(
           decoration: const BoxDecoration(color: Color(0xFFF7F8F7)),
           child: ListView.builder(
@@ -875,8 +875,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               return GestureDetector(
                 onTap: () => _selectCategory(categoryId, categoryName),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected ? Colors.white : Colors.transparent,
                     borderRadius: BorderRadius.circular(14),
@@ -899,8 +899,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   child: Column(
                     children: [
                       Container(
-                        width: 52,
-                        height: 52,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F4F2),
                           shape: BoxShape.circle,
@@ -923,13 +923,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               : _buildRailImageFallback(category, isSelected),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 3),
                         child: Text(
                           displayName,
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 9.5,
                             fontWeight:
                                 isSelected ? FontWeight.w700 : FontWeight.w600,
                             color: isSelected
@@ -994,10 +994,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     ];
 
     return SizedBox(
-      height: 44,
+      height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         itemCount: chips.length,
         separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (context, index) {
@@ -1012,13 +1012,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 11),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
                     ? VillageTheme.primaryGreen
                     : const Color(0xFFF1F4F2),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(13),
                 border: Border.all(
                   color: isSelected
                       ? VillageTheme.primaryGreen
@@ -1028,7 +1028,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               child: Text(
                 chip['label'] ?? '',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: isSelected ? Colors.white : const Color(0xFF41473F),
                 ),
@@ -1181,7 +1181,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       Theme.of(context).brightness == Brightness.dark
                           ? Colors.black
                           : Colors.white,
-                  toolbarHeight: 44,
+                  toolbarHeight: 36,
                   titleSpacing: 0,
                   title: _buildSubcategoryChipRow(),
                 ),
