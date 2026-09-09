@@ -7,6 +7,10 @@ import { environment } from '../../../../../environments/environment';
 
 export interface CategoryCreateDialogData {
   existingCategories: string[];
+  // When provided, the dialog also offers a "Parent Category" picker so the
+  // new entry can be created as a subgroup (e.g. "Rice Bag" under "Rice")
+  // instead of always creating a new top-level category.
+  parentOptions?: { id: number; name: string }[];
 }
 
 /**
@@ -23,7 +27,7 @@ export async function syncOfflineCategories(http: HttpClient, apiUrl: string): P
     const remaining: any[] = [];
     for (const cat of pending) {
       try {
-        await http.post(`${apiUrl}/products/categories`, { name: cat.name }).toPromise();
+        await http.post(`${apiUrl}/products/categories`, { name: cat.name, parentId: cat.parentId }).toPromise();
         console.log('Synced offline category:', cat.name);
       } catch (err: any) {
         // 409 or duplicate means it already exists - that's fine
@@ -50,6 +54,7 @@ export interface CategoryCreateDialogResult {
   name: string;
   id?: number;
   slug?: string;
+  parentId?: number;
   createdOffline?: boolean;
 }
 
@@ -81,6 +86,16 @@ export interface CategoryCreateDialogResult {
           <mat-error *ngIf="form.get('name')?.hasError('duplicate')">
             This category already exists
           </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width" *ngIf="parentOptions.length">
+          <mat-label>Parent Category (optional)</mat-label>
+          <mat-select formControlName="parentId">
+            <mat-option [value]="null">None - top level category</mat-option>
+            <mat-option *ngFor="let p of parentOptions" [value]="p.id">{{ p.name }}</mat-option>
+          </mat-select>
+          <mat-icon matPrefix>account_tree</mat-icon>
+          <mat-hint>Pick a parent to create this as a subgroup, e.g. "Rice Bag" under "Rice"</mat-hint>
         </mat-form-field>
       </form>
 
@@ -156,6 +171,7 @@ export class CategoryCreateDialogComponent implements OnInit {
   form!: FormGroup;
   saving = false;
   isOffline = false;
+  parentOptions: { id: number; name: string }[] = [];
   private apiUrl = environment.apiUrl;
   private existingCategories: string[] = [];
 
@@ -170,9 +186,11 @@ export class CategoryCreateDialogComponent implements OnInit {
   ngOnInit(): void {
     this.isOffline = !navigator.onLine;
     this.existingCategories = (this.data?.existingCategories || []).map(c => c.toUpperCase());
+    this.parentOptions = this.data?.parentOptions || [];
 
     this.form = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(2)]]
+      name: ['', [Validators.required, Validators.minLength(2)]],
+      parentId: [null]
     });
   }
 
@@ -198,22 +216,24 @@ export class CategoryCreateDialogComponent implements OnInit {
       return;
     }
 
+    const parentId = this.form.get('parentId')!.value || undefined;
     this.saving = true;
 
     if (!navigator.onLine) {
       // Offline: save locally and return
-      this.saveOffline(name);
+      this.saveOffline(name, parentId);
       return;
     }
 
     // Online: call API
-    this.http.post<any>(`${this.apiUrl}/products/categories`, { name }).subscribe({
+    this.http.post<any>(`${this.apiUrl}/products/categories`, { name, parentId }).subscribe({
       next: (response) => {
         const newCat = response?.data || response;
         const result: CategoryCreateDialogResult = {
           name: newCat?.name || name,
           id: newCat?.id,
-          slug: newCat?.slug
+          slug: newCat?.slug,
+          parentId: newCat?.parentId ?? parentId
         };
         this.saving = false;
         this.swal.toast(`Category "${result.name}" created!`, 'success');
@@ -222,12 +242,12 @@ export class CategoryCreateDialogComponent implements OnInit {
       error: (err) => {
         console.error('Failed to create category via API:', err);
         // Fallback to offline save
-        this.saveOffline(name);
+        this.saveOffline(name, parentId);
       }
     });
   }
 
-  private saveOffline(name: string): void {
+  private saveOffline(name: string, parentId?: number): void {
     // Save to local cache
     try {
       const cachedNames = JSON.parse(localStorage.getItem('cached_product_category_names') || '[]');
@@ -239,7 +259,7 @@ export class CategoryCreateDialogComponent implements OnInit {
 
       // Also save to pending offline categories for sync later
       const pendingCategories = JSON.parse(localStorage.getItem('pending_offline_categories') || '[]');
-      pendingCategories.push({ name, createdAt: new Date().toISOString() });
+      pendingCategories.push({ name, parentId, createdAt: new Date().toISOString() });
       localStorage.setItem('pending_offline_categories', JSON.stringify(pendingCategories));
     } catch (e) {
       console.warn('Failed to save category offline:', e);
@@ -247,6 +267,7 @@ export class CategoryCreateDialogComponent implements OnInit {
 
     const result: CategoryCreateDialogResult = {
       name,
+      parentId,
       createdOffline: true
     };
     this.saving = false;

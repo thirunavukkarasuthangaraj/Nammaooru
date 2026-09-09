@@ -900,36 +900,56 @@ export class AddProductComponent implements OnInit {
       this.productForm.patchValue({ category: '' });
 
       const existingNames = this.productCategories.map(c => c.name);
+      const parentOptions = this.productCategories
+        .filter(c => c.isRootCategory)
+        .map(c => ({ id: c.id, name: c.name }));
+
       const dialogRef = this.categoryDialog.open(CategoryCreateDialogComponent, {
         width: '420px',
         maxWidth: '95vw',
-        data: { existingCategories: existingNames },
+        data: { existingCategories: existingNames, parentOptions },
         disableClose: false
       });
 
       dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
-        if (result?.name) {
-          const categoryObj: ProductCategory = {
-            id: result.id || -(Date.now()),  // Negative temp ID for offline
-            name: result.name,
-            description: '',
-            slug: result.slug || result.name.toLowerCase().replace(/\s+/g, '-'),
-            fullPath: result.name,
-            isActive: true,
-            createdBy: 'system',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            subcategories: [],
-            hasSubcategories: false,
-            isRootCategory: true,
-            productCount: 0,
-            subcategoryCount: 0
-          };
+        if (!result?.name) return;
+
+        const parent = result.parentId ? this.productCategories.find(c => c.id === result.parentId) : undefined;
+        const categoryObj: ProductCategory = {
+          id: result.id || -(Date.now()),  // Negative temp ID for offline
+          name: result.name,
+          description: '',
+          slug: result.slug || result.name.toLowerCase().replace(/\s+/g, '-'),
+          parentId: parent?.id,
+          parentName: parent?.name,
+          fullPath: parent ? `${parent.fullPath || parent.name} > ${result.name}` : result.name,
+          isActive: true,
+          createdBy: 'system',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          subcategories: [],
+          hasSubcategories: false,
+          isRootCategory: !parent,
+          productCount: 0,
+          subcategoryCount: 0
+        };
+
+        if (parent) {
+          // Keep it grouped right under its parent instead of scattering it
+          // to wherever an alphabetical sort would put it.
+          let insertAt = this.productCategories.indexOf(parent) + 1;
+          while (insertAt < this.productCategories.length && this.productCategories[insertAt].parentId === parent.id) {
+            insertAt++;
+          }
+          this.productCategories.splice(insertAt, 0, categoryObj);
+          parent.hasSubcategories = true;
+        } else {
           this.productCategories.push(categoryObj);
           this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
-          this.productForm.patchValue({ category: categoryObj.id });
-          this.cacheCategories(this.productCategories);
         }
+
+        this.productForm.patchValue({ category: categoryObj.id });
+        this.cacheCategories(this.productCategories);
       });
     }
   }

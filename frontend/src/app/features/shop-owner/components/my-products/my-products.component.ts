@@ -137,7 +137,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   
   // Table columns
-  displayedColumns: string[] = ['select', 'image', 'name', 'price', 'stock', 'status', 'actions'];
+  displayedColumns: string[] = ['select', 'image', 'name', 'price', 'stock', 'created', 'status', 'actions'];
 
   // Track if loaded from cache
   loadedFromCache = false;
