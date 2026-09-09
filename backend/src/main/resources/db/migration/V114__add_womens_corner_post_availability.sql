@@ -1,0 +1,1 @@
+ALTER TABLE womens_corner_posts ADD COLUMN is_available BOOLEAN NOT NULL DEFAULT TRUE;

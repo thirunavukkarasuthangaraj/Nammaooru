@@ -327,6 +327,23 @@ public class WomensCornerPostService {
     }
 
     @Transactional
+    public WomensCornerPost setAvailability(Long id, boolean isAvailable, String username) {
+        WomensCornerPost post = womensCornerPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!post.getSellerUserId().equals(user.getId())) {
+            throw new RuntimeException("Only the seller can change post availability");
+        }
+
+        post.setIsAvailable(isAvailable);
+        log.info("Women's corner post availability changed: id={}, isAvailable={}", id, isAvailable);
+        return womensCornerPostRepository.save(post);
+    }
+
+    @Transactional
     public void deletePost(Long id, String username, boolean isAdmin) {
         WomensCornerPost post = womensCornerPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

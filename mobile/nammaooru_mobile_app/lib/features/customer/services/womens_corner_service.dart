@@ -253,6 +253,31 @@ class WomensCornerService {
     }
   }
 
+  /// Toggle whether a post is temporarily available - reversible, unlike SOLD
+  Future<Map<String, dynamic>> setAvailability(int postId, bool isAvailable) async {
+    try {
+      final response = await ApiClient.put(
+        '/womens-corner/posts/$postId/availability',
+        queryParameters: {'isAvailable': isAvailable},
+      );
+      return {
+        'success': true,
+        'data': response.data?['data'],
+        'message': response.data?['message'] ?? 'Availability updated',
+      };
+    } on DioException catch (e) {
+      return {
+        'success': false,
+        'message': e.response?.data?['message'] ?? 'Failed to update availability',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
   /// Delete a post
   Future<Map<String, dynamic>> deletePost(int postId) async {
     try {

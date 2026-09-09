@@ -91,6 +91,13 @@ public class WomensCornerPost {
     @Builder.Default
     private Boolean phoneLocked = false;
 
+    // Seller-controlled, reversible "temporarily unavailable" flag - separate from
+    // the permanent SOLD status, for sellers with no shop (e.g. working from home)
+    // who need to step away without losing their listing.
+    @Column(name = "is_available")
+    @Builder.Default
+    private Boolean isAvailable = true;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

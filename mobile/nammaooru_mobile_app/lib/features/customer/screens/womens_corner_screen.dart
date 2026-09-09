@@ -483,6 +483,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
 
   Widget _buildMyPostCard(Map<String, dynamic> post) {
     final status = post['status'] ?? 'PENDING_APPROVAL';
+    final isAvailable = post['isAvailable'] != false;
     final imageUrls = post['imageUrls']?.toString() ?? '';
     final firstImage = imageUrls.isNotEmpty
         ? ImageUrlHelper.getFullImageUrl(imageUrls.split(',').first.trim())
@@ -641,6 +642,26 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
                       ),
                     ),
                   ),
+                if (status != 'SOLD' && !isAvailable)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'UNAVAILABLE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           // Details
@@ -704,6 +725,25 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    if (status == 'APPROVED')
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final result = await _service.setAvailability(post['id'], !isAvailable);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(result['message'] ?? ''), backgroundColor: result['success'] == true ? Colors.green : Colors.red),
+                              );
+                              if (result['success'] == true) { _myPostsLoaded = false; _loadMyPosts(); _loadPosts(); }
+                            }
+                          },
+                          icon: Icon(isAvailable ? Icons.pause_circle_outline : Icons.play_circle_outline, size: 16),
+                          label: Text(isAvailable ? 'Mark Unavailable' : 'Mark Available'),
+                          style: OutlinedButton.styleFrom(foregroundColor: Colors.blueGrey),
+                        ),
+                      ),
+                    if (status == 'APPROVED')
+                      const SizedBox(width: 8),
                     if (status == 'APPROVED' || status == 'CORRECTION_REQUIRED')
                       Expanded(
                         child: OutlinedButton.icon(
@@ -976,6 +1016,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
     final title = post['title'] ?? '';
     final description = post['description'] ?? '';
     final status = post['status']?.toString() ?? '';
+    final isAvailable = post['isAvailable'] != false;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1065,6 +1106,23 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
+                        ),
+                      ),
+                    ),
+                  // Temporarily-unavailable badge (reversible, distinct from SOLD)
+                  if (status != 'SOLD' && !isAvailable)
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'UNAVAILABLE',
+                          style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),

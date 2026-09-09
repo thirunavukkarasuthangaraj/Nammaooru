@@ -235,6 +235,21 @@ public class WomensCornerPostController {
         }
     }
 
+    @PutMapping("/{id}/availability")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<WomensCornerPost>> setAvailability(
+            @PathVariable Long id,
+            @RequestParam boolean isAvailable) {
+        try {
+            String username = getCurrentUsername();
+            WomensCornerPost post = womensCornerPostService.setAvailability(id, isAvailable, username);
+            return ResponseUtil.success(post, isAvailable ? "Post marked as available" : "Post marked as unavailable");
+        } catch (Exception e) {
+            log.error("Error updating women's corner post availability", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable Long id) {
