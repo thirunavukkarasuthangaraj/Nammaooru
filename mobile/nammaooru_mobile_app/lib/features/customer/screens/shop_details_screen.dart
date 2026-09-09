@@ -3547,17 +3547,32 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Center(
-                        child: Text(
-                          anyInStock
-                              ? languageProvider.getText('SELECT', 'தேர்வு')
-                              : languageProvider.getText(
-                                  'Out of Stock', 'இருப்பு இல்லை'),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: !anyInStock
+                            ? Text(
+                                languageProvider.getText(
+                                    'Out of Stock', 'இருப்பு இல்லை'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.add_rounded,
+                                      color: Colors.white, size: 16),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    languageProvider.getText('ADD', 'சேர்'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                   ),
@@ -3939,13 +3954,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Center(
-                    child: Text(
-                      languageProvider.getText('SELECT', 'தேர்வு'),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.add_rounded,
+                            color: Colors.white, size: 14),
+                        const SizedBox(width: 2),
+                        Text(
+                          languageProvider.getText('ADD', 'சேர்'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
