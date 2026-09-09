@@ -65,6 +65,18 @@ public interface ShopRepository extends JpaRepository<Shop, Long>, JpaSpecificat
            nativeQuery = true)
     List<Object[]> searchShopLocalities(@Param("query") String query);
 
+    // Nearest registered shop to a raw coordinate, ignoring each shop's own
+    // delivery radius (unlike findShopsWithinRadius) — used purely as a
+    // city/pincode fallback when on-device reverse geocoding has no postal
+    // code for a rural pin, which is common outside well-mapped towns.
+    @Query(value = "SELECT city, postal_code, state, " +
+           "(6371 * acos(cos(radians(:lat)) * cos(radians(latitude)) * cos(radians(longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(latitude)))) AS distance_km " +
+           "FROM shops WHERE is_active = true AND status = 'APPROVED' AND payment_blocked = false AND mobile_app_enabled = true " +
+           "AND latitude IS NOT NULL AND longitude IS NOT NULL AND postal_code IS NOT NULL AND postal_code <> '' " +
+           "ORDER BY distance_km ASC LIMIT 1",
+           nativeQuery = true)
+    List<Object[]> findNearestShopLocation(@Param("lat") double lat, @Param("lng") double lng);
+
     @Query("SELECT s FROM Shop s WHERE s.isActive = true AND s.status = 'APPROVED' AND s.paymentBlocked = false ORDER BY s.rating DESC")
     List<Shop> findTopRatedShops(Pageable pageable);
 

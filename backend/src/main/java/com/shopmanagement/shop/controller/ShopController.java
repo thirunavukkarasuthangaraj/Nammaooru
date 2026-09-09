@@ -160,6 +160,18 @@ public class ShopController {
         return ResponseUtil.success(response, "Shop locations retrieved successfully");
     }
 
+    /** Nearest registered shop's city/pincode/state for a raw coordinate — used as a
+     *  fallback when on-device reverse geocoding has no postal code for a rural pin. */
+    @GetMapping("/locations/nearest")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getNearestShopLocation(
+            @RequestParam double lat,
+            @RequestParam double lng) {
+        Map<String, Object> location = shopService.findNearestShopLocation(lat, lng);
+        return ResponseUtil.success(
+                location != null ? location : new HashMap<>(),
+                location != null ? "Nearest shop location retrieved successfully" : "No nearby shop location found");
+    }
+
     @GetMapping("/nearby")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getNearbyShops(
             @RequestParam double lat,
