@@ -552,6 +552,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   getSettingDisplayName(key: string): string {
-    return key.split('.').pop()?.replace(/([A-Z])/g, ' $1').trim() || key;
+    const tail = key.split('.').pop() || key;
+    return this.humanize(tail);
+  }
+
+  // Turns raw enum/key text (CONTENT_MODERATION, duration_days, visibleStatuses)
+  // into a readable label (Content Moderation, Duration Days, Visible Statuses).
+  humanize(value: string): string {
+    if (!value) return '';
+    return value
+      .replace(/[_-]+/g, ' ')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .trim()
+      .toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase());
   }
 }

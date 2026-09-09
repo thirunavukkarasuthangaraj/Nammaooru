@@ -1,3 +1,10 @@
+$accent: #059669;
+$accent-light: #10b981;
+$accent-soft: #ecfdf5;
+$accent-border: #a7f3d0;
+$scope-user: #d946a1;
+$scope-user-soft: #fdf0f8;
+
 .settings-container {
   padding: 24px;
   max-width: 1200px;
@@ -8,11 +15,13 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
 
     h2 {
       margin: 0;
-      color: #333;
-      font-weight: 500;
+      color: #1f2937;
+      font-weight: 600;
     }
 
     .header-actions {
@@ -45,21 +54,41 @@
 
   .settings-content {
     .tab-content {
-      padding: 24px 0;
+      padding: 20px 0;
 
-      .setting-card {
-        margin-bottom: 16px;
+      // One card per tab holding every field as a divided row, instead of a
+      // separate full-width shadow card per field - keeps the page scannable
+      // instead of fragmented and whitespace-heavy.
+      .settings-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(16, 24, 20, 0.04);
 
-        .setting-item {
+        mat-card-content {
+          padding: 0 !important;
+        }
+
+        .setting-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
           gap: 24px;
+          padding: 18px 20px;
+          border-bottom: 1px solid #eef1ef;
+          transition: background-color 0.15s ease;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          &:hover {
+            background: #fafbfa;
+          }
 
           // Large-content settings (privacy policy, terms, etc.): stack the
           // textarea below the label/description full-width instead of
           // squeezing it into the narrow side-by-side control column.
-          &.setting-item--stacked {
+          &.setting-row--stacked {
             flex-direction: column;
             align-items: stretch;
 
@@ -73,28 +102,29 @@
             flex: 1;
 
             h4 {
-              margin: 0 0 8px 0;
-              color: #333;
-              font-weight: 500;
-              font-size: 16px;
-              text-transform: capitalize;
+              margin: 0 0 4px 0;
+              color: #1f2937;
+              font-weight: 600;
+              font-size: 15px;
             }
 
             .setting-description {
-              margin: 0 0 12px 0;
-              color: #666;
-              font-size: 14px;
-              line-height: 1.4;
+              margin: 0 0 8px 0;
+              color: #6b7280;
+              font-size: 13px;
+              line-height: 1.45;
             }
 
             .scope-chip {
-              font-size: 12px;
-              height: 24px;
+              font-size: 11px;
+              font-weight: 600;
+              height: 22px;
+              letter-spacing: 0.02em;
             }
           }
 
           .setting-control {
-            min-width: 200px;
+            min-width: 220px;
             display: flex;
             justify-content: flex-end;
 
@@ -152,13 +182,24 @@
 mat-tab-group {
   ::ng-deep {
     .mat-tab-header {
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid #e5e7eb;
     }
 
     .mat-tab-label {
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 600;
+      font-size: 13.5px;
+      color: #6b7280;
+      opacity: 1;
+    }
+
+    .mat-tab-label-active {
+      color: $accent;
+    }
+
+    .mat-ink-bar {
+      background-color: $accent-light !important;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
     }
 
     .mat-tab-body-content {
@@ -199,8 +240,8 @@ mat-form-field {
 
     .settings-content {
       .tab-content {
-        .setting-card {
-          .setting-item {
+        .settings-card {
+          .setting-row {
             flex-direction: column;
             align-items: flex-start;
             gap: 16px;
@@ -222,15 +263,18 @@ mat-form-field {
   }
 }
 
-// Chip colors
+// Chip colors - semantic, kept separate from the green brand accent so
+// scope state (global vs. per-user override) reads at a glance.
 mat-chip {
   &.global-scope {
-    background-color: #1976d2;
-    color: white;
+    background-color: $accent-soft !important;
+    color: $accent !important;
+    border: 1px solid $accent-border;
   }
 
   &.user-scope {
-    background-color: #ff4081;
-    color: white;
+    background-color: $scope-user-soft !important;
+    color: $scope-user !important;
+    border: 1px solid #f9d3ea;
   }
 }

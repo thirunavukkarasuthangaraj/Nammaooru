@@ -595,11 +595,27 @@ public class SettingService {
                 .updatedBy(setting.getUpdatedBy())
                 .settingTypeLabel(setting.getSettingType().name())
                 .scopeLabel(setting.getScope().name())
-                .categoryLabel(setting.getCategory())
+                .categoryLabel(humanizeCategory(setting.getCategory()))
                 .canEdit(!setting.getIsReadOnly())
                 .canDelete(!setting.getIsRequired())
                 .displayValue(displayValue)
                 .build();
+    }
+
+    // Turns a raw SCREAMING_SNAKE_CASE category (CONTENT_MODERATION, FARMER_PRODUCTS)
+    // into a readable label (Content Moderation, Farmer Products) for API consumers.
+    private String humanizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return category;
+        }
+        String[] words = category.toLowerCase().split("[_\\-\\s]+");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (word.isEmpty()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return sb.toString();
     }
 
     @Transactional

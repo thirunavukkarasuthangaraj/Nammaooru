@@ -22,16 +22,16 @@
     <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()">
       <mat-tab-group>
         <!-- Dynamic category tabs -->
-        <mat-tab *ngFor="let category of categories" [label]="category">
+        <mat-tab *ngFor="let category of categories" [label]="humanize(category)">
           <div class="tab-content">
-            <mat-card *ngFor="let setting of getSettingsByCategory(category)" class="setting-card">
+            <mat-card class="settings-card">
               <mat-card-content>
-                <div class="setting-item" [class.setting-item--stacked]="isLargeContentSetting(setting)">
+                <div class="setting-row" *ngFor="let setting of getSettingsByCategory(category)" [class.setting-row--stacked]="isLargeContentSetting(setting)">
                   <div class="setting-info">
                     <h4>{{ getSettingDisplayName(setting.key) }}</h4>
                     <p class="setting-description">{{ setting.description }}</p>
                     <mat-chip class="scope-chip" [class.global-scope]="setting.scope === 'GLOBAL'" [class.user-scope]="setting.scope === 'USER'" selected>
-                      {{ setting.scope }}
+                      {{ humanize(setting.scope) }}
                     </mat-chip>
                   </div>
                   <div class="setting-control">
@@ -58,7 +58,7 @@
         </mat-tab>
 
         <!-- Service Area Tab -->
-        <mat-tab label="SERVICE_AREA">
+        <mat-tab label="Service Area">
           <div class="tab-content">
             <mat-card class="setting-card">
               <mat-card-content>
