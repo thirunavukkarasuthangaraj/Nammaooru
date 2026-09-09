@@ -11,6 +11,9 @@ export interface CategoryCreateDialogData {
   // new entry can be created as a subgroup (e.g. "Rice Bag" under "Rice")
   // instead of always creating a new top-level category.
   parentOptions?: { id: number; name: string }[];
+  // Pre-selects the parent picker, e.g. when opened from a category's own
+  // "+ Add New Subcategory" option.
+  defaultParentId?: number | null;
 }
 
 /**
@@ -190,7 +193,7 @@ export class CategoryCreateDialogComponent implements OnInit {
 
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
-      parentId: [null]
+      parentId: [this.data?.defaultParentId ?? null]
     });
   }
 

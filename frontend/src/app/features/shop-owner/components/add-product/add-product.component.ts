@@ -62,9 +62,9 @@ import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineC
               <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
                   <mat-label>Category</mat-label>
-                  <mat-select formControlName="category" (selectionChange)="onCategorySelectChange($event.value)">
-                    <mat-option *ngFor="let category of productCategories" [value]="category.id">
-                      {{ category.fullPath || category.name }}
+                  <mat-select [value]="selectedRootCategoryId" (selectionChange)="onRootCategoryChange($event.value)">
+                    <mat-option *ngFor="let category of rootCategories" [value]="category.id">
+                      {{ category.name }}
                     </mat-option>
                     <mat-option [value]="'__NEW__'" class="add-new-category-option">
                       <mat-icon>add</mat-icon> Add New Category
@@ -78,6 +78,21 @@ import { CategoryCreateDialogComponent, CategoryCreateDialogResult, syncOfflineC
                 <mat-form-field appearance="outline" class="half-width">
                   <mat-label>Brand</mat-label>
                   <input matInput formControlName="brand" placeholder="Enter brand name">
+                </mat-form-field>
+              </div>
+
+              <div class="form-row" *ngIf="subcategoryOptions.length">
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Subcategory</mat-label>
+                  <mat-select [value]="selectedSubcategoryId" (selectionChange)="onSubcategoryChange($event.value)">
+                    <mat-option [value]="''">None - keep under {{ getCategoryNameById(selectedRootCategoryId) }}</mat-option>
+                    <mat-option *ngFor="let sub of subcategoryOptions" [value]="sub.id">
+                      {{ sub.name }}
+                    </mat-option>
+                    <mat-option [value]="'__NEW__'" class="add-new-category-option">
+                      <mat-icon>add</mat-icon> Add New Subcategory
+                    </mat-option>
+                  </mat-select>
                 </mat-form-field>
               </div>
 
@@ -596,6 +611,11 @@ export class AddProductComponent implements OnInit {
   selectedFile: File | null = null;
   currentShop: Shop | null = null;
   productCategories: ProductCategory[] = [];
+  // Category and Subcategory are shown as two separate, short dropdowns
+  // instead of one long "Parent > Child" flattened list.
+  selectedRootCategoryId: number | '' = '';
+  selectedSubcategoryId: number | '' = '';
+  subcategoryOptions: ProductCategory[] = [];
   isEditMode = false;
   editingProductId: number | null = null;
 
@@ -812,7 +832,7 @@ export class AddProductComponent implements OnInit {
     return [];
   }
 
-  private getCategoryNameById(categoryId: number | string): string {
+  getCategoryNameById(categoryId: number | string): string {
     if (!categoryId) return '';
     const cat = this.productCategories.find(c => c.id === categoryId || c.id === Number(categoryId));
     return cat ? cat.name : String(categoryId);
@@ -894,64 +914,92 @@ export class AddProductComponent implements OnInit {
     console.log('Using default categories');
   }
 
-  onCategorySelectChange(value: any): void {
+  get rootCategories(): ProductCategory[] {
+    return this.productCategories.filter(c => c.isRootCategory);
+  }
+
+  onRootCategoryChange(value: any): void {
     if (value === '__NEW__') {
-      // Reset selection to previous value
-      this.productForm.patchValue({ category: '' });
-
-      const existingNames = this.productCategories.map(c => c.name);
-      const parentOptions = this.productCategories
-        .filter(c => c.isRootCategory)
-        .map(c => ({ id: c.id, name: c.name }));
-
-      const dialogRef = this.categoryDialog.open(CategoryCreateDialogComponent, {
-        width: '420px',
-        maxWidth: '95vw',
-        data: { existingCategories: existingNames, parentOptions },
-        disableClose: false
-      });
-
-      dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
-        if (!result?.name) return;
-
-        const parent = result.parentId ? this.productCategories.find(c => c.id === result.parentId) : undefined;
-        const categoryObj: ProductCategory = {
-          id: result.id || -(Date.now()),  // Negative temp ID for offline
-          name: result.name,
-          description: '',
-          slug: result.slug || result.name.toLowerCase().replace(/\s+/g, '-'),
-          parentId: parent?.id,
-          parentName: parent?.name,
-          fullPath: parent ? `${parent.fullPath || parent.name} > ${result.name}` : result.name,
-          isActive: true,
-          createdBy: 'system',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          subcategories: [],
-          hasSubcategories: false,
-          isRootCategory: !parent,
-          productCount: 0,
-          subcategoryCount: 0
-        };
-
-        if (parent) {
-          // Keep it grouped right under its parent instead of scattering it
-          // to wherever an alphabetical sort would put it.
-          let insertAt = this.productCategories.indexOf(parent) + 1;
-          while (insertAt < this.productCategories.length && this.productCategories[insertAt].parentId === parent.id) {
-            insertAt++;
-          }
-          this.productCategories.splice(insertAt, 0, categoryObj);
-          parent.hasSubcategories = true;
-        } else {
-          this.productCategories.push(categoryObj);
-          this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        this.productForm.patchValue({ category: categoryObj.id });
-        this.cacheCategories(this.productCategories);
-      });
+      this.openCategoryDialog();
+      return;
     }
+    this.selectedRootCategoryId = value;
+    this.selectedSubcategoryId = '';
+    this.subcategoryOptions = this.productCategories.filter(c => c.parentId === value);
+    this.productForm.patchValue({ category: value });
+  }
+
+  onSubcategoryChange(value: any): void {
+    if (value === '__NEW__') {
+      this.openCategoryDialog(this.selectedRootCategoryId as number);
+      return;
+    }
+    this.selectedSubcategoryId = value;
+    this.productForm.patchValue({ category: value || this.selectedRootCategoryId });
+  }
+
+  // Shared by both "+ Add New Category" (no parentId - creates a root category)
+  // and "+ Add New Subcategory" (parentId set - creates it under that root).
+  private openCategoryDialog(parentId?: number): void {
+    const existingNames = this.productCategories.map(c => c.name);
+    const parentOptions = this.productCategories
+      .filter(c => c.isRootCategory)
+      .map(c => ({ id: c.id, name: c.name }));
+
+    const dialogRef = this.categoryDialog.open(CategoryCreateDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      data: { existingCategories: existingNames, parentOptions, defaultParentId: parentId ?? null },
+      disableClose: false
+    });
+
+    dialogRef.afterClosed().subscribe((result: CategoryCreateDialogResult) => {
+      if (!result?.name) return;
+
+      const effectiveParentId = parentId ?? result.parentId;
+      const parent = effectiveParentId ? this.productCategories.find(c => c.id === effectiveParentId) : undefined;
+      const categoryObj: ProductCategory = {
+        id: result.id || -(Date.now()),  // Negative temp ID for offline
+        name: result.name,
+        description: '',
+        slug: result.slug || result.name.toLowerCase().replace(/\s+/g, '-'),
+        parentId: parent?.id,
+        parentName: parent?.name,
+        fullPath: parent ? `${parent.fullPath || parent.name} > ${result.name}` : result.name,
+        isActive: true,
+        createdBy: 'system',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        subcategories: [],
+        hasSubcategories: false,
+        isRootCategory: !parent,
+        productCount: 0,
+        subcategoryCount: 0
+      };
+
+      if (parent) {
+        // Keep it grouped right under its parent instead of scattering it
+        // to wherever an alphabetical sort would put it.
+        let insertAt = this.productCategories.indexOf(parent) + 1;
+        while (insertAt < this.productCategories.length && this.productCategories[insertAt].parentId === parent.id) {
+          insertAt++;
+        }
+        this.productCategories.splice(insertAt, 0, categoryObj);
+        parent.hasSubcategories = true;
+        this.selectedRootCategoryId = parent.id;
+        this.subcategoryOptions = this.productCategories.filter(c => c.parentId === parent.id);
+        this.selectedSubcategoryId = categoryObj.id;
+      } else {
+        this.productCategories.push(categoryObj);
+        this.productCategories.sort((a, b) => a.name.localeCompare(b.name));
+        this.selectedRootCategoryId = categoryObj.id;
+        this.subcategoryOptions = [];
+        this.selectedSubcategoryId = '';
+      }
+
+      this.productForm.patchValue({ category: categoryObj.id });
+      this.cacheCategories(this.productCategories);
+    });
   }
 
   private loadProductForEdit(productId: number): void {
