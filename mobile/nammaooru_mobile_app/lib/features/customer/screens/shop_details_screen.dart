@@ -823,7 +823,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     if (_isLoadingCategories) {
       return const SizedBox(
-        width: 66,
+        width: 72,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
@@ -849,7 +849,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
       child: SizedBox(
-        width: 66,
+        width: 72,
         child: DecoratedBox(
           decoration: const BoxDecoration(color: Color(0xFFF7F8F7)),
           child: ListView.builder(
@@ -2987,9 +2987,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     }
 
     // Responsive sizing: card height = image (scales with phone width) + a
-    // fixed info budget, so no overflow on small or large screens.
-    final itemWidth = (MediaQuery.of(context).size.width - 36) / 2;
-    final cardExtent = itemWidth + 110;
+    // fixed info budget, so no overflow on small or large screens. The
+    // category rail (66px + divider) eats into the grid's width, and a
+    // slightly-under-square image (0.8x) keeps cards compact.
+    final itemWidth = (MediaQuery.of(context).size.width - 36 - 73) / 2;
+    final cardExtent = itemWidth * 0.8 + 110;
 
     return SliverPadding(
       padding: const EdgeInsets.only(
