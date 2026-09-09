@@ -4442,30 +4442,36 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
                     const Spacer(),
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            '₹${widget.combo.comboPrice.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              color: Color(0xFF2E7D32),
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        // scaleDown instead of ellipsis - "₹2875" shrinking a
+                        // little beats it truncating to "₹2..."
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              children: [
+                                Text(
+                                  '₹${widget.combo.comboPrice.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF2E7D32),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '₹${widget.combo.originalPrice.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              ],
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            '₹${widget.combo.originalPrice.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 12,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Spacer(),
+                        const SizedBox(width: 6),
                         Material(
                           color: Colors.transparent,
                           child: InkWell(

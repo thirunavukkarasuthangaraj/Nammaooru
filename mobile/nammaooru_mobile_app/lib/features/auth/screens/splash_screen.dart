@@ -95,8 +95,13 @@ class _SplashScreenState extends State<SplashScreen>
           return Container(
             color: AppColors.primary,
             child: Center(
-              child: Column(
+              // scaleDown keeps the splash from overflowing when the route
+              // transition briefly renders it inside near-zero constraints.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   AnimatedBuilder(
                     animation: _animationController,
@@ -181,6 +186,7 @@ class _SplashScreenState extends State<SplashScreen>
                       color: Colors.white,
                     ),
                 ],
+                ),
               ),
             ),
           );
