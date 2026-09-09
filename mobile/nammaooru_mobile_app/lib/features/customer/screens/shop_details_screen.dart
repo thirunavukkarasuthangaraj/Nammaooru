@@ -877,42 +877,30 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   padding: const EdgeInsets.symmetric(vertical: 6),
+                  // Single highlight only: the image tile carries the green
+                  // border, so the wrapper stays a plain soft card - no
+                  // double ring around the selected item.
                   decoration: BoxDecoration(
                     color: isSelected ? Colors.white : Colors.transparent,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected
-                          ? VillageTheme.primaryGreen
-                          : Colors.transparent,
-                      width: 1.5,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: VillageTheme.primaryGreen.withOpacity(0.18),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
                     children: [
                       Container(
-                        width: 44,
-                        height: 44,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F4F2),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isSelected
                                 ? VillageTheme.primaryGreen
                                 : const Color(0xFFE2E7E4),
-                            width: isSelected ? 1.5 : 1,
+                            width: isSelected ? 2 : 1,
                           ),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(9),
+                          borderRadius: BorderRadius.circular(11),
                           child: hasImage
                               ? Image.network(
                                   ImageUrlHelper.getFullImageUrl(imageUrl),
