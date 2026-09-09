@@ -31,6 +31,7 @@ public class FeaturedPostsService {
     private final PromotionRepository promotionRepository;
     private final ShopRepository shopRepository;
     private final SettingService settingService;
+    private final PromotionService promotionService;
 
     public Map<String, Object> getFeaturedPosts(Double lat, Double lng, Double radiusKm) {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -47,9 +48,11 @@ public class FeaturedPostsService {
             result.put("combos", List.of());
         }
 
-        // Shop Promotions/Offers - active public promotions
+        // Shop Promotions/Offers - active public promotions, shop-tied ones only
+        // when the customer is within that shop's own delivery radius
         try {
             var promos = promotionRepository.findAllPublicActive(LocalDateTime.now());
+            promos = promotionService.filterPromotionsByShopProximity(promos, lat, lng);
             var limitedPromos = promos.size() > 10 ? promos.subList(0, 10) : promos;
             result.put("promotions", limitedPromos.stream().map(this::mapPromotion).toList());
         } catch (Exception e) {

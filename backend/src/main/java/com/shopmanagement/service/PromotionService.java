@@ -237,9 +237,7 @@ public class PromotionService {
             allPromotions = promotionRepository.findActiveByShopId(shopId, LocalDateTime.now());
         } else {
             allPromotions = promotionRepository.findAllPublicActive(LocalDateTime.now());
-            if (latitude != null && longitude != null) {
-                allPromotions = filterByShopProximity(allPromotions, latitude, longitude);
-            }
+            allPromotions = filterByShopProximity(allPromotions, latitude, longitude);
         }
 
         // If no user identifiers provided, return all promotions (for unauthenticated users)
@@ -290,18 +288,33 @@ public class PromotionService {
     }
 
     /**
+     * Public entry point for other services (e.g. the home-screen featured-posts
+     * feed) that need the same shop-proximity filtering as getActivePromotions
+     * without duplicating the distance math.
+     */
+    public List<Promotion> filterPromotionsByShopProximity(List<Promotion> promotions, Double latitude, Double longitude) {
+        BigDecimal lat = latitude != null ? BigDecimal.valueOf(latitude) : null;
+        BigDecimal lng = longitude != null ? BigDecimal.valueOf(longitude) : null;
+        return filterByShopProximity(promotions, lat, lng);
+    }
+
+    /**
      * Drops promotions tied to a shop the customer isn't actually within delivery
      * range of, using that shop's own delivery radius as set on its profile
      * (Shop.deliveryRadius) rather than one fixed cutoff for every shop.
      * Platform-wide promotions (shopId == null) always pass through unfiltered.
-     * A promo whose shop can't be resolved, or has no radius on file, is dropped
-     * rather than shown with no reliable way to judge distance.
+     * A promo whose shop can't be resolved, has no radius on file, or whose
+     * customer location isn't known yet, is dropped rather than shown with no
+     * reliable way to judge distance.
      */
     private List<Promotion> filterByShopProximity(List<Promotion> promotions, BigDecimal latitude, BigDecimal longitude) {
         return promotions.stream()
                 .filter(promotion -> {
                     if (promotion.getShopId() == null) {
                         return true;
+                    }
+                    if (latitude == null || longitude == null) {
+                        return false;
                     }
                     Optional<Shop> shopOpt = shopRepository.findById(promotion.getShopId());
                     if (shopOpt.isEmpty()) {
