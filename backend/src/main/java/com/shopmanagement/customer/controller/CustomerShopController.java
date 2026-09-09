@@ -116,22 +116,35 @@ public class CustomerShopController {
 
         List<String> categoryNames = new ArrayList<>(shopProductService.getShopProductCategories(shopId));
 
-        // Newer app versions ask for subgroups too, so a shop owner's freshly
-        // created subcategories (e.g. Rice Bag under Rice) show as filter chips
-        // even before any product is assigned to them. Old app versions don't
-        // send the flag and keep the products-only list.
         if (includeSubgroups) {
+            // Newer app versions ask for subgroups too, so a shop owner's
+            // freshly created subcategories (e.g. Rice Bag under Rice) show as
+            // filter chips even before any product is assigned to them - and
+            // parents of product-bearing subgroups are always present.
             Set<String> seen = categoryNames.stream()
                     .map(String::toLowerCase)
                     .collect(java.util.stream.Collectors.toCollection(HashSet::new));
             for (String categoryName : List.copyOf(categoryNames)) {
-                categoryRepository.findByNameIgnoreCase(categoryName).ifPresent(cat ->
-                        categoryRepository.findActiveSubcategoriesOrderedBySort(cat.getId()).forEach(sub -> {
-                            if (seen.add(sub.getName().toLowerCase())) {
-                                categoryNames.add(sub.getName());
-                            }
-                        }));
+                categoryRepository.findByNameIgnoreCase(categoryName).ifPresent(cat -> {
+                    categoryRepository.findActiveSubcategoriesOrderedBySort(cat.getId()).forEach(sub -> {
+                        if (seen.add(sub.getName().toLowerCase())) {
+                            categoryNames.add(sub.getName());
+                        }
+                    });
+                    if (cat.getParent() != null
+                            && seen.add(cat.getParent().getName().toLowerCase())) {
+                        categoryNames.add(cat.getParent().getName());
+                    }
+                });
             }
+        } else {
+            // Old app versions render this list as one flat category grid -
+            // keep it to root categories only so a subgroup gaining its first
+            // product doesn't suddenly appear there as a new top-level card.
+            categoryNames.removeIf(categoryName ->
+                    categoryRepository.findByNameIgnoreCase(categoryName)
+                            .map(cat -> cat.getParent() != null)
+                            .orElse(false));
         }
 
         List<CategoryResponse> categories = categoryNames.stream()
