@@ -717,7 +717,9 @@ class _ShopListingScreenState extends State<ShopListingScreen>
       child: ListView.builder(
         controller: _scrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        // Extra bottom room so the last card never sits under the floating
+        // "Register Your Shop" button.
+        padding: EdgeInsets.fromLTRB(16, 8, 16, _hideRegistrationCta ? 8 : 88),
         itemCount: _filteredShops.length,
         itemBuilder: (context, index) {
           return _buildVillageShopCard(context, _filteredShops[index]);
