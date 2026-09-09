@@ -2701,8 +2701,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
-                width: 84,
-                height: 84,
+                width: 64,
+                height: 64,
                 child: imageUrl.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
@@ -2763,12 +2763,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     ),
                     if (hasDiscount) ...[
                       const SizedBox(width: 4),
-                      Text(
-                        '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                          decoration: TextDecoration.lineThrough,
+                      Flexible(
+                        child: Text(
+                          '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -2779,7 +2782,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 92,
+            width: 82,
             child: _buildListCartControl(productModel, isInStock),
           ),
         ],
