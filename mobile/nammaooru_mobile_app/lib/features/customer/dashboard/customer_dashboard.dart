@@ -1668,15 +1668,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // "Deliver To" location bar — controlled by section_deliver_to
-                          if (featureConfig.isVisible('section_deliver_to'))
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [_buildLocationSelector()],
-                              ),
-                            ),
+                          // "Deliver To" bar and offer banner moved to the
+                          // Grocery/Food listing screens - they're shop-specific
+                          // (delivery radius, category), not relevant to the
+                          // other categories (Labour, Travel, etc.) that also
+                          // live behind this home screen.
 
                           // Main content area
                           Container(
@@ -1688,12 +1684,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (_promos.isNotEmpty || _combos.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    _buildUnifiedOffersCarousel(),
-                                    const SizedBox(height: 16),
-                                  ] else
-                                    const SizedBox(height: 12),
+                                  const SizedBox(height: 12),
                                   _buildServiceCategories(),
                                   const SizedBox(height: 20),
                                   _buildNearbyOnHome(),
