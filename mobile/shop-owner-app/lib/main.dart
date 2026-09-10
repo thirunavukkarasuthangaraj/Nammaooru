@@ -21,6 +21,7 @@ import 'providers/order_provider.dart';
 import 'services/version_service.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
+import 'screens/payments/pay_and_use_screen.dart';
 import 'services/storage_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -224,6 +225,43 @@ void _showReturnNotificationDialog(
         ],
       );
     },
+  );
+}
+
+// After login/auto-login, check whether this shop's subscription is paid
+// before dropping the owner into the dashboard - mirrors the web admin's
+// PaymentLockGuard. Network failures fail OPEN (go to dashboard) since the
+// backend's ShopPaymentGateFilter enforces the real lock on write actions
+// regardless; this check only exists to show the friendly pay screen
+// proactively instead of surprising the owner with scattered 402 errors.
+Future<void> _navigateAfterAuth(
+  BuildContext context, {
+  required String token,
+  required String userName,
+}) async {
+  bool paymentRequired = false;
+  try {
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/shop-owner-payments/status'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+    ).timeout(const Duration(seconds: 10));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['statusCode'] == '0000') {
+      final status = data['data'];
+      paymentRequired = status['paid'] != true && status['paymentRequired'] == true;
+    }
+  } catch (e) {
+    debugPrint('Payment status check failed (failing open): $e');
+  }
+
+  if (!context.mounted) return;
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => paymentRequired
+          ? PayAndUseScreen(token: token, userName: userName, isLockScreen: true)
+          : MainNavigation(userName: userName, token: token),
+    ),
   );
 }
 
@@ -505,16 +543,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        // Navigate to dashboard with stored credentials
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MainNavigation(
-              userName: userData['username'] ?? 'Shop Owner',
-              token: token,
-            ),
-          ),
-        );
+        // Navigate to dashboard with stored credentials (via payment gate)
+        await _navigateAfterAuth(context, token: token, userName: userData['username'] ?? 'Shop Owner');
       } else {
         print('No existing auth found');
         setState(() {
@@ -597,17 +627,9 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        // Navigate to dashboard
-        print('Navigating to MainNavigation with token: $token');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MainNavigation(
-              userName: data['data']['username'] ?? 'Shop Owner',
-              token: token,
-            ),
-          ),
-        );
+        // Navigate to dashboard (via payment gate)
+        print('Navigating to dashboard with token: $token');
+        await _navigateAfterAuth(context, token: token, userName: data['data']['username'] ?? 'Shop Owner');
       } else {
         print('Login failed: ${data['message']}');
         _showError(data['message'] ?? 'Login failed');
@@ -680,7 +702,8 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo with gradient background
+                  // Same brand logo as the customer app, instead of a
+                  // generic store icon.
                   Container(
                     width: 120,
                     height: 120,
@@ -690,14 +713,28 @@ class _LoginScreenState extends State<LoginScreen> {
                           BorderRadius.circular(AppTheme.radiusXLarge),
                       boxShadow: AppTheme.shadowLarge,
                     ),
-                    child: const Icon(
-                      Icons.store,
-                      size: 64,
-                      color: AppTheme.textWhite,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXLarge),
+                      child: Image.asset(
+                        'assets/icons/logo-new.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.store,
+                          size: 64,
+                          color: AppTheme.textWhite,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppTheme.space24),
-                  Text('NammaOoru Shop Owner', style: AppTheme.h2),
+                  Text(
+                    'NammaOoru Shop Owner',
+                    style: AppTheme.h3,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: AppTheme.space8),
                   Text(
                     'Manage your shop efficiently',

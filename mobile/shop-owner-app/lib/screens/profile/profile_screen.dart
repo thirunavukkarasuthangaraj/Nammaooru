@@ -7,6 +7,7 @@ import '../auth/login_screen.dart';
 import '../settings/business_hours_screen.dart';
 import '../inventory/inventory_screen.dart';
 import '../promo_codes/promo_codes_screen.dart';
+import '../payments/pay_and_use_screen.dart';
 import '../../utils/app_config.dart';
 import '../../providers/language_provider.dart';
 
@@ -28,6 +29,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _email = 'Email Not Set';
   String _city = '';
   String _pincode = '';
+  String? _shopLogoUrl;
+  bool _logoLoadFailed = false;
   bool _isLoading = true;
 
   @override
@@ -68,6 +71,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (_pincode.isNotEmpty) {
               _shopAddress += ' - $_pincode';
             }
+
+            // Prefer the image explicitly marked LOGO; fall back to the
+            // primary image if no logo was uploaded, rather than always
+            // showing the generic store icon.
+            final images = shop['images'] as List<dynamic>? ?? [];
+            final logoImage = images.cast<Map<String, dynamic>?>().firstWhere(
+                  (img) => img?['imageType'] == 'LOGO',
+                  orElse: () => null,
+                ) ??
+                images.cast<Map<String, dynamic>?>().firstWhere(
+                  (img) => img?['isPrimary'] == true,
+                  orElse: () => null,
+                );
+            _shopLogoUrl = logoImage?['imageUrl'] as String?;
+
             _isLoading = false;
           });
         } else {
@@ -230,15 +248,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: CircleAvatar(
               radius: 45,
               backgroundColor: Colors.white,
-              child: CircleAvatar(
-                radius: 40,
-                backgroundColor: Colors.green.shade50,
-                child: Icon(
-                  Icons.store,
-                  size: 45,
-                  color: Colors.green.shade700,
-                ),
-              ),
+              backgroundImage: (!_logoLoadFailed && _shopLogoUrl != null && _shopLogoUrl!.isNotEmpty)
+                  ? NetworkImage(AppConfig.getImageUrl(_shopLogoUrl))
+                  : null,
+              onBackgroundImageError: (_shopLogoUrl != null && _shopLogoUrl!.isNotEmpty)
+                  ? (error, stackTrace) {
+                      if (mounted) setState(() => _logoLoadFailed = true);
+                    }
+                  : null,
+              child: (_logoLoadFailed || _shopLogoUrl == null || _shopLogoUrl!.isEmpty)
+                  ? CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.green.shade50,
+                      child: Icon(
+                        Icons.store,
+                        size: 45,
+                        color: Colors.green.shade700,
+                      ),
+                    )
+                  : null,
             ),
           ),
           const SizedBox(height: 16),
@@ -473,6 +501,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Payment Settings coming soon!')),
+              );
+            },
+          ),
+          _buildSettingsItem(
+            Icons.subscriptions_outlined,
+            'Subscription & Usage',
+            'View plan, WhatsApp usage & pay',
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PayAndUseScreen(
+                    token: widget.token,
+                    userName: widget.userName,
+                  ),
+                ),
               );
             },
           ),
