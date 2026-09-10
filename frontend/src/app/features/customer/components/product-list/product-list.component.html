@@ -72,10 +72,27 @@
               <mat-radio-button value="" class="category-option">
                 <span class="category-label">All Categories</span>
               </mat-radio-button>
-              <mat-radio-button *ngFor="let category of categories" 
-                                [value]="category" 
+              <mat-radio-button *ngFor="let category of categories"
+                                [value]="category"
                                 class="category-option">
                 <span class="category-label">{{category}}</span>
+              </mat-radio-button>
+            </mat-radio-group>
+          </div>
+
+          <!-- Subcategories (only shown when the selected category has any) -->
+          <div class="filter-section" *ngIf="currentSubcategories.length > 0">
+            <h3 class="filter-title">Subcategories</h3>
+            <mat-radio-group [(ngModel)]="selectedSubcategory"
+                             (change)="onSubcategoryChange()"
+                             class="category-list">
+              <mat-radio-button value="" class="category-option">
+                <span class="category-label">All {{selectedCategory}}</span>
+              </mat-radio-button>
+              <mat-radio-button *ngFor="let sub of currentSubcategories"
+                                [value]="sub.name"
+                                class="category-option">
+                <span class="category-label">{{sub.displayName}}</span>
               </mat-radio-button>
             </mat-radio-group>
           </div>

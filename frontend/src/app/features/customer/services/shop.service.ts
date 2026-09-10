@@ -20,6 +20,12 @@ export interface Shop {
   openingHours?: string;
 }
 
+export interface ShopCategoryNode {
+  name: string;
+  displayName: string;
+  parentName: string | null;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -301,5 +307,28 @@ export class ShopService {
         observer.complete();
       });
     });
+  }
+
+  /**
+   * Full category list including subgroups (e.g. Rice Bag under Rice), not
+   * limited to whatever fits on the products endpoint's first page like
+   * getProductCategories() above. Same backend hierarchy the customer
+   * mobile app uses.
+   */
+  getShopCategoriesHierarchy(shopId: number): Observable<ShopCategoryNode[]> {
+    return this.http.get<any>(`${this.apiUrl}/customer/shops/${shopId}/categories`, {
+      params: { includeSubgroups: 'true' }
+    }).pipe(
+      switchMap(response => {
+        const data = (response.data || []) as any[];
+        const nodes: ShopCategoryNode[] = data.map(c => ({
+          name: c.name,
+          displayName: c.displayName || c.name,
+          parentName: c.parentName || null
+        }));
+        return of(nodes);
+      }),
+      catchError(() => of([]))
+    );
   }
 }

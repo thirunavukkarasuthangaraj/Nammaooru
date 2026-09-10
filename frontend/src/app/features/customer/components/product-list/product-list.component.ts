@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
-import { ShopService, Shop, Product } from '../../services/shop.service';
+import { ShopService, Shop, Product, ShopCategoryNode } from '../../services/shop.service';
 import { CartService } from '../../services/cart.service';
 import { Location } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
@@ -20,11 +20,17 @@ export class ProductListComponent implements OnInit, OnDestroy {
   products: Product[] = [];
   categories: string[] = [];
   loading = false;
-  
+
   // Filters
   searchTerm = '';
   selectedCategory = '';
+  selectedSubcategory = '';
   sortBy = 'name';
+
+  // Category -> its subgroups (e.g. Rice -> Rice Bag, Loose Rice Packing),
+  // keyed by the parent category's own name. Populated from the same
+  // hierarchy-aware endpoint the customer mobile app uses.
+  subcategoriesByParent: Map<string, ShopCategoryNode[]> = new Map();
   
   // Cart info
   cartItemCount = 0;
@@ -77,7 +83,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   loadProducts(): void {
     this.loading = true;
-    this.shopService.getProductsByShop(this.shopId, this.selectedCategory, this.searchTerm)
+    const effectiveCategory = this.selectedSubcategory || this.selectedCategory;
+    this.shopService.getProductsByShop(this.shopId, effectiveCategory, this.searchTerm)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (products) => {
@@ -92,11 +99,24 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   loadCategories(): void {
-    this.shopService.getProductCategories(this.shopId)
+    this.shopService.getShopCategoriesHierarchy(this.shopId)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(categories => {
-        this.categories = categories;
+      .subscribe(nodes => {
+        const roots = nodes.filter(n => !n.parentName);
+        this.categories = roots.map(r => r.name);
+
+        const byParent = new Map<string, ShopCategoryNode[]>();
+        nodes.filter(n => n.parentName).forEach(sub => {
+          const list = byParent.get(sub.parentName!) || [];
+          list.push(sub);
+          byParent.set(sub.parentName!, list);
+        });
+        this.subcategoriesByParent = byParent;
       });
+  }
+
+  get currentSubcategories(): ShopCategoryNode[] {
+    return this.subcategoriesByParent.get(this.selectedCategory) || [];
   }
 
   sortProducts(products: Product[]): Product[] {
@@ -119,6 +139,11 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   onCategoryChange(): void {
+    this.selectedSubcategory = '';
+    this.loadProducts();
+  }
+
+  onSubcategoryChange(): void {
     this.loadProducts();
   }
 
