@@ -146,128 +146,181 @@ interface Category {
             </button>
           </div>
 
-          <!-- Categories Grid -->
-          <div *ngIf="categories.length > 0" class="categories-grid">
-            <div *ngFor="let category of categories" class="category-card" [class.is-inactive]="!category.isActive">
-              <!-- Big group tile - this is what customers see in the app -->
-              <div class="category-tile" (click)="editCategory(category)">
-                <img *ngIf="category.iconUrl"
-                     [src]="getCategoryImageUrl(category.iconUrl)"
-                     alt="{{ category.name }}"
-                     class="category-image"
-                     (error)="onImageError($event, category)">
-                <div *ngIf="!category.iconUrl" class="category-tile-placeholder">
-                  <mat-icon class="category-main-icon">{{ category.icon }}</mat-icon>
-                  <span>No image yet</span>
-                </div>
-                <span class="status-badge" [class.on]="category.isActive">
-                  {{ category.isActive ? 'Active' : 'Inactive' }}
-                </span>
-              </div>
-
-              <div class="category-info">
-                <h3 class="category-name" [title]="category.name">{{ category.name }}</h3>
-                <div class="category-name-tamil" *ngIf="category.nameTamil">
-                  {{ category.nameTamil }}
-                </div>
-                <div class="category-meta">
-                  <span class="meta-item">{{ category.productCount || 0 }} products</span>
-                </div>
-                <p class="category-description"
-                   *ngIf="category.description && category.description.toLowerCase() !== category.name.toLowerCase()">
-                  {{ category.description }}
-                </p>
-              </div>
-
-              <div class="category-actions">
-                <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(category)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button class="action-btn" matTooltip="View products" (click)="viewProducts(category)">
-                  <mat-icon>visibility</mat-icon>
-                </button>
-                <button mat-icon-button class="action-btn" [class.toggle-on]="category.isActive"
-                        [matTooltip]="category.isActive ? 'Deactivate' : 'Activate'"
-                        (click)="toggleCategoryStatus(category)">
-                  <mat-icon>{{ category.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-                </button>
-                <span class="actions-spacer"></span>
-                <button mat-icon-button class="action-btn delete"
-                        matTooltip="Delete"
-                        (click)="deleteCategory(category)">
-                  <mat-icon>delete_outline</mat-icon>
-                </button>
-              </div>
-
-              <!-- Subgroups (subcategories) nested under this category -->
-              <button type="button" class="subcategory-toggle" (click)="toggleSubcategories(category)">
-                <mat-icon>{{ category.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
-                <span *ngIf="category.subcategoryCount > 0">{{ category.subcategoryCount }} subgroup{{ category.subcategoryCount === 1 ? '' : 's' }}</span>
-                <span *ngIf="category.subcategoryCount === 0">Add a subgroup</span>
-              </button>
-
-              <div class="subcategory-panel" *ngIf="category.expanded">
-                <div class="subcategory-loading" *ngIf="category.loadingSubcategories">
-                  <mat-spinner diameter="18"></mat-spinner>
+          <ng-container *ngIf="categories.length > 0">
+            <!-- Card View: big tiles, matches what customers see in the app -->
+            <div *ngIf="viewMode === 'card'" class="categories-grid">
+              <div *ngFor="let category of categories" class="category-card" [class.is-inactive]="!category.isActive">
+                <div class="category-tile" (click)="editCategory(category)">
+                  <img *ngIf="category.iconUrl"
+                       [src]="getCategoryImageUrl(category.iconUrl)"
+                       alt="{{ category.name }}"
+                       class="category-image"
+                       (error)="onImageError($event, category)">
+                  <div *ngIf="!category.iconUrl" class="category-tile-placeholder">
+                    <mat-icon class="category-main-icon">{{ category.icon }}</mat-icon>
+                    <span>No image yet</span>
+                  </div>
+                  <span class="status-badge" [class.on]="category.isActive">
+                    {{ category.isActive ? 'Active' : 'Inactive' }}
+                  </span>
                 </div>
 
-                <div class="subcategory-error" *ngIf="!category.loadingSubcategories && category.subcategoriesLoadFailed">
-                  <mat-icon>error_outline</mat-icon>
-                  <span>Couldn't load subgroups.</span>
-                  <button mat-button type="button" (click)="fetchSubcategories(category)">Retry</button>
-                </div>
-
-                <ng-container *ngIf="!category.loadingSubcategories && !category.subcategoriesLoadFailed">
-                  <p class="no-subcategories" *ngIf="category.subcategories?.length === 0">
-                    No subgroups yet.
+                <div class="category-info">
+                  <h3 class="category-name" [title]="category.name">{{ category.name }}</h3>
+                  <div class="category-name-tamil" *ngIf="category.nameTamil">
+                    {{ category.nameTamil }}
+                  </div>
+                  <div class="category-meta">
+                    <span class="meta-item">{{ category.productCount || 0 }} products</span>
+                  </div>
+                  <p class="category-description"
+                     *ngIf="category.description && category.description.toLowerCase() !== category.name.toLowerCase()">
+                    {{ category.description }}
                   </p>
+                </div>
 
-                  <!-- List view: compact rows -->
-                  <div class="subcategory-list" *ngIf="viewMode === 'list' && category.subcategories?.length">
-                    <div class="subcategory-chip" *ngFor="let sub of category.subcategories">
-                      <span>{{ sub.name }}</span>
-                      <span class="sub-count">{{ sub.productCount || 0 }} products</span>
-                      <button mat-icon-button class="sub-edit-btn" matTooltip="Edit subgroup" (click)="editCategory(sub)">
-                        <mat-icon>edit</mat-icon>
-                      </button>
-                      <button mat-icon-button class="sub-delete-btn" matTooltip="Delete subgroup" (click)="deleteSubcategory(category, sub)">
-                        <mat-icon>delete_outline</mat-icon>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Card view: same tile layout as root categories, scaled down -->
-                  <div class="subcategory-grid" *ngIf="viewMode === 'card' && category.subcategories?.length">
-                    <div class="subcategory-card" *ngFor="let sub of category.subcategories">
-                      <div class="sub-tile">
-                        <img *ngIf="sub.iconUrl" [src]="getCategoryImageUrl(sub.iconUrl)" [alt]="sub.name" class="sub-image">
-                        <div *ngIf="!sub.iconUrl" class="sub-tile-placeholder">
-                          <mat-icon>{{ sub.icon }}</mat-icon>
-                        </div>
-                      </div>
-                      <div class="sub-info">
-                        <h4 [title]="sub.name">{{ sub.name }}</h4>
-                        <span class="sub-count">{{ sub.productCount || 0 }} products</span>
-                      </div>
-                      <div class="sub-actions">
-                        <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(sub)">
-                          <mat-icon>edit</mat-icon>
-                        </button>
-                        <button mat-icon-button class="action-btn delete" matTooltip="Delete" (click)="deleteSubcategory(category, sub)">
-                          <mat-icon>delete_outline</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button mat-stroked-button class="add-subcategory-btn" type="button" (click)="openAddSubcategoryDialog(category)">
-                    <mat-icon>add</mat-icon>
-                    Add Subgroup to {{ category.name }}
+                <div class="category-actions">
+                  <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(category)">
+                    <mat-icon>edit</mat-icon>
                   </button>
-                </ng-container>
+                  <button mat-icon-button class="action-btn" matTooltip="View products" (click)="viewProducts(category)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button mat-icon-button class="action-btn" [class.toggle-on]="category.isActive"
+                          [matTooltip]="category.isActive ? 'Deactivate' : 'Activate'"
+                          (click)="toggleCategoryStatus(category)">
+                    <mat-icon>{{ category.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+                  </button>
+                  <span class="actions-spacer"></span>
+                  <button mat-icon-button class="action-btn delete"
+                          matTooltip="Delete"
+                          (click)="deleteCategory(category)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+
+                <!-- Subgroups (subcategories) nested under this category -->
+                <button type="button" class="subcategory-toggle" (click)="toggleSubcategories(category)">
+                  <mat-icon>{{ category.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  <span *ngIf="category.subcategoryCount > 0">{{ category.subcategoryCount }} subgroup{{ category.subcategoryCount === 1 ? '' : 's' }}</span>
+                  <span *ngIf="category.subcategoryCount === 0">Add a subgroup</span>
+                </button>
+
+                <div class="subcategory-panel" *ngIf="category.expanded">
+                  <ng-container *ngTemplateOutlet="subgroupContent; context: { $implicit: category }"></ng-container>
+                </div>
               </div>
             </div>
-          </div>
+
+            <!-- List View: compact rows, click anywhere on a row to expand its subgroups -->
+            <div *ngIf="viewMode === 'list'" class="categories-list-view">
+              <div *ngFor="let category of categories" class="category-row" [class.is-inactive]="!category.isActive">
+                <div class="row-main" (click)="toggleSubcategories(category)">
+                  <div class="row-thumb">
+                    <img *ngIf="category.iconUrl"
+                         [src]="getCategoryImageUrl(category.iconUrl)"
+                         alt="{{ category.name }}"
+                         (error)="onImageError($event, category)">
+                    <mat-icon *ngIf="!category.iconUrl">{{ category.icon }}</mat-icon>
+                  </div>
+                  <div class="row-info">
+                    <span class="row-name">{{ category.name }}</span>
+                    <span class="row-tamil" *ngIf="category.nameTamil">{{ category.nameTamil }}</span>
+                  </div>
+                  <span class="row-count">{{ category.productCount || 0 }} products</span>
+                  <span class="row-subcount" *ngIf="category.subcategoryCount > 0">
+                    {{ category.subcategoryCount }} subgroup{{ category.subcategoryCount === 1 ? '' : 's' }}
+                  </span>
+                  <span class="status-badge row-status" [class.on]="category.isActive">
+                    {{ category.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                  <div class="row-actions" (click)="$event.stopPropagation()">
+                    <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(category)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button class="action-btn" matTooltip="View products" (click)="viewProducts(category)">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button mat-icon-button class="action-btn" [class.toggle-on]="category.isActive"
+                            [matTooltip]="category.isActive ? 'Deactivate' : 'Activate'"
+                            (click)="toggleCategoryStatus(category)">
+                      <mat-icon>{{ category.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+                    </button>
+                    <button mat-icon-button class="action-btn delete" matTooltip="Delete" (click)="deleteCategory(category)">
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </div>
+                  <mat-icon class="row-chevron">{{ category.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </div>
+
+                <div class="row-subpanel" *ngIf="category.expanded">
+                  <ng-container *ngTemplateOutlet="subgroupContent; context: { $implicit: category }"></ng-container>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- Shared subgroup content (loading / error / empty / list-or-card of subs / add button) -->
+          <ng-template #subgroupContent let-category>
+            <div class="subcategory-loading" *ngIf="category.loadingSubcategories">
+              <mat-spinner diameter="18"></mat-spinner>
+            </div>
+
+            <div class="subcategory-error" *ngIf="!category.loadingSubcategories && category.subcategoriesLoadFailed">
+              <mat-icon>error_outline</mat-icon>
+              <span>Couldn't load subgroups.</span>
+              <button mat-button type="button" (click)="fetchSubcategories(category)">Retry</button>
+            </div>
+
+            <ng-container *ngIf="!category.loadingSubcategories && !category.subcategoriesLoadFailed">
+              <p class="no-subcategories" *ngIf="category.subcategories?.length === 0">
+                No subgroups yet.
+              </p>
+
+              <!-- List view: compact rows -->
+              <div class="subcategory-list" *ngIf="viewMode === 'list' && category.subcategories?.length">
+                <div class="subcategory-chip" *ngFor="let sub of category.subcategories">
+                  <span>{{ sub.name }}</span>
+                  <span class="sub-count">{{ sub.productCount || 0 }} products</span>
+                  <button mat-icon-button class="sub-edit-btn" matTooltip="Edit subgroup" (click)="editCategory(sub)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button class="sub-delete-btn" matTooltip="Delete subgroup" (click)="deleteSubcategory(category, sub)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card view: same tile layout as root categories, scaled down -->
+              <div class="subcategory-grid" *ngIf="viewMode === 'card' && category.subcategories?.length">
+                <div class="subcategory-card" *ngFor="let sub of category.subcategories">
+                  <div class="sub-tile">
+                    <img *ngIf="sub.iconUrl" [src]="getCategoryImageUrl(sub.iconUrl)" [alt]="sub.name" class="sub-image">
+                    <div *ngIf="!sub.iconUrl" class="sub-tile-placeholder">
+                      <mat-icon>{{ sub.icon }}</mat-icon>
+                    </div>
+                  </div>
+                  <div class="sub-info">
+                    <h4 [title]="sub.name">{{ sub.name }}</h4>
+                    <span class="sub-count">{{ sub.productCount || 0 }} products</span>
+                  </div>
+                  <div class="sub-actions">
+                    <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(sub)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button class="action-btn delete" matTooltip="Delete" (click)="deleteSubcategory(category, sub)">
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <button mat-stroked-button class="add-subcategory-btn" type="button" (click)="openAddSubcategoryDialog(category)">
+                <mat-icon>add</mat-icon>
+                Add Subgroup to {{ category.name }}
+              </button>
+            </ng-container>
+          </ng-template>
         </mat-card>
       </div>
 
@@ -1143,6 +1196,133 @@ interface Category {
       color: #999;
       font-size: 12px;
       margin: 0 0 8px;
+    }
+
+    /* List View - compact rows for root categories */
+    .categories-list-view {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .category-row {
+      border-bottom: 1px solid #ECEFF1;
+    }
+
+    .category-row.is-inactive .row-name,
+    .category-row.is-inactive .row-thumb {
+      opacity: 0.55;
+    }
+
+    .row-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .row-main:hover {
+      background: #FAFBFC;
+    }
+
+    .row-thumb {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #EEF1EE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .row-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .row-thumb mat-icon {
+      color: #b0bec5;
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+
+    .row-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .row-name {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #1a1a1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row-tamil {
+      font-size: 12.5px;
+      color: #546e7a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row-count {
+      flex-shrink: 0;
+      font-size: 13px;
+      color: #78909C;
+      width: 90px;
+    }
+
+    .row-subcount {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: #16a34a;
+      background: #E8F5E9;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .row-status {
+      position: static;
+      backdrop-filter: none;
+    }
+
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .row-chevron {
+      color: #90A4AE;
+      flex-shrink: 0;
+    }
+
+    .row-subpanel {
+      padding: 4px 20px 16px 20px;
+      background: #FAFBFC;
+    }
+
+    @media (max-width: 768px) {
+      .row-tamil,
+      .row-subcount {
+        display: none;
+      }
+
+      .row-count {
+        width: auto;
+      }
     }
 
     .add-subcategory-btn {
