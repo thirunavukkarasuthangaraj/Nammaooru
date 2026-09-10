@@ -40,13 +40,24 @@
         <mat-icon matSuffix>search</mat-icon>
         <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryChange($event.option.value)">
           <mat-option value="">All Categories</mat-option>
-          <mat-option *ngFor="let category of filteredCategories" [value]="category">
-            {{ categoryLabel(category) }}
+          <mat-option *ngFor="let category of filteredRootCategories" [value]="category">
+            {{ category }}
           </mat-option>
-          <mat-option *ngIf="categoryFilterText && filteredCategories.length === 0" disabled>
+          <mat-option *ngIf="categoryFilterText && filteredRootCategories.length === 0" disabled>
             No categories match "{{ categoryFilterText }}"
           </mat-option>
         </mat-autocomplete>
+      </mat-form-field>
+
+      <!-- Subcategory: cascades from the selected Category, like a country -> state picker -->
+      <mat-form-field appearance="outline" class="filter-field" *ngIf="subcategoryFilterOptions.length > 0">
+        <mat-label>Subcategory</mat-label>
+        <mat-select [(ngModel)]="selectedSubcategory" (selectionChange)="onSubcategoryFilterChange($event.value)">
+          <mat-option value="">All {{ selectedCategory }}</mat-option>
+          <mat-option *ngFor="let sub of subcategoryFilterOptions" [value]="sub">
+            {{ categoryLabel(sub) }}
+          </mat-option>
+        </mat-select>
       </mat-form-field>
     </div>
 

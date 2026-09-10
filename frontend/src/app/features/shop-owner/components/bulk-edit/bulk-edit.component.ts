@@ -74,6 +74,10 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   filteredProducts: BulkEditProduct[] = [];
   categories: string[] = [];
   filteredCategories: string[] = [];
+  // Toolbar's Category filter shows root names only (subgroups get their own
+  // cascading dropdown below) - categories/filteredCategories above stay the
+  // full flat list, still used for duplicate-name checks in the create dialog.
+  filteredRootCategories: string[] = [];
   categoryFilterText = '';
   // Subgroup name -> "Parent > Subgroup" for display, so the dropdown shows
   // hierarchy while the stored value stays the plain category name the
@@ -90,7 +94,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   // Filter controls
   searchTerm = '';
   selectedCategory = '';
+  selectedSubcategory = '';
   selectedStatus = '';
+  // Cascading like country->state: populated from categoryChildrenMap once a
+  // root Category is picked in the top filter bar.
+  subcategoryFilterOptions: string[] = [];
 
   // Pagination
   totalProducts = 0;
@@ -364,6 +372,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         // Fall back to categories in use if the master list can't be fetched
         this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
         this.filteredCategories = this.categories;
+        this.filteredRootCategories = this.categories;
       }
     });
   }
@@ -397,6 +406,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       this.categories = [...displayMap.keys()].sort((a, b) =>
         (displayMap.get(a) || a).localeCompare(displayMap.get(b) || b));
       this.filteredCategories = this.categories;
+      this.filteredRootCategories = this.rootCategoryOptions.map(r => r.name);
     };
 
     if (withSubs.length === 0) {
@@ -431,12 +441,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     return this.categoryDisplayMap.get(name) || name;
   }
 
-  /** Filters the Category autocomplete options as the user types directly in the field. */
+  /** Filters the Category autocomplete options (root categories only) as the user types. */
   filterCategoryOptions(): void {
     const term = this.categoryFilterText.toLowerCase().trim();
-    this.filteredCategories = !term
-      ? this.categories
-      : this.categories.filter(c => c.toLowerCase().includes(term));
+    const roots = this.rootCategoryOptions.map(r => r.name);
+    this.filteredRootCategories = !term
+      ? roots
+      : roots.filter(c => c.toLowerCase().includes(term));
   }
 
   applyFilters(): void {
@@ -449,7 +460,14 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         (product.sku || '').toLowerCase().includes(searchLower) ||
         (product.tags || '').toLowerCase().includes(searchLower);
 
-      const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
+      // A root Category alone matches it AND every one of its subgroups
+      // (e.g. picking "Beverages" also shows Tea/Coffee products); picking a
+      // specific Subcategory narrows to just that subgroup.
+      const matchesCategory = this.selectedSubcategory
+        ? product.category === this.selectedSubcategory
+        : !this.selectedCategory ||
+          product.category === this.selectedCategory ||
+          this.categoryParentMap.get(product.category || '') === this.selectedCategory;
       const matchesStatus = !this.selectedStatus ||
         product.status === this.selectedStatus ||
         (this.selectedStatus === 'available' && product.isAvailable) ||
@@ -468,6 +486,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   onCategoryChange(category: string): void {
     this.selectedCategory = category;
+    this.selectedSubcategory = '';
+    this.subcategoryFilterOptions = this.categoryChildrenMap.get(category) || [];
+    this.applyFilters();
+  }
+
+  onSubcategoryFilterChange(subcategory: string): void {
+    this.selectedSubcategory = subcategory;
     this.applyFilters();
   }
 
