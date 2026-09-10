@@ -2,6 +2,8 @@ import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ShopService } from '@core/services/shop.service';
+import { AuthService } from '@core/services/auth.service';
+import { UserService } from '@core/services/user.service';
 import { SwalService } from '@core/services/swal.service';
 import { Shop } from '@core/models/shop.model';
 import { getImageUrl } from '@core/utils/image-url.util';
@@ -126,8 +128,9 @@ import * as L from 'leaflet';
                   <div class="field-group" [ngSwitch]="field.type">
                     <mat-form-field *ngSwitchCase="'text'" appearance="outline">
                       <mat-label>{{ field.label }}</mat-label>
-                      <input matInput [formControlName]="field.control" [readonly]="!isEditMode">
+                      <input matInput [formControlName]="field.control" [readonly]="!isEditMode" [placeholder]="field.placeholder || ''">
                       <mat-icon matPrefix>{{ getFieldIcon(field.control) }}</mat-icon>
+                      <mat-hint *ngIf="field.hint">{{ field.hint }}</mat-hint>
                       <mat-error *ngFor="let error of getFieldErrors(field.control)">{{ error }}</mat-error>
                     </mat-form-field>
                     
@@ -939,6 +942,8 @@ export class ShopProfileComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private shopService: ShopService,
+    private authService: AuthService,
+    private userService: UserService,
     private swal: SwalService,
     private router: Router,
     private shopContext: ShopContextService
@@ -949,6 +954,7 @@ export class ShopProfileComponent implements OnInit {
       description: [''],
       phone: ['', [Validators.required]],
       email: [{value: '', disabled: true}],
+      username: ['', [Validators.required, Validators.minLength(3), Validators.pattern(/^[a-zA-Z0-9_.]+$/)]],
       address: ['', [Validators.required]],
       city: ['', [Validators.required]],
       pincode: ['', [Validators.required]],
@@ -1007,6 +1013,13 @@ export class ShopProfileComponent implements OnInit {
         control: 'email',
         type: 'email',
         placeholder: 'Enter email'
+      },
+      {
+        label: 'Username',
+        control: 'username',
+        type: 'text',
+        placeholder: 'Choose a username',
+        hint: 'Used to log in. Letters, numbers, dots and underscores only.'
       },
       {
         label: 'Address',
@@ -1161,6 +1174,12 @@ export class ShopProfileComponent implements OnInit {
       if (control.errors['email']) {
         errors.push('Please enter a valid email');
       }
+      if (control.errors['minlength']) {
+        errors.push(`${this.getFieldLabel(controlName)} must be at least ${control.errors['minlength'].requiredLength} characters`);
+      }
+      if (control.errors['pattern']) {
+        errors.push('Only letters, numbers, dots and underscores are allowed');
+      }
     }
     
     return errors;
@@ -1260,6 +1279,7 @@ export class ShopProfileComponent implements OnInit {
       description: 'description',
       phone: 'phone',
       email: 'email',
+      username: 'account_circle',
       address: 'location_on',
       city: 'location_city',
       pincode: 'markunread_mailbox',
@@ -1455,6 +1475,9 @@ export class ShopProfileComponent implements OnInit {
 
           // Set email separately since it's disabled
           this.shopForm.get('email')?.setValue(shop.ownerEmail || shop.email || '');
+
+          // Username lives on the logged-in User, not the Shop record itself
+          this.shopForm.get('username')?.setValue(this.authService.getCurrentUser()?.username || '');
           
           // Update statistics with real data
           this.shopStatus = shop.status || 'ACTIVE';
@@ -1530,9 +1553,34 @@ export class ShopProfileComponent implements OnInit {
     }
   }
 
+  // Username lives on the User account, not the Shop record, so it's saved
+  // via its own endpoint (fire-and-forget alongside the shop details save) -
+  // a duplicate-username rejection here shouldn't block saving the rest of
+  // the shop profile.
+  private saveUsernameIfChanged(): void {
+    const newUsername = (this.shopForm.get('username')?.value || '').trim();
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || !newUsername || newUsername === currentUser.username) {
+      return;
+    }
+    this.userService.updateUsername(currentUser.id, newUsername).subscribe({
+      next: () => {
+        this.authService.updateCurrentUserFields({ username: newUsername });
+        this.swal.toast('Username updated. Use it next time you log in.', 'success');
+      },
+      error: (error) => {
+        // Revert the field so the form doesn't show an unsaved change as if it succeeded
+        this.shopForm.get('username')?.setValue(currentUser.username);
+        this.swal.toast(error.message || 'Failed to update username', 'error');
+      }
+    });
+  }
+
   onSave(): void {
     if (this.shopForm.valid && this.shop) {
       this.isLoading = true;
+
+      this.saveUsernameIfChanged();
 
       // Save UPI ID to localStorage immediately (for POS Billing receipt)
       const upiIdValue = this.shopForm.value.upiId;

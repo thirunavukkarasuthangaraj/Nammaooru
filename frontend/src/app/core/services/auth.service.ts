@@ -302,6 +302,15 @@ export class AuthService {
       );
   }
 
+  /** Merges fields into the cached current-user (localStorage + BehaviorSubject) without a fresh login - e.g. after a self-service profile edit like a username change. */
+  updateCurrentUserFields(partial: Partial<User>): void {
+    const current = this.getCurrentUser();
+    if (!current || !isPlatformBrowser(this.platformId)) return;
+    const updated: User = { ...current, ...partial };
+    localStorage.setItem(this.USER_KEY, JSON.stringify(updated));
+    this.currentUserSubject.next(updated);
+  }
+
   private setSession(authResponse: AuthResponse): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem(this.TOKEN_KEY, authResponse.accessToken);

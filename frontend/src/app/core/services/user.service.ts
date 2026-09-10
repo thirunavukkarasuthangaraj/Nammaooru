@@ -174,6 +174,23 @@ export class UserService {
     );
   }
 
+  /**
+   * Partial self-service update (backend UserUpdateRequest only touches fields
+   * that are present - safe to call with just a username from a non-admin
+   * screen without risking role/status/permissions).
+   */
+  updateUsername(id: number, username: string): Observable<UserResponse> {
+    return this.http.put<ApiResponse<UserResponse>>(`${this.apiUrl}/${id}`, { username }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        return response.data;
+      }),
+      catchError(error => throwError(() => error))
+    );
+  }
+
   deleteUser(id: number): Observable<void> {
     return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`).pipe(
       map(response => {
