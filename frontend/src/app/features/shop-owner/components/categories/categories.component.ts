@@ -113,6 +113,16 @@ interface Category {
               Category Hierarchy
             </h3>
             <div class="card-actions">
+              <div class="view-toggle" role="group" aria-label="Subgroup view">
+                <button type="button" class="view-toggle-btn" [class.active]="viewMode === 'list'"
+                        matTooltip="List view" (click)="setViewMode('list')">
+                  <mat-icon>view_list</mat-icon>
+                </button>
+                <button type="button" class="view-toggle-btn" [class.active]="viewMode === 'card'"
+                        matTooltip="Card view" (click)="setViewMode('card')">
+                  <mat-icon>grid_view</mat-icon>
+                </button>
+              </div>
               <button mat-icon-button matTooltip="Refresh" (click)="loadCategories()">
                 <mat-icon>refresh</mat-icon>
               </button>
@@ -199,22 +209,55 @@ interface Category {
                 <div class="subcategory-loading" *ngIf="category.loadingSubcategories">
                   <mat-spinner diameter="18"></mat-spinner>
                 </div>
-                <div *ngIf="!category.loadingSubcategories" class="subcategory-list">
-                  <div class="subcategory-chip" *ngFor="let sub of category.subcategories">
-                    <span>{{ sub.name }}</span>
-                    <span class="sub-count">{{ sub.productCount || 0 }} products</span>
-                    <button mat-icon-button class="sub-edit-btn" matTooltip="Edit subgroup" (click)="editCategory(sub)">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                  </div>
-                  <p class="no-subcategories" *ngIf="!category.loadingSubcategories && category.subcategories?.length === 0">
+
+                <ng-container *ngIf="!category.loadingSubcategories">
+                  <p class="no-subcategories" *ngIf="category.subcategories?.length === 0">
                     No subgroups yet.
                   </p>
+
+                  <!-- List view: compact rows -->
+                  <div class="subcategory-list" *ngIf="viewMode === 'list' && category.subcategories?.length">
+                    <div class="subcategory-chip" *ngFor="let sub of category.subcategories">
+                      <span>{{ sub.name }}</span>
+                      <span class="sub-count">{{ sub.productCount || 0 }} products</span>
+                      <button mat-icon-button class="sub-edit-btn" matTooltip="Edit subgroup" (click)="editCategory(sub)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button class="sub-delete-btn" matTooltip="Delete subgroup" (click)="deleteSubcategory(category, sub)">
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Card view: same tile layout as root categories, scaled down -->
+                  <div class="subcategory-grid" *ngIf="viewMode === 'card' && category.subcategories?.length">
+                    <div class="subcategory-card" *ngFor="let sub of category.subcategories">
+                      <div class="sub-tile">
+                        <img *ngIf="sub.iconUrl" [src]="getCategoryImageUrl(sub.iconUrl)" [alt]="sub.name" class="sub-image">
+                        <div *ngIf="!sub.iconUrl" class="sub-tile-placeholder">
+                          <mat-icon>{{ sub.icon }}</mat-icon>
+                        </div>
+                      </div>
+                      <div class="sub-info">
+                        <h4 [title]="sub.name">{{ sub.name }}</h4>
+                        <span class="sub-count">{{ sub.productCount || 0 }} products</span>
+                      </div>
+                      <div class="sub-actions">
+                        <button mat-icon-button class="action-btn" matTooltip="Edit" (click)="editCategory(sub)">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        <button mat-icon-button class="action-btn delete" matTooltip="Delete" (click)="deleteSubcategory(category, sub)">
+                          <mat-icon>delete_outline</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <button mat-stroked-button class="add-subcategory-btn" type="button" (click)="openAddSubcategoryDialog(category)">
                     <mat-icon>add</mat-icon>
                     Add Subgroup to {{ category.name }}
                   </button>
-                </div>
+                </ng-container>
               </div>
             </div>
           </div>
@@ -644,7 +687,46 @@ interface Category {
 
     .card-actions {
       display: flex;
+      align-items: center;
       gap: 8px;
+    }
+
+    .view-toggle {
+      display: flex;
+      background: #F5F7F5;
+      border-radius: 8px;
+      padding: 3px;
+      margin-right: 4px;
+    }
+
+    .view-toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      color: #78909C;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .view-toggle-btn mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .view-toggle-btn:hover {
+      color: #16a34a;
+    }
+
+    .view-toggle-btn.active {
+      background: white;
+      color: #16a34a;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
     }
 
     /* Empty State */
@@ -937,22 +1019,121 @@ interface Category {
       font-size: 11px;
     }
 
-    .subcategory-chip .sub-edit-btn {
+    .subcategory-chip .sub-edit-btn,
+    .subcategory-chip .sub-delete-btn {
       width: 28px;
       height: 28px;
       line-height: 28px;
+      flex-shrink: 0;
     }
 
-    .subcategory-chip .sub-edit-btn mat-icon {
+    .subcategory-chip .sub-edit-btn mat-icon,
+    .subcategory-chip .sub-delete-btn mat-icon {
       font-size: 16px;
       width: 16px;
       height: 16px;
     }
 
+    .subcategory-chip .sub-delete-btn {
+      color: #90A4AE;
+    }
+
+    .subcategory-chip .sub-delete-btn:hover {
+      color: #e53935;
+    }
+
+    /* Card view - mini version of the root category tile */
+    .subcategory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .subcategory-card {
+      background: #F9FAFB;
+      border: 1px solid #ECEFF1;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s ease;
+    }
+
+    .subcategory-card:hover {
+      border-color: #16a34a;
+    }
+
+    .sub-tile {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #EEF1EE;
+    }
+
+    .sub-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .sub-tile-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #b0bec5;
+    }
+
+    .sub-tile-placeholder mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+
+    .sub-info {
+      padding: 8px 8px 4px;
+      min-width: 0;
+    }
+
+    .sub-info h4 {
+      margin: 0 0 2px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #1a1a1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-info .sub-count {
+      font-size: 11px;
+      color: #78909C;
+    }
+
+    .sub-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0 4px 4px;
+    }
+
+    .sub-actions .action-btn {
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+    }
+
+    .sub-actions .action-btn mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+    }
+
     .no-subcategories {
       color: #999;
       font-size: 12px;
-      margin: 0;
+      margin: 0 0 8px;
     }
 
     .add-subcategory-btn {
@@ -1505,6 +1686,10 @@ export class CategoriesComponent implements OnInit {
 
   categories: Category[] = [];
 
+  // How expanded subgroup panels render: compact rows or a mini card grid.
+  // Shared across every category card so switching once applies everywhere.
+  viewMode: 'list' | 'card' = 'list';
+
   showQuickAdd = false;
   quickAddForm: FormGroup;
 
@@ -1663,6 +1848,27 @@ export class CategoriesComponent implements OnInit {
   /** Root categories available to pick as a parent group (a category can't be its own parent) */
   get parentCategoryOptions(): Category[] {
     return this.categories.filter(c => !this.editingCategory || c.id !== this.editingCategory.id);
+  }
+
+  setViewMode(mode: 'list' | 'card'): void {
+    this.viewMode = mode;
+  }
+
+  deleteSubcategory(parent: Category, sub: Category): void {
+    this.swal.confirmDelete(sub.name).then((result) => {
+      if (!result.isConfirmed) return;
+      this.categoryService.deleteCategory(sub.id).subscribe({
+        next: () => {
+          parent.subcategories = (parent.subcategories || []).filter(s => s.id !== sub.id);
+          parent.subcategoryCount = Math.max(0, (parent.subcategoryCount || 1) - 1);
+          this.swal.success('Deleted!', `Subgroup "${sub.name}" has been deleted.`);
+        },
+        error: (error) => {
+          const message = error?.error?.message || error?.message || 'Failed to delete subgroup';
+          this.swal.error('Delete Failed', message);
+        }
+      });
+    });
   }
 
   getSubcategoryTotal(): number {
