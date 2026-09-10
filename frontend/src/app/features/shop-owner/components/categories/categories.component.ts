@@ -24,6 +24,7 @@ interface Category {
   subcategories?: Category[];
   expanded?: boolean;
   loadingSubcategories?: boolean;
+  subcategoriesLoadFailed?: boolean;
 }
 
 @Component({
@@ -210,7 +211,13 @@ interface Category {
                   <mat-spinner diameter="18"></mat-spinner>
                 </div>
 
-                <ng-container *ngIf="!category.loadingSubcategories">
+                <div class="subcategory-error" *ngIf="!category.loadingSubcategories && category.subcategoriesLoadFailed">
+                  <mat-icon>error_outline</mat-icon>
+                  <span>Couldn't load subgroups.</span>
+                  <button mat-button type="button" (click)="fetchSubcategories(category)">Retry</button>
+                </div>
+
+                <ng-container *ngIf="!category.loadingSubcategories && !category.subcategoriesLoadFailed">
                   <p class="no-subcategories" *ngIf="category.subcategories?.length === 0">
                     No subgroups yet.
                   </p>
@@ -431,7 +438,9 @@ interface Category {
                       class="submit-btn">
                 <mat-spinner *ngIf="loading" diameter="20" class="button-spinner"></mat-spinner>
                 <mat-icon *ngIf="!loading">save</mat-icon>
-                {{ loading ? 'Creating...' : 'Create Category' }}
+                {{ editingCategory
+                    ? (loading ? 'Updating...' : 'Update Category')
+                    : (loading ? 'Creating...' : 'Create Category') }}
               </button>
               <button mat-button type="button" (click)="closeQuickAdd()">
                 Cancel
@@ -1877,32 +1886,41 @@ export class CategoriesComponent implements OnInit {
 
   toggleSubcategories(category: Category): void {
     category.expanded = !category.expanded;
-    if (category.expanded && !category.subcategories) {
-      category.loadingSubcategories = true;
-      this.categoryService.getSubcategories(category.id).subscribe({
-        next: (subs: any[]) => {
-          category.subcategories = (subs || []).map((sub: any) => ({
-            id: sub.id,
-            name: sub.name,
-            nameTamil: sub.nameTamil || undefined,
-            description: sub.description || '',
-            productCount: sub.productCount || 0,
-            isActive: sub.active !== false,
-            color: this.getRandomColor(),
-            icon: this.getCategoryIcon(sub.name),
-            iconUrl: sub.iconUrl || sub.imageUrl || undefined,
-            createdAt: new Date(sub.createdAt || Date.now()),
-            parentId: category.id,
-            subcategoryCount: sub.subcategoryCount || 0
-          }));
-          category.loadingSubcategories = false;
-        },
-        error: () => {
-          category.subcategories = [];
-          category.loadingSubcategories = false;
-        }
-      });
+    // Retry whenever we've never successfully loaded yet - including after a
+    // prior failed attempt, which used to leave subcategories permanently
+    // stuck at [] with no way to retry short of a full page reload.
+    if (category.expanded && (!category.subcategories || category.subcategoriesLoadFailed)) {
+      this.fetchSubcategories(category);
     }
+  }
+
+  fetchSubcategories(category: Category): void {
+    category.loadingSubcategories = true;
+    category.subcategoriesLoadFailed = false;
+    this.categoryService.getSubcategories(category.id).subscribe({
+      next: (subs: any[]) => {
+        category.subcategories = (subs || []).map((sub: any) => ({
+          id: sub.id,
+          name: sub.name,
+          nameTamil: sub.nameTamil || undefined,
+          description: sub.description || '',
+          productCount: sub.productCount || 0,
+          isActive: sub.active !== false,
+          color: this.getRandomColor(),
+          icon: this.getCategoryIcon(sub.name),
+          iconUrl: sub.iconUrl || sub.imageUrl || undefined,
+          createdAt: new Date(sub.createdAt || Date.now()),
+          parentId: category.id,
+          subcategoryCount: sub.subcategoryCount || 0
+        }));
+        category.loadingSubcategories = false;
+      },
+      error: () => {
+        category.subcategories = undefined;
+        category.subcategoriesLoadFailed = true;
+        category.loadingSubcategories = false;
+      }
+    });
   }
 
   submitQuickAdd(): void {
