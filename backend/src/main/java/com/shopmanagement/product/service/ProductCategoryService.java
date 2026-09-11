@@ -61,9 +61,12 @@ public class ProductCategoryService {
             ));
         }
 
-        // Shop owners see platform/global categories and categories owned by their shop only.
-        if (isShopOwner()) {
-            Long currentShopId = findCurrentOwnerShopId().orElse(-1L);
+        // Shop owners (or anyone else logged in as a resolvable shop, regardless of their
+        // exact role label - e.g. MANAGER - since role name alone is an unreliable signal)
+        // see platform/global categories and categories owned by their shop only.
+        java.util.Optional<Long> scopedShopId = findCurrentOwnerShopIdForScoping();
+        if (scopedShopId.isPresent()) {
+            Long currentShopId = scopedShopId.get();
             spec = spec.and((root, query, cb) -> {
                 Subquery<Long> usedByCurrentShop = query.subquery(Long.class);
                 Root<com.shopmanagement.product.entity.ShopProduct> product = usedByCurrentShop
@@ -85,16 +88,14 @@ public class ProductCategoryService {
 
         // Shop owners should see how many of THEIR products are in each category,
         // not the master-catalog product count
-        if (isShopOwner()) {
-            findCurrentOwnerShopId().ifPresent(shopId -> {
-                java.util.Map<Long, Long> countsByCategory = new java.util.HashMap<>();
-                for (Object[] row : shopProductRepository.countProductsPerCategoryByShopId(shopId)) {
-                    countsByCategory.put((Long) row[0], (Long) row[1]);
-                }
-                responses.forEach(r ->
-                        r.setProductCount(countsByCategory.getOrDefault(r.getId(), 0L)));
-            });
-        }
+        scopedShopId.ifPresent(shopId -> {
+            java.util.Map<Long, Long> countsByCategory = new java.util.HashMap<>();
+            for (Object[] row : shopProductRepository.countProductsPerCategoryByShopId(shopId)) {
+                countsByCategory.put((Long) row[0], (Long) row[1]);
+            }
+            responses.forEach(r ->
+                    r.setProductCount(countsByCategory.getOrDefault(r.getId(), 0L)));
+        });
 
         return responses;
     }
@@ -102,10 +103,7 @@ public class ProductCategoryService {
     /** Shop owner's products whose master product has no category (0 for other roles) */
     @Transactional(readOnly = true)
     public long getUncategorizedProductCount() {
-        if (!isShopOwner()) {
-            return 0;
-        }
-        return findCurrentOwnerShopId()
+        return findCurrentOwnerShopIdForScoping()
                 .map(shopProductRepository::countUncategorizedByShopId)
                 .orElse(0L);
     }
@@ -116,6 +114,21 @@ public class ProductCategoryService {
                 .or(() -> userRepository.findByUsername(username)
                         .flatMap(user -> shopRepository.findByOwnerEmail(user.getEmail())))
                 .map(com.shopmanagement.shop.entity.Shop::getId);
+    }
+
+    /**
+     * Same lookup as {@link #findCurrentOwnerShopId()}, but used to decide whether to scope
+     * the category list at all. Deliberately does NOT gate on isShopOwner()/role name - a
+     * login resolving to a shop (e.g. a MANAGER account) must still only see that shop's
+     * categories, not the whole platform's. "admin"/"superadmin" are excluded since those
+     * usernames intentionally get the unscoped, platform-wide category view.
+     */
+    private java.util.Optional<Long> findCurrentOwnerShopIdForScoping() {
+        String username = getCurrentUsername();
+        if ("admin".equals(username) || "superadmin".equals(username)) {
+            return java.util.Optional.empty();
+        }
+        return findCurrentOwnerShopId();
     }
 
     @Transactional(readOnly = true)
@@ -193,7 +206,7 @@ public class ProductCategoryService {
                 .iconUrl(request.getIconUrl())
                 .createdBy(getCurrentUsername())
                 .updatedBy(getCurrentUsername())
-                .ownerShopId(isShopOwner() ? findCurrentOwnerShopId().orElse(null) : null)
+                .ownerShopId(findCurrentOwnerShopIdForScoping().orElse(null))
                 .build();
         
         ProductCategory savedCategory = categoryRepository.save(category);
@@ -418,14 +431,8 @@ public class ProductCategoryService {
         return authentication != null ? authentication.getName() : "system";
     }
 
-    private boolean isShopOwner() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_SHOP_OWNER"));
-    }
-
     private void assertCanModify(ProductCategory category) {
-        if (isShopOwner() && !getCurrentUsername().equals(category.getCreatedBy())) {
+        if (findCurrentOwnerShopIdForScoping().isPresent() && !getCurrentUsername().equals(category.getCreatedBy())) {
             throw new RuntimeException("You can only modify categories created by you");
         }
     }
