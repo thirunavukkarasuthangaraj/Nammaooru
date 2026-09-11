@@ -383,11 +383,21 @@ public class ShopProductService {
             return masterProduct;
         }
 
-        ProductCategory newCategory = requestedCategoryId != null
+        // The frontend echoes back the row's last-known category on every save, not just
+        // when the user actually changed it (same pattern as the SKU echo-back above). If
+        // that category was since renamed/deleted elsewhere (or is stale offline-queued
+        // data), failing here would reject the ENTIRE save - including the price/stock
+        // change the user actually asked for. Skip the category change instead of
+        // aborting the whole update.
+        java.util.Optional<ProductCategory> resolvedCategory = requestedCategoryId != null
                 ? categoryRepository.findById(requestedCategoryId)
-                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + requestedCategoryId))
-                : categoryRepository.findByNameIgnoreCase(trimmedName)
-                        .orElseThrow(() -> new RuntimeException("Category not found: " + trimmedName));
+                : categoryRepository.findByNameIgnoreCase(trimmedName);
+        if (resolvedCategory.isEmpty()) {
+            log.warn("Skipping category change for shop product {} - requested category not found (id={}, name={})",
+                    shopProduct.getId(), requestedCategoryId, trimmedName);
+            return masterProduct;
+        }
+        ProductCategory newCategory = resolvedCategory.get();
 
         long shopsUsingThisMasterProduct = shopProductRepository.countByMasterProductId(masterProduct.getId());
         if (shopsUsingThisMasterProduct > 1) {
