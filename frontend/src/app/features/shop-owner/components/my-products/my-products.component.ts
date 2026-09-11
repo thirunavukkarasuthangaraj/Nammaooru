@@ -7,8 +7,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subject } from 'rxjs';
-import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, forkJoin, of } from 'rxjs';
+import { takeUntil, debounceTime, distinctUntilChanged, catchError } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
 import { OfflineStorageService, CachedProduct, OfflineEdit } from '../../../../core/services/offline-storage.service';
@@ -21,6 +21,7 @@ import { ProductEditDialogComponent } from '../product-edit-dialog/product-edit-
 import { ShopOwnerProductService } from '../../services/shop-owner-product.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { ProductCategoryService } from '../../../../core/services/product-category.service';
+import { ProductCategory } from '../../../../core/models/product.model';
 
 interface MasterProduct {
   id?: number;
@@ -84,6 +85,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   categories: string[] = [];
   filteredCategories: string[] = [];
   categoryFilterText = '';
+  // Subcategory name -> its root category's name. Picking a root category
+  // (e.g. "Dental Care") in the filter must also match products tagged with
+  // one of its subcategories (e.g. "Toothbrush") - most root categories have
+  // no products directly on them, only on their children.
+  private categoryParentMap: Map<string, string> = new Map();
   loading = false;
   searching = false;
   usingFallbackData = false;
@@ -558,17 +564,48 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
     // Master category list (includes newly created categories with no products assigned yet)
     this.categoryService.getCategories(undefined, true, undefined, 0, 500).subscribe({
       next: (page) => {
-        const masterNames = (page.content || []).map(c => c.name);
+        const roots = page.content || [];
         const productNames = this.products.map(p => p.category).filter(Boolean) as string[];
-        this.categories = [...new Set([...masterNames, ...productNames])].sort();
-        this.filteredCategories = this.categories;
+        this.buildCategoryParentMap(roots, productNames);
       },
       error: () => {
         // Fall back to categories in use if the master list can't be fetched
         this.categories = [...new Set(this.products.map(p => p.category).filter(Boolean) as string[])];
         this.filteredCategories = this.categories;
+        this.categoryParentMap = new Map();
       }
     });
+  }
+
+  // Fetches subgroups for every root category that has them, so filtering by a root
+  // category (e.g. "Dental Care") also matches products tagged with one of its
+  // subcategories (e.g. "Toothbrush") - see applyFilters().
+  private buildCategoryParentMap(roots: ProductCategory[], productNames: string[]): void {
+    const rootNames = roots.map(c => c.name);
+    const withSubs = roots.filter(c => c.hasSubcategories);
+
+    const finish = (subLists: ProductCategory[][]) => {
+      const parentMap = new Map<string, string>();
+      withSubs.forEach((root, i) => {
+        subLists[i].forEach(sub => parentMap.set(sub.name, root.name));
+      });
+      this.categoryParentMap = parentMap;
+      this.categories = [...new Set([...rootNames, ...productNames])].sort();
+      this.filteredCategories = this.categories;
+    };
+
+    if (withSubs.length === 0) {
+      finish([]);
+      return;
+    }
+
+    forkJoin(
+      withSubs.map(root =>
+        this.categoryService.getSubcategories(root.id, true).pipe(
+          catchError(() => of([] as ProductCategory[]))
+        )
+      )
+    ).subscribe(finish);
   }
 
   /** Filters the Category autocomplete options as the user types directly in the field. */
@@ -617,7 +654,9 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
 
       const matchesSearch = matchesName || matchesBarcode;
 
-      const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
+      const matchesCategory = !this.selectedCategory ||
+        product.category === this.selectedCategory ||
+        this.categoryParentMap.get(product.category || '') === this.selectedCategory;
       const matchesStatus = !this.selectedStatus ||
         product.status === this.selectedStatus ||
         (this.selectedStatus === 'available' && product.isAvailable) ||
