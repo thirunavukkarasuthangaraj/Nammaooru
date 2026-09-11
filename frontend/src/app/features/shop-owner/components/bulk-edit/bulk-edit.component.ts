@@ -316,7 +316,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         customName: p.displayName || p.customName || p.masterProduct?.name,
         nameTamil: p.masterProduct?.nameTamil || '',
         description: p.displayDescription || p.customDescription || p.masterProduct?.description,
-        sku: p.sku || p.masterProduct?.sku || '',
+        sku: this.stripCopySuffix(p.sku || p.masterProduct?.sku || ''),
         barcode1: p.barcode1 || '',
         barcode2: p.barcode2 || '',
         barcode3: p.barcode3 || '',
@@ -338,7 +338,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           status: p.status || (p.isAvailable ? 'ACTIVE' : 'INACTIVE'),
           isAvailable: p.isAvailable,
           tags: p.masterProduct?.tags || '',
-          sku: p.sku || p.masterProduct?.sku || '',
+          sku: this.stripCopySuffix(p.sku || p.masterProduct?.sku || ''),
           barcode1: p.barcode1 || '',
           barcode2: p.barcode2 || '',
           barcode3: p.barcode3 || '',
@@ -699,6 +699,16 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         localStorage.setItem('cached_product_category_names', JSON.stringify(this.categories));
       } catch (e) {}
     });
+  }
+
+  // The backend clones a product's master record (appending "-COPY"/"-COPY-2"...)
+  // to keep its SKU unique when a category change needs to isolate it from other
+  // shops sharing the same catalog item - an internal detail the shop owner
+  // should never see. The backend already strips this for the normal API
+  // response, but cached/offline data can still carry the raw suffixed value,
+  // so strip it defensively here too.
+  private stripCopySuffix(sku: string): string {
+    return (sku || '').replace(/-COPY(-\d+)?$/, '');
   }
 
   private markModified(product: BulkEditProduct): void {

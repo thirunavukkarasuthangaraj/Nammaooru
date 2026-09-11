@@ -153,6 +153,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Products
   products: CachedProduct[] = [];
+  // Unfiltered (active + inactive) mirror of `products`, kept only so a scanned/typed
+  // barcode that matches a deactivated product can say so explicitly instead of a bare
+  // "Not Found" - which reads as "never added to the system" and confused shop owners
+  // who'd simply forgotten they'd deactivated it.
+  private allProductsIncludingInactive: CachedProduct[] = [];
   // Full filtered list stays in memory; only `displayedProducts` is rendered.
   // Rendering the whole catalog (~2500 cards) freezes the browser ("Page Unresponsive").
   private _filteredProducts: CachedProduct[] = [];
@@ -1116,6 +1121,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       if (cachedProducts.length > 0) {
         // Filter out inactive products - only show active/available products in POS
         // Check both isAvailable flag and status field
+        this.allProductsIncludingInactive = cachedProducts;
         this.products = cachedProducts.filter(p =>
           p.isAvailable !== false &&
           (p as any).status !== 'INACTIVE'
@@ -1175,6 +1181,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const renderProgress = () => {
       const mappedSoFar = rawProducts.map((p: any) => this.mapProduct(p));
+      this.allProductsIncludingInactive = mappedSoFar;
       this.products = mappedSoFar.filter(p => p.isAvailable !== false && (p as any).status !== 'INACTIVE');
       this.filteredProducts = this.sortProductsWithCartFirst(this.products);
     };
@@ -1993,8 +2000,33 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
       this.playBeep(true);
     } else {
-      this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
+      this.warnIfInactiveElseNotFound(barcode);
       this.playBeep(false);
+    }
+  }
+
+  /**
+   * Barcode/SKU matched a product that's been deactivated (not simply missing from the
+   * catalog) - tell the shop owner that plainly instead of a bare "Not Found", which
+   * reads as "this was never added" and led to confusion when they'd just forgotten
+   * they deactivated it.
+   */
+  private warnIfInactiveElseNotFound(barcode: string): void {
+    const inactiveMatch = this.allProductsIncludingInactive.find(p =>
+      p.barcode === barcode ||
+      p.barcode1 === barcode ||
+      p.barcode2 === barcode ||
+      p.barcode3 === barcode ||
+      p.sku === barcode
+    );
+    if (inactiveMatch) {
+      this.swal.error(
+        'Product is Inactive',
+        `"${inactiveMatch.name}" exists but is deactivated - activate it in My Products to sell it.`,
+        3500
+      );
+    } else {
+      this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
     }
   }
 
@@ -2024,7 +2056,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.addToCart(exactMatch);
       this.playBeep(true);
     } else {
-      this.swal.error('Not Found', `Product with barcode "${barcode}" not found`, 2000);
+      this.warnIfInactiveElseNotFound(barcode);
       this.playBeep(false);
     }
 

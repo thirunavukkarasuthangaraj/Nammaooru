@@ -470,7 +470,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
               status: p.status,
               category: p.masterProduct?.category?.name,
               unit: p.baseUnit || p.masterProduct?.baseUnit,
-              sku: p.sku || p.masterProduct?.sku,
+              sku: this.stripCopySuffix(p.sku || p.masterProduct?.sku || ''),
               // Barcode fields for search
               barcode: p.barcode || p.masterProduct?.barcode || '',
               barcode1: p.barcode1 || '',
@@ -580,6 +580,16 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   // Fetches subgroups for every root category that has them, so filtering by a root
   // category (e.g. "Dental Care") also matches products tagged with one of its
   // subcategories (e.g. "Toothbrush") - see applyFilters().
+  // The backend clones a product's master record (appending "-COPY"/"-COPY-2"...)
+  // to keep its SKU unique when a category change needs to isolate it from other
+  // shops sharing the same catalog item - an internal detail the shop owner
+  // should never see. The backend already strips this for the normal API
+  // response, but cached/offline data can still carry the raw suffixed value,
+  // so strip it defensively here too.
+  private stripCopySuffix(sku: string): string {
+    return (sku || '').replace(/-COPY(-\d+)?$/, '');
+  }
+
   private buildCategoryParentMap(roots: ProductCategory[], productNames: string[]): void {
     const rootNames = roots.map(c => c.name);
     const withSubs = roots.filter(c => c.hasSubcategories);
