@@ -36,6 +36,14 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     // Master product relationships
     Optional<ShopProduct> findByShopAndMasterProduct(Shop shop, MasterProduct masterProduct);
     Optional<ShopProduct> findByShopIdAndMasterProductId(Long shopId, Long masterProductId);
+
+    // Catches "same real-world product, different master product row" (e.g. one shop's own
+    // listing vs. another shop's independently-created listing of the same item) - the
+    // master-product-id check above only catches an EXACT shared-catalog-row match, so
+    // cloning across shops without this would silently create a duplicate listing.
+    @Query("SELECT COUNT(sp) > 0 FROM ShopProduct sp WHERE sp.shop = :shop AND " +
+           "LOWER(TRIM(COALESCE(sp.customName, sp.masterProduct.name))) = LOWER(TRIM(:name))")
+    boolean existsByShopAndDisplayNameIgnoreCase(@Param("shop") Shop shop, @Param("name") String name);
     
     List<ShopProduct> findByMasterProduct(MasterProduct masterProduct);
     Page<ShopProduct> findByMasterProduct(MasterProduct masterProduct, Pageable pageable);

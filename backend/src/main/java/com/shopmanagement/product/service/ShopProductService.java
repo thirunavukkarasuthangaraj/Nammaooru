@@ -699,6 +699,15 @@ public class ShopProductService {
                 continue;
             }
 
+            // Same real-world product under a DIFFERENT master product row (e.g. the target
+            // shop independently added its own listing of this item earlier) - the check
+            // above only catches an exact shared-catalog-row match, so without this a clone
+            // would silently create a second, duplicate listing for the same item.
+            if (shopProductRepository.existsByShopAndDisplayNameIgnoreCase(targetShop, productLabel)) {
+                skippedReasons.add(productLabel + ": target shop already sells a product with this name - skipped to avoid a duplicate listing");
+                continue;
+            }
+
             ShopProduct clone = ShopProduct.builder()
                     .shop(targetShop)
                     .masterProduct(source.getMasterProduct())
