@@ -432,8 +432,22 @@ public class ProductCategoryService {
     }
 
     private void assertCanModify(ProductCategory category) {
-        if (findCurrentOwnerShopIdForScoping().isPresent() && !getCurrentUsername().equals(category.getCreatedBy())) {
-            throw new RuntimeException("You can only modify categories created by you");
+        java.util.Optional<Long> currentShopId = findCurrentOwnerShopIdForScoping();
+        if (currentShopId.isEmpty()) {
+            return; // Platform admin - can modify anything.
         }
+        // Shop-owned category: ownership (not the literal created_by string, which
+        // for older bulk-imported categories may not match the current username
+        // exactly) is what actually grants modify rights.
+        if (currentShopId.equals(java.util.Optional.ofNullable(category.getOwnerShopId()))) {
+            return;
+        }
+        // Global category (no shop owns it): fall back to the legacy
+        // created-by-me check so shop owners still can't touch each other's
+        // or admin's shared categories.
+        if (category.getOwnerShopId() == null && getCurrentUsername().equals(category.getCreatedBy())) {
+            return;
+        }
+        throw new RuntimeException("You can only modify categories created by you");
     }
 }

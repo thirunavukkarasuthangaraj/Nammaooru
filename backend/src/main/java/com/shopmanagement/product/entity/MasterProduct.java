@@ -47,9 +47,11 @@ public class MasterProduct {
     @Size(max = 100)
     private String barcode;
 
-    @NotNull
+    // Nullable: a deleted category detaches its products instead of blocking the
+    // delete (see ProductCategoryService.deleteCategory) - they stay in the
+    // shop's product listing as "uncategorized" rather than being removed.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
+    @JoinColumn(name = "category_id")
     private ProductCategory category;
 
     @Size(max = 100)
