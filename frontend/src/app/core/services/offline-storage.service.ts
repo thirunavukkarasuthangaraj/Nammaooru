@@ -1068,6 +1068,7 @@ export class OfflineStorageService {
             if (changes.originalPrice !== undefined) product.originalPrice = changes.originalPrice;
             if (changes.costPrice !== undefined) product.costPrice = changes.costPrice;
             if (changes.stock !== undefined) product.stock = changes.stock;
+            if (changes.isAvailable !== undefined) product.isAvailable = changes.isAvailable;
             if (changes.sku !== undefined) product.sku = changes.sku;
             if (changes.barcode !== undefined) product.barcode = changes.barcode;
             if (changes.barcode1 !== undefined) product.barcode1 = changes.barcode1;

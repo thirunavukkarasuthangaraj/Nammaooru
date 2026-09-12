@@ -16,6 +16,13 @@
         </p>
       </div>
       <div class="header-actions">
+        <button mat-raised-button color="primary"
+                *ngIf="inactiveSelectionCount > 0 || isBulkActivating"
+                [disabled]="isBulkActivating"
+                (click)="activateSelectedProducts()">
+          <mat-icon>check_circle</mat-icon>
+          {{ isBulkActivating ? 'Activating…' : 'Activate ' + inactiveSelectionCount + ' selected' }}
+        </button>
         <button mat-raised-button color="primary" (click)="addNewProduct()">
           <mat-icon>add</mat-icon>
           Add Custom Product
@@ -23,6 +30,7 @@
 
         <!-- Bulk actions menu - shown when products are selected -->
         <button mat-icon-button [matMenuTriggerFor]="bulkMenu"
+                [disabled]="isBulkActivating"
                 *ngIf="selectedProducts.length > 0"
                 matTooltip="Bulk Actions ({{ selectedProducts.length }} selected)">
           <mat-icon>more_vert</mat-icon>

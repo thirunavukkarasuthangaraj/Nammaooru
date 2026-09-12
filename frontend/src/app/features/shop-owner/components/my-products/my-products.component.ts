@@ -7,7 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subject, forkJoin, of } from 'rxjs';
+import { Subject, forkJoin, of, firstValueFrom } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged, catchError } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ShopContextService } from '../../services/shop-context.service';
@@ -106,6 +106,63 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   
   // Bulk selection
   selectedProducts: ShopProduct[] = [];
+  isBulkActivating = false;
+  private componentDestroyed = false;
+
+  get inactiveSelectionCount(): number {
+    return this.selectedProducts.filter(product => !product.isAvailable).length;
+  }
+
+  async activateSelectedProducts(): Promise<void> {
+    if (this.isBulkActivating) return;
+    const pending = this.selectedProducts.filter(product => !product.isAvailable);
+    if (!pending.length) return;
+    if (this.usingFallbackData) {
+      this.swalService.warning('Unavailable', 'Connect to your shop before activating products.');
+      return;
+    }
+    this.isBulkActivating = true;
+    const activated = new Set<number>();
+    let next = 0;
+    try {
+      // Limit concurrency so a large selection does not overwhelm the API.
+      await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+        while (next < pending.length && !this.componentDestroyed) {
+          const product = pending[next++];
+          try {
+            const response: any = await firstValueFrom(this.http.put(
+              `${this.apiUrl}/shop-products/${product.id}`, { isAvailable: true }
+            ).pipe(takeUntil(this.destroy$)));
+            if (response?.statusCode && response.statusCode !== '0000') continue;
+            activated.add(product.id);
+            const current = this.products.find(item => item.id === product.id);
+            if (current) {
+              current.isAvailable = true;
+              current.status = 'ACTIVE';
+            }
+            try {
+              await this.offlineStorage.updateLocalProduct(product.id, { isAvailable: true });
+            } catch (error) {
+              console.warn('Could not refresh cached product availability', error);
+            }
+          } catch (error) {
+            console.warn('Could not activate product', product.id, error);
+          }
+        }
+      }));
+      if (this.componentDestroyed) return;
+      this.selectedProducts = this.selectedProducts.filter(product => !activated.has(product.id));
+      this.applyFilters();
+      const failed = pending.length - activated.size;
+      this.swalService.toast(
+        failed ? `${activated.size} activated; ${failed} failed. Retry the remaining selection.`
+          : `${activated.size} products activated`,
+        failed ? 'warning' : 'success'
+      );
+    } finally {
+      this.isBulkActivating = false;
+    }
+  }
   selectAll = false;
   
   // Pagination
@@ -253,6 +310,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   
   ngOnDestroy(): void {
+    this.componentDestroyed = true;
     this.destroy$.next();
     this.destroy$.complete();
   }
