@@ -255,18 +255,15 @@ public class ShopProductService {
         MasterProduct masterProduct = applyCategoryChangeIfRequested(shopProduct, request.getCategoryName(), request.getCategoryId());
         boolean masterProductUpdated = false;
 
-        // Update MasterProduct fields (sku, barcode, voice search tags, Tamil name)
-        // Only touch SKU when it actually changed - the frontend resends the current
-        // SKU on every save, and blindly re-applying it here would stomp the fresh
-        // unique SKU a category-change clone (above) just generated for itself,
-        // colliding with the original master product's still-unchanged SKU.
-        // The API strips the internal "-COPY" clone suffix from SKUs it serves, so
-        // the frontend echoing that stripped SKU back is also "no change" - renaming
-        // the clone to the stripped code would collide with the original's SKU.
+        // Only touch SKU when it actually changed. SKU/barcode uniqueness is
+        // shop-scoped: two shops may sell the same barcode, but two different
+        // products in one shop may not use it. Shop-exclusive clones used to
+        // append "-COPY" for global uniqueness; they now keep the real SKU.
         if (request.getSku() != null && !request.getSku().trim().isEmpty()
-                && !request.getSku().trim().equals(preCloneSku)
-                && !request.getSku().trim().equals(com.shopmanagement.common.util.SkuUtil.displaySku(preCloneSku))) {
-            masterProduct.setSku(request.getSku().trim());
+                && !request.getSku().trim().equals(preCloneSku)) {
+            String newSku = request.getSku().trim();
+            validateBarcodeNotDuplicate(shopId, newSku, productId);
+            masterProduct.setSku(newSku);
             masterProductUpdated = true;
             log.debug("Updating master product SKU to: {}", request.getSku());
         }
@@ -415,16 +412,14 @@ public class ShopProductService {
     }
 
     /**
-     * Copy-on-write for a shared master product: makes a shop-exclusive copy
-     * (new unique SKU, isGlobal=false, images copied) with the new category,
+     * Copy-on-write for a shared master product: shop-exclusive copy
+     * (same real barcode/SKU, isGlobal=false, images copied) with the new category,
      * leaving the original untouched for every other shop still using it.
      */
     private MasterProduct cloneMasterProductForCategoryChange(MasterProduct source, ProductCategory newCategory) {
-        String baseSku = source.getSku() + "-COPY";
-        String sku = baseSku;
-        int suffix = 2;
-        while (masterProductRepository.existsBySku(sku)) {
-            sku = baseSku + "-" + suffix++;
+        String sku = com.shopmanagement.common.util.SkuUtil.displaySku(source.getSku());
+        if (sku == null || sku.isBlank()) {
+            sku = source.getSku();
         }
 
         MasterProduct clone = MasterProduct.builder()

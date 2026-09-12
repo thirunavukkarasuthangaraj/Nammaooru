@@ -6,15 +6,13 @@ public final class SkuUtil {
     }
 
     /**
-     * Strip the internal "-COPY"/"-COPY-n" suffix that category-change clones
-     * append to keep master_products.sku unique (the original product still owns
-     * the plain code). Shop owners and customers should always see the original
-     * product code, never the internal uniqueness suffix.
+     * Strip every trailing "-COPY" / "-COPY-n" suffix (including stacked
+     * values like "123-COPY-COPY") so the real barcode/SKU remains.
      */
     public static String displaySku(String sku) {
         if (sku == null) {
             return null;
         }
-        return sku.replaceFirst("-COPY(-\\d+)?$", "");
+        return sku.replaceAll("(?i)(-COPY(-\\d+)?)+$", "");
     }
 }

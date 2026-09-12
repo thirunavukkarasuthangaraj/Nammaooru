@@ -1030,7 +1030,7 @@ export class MasterProductListComponent implements OnInit {
       ...product,
       id: 0,
       name: `${product.name} (Copy)`,
-      sku: `${product.sku}-COPY-${Date.now()}`
+      sku: `${(product.sku || '').replace(/(-COPY(-\d+)?)+$/i, '')}-${Date.now()}`
     };
     
     this.productService.createMasterProduct(duplicatedProduct).subscribe({

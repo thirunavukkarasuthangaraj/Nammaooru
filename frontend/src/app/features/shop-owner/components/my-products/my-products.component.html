@@ -17,11 +17,24 @@
       </div>
       <div class="header-actions">
         <button mat-raised-button color="primary"
+                *ngIf="copySkuCount > 0 || isRemovingCopy"
+                [disabled]="isRemovingCopy"
+                (click)="removeCopyFromShowing()">
+          <mat-icon>content_cut</mat-icon>
+          {{ isRemovingCopy ? 'Removing…' : 'Remove COPY suffix from ' + copySkuCount + ' products' }}
+        </button>
+        <button mat-raised-button color="primary"
                 *ngIf="inactiveSelectionCount > 0 || isBulkActivating"
                 [disabled]="isBulkActivating"
                 (click)="activateSelectedProducts()">
           <mat-icon>check_circle</mat-icon>
           {{ isBulkActivating ? 'Activating…' : 'Activate ' + inactiveSelectionCount + ' selected' }}
+        </button>
+        <button mat-raised-button color="primary"
+                *ngIf="selectedProducts.length > 0"
+                (click)="bulkEditSelected()">
+          <mat-icon>edit_note</mat-icon>
+          Bulk Edit {{ selectedProducts.length }} selected
         </button>
         <button mat-raised-button color="primary" (click)="addNewProduct()">
           <mat-icon>add</mat-icon>
@@ -36,6 +49,10 @@
           <mat-icon>more_vert</mat-icon>
         </button>
         <mat-menu #bulkMenu="matMenu">
+          <button mat-menu-item (click)="bulkEditSelected()">
+            <mat-icon>edit_note</mat-icon>
+            <span>Bulk Edit {{ selectedProducts.length }} Selected</span>
+          </button>
           <button mat-menu-item (click)="bulkDeleteProducts()" class="delete-menu-item">
             <mat-icon color="warn">delete</mat-icon>
             <span>Delete {{ selectedProducts.length }} Selected</span>

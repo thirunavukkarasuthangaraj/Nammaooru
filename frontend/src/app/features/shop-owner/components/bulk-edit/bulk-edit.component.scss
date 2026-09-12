@@ -150,6 +150,17 @@
       gap: 8px;
       align-items: center;
 
+      .selection-filter {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 600;
+        color: #166534;
+        background: #dcfce7;
+        padding: 4px 8px 4px 12px;
+        border-radius: 8px;
+      }
+
       .product-count {
         font-weight: 600;
         color: #1e293b;
@@ -201,7 +212,7 @@
 
     .excel-grid {
       width: 100%;
-      min-width: 1720px;
+      min-width: 1800px;
       border-collapse: collapse;
 
       thead {
@@ -278,7 +289,8 @@
       }
 
       .col-sku {
-        width: 90px;
+        width: 180px;
+        min-width: 180px;
       }
 
       .col-barcode {
@@ -497,6 +509,13 @@
       .barcode-input {
         font-family: 'Monaco', 'Consolas', monospace;
         font-size: 12px;
+      }
+
+      .sku-input {
+        min-width: 168px;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: nowrap;
       }
 
       .tags-input {

@@ -255,9 +255,13 @@ public class ShopOwnerProductController {
 
         } catch (Exception e) {
             log.error("Error updating product {} for user: {}", productId, currentUsername, e);
-            return ResponseEntity.badRequest().body(ApiResponse.error(
-                    "Error updating product: " + e.getMessage()
-            ));
+            String message = e.getMessage() != null ? e.getMessage() : "";
+            if (message.contains("constraint") || message.contains("uk_") || message.toLowerCase().contains("duplicate")) {
+                message = "This SKU/barcode is already used by another product in this shop.";
+            } else {
+                message = "Could not update this product. Please try again.";
+            }
+            return ResponseEntity.badRequest().body(ApiResponse.error(message));
         }
     }
 

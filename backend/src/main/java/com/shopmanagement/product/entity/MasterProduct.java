@@ -41,7 +41,7 @@ public class MasterProduct {
 
     @NotBlank
     @Size(max = 100)
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String sku;
 
     @Size(max = 100)

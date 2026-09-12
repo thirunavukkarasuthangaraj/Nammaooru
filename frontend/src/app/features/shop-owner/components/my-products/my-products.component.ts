@@ -107,10 +107,73 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   // Bulk selection
   selectedProducts: ShopProduct[] = [];
   isBulkActivating = false;
+  isRemovingCopy = false;
   private componentDestroyed = false;
+  private readonly copySuffixPattern = /(-COPY(-\d+)?)+$/i;
 
   get inactiveSelectionCount(): number {
     return this.selectedProducts.filter(product => !product.isAvailable).length;
+  }
+
+  get copySkuCount(): number {
+    return this.filteredProducts.filter(p => this.copySuffixPattern.test(p.sku || '')).length;
+  }
+
+  async removeCopyFromShowing(): Promise<void> {
+    if (this.isRemovingCopy) return;
+    const pending = this.filteredProducts.filter(p => this.copySuffixPattern.test(p.sku || ''));
+    if (!pending.length) return;
+    if (this.usingFallbackData) {
+      this.swalService.warning('Unavailable', 'Connect to your shop before updating SKUs.');
+      return;
+    }
+    const confirmed = await this.swalService.confirm(
+      `Remove -COPY-COPY from ${pending.length} SKUs?`,
+      'This deletes -COPY and -COPY-COPY. The real barcode is the number before that.'
+    );
+    if (!confirmed?.isConfirmed) return;
+
+    this.isRemovingCopy = true;
+    let success = 0;
+    let next = 0;
+    try {
+      await Promise.all(Array.from({ length: Math.min(6, pending.length) }, async () => {
+        while (next < pending.length && !this.componentDestroyed) {
+          const product = pending[next++];
+          const sku = (product.sku || '').replace(this.copySuffixPattern, '');
+          if (!sku) continue;
+          try {
+            const response: any = await firstValueFrom(this.http.put(
+              `${this.apiUrl}/shop-products/${product.id}`, { sku },
+              { params: { silentError: '1' } }
+            ).pipe(takeUntil(this.destroy$)));
+            if (response?.statusCode && response.statusCode !== '0000') continue;
+            product.sku = sku;
+            if (product.masterProduct) {
+              product.masterProduct.sku = sku;
+            }
+            success++;
+            try {
+              await this.offlineStorage.updateLocalProduct(product.id, { sku });
+            } catch {
+              // cache is best-effort
+            }
+          } catch (error) {
+            console.warn('Could not strip -COPY from product', product.id, error);
+          }
+        }
+      }));
+      if (this.componentDestroyed) return;
+      this.applyFilters();
+      const failed = pending.length - success;
+      this.swalService.toast(
+        failed ? `${success} updated; ${failed} failed. Search -copy and retry.`
+          : `${success} SKUs updated (-COPY-COPY removed )`,
+        failed ? 'warning' : 'success'
+      );
+    } finally {
+      this.isRemovingCopy = false;
+    }
   }
 
   async activateSelectedProducts(): Promise<void> {
@@ -206,6 +269,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   loadedFromCache = false;
 
   private readonly CACHE_TIMESTAMP_KEY = 'my_products_last_sync';
+  static readonly BULK_EDIT_IDS_KEY = 'shopOwnerBulkEditProductIds';
 
   constructor(
     private router: Router,
@@ -310,6 +374,11 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   
   ngOnDestroy(): void {
+    // Sidebar "Bulk Edit" is a router link — persist the current checkboxes so
+    // that page opens with only the selected products.
+    if (this.router.url.includes('/shop-owner/bulk-edit')) {
+      this.persistBulkEditSelection();
+    }
     this.componentDestroyed = true;
     this.destroy$.next();
     this.destroy$.complete();
@@ -528,7 +597,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
               status: p.status,
               category: p.masterProduct?.category?.name,
               unit: p.baseUnit || p.masterProduct?.baseUnit,
-              sku: this.stripCopySuffix(p.sku || p.masterProduct?.sku || ''),
+              sku: p.masterProduct?.sku || p.sku || '',
               // Barcode fields for search
               barcode: p.barcode || p.masterProduct?.barcode || '',
               barcode1: p.barcode1 || '',
@@ -638,14 +707,23 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   // Fetches subgroups for every root category that has them, so filtering by a root
   // category (e.g. "Dental Care") also matches products tagged with one of its
   // subcategories (e.g. "Toothbrush") - see applyFilters().
-  // The backend clones a product's master record (appending "-COPY"/"-COPY-2"...)
-  // to keep its SKU unique when a category change needs to isolate it from other
-  // shops sharing the same catalog item - an internal detail the shop owner
-  // should never see. The backend already strips this for the normal API
-  // response, but cached/offline data can still carry the raw suffixed value,
-  // so strip it defensively here too.
-  private stripCopySuffix(sku: string): string {
-    return (sku || '').replace(/-COPY(-\d+)?$/, '');
+
+  private persistBulkEditSelection(): void {
+    const ids = this.selectedProducts.map(p => p.id);
+    if (ids.length > 0) {
+      sessionStorage.setItem(MyProductsComponent.BULK_EDIT_IDS_KEY, JSON.stringify(ids));
+    } else {
+      sessionStorage.removeItem(MyProductsComponent.BULK_EDIT_IDS_KEY);
+    }
+  }
+
+  bulkEditSelected(): void {
+    if (this.selectedProducts.length === 0) {
+      this.router.navigate(['/shop-owner/bulk-edit']);
+      return;
+    }
+    this.persistBulkEditSelection();
+    this.router.navigate(['/shop-owner/bulk-edit']);
   }
 
   private buildCategoryParentMap(roots: ProductCategory[], productNames: string[]): void {
@@ -1657,6 +1735,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       this.selectedProducts.push(product);
     }
     this.updateSelectAllState();
+    this.persistBulkEditSelection();
   }
 
   isProductSelected(product: ShopProduct): boolean {
@@ -1672,6 +1751,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
       this.selectedProducts = [...this.filteredProducts];
       this.selectAll = true;
     }
+    this.persistBulkEditSelection();
   }
 
   updateSelectAllState(): void {
@@ -1682,6 +1762,7 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   clearProductSelection(): void {
     this.selectedProducts = [];
     this.selectAll = false;
+    this.persistBulkEditSelection();
   }
 
   bulkPriceUpdate(): void {

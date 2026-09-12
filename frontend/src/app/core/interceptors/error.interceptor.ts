@@ -82,7 +82,8 @@ export class ErrorInterceptor implements HttpInterceptor {
         }
 
         // Don't show toast for auth endpoints or customer endpoints to avoid duplicate messages
-        if (!request.url.includes('/auth/') && !request.url.includes('/customer/')) {
+        if (!request.url.includes('/auth/') && !request.url.includes('/customer/')
+            && !request.params.has('silentError')) {
           this.swal.toast(errorMessage, 'error');
         }
 

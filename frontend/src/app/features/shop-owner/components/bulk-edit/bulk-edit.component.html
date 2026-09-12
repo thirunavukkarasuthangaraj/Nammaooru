@@ -65,6 +65,14 @@
       <button mat-stroked-button
               color="primary"
               class="add-product-btn"
+              *ngIf="copySuffixCount > 0"
+              [disabled]="saving"
+              (click)="stripCopyFromSkus()">
+        Remove COPY suffix ({{ copySuffixCount }})
+      </button>
+      <button mat-stroked-button
+              color="primary"
+              class="add-product-btn"
               (click)="addNewProduct()">
         <mat-icon>add</mat-icon>
         Add Product
@@ -87,6 +95,10 @@
   <!-- Status Bar -->
   <div class="status-bar">
     <div class="status-left">
+      <span class="selection-filter" *ngIf="selectedProductCount > 0">
+        Editing {{ selectedProductCount }} selected product{{ selectedProductCount === 1 ? '' : 's' }}
+        <button mat-button color="primary" type="button" (click)="showAllProducts()">Show all</button>
+      </span>
       <span class="product-count" *ngIf="totalProducts > 0">
         Showing {{ (currentPageIndex * pageSize) + 1 }}-{{ min((currentPageIndex + 1) * pageSize, totalProducts) }} of {{ totalProducts }} products
       </span>

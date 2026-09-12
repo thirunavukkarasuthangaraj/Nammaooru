@@ -84,7 +84,7 @@ public class MasterProductService {
         }
 
         // Validate unique constraints
-        validateUniqueFields(sku, request.getBarcode(), null);
+        validateUniqueFields(sku, request.getBarcode(), null, request.getIsGlobal());
 
         // Create master product
         MasterProduct product = MasterProduct.builder()
@@ -133,7 +133,8 @@ public class MasterProductService {
                 .orElseThrow(() -> new RuntimeException("Master product not found with id: " + id));
         
         // Validate unique constraints (excluding current product)
-        validateUniqueFields(request.getSku(), request.getBarcode(), id);
+        Boolean resultingIsGlobal = request.getIsGlobal() != null ? request.getIsGlobal() : product.getIsGlobal();
+        validateUniqueFields(request.getSku(), request.getBarcode(), id, resultingIsGlobal);
         
         // Get category if changed
         if (!product.getCategory().getId().equals(request.getCategoryId())) {
@@ -265,14 +266,16 @@ public class MasterProductService {
         return sku;
     }
 
-    private void validateUniqueFields(String sku, String barcode, Long excludeId) {
-        if (sku != null && !sku.trim().isEmpty()) {
+    private void validateUniqueFields(String sku, String barcode, Long excludeId, Boolean isGlobal) {
+        // Only shared catalog rows require catalog-wide SKU uniqueness. A
+        // shop-exclusive clone may reuse the real SKU used by another shop.
+        if (!Boolean.FALSE.equals(isGlobal) && sku != null && !sku.trim().isEmpty()) {
             if (excludeId == null) {
-                if (masterProductRepository.existsBySku(sku)) {
+                if (masterProductRepository.existsGlobalBySku(sku)) {
                     throw new RuntimeException("SKU already exists: " + sku);
                 }
             } else {
-                if (masterProductRepository.existsBySkuAndIdNot(sku, excludeId)) {
+                if (masterProductRepository.existsGlobalBySkuAndIdNot(sku, excludeId)) {
                     throw new RuntimeException("SKU already exists: " + sku);
                 }
             }

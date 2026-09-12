@@ -18,7 +18,11 @@ import java.util.Optional;
 public interface MasterProductRepository extends JpaRepository<MasterProduct, Long>, JpaSpecificationExecutor<MasterProduct> {
 
     // Find by basic properties
-    Optional<MasterProduct> findBySku(String sku);
+    // Prefer the shared catalog row when clones reuse the same real barcode/SKU.
+    @Query(value = "SELECT * FROM master_products p WHERE p.sku = :sku "
+            + "ORDER BY CASE WHEN COALESCE(p.is_global, TRUE) = TRUE THEN 0 ELSE 1 END, p.id "
+            + "LIMIT 1", nativeQuery = true)
+    Optional<MasterProduct> findBySku(@Param("sku") String sku);
     Optional<MasterProduct> findByBarcode(String barcode);
     
     // Status-based queries
@@ -98,6 +102,15 @@ public interface MasterProductRepository extends JpaRepository<MasterProduct, Lo
     boolean existsByBarcode(String barcode);
     boolean existsBySkuAndIdNot(String sku, Long id);
     boolean existsByBarcodeAndIdNot(String barcode, Long id);
+
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM master_products p " +
+            "WHERE p.sku = :sku AND COALESCE(p.is_global, TRUE) = TRUE)", nativeQuery = true)
+    boolean existsGlobalBySku(@Param("sku") String sku);
+
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM master_products p " +
+            "WHERE p.sku = :sku AND p.id <> :id " +
+            "AND COALESCE(p.is_global, TRUE) = TRUE)", nativeQuery = true)
+    boolean existsGlobalBySkuAndIdNot(@Param("sku") String sku, @Param("id") Long id);
 
     // Statistics
     @Query("SELECT COUNT(p) FROM MasterProduct p WHERE p.status = :status")

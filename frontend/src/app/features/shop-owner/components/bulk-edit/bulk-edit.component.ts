@@ -106,6 +106,36 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   pageSizeOptions = [50, 100, 200, 500];
   currentPageIndex = 0;
 
+  // IDs passed from My Products checkboxes (sessionStorage).
+  private readonly BULK_EDIT_IDS_KEY = 'shopOwnerBulkEditProductIds';
+  selectedProductIds: number[] | null = null;
+
+  get selectedProductCount(): number {
+    return this.selectedProductIds?.length ?? 0;
+  }
+
+  get copySuffixCount(): number {
+    return this.filteredProducts.filter(p => /(-COPY(-\d+)?)+$/i.test(p.sku || '')).length;
+  }
+
+  stripCopyFromSkus(): void {
+    let changed = 0;
+    for (const product of this.filteredProducts) {
+      const stripped = (product.sku || '').replace(/(-COPY(-\d+)?)+$/i, '');
+      if (stripped && stripped !== product.sku) {
+        product.sku = stripped;
+        this.markModified(product);
+        changed++;
+      }
+    }
+    if (changed === 0) {
+      this.swalService.toast('No -COPY suffix on these SKUs', 'info');
+      return;
+    }
+    this.recomputeDuplicateErrors();
+    this.swalService.toast(`Removed -COPY from ${changed} SKU${changed === 1 ? '' : 's'}. Click Save Changes.`, 'success');
+  }
+
   // Track modifications
   modifiedProducts: Map<number, BulkEditProduct> = new Map();
 
@@ -139,6 +169,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.clientVersion = this.versionService.getVersion().replace('v', '');
+    this.readSelectedProductIds();
 
     // Set up online/offline detection
     this.isOffline = !navigator.onLine;
@@ -316,7 +347,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         customName: p.displayName || p.customName || p.masterProduct?.name,
         nameTamil: p.masterProduct?.nameTamil || '',
         description: p.displayDescription || p.customDescription || p.masterProduct?.description,
-        sku: this.stripCopySuffix(p.sku || p.masterProduct?.sku || ''),
+        sku: this.storedSku(p),
         barcode1: p.barcode1 || '',
         barcode2: p.barcode2 || '',
         barcode3: p.barcode3 || '',
@@ -338,7 +369,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           status: p.status || (p.isAvailable ? 'ACTIVE' : 'INACTIVE'),
           isAvailable: p.isAvailable,
           tags: p.masterProduct?.tags || '',
-          sku: this.stripCopySuffix(p.sku || p.masterProduct?.sku || ''),
+          sku: this.storedSku(p),
           barcode1: p.barcode1 || '',
           barcode2: p.barcode2 || '',
           barcode3: p.barcode3 || '',
@@ -450,10 +481,35 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       : roots.filter(c => c.toLowerCase().includes(term));
   }
 
+  private readSelectedProductIds(): void {
+    try {
+      const raw = sessionStorage.getItem(this.BULK_EDIT_IDS_KEY);
+      if (!raw) {
+        this.selectedProductIds = null;
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const ids = Array.isArray(parsed)
+        ? parsed.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
+        : [];
+      this.selectedProductIds = ids.length > 0 ? ids : null;
+    } catch {
+      this.selectedProductIds = null;
+    }
+  }
+
+  showAllProducts(): void {
+    sessionStorage.removeItem(this.BULK_EDIT_IDS_KEY);
+    this.selectedProductIds = null;
+    this.applyFilters();
+  }
+
   applyFilters(): void {
     const searchLower = this.searchTerm?.toLowerCase().trim() || '';
+    const selectedSet = this.selectedProductIds ? new Set(this.selectedProductIds) : null;
 
     this.filteredProducts = this.products.filter(product => {
+      const matchesSelection = !selectedSet || selectedSet.has(product.id);
       const matchesSearch = !searchLower ||
         (product.customName || '').toLowerCase().includes(searchLower) ||
         (product.nameTamil || '').toLowerCase().includes(searchLower) ||
@@ -473,8 +529,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         (this.selectedStatus === 'available' && product.isAvailable) ||
         (this.selectedStatus === 'unavailable' && !product.isAvailable);
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSelection && matchesSearch && matchesCategory && matchesStatus;
     });
+
+    if (this.selectedProductIds?.length) {
+      const order = new Map(this.selectedProductIds.map((id, index) => [id, index]));
+      this.filteredProducts.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    }
 
     this.totalProducts = this.filteredProducts.length;
     this.currentPageIndex = 0;
@@ -701,14 +762,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  // The backend clones a product's master record (appending "-COPY"/"-COPY-2"...)
-  // to keep its SKU unique when a category change needs to isolate it from other
-  // shops sharing the same catalog item - an internal detail the shop owner
-  // should never see. The backend already strips this for the normal API
-  // response, but cached/offline data can still carry the raw suffixed value,
-  // so strip it defensively here too.
-  private stripCopySuffix(sku: string): string {
-    return (sku || '').replace(/-COPY(-\d+)?$/, '');
+  // Prefer nested master SKU: the list API's top-level `sku` is a display
+  // value that strips "-COPY". Shop owners need the stored value in this grid
+  // so they can edit or remove that suffix themselves.
+  private storedSku(p: any): string {
+    return p?.masterProduct?.sku || p?.sku || '';
   }
 
   private markModified(product: BulkEditProduct): void {
@@ -841,8 +899,16 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         // How many times this value appears within THIS product's own fields.
         const selfCount = fields.filter(o => (((p as any)[o] || '').trim().toLowerCase() === v)).length;
 
-        if (selfCount > 1) {
+        if (selfCount > 1 && f !== 'sku' && !f.startsWith('barcode')) {
           (errs ||= {})[f] = `'${raw}' is used in another field of same product`;
+        } else if (f.startsWith('barcode') && selfCount > 1) {
+          const otherBarcodeSelf = ['barcode1', 'barcode2', 'barcode3']
+            .filter(o => o !== f && (((p as any)[o] || '').trim().toLowerCase() === v)).length;
+          if (otherBarcodeSelf > 0) {
+            (errs ||= {})[f] = `'${raw}' is used in another field of same product`;
+          } else if ((globalCounts.get(v) || 0) > selfCount) {
+            (errs ||= {})[f] = `'${raw}' already exists in another product`;
+          }
         } else if ((globalCounts.get(v) || 0) > selfCount) {
           (errs ||= {})[f] = `'${raw}' already exists in another product`;
         }
@@ -898,43 +964,44 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     let successCount = 0;
     let errorCount = 0;
 
-    // Save all modified products in parallel for speed
-    const savePromises = modifiedArray.map(async (product) => {
-      try {
-        if (!navigator.onLine) {
-          await this.saveEditOffline(product);
-        } else {
-          await this.saveProductToServer(product);
+    // Save in small batches so 500+ SKU updates do not freeze the browser.
+    const batchSize = 8;
+    for (let i = 0; i < modifiedArray.length; i += batchSize) {
+      const batch = modifiedArray.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map(async (product) => {
+        try {
+          if (!navigator.onLine) {
+            await this.saveEditOffline(product);
+          } else {
+            await this.saveProductToServer(product);
+          }
+
+          product.originalValues = {
+            customName: product.customName,
+            category: product.category,
+            price: product.price,
+            originalPrice: product.originalPrice,
+            stockQuantity: product.stockQuantity,
+            status: product.status,
+            isAvailable: product.isAvailable,
+            tags: product.tags,
+            sku: product.sku,
+            barcode1: product.barcode1,
+            barcode2: product.barcode2,
+            barcode3: product.barcode3,
+            nameTamil: product.nameTamil,
+            sellByWeight: product.sellByWeight
+          };
+          this.modifiedProducts.delete(product.id);
+          return { success: true, product };
+        } catch (error) {
+          console.error(`Failed to save product ${product.id}:`, error);
+          return { success: false, product, error };
         }
-
-        // Update original values after successful save
-        product.originalValues = {
-          customName: product.customName,
-          category: product.category,
-          price: product.price,
-          originalPrice: product.originalPrice,
-          stockQuantity: product.stockQuantity,
-          status: product.status,
-          isAvailable: product.isAvailable,
-          tags: product.tags,
-          sku: product.sku,
-          barcode1: product.barcode1,
-          barcode2: product.barcode2,
-          barcode3: product.barcode3,
-          nameTamil: product.nameTamil,
-          sellByWeight: product.sellByWeight
-        };
-        this.modifiedProducts.delete(product.id);
-        return { success: true, product };
-      } catch (error) {
-        console.error(`Failed to save product ${product.id}:`, error);
-        return { success: false, product, error };
-      }
-    });
-
-    const results = await Promise.all(savePromises);
-    successCount = results.filter(r => r.success).length;
-    errorCount = results.filter(r => !r.success).length;
+      }));
+      successCount += results.filter(r => r.success).length;
+      errorCount += results.filter(r => !r.success).length;
+    }
 
     this.saving = false;
 
