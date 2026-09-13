@@ -327,8 +327,8 @@ interface InventoryItem {
             </div>
 
             <div class="form-actions">
-              <button mat-raised-button color="primary" type="submit" [disabled]="quickUpdateForm.invalid">
-                Update Stock
+              <button mat-raised-button color="primary" type="submit" [disabled]="quickUpdateForm.invalid || updatingStock">
+                {{ updatingStock ? 'Updating...' : 'Update Stock' }}
               </button>
               <button mat-button type="button" (click)="closeQuickUpdate()">
                 Cancel
@@ -734,6 +734,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   inventoryData: InventoryItem[] = [];
   loading = false;
   exporting = false;
+  updatingStock = false;
 
   // Track if loaded from cache
   loadedFromCache = false;
@@ -831,6 +832,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
     // Extract unique categories
     const categorySet = new Set(inventoryItems.map(item => item.category));
     this.categories = Array.from(categorySet).filter(c => c !== 'Uncategorized');
+    this.applyFilters();
 
     console.log('Mapped inventory data:', inventoryItems.length, 'items');
   }
@@ -903,6 +905,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
 
           this.loading = false;
           this.loadedFromCache = false;
+          this.applyFilters();
           console.log('Synced inventory from server:', inventoryItems.length, 'items');
         },
         error: (error) => {
@@ -930,9 +933,9 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   }
 
   private setupFilters(): void {
-    this.searchControl.valueChanges.subscribe(() => {
-      this.applyFilters();
-    });
+    this.searchControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.applyFilters());
   }
 
   applyFilters(): void {
@@ -940,8 +943,8 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
       const searchTerm = this.searchControl.value?.toLowerCase() || '';
 
       // Check name and category
-      const matchesName = data.productName.toLowerCase().includes(searchTerm) ||
-                          data.category.toLowerCase().includes(searchTerm);
+      const matchesName = (data.productName || '').toLowerCase().includes(searchTerm) ||
+                          (data.category || '').toLowerCase().includes(searchTerm);
 
       // Check all barcode fields
       const matchesBarcode = !!(
@@ -953,7 +956,8 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
       );
 
       const matchesSearch = matchesName || matchesBarcode;
-      const matchesCategory = !this.selectedCategory || data.category === this.selectedCategory;
+      const matchesCategory = !this.selectedCategory ||
+        data.category.trim().toLowerCase() === this.selectedCategory.trim().toLowerCase();
       const matchesStatus = !this.selectedStatus || data.status === this.selectedStatus;
       const matchesLowStock = !this.showOnlyLowStock || data.status === 'low' || data.status === 'critical';
       const matchesCritical = !this.showOnlyCritical || data.status === 'critical';
@@ -962,6 +966,7 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
     };
 
     this.dataSource.filter = Math.random().toString();
+    this.dataSource.paginator?.firstPage();
   }
 
   getHealthyStock(): number {
@@ -1048,8 +1053,29 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   }
 
   generateReport(): void {
-    console.log('Generate inventory report');
-    // Generate and download report
+    const rows = this.dataSource.filteredData;
+    if (!rows.length) {
+      this.swal.toast('No filtered products available for the report', 'warning');
+      return;
+    }
+
+    const report = rows.map(item => ({
+      Product: item.productName,
+      Category: item.category,
+      Stock: item.currentStock,
+      Unit: item.unit,
+      MinStock: item.minStock,
+      MaxStock: item.maxStock,
+      Status: this.getStatusLabel(item.status),
+      Price: item.price,
+      Cost: item.cost,
+      LastRestocked: item.lastRestocked
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(report);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory Report');
+    XLSX.writeFile(workbook, `inventory_report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    this.swal.toast(`Report generated for ${rows.length} products`, 'success');
   }
 
   closeQuickUpdate(): void {
@@ -1058,41 +1084,47 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   }
 
   submitQuickUpdate(): void {
-    if (this.quickUpdateForm.valid) {
-      const formData = this.quickUpdateForm.value;
-      console.log('Update stock:', formData);
-      
-      // Simulate stock update
-      const item = this.inventoryData.find(i => i.id === formData.productId);
-      if (item) {
-        switch (formData.updateType) {
-          case 'add':
-            item.currentStock += formData.quantity;
-            break;
-          case 'remove':
-            item.currentStock = Math.max(0, item.currentStock - formData.quantity);
-            break;
-          case 'set':
-            item.currentStock = formData.quantity;
-            break;
-        }
-        
-        // Update status
-        if (item.currentStock <= item.reorderPoint) {
-          item.status = item.currentStock <= (item.reorderPoint / 2) ? 'critical' : 'low';
-        } else if (item.currentStock > item.maxStock) {
-          item.status = 'overstock';
-        } else {
-          item.status = 'healthy';
-        }
-        
+    if (!this.quickUpdateForm.valid || this.updatingStock) return;
+
+    const formData = this.quickUpdateForm.value;
+    const item = this.inventoryData.find(i => i.id === Number(formData.productId));
+    if (!item) {
+      this.swal.toast('Product not found', 'error');
+      return;
+    }
+
+    this.updatingStock = true;
+    this.http.patch<any>(
+      `${this.apiUrl}/shop-products/${item.id}/inventory`,
+      {},
+      { params: { quantity: String(formData.quantity), operation: formData.updateType === 'remove' ? 'SUBTRACT' : String(formData.updateType).toUpperCase() } }
+    ).pipe(
+      takeUntil(this.destroy$),
+      finalize(() => this.updatingStock = false)
+    ).subscribe({
+      next: (response) => {
+        const updatedStock = Number(response?.data?.stockQuantity);
+        item.currentStock = Number.isFinite(updatedStock)
+          ? updatedStock
+          : this.calculateStockAfterUpdate(item.currentStock, formData.updateType, Number(formData.quantity));
+        item.status = this.getStockStatus(item.currentStock, item.minStock, item.maxStock);
         item.lastRestocked = new Date();
         this.dataSource.data = [...this.inventoryData];
+        this.applyFilters();
+        this.swal.toast('Stock updated successfully', 'success');
+        this.closeQuickUpdate();
+      },
+      error: (error) => {
+        console.error('Stock update failed:', error);
+        this.swal.toast(error?.error?.message || 'Failed to update stock', 'error');
       }
-      
-      this.swal.toast('Stock updated successfully', 'success');
-      this.closeQuickUpdate();
-    }
+    });
+  }
+
+  private calculateStockAfterUpdate(current: number, operation: string, quantity: number): number {
+    if (operation === 'add') return current + quantity;
+    if (operation === 'remove') return Math.max(0, current - quantity);
+    return quantity;
   }
 
   /**
