@@ -96,6 +96,8 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   selectedCategory = '';
   selectedSubcategory = '';
   selectedStatus = '';
+  stockFilter: '' | 'zero' | 'positive' = '';
+  bulkStockQuantity: number | null = null;
   // Cascading like country->state: populated from categoryChildrenMap once a
   // root Category is picked in the top filter bar.
   subcategoryFilterOptions: string[] = [];
@@ -112,28 +114,6 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   get selectedProductCount(): number {
     return this.selectedProductIds?.length ?? 0;
-  }
-
-  get copySuffixCount(): number {
-    return this.filteredProducts.filter(p => /(-COPY(-\d+)?)+$/i.test(p.sku || '')).length;
-  }
-
-  stripCopyFromSkus(): void {
-    let changed = 0;
-    for (const product of this.filteredProducts) {
-      const stripped = (product.sku || '').replace(/(-COPY(-\d+)?)+$/i, '');
-      if (stripped && stripped !== product.sku) {
-        product.sku = stripped;
-        this.markModified(product);
-        changed++;
-      }
-    }
-    if (changed === 0) {
-      this.swalService.toast('No -COPY suffix on these SKUs', 'info');
-      return;
-    }
-    this.recomputeDuplicateErrors();
-    this.swalService.toast(`Removed -COPY from ${changed} SKU${changed === 1 ? '' : 's'}. Click Save Changes.`, 'success');
   }
 
   // Track modifications
@@ -528,8 +508,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
         product.status === this.selectedStatus ||
         (this.selectedStatus === 'available' && product.isAvailable) ||
         (this.selectedStatus === 'unavailable' && !product.isAvailable);
+      const matchesStock = !this.stockFilter ||
+        (this.stockFilter === 'zero' && product.stockQuantity === 0) ||
+        (this.stockFilter === 'positive' && product.stockQuantity > 0);
 
-      return matchesSelection && matchesSearch && matchesCategory && matchesStatus;
+      return matchesSelection && matchesSearch && matchesCategory && matchesStatus && matchesStock;
     });
 
     if (this.selectedProductIds?.length) {
@@ -559,6 +542,11 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
   onStatusChange(status: string): void {
     this.selectedStatus = status;
+    this.applyFilters();
+  }
+
+  onStockFilterChange(filter: '' | 'zero' | 'positive'): void {
+    this.stockFilter = filter;
     this.applyFilters();
   }
 
@@ -597,6 +585,56 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       product.stockQuantity = newStock;
       this.markModified(product);
     }
+  }
+
+  get bulkStockTargetCount(): number {
+    return this.filteredProducts.length;
+  }
+
+  get canApplyBulkStock(): boolean {
+    return Number.isInteger(this.bulkStockQuantity) &&
+      (this.bulkStockQuantity as number) >= 0 &&
+      this.bulkStockTargetCount > 0 &&
+      !this.saving;
+  }
+
+  async applyBulkStock(): Promise<void> {
+    if (!this.canApplyBulkStock) {
+      this.swalService.toast('Enter a valid whole-number stock quantity', 'warning');
+      return;
+    }
+
+    const quantity = this.bulkStockQuantity as number;
+    const result = await Swal.fire({
+      title: 'Set stock for all products?',
+      html: `Set stock to <b>${quantity}</b> for <b>${this.bulkStockTargetCount}</b> product${this.bulkStockTargetCount === 1 ? '' : 's'}?<br><small>You can use Discard All before saving.</small>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: `Apply to ${this.bulkStockTargetCount}`,
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#22c55e'
+    });
+
+    if (!result.isConfirmed) return;
+
+    let changed = 0;
+    for (const product of this.filteredProducts) {
+      if (product.stockQuantity !== quantity) {
+        product.stockQuantity = quantity;
+        this.markModified(product);
+        changed++;
+      }
+    }
+
+    if (changed === 0) {
+      this.swalService.toast(`All products already have stock ${quantity}`, 'info');
+      return;
+    }
+
+    this.swalService.toast(
+      `Stock set to ${quantity} for ${changed} product${changed === 1 ? '' : 's'}. Click Save Changes.`,
+      'success'
+    );
   }
 
   onStatusDropdownChange(product: BulkEditProduct, value: string): void {
@@ -947,7 +985,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       // Check for duplicate barcodes/SKU
       const barcodeFields = ['sku', 'barcode1', 'barcode2', 'barcode3'];
       barcodeFields.forEach(field => {
-        if (this.hasDuplicateError(product, field)) {
+        if (this.isCellModified(product, field) && this.hasDuplicateError(product, field)) {
           const value = (product as any)[field];
           invalidProducts.push(`${product.customName}: Duplicate ${field.toUpperCase()} '${value}'`);
         }
@@ -964,10 +1002,46 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     let successCount = 0;
     let errorCount = 0;
 
+    // Stock-only edits are grouped by quantity and sent through the bulk API.
+    // The "Set stock for all" flow therefore uses one request, not one request
+    // per product. Mixed field edits continue through the normal endpoint.
+    let productsForIndividualSave = modifiedArray;
+    if (navigator.onLine) {
+      const stockOnlyProducts = modifiedArray.filter(product => this.isStockOnlyChange(product));
+      productsForIndividualSave = modifiedArray.filter(product => !this.isStockOnlyChange(product));
+      const stockGroups = new Map<number, BulkEditProduct[]>();
+
+      for (const product of stockOnlyProducts) {
+        const group = stockGroups.get(product.stockQuantity) ?? [];
+        group.push(product);
+        stockGroups.set(product.stockQuantity, group);
+      }
+
+      for (const [quantity, products] of stockGroups) {
+        try {
+          await this.saveBulkStockToServer(products, quantity);
+          for (const product of products) {
+            if (quantity === 0) {
+              product.status = 'OUT_OF_STOCK';
+              product.isAvailable = false;
+            } else if (product.status === 'OUT_OF_STOCK') {
+              product.status = 'ACTIVE';
+              product.isAvailable = true;
+            }
+            this.acceptSavedProduct(product);
+          }
+          successCount += products.length;
+        } catch (error) {
+          console.error(`Failed to bulk set stock to ${quantity}:`, error);
+          errorCount += products.length;
+        }
+      }
+    }
+
     // Save in small batches so 500+ SKU updates do not freeze the browser.
     const batchSize = 8;
-    for (let i = 0; i < modifiedArray.length; i += batchSize) {
-      const batch = modifiedArray.slice(i, i + batchSize);
+    for (let i = 0; i < productsForIndividualSave.length; i += batchSize) {
+      const batch = productsForIndividualSave.slice(i, i + batchSize);
       const results = await Promise.all(batch.map(async (product) => {
         try {
           if (!navigator.onLine) {
@@ -976,23 +1050,7 @@ export class BulkEditComponent implements OnInit, OnDestroy {
             await this.saveProductToServer(product);
           }
 
-          product.originalValues = {
-            customName: product.customName,
-            category: product.category,
-            price: product.price,
-            originalPrice: product.originalPrice,
-            stockQuantity: product.stockQuantity,
-            status: product.status,
-            isAvailable: product.isAvailable,
-            tags: product.tags,
-            sku: product.sku,
-            barcode1: product.barcode1,
-            barcode2: product.barcode2,
-            barcode3: product.barcode3,
-            nameTamil: product.nameTamil,
-            sellByWeight: product.sellByWeight
-          };
-          this.modifiedProducts.delete(product.id);
+          this.acceptSavedProduct(product);
           return { success: true, product };
         } catch (error) {
           console.error(`Failed to save product ${product.id}:`, error);
@@ -1015,8 +1073,69 @@ export class BulkEditComponent implements OnInit, OnDestroy {
     this.updateLocalCache();
   }
 
+  private saveBulkStockToServer(products: BulkEditProduct[], stockQuantity: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.http.patch<any>(`${this.apiUrl}/shop-products/bulk-stock`, {
+        productIds: products.map(product => product.id),
+        stockQuantity
+      })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            const updatedCount = Number(response?.data?.updatedCount ?? 0);
+            if (updatedCount !== products.length) {
+              reject(new Error(`Expected ${products.length} updates but server reported ${updatedCount}`));
+              return;
+            }
+            resolve();
+          },
+          error: (error) => reject(error)
+        });
+    });
+  }
+
+  private acceptSavedProduct(product: BulkEditProduct): void {
+    product.originalValues = {
+      customName: product.customName,
+      category: product.category,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      stockQuantity: product.stockQuantity,
+      status: product.status,
+      isAvailable: product.isAvailable,
+      tags: product.tags,
+      sku: product.sku,
+      barcode1: product.barcode1,
+      barcode2: product.barcode2,
+      barcode3: product.barcode3,
+      nameTamil: product.nameTamil,
+      sellByWeight: product.sellByWeight
+    };
+    this.modifiedProducts.delete(product.id);
+  }
+
   private saveProductToServer(product: BulkEditProduct): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (this.isStockOnlyChange(product)) {
+        this.http.patch<any>(
+          `${this.apiUrl}/shop-products/${product.id}/quick-update`,
+          { stockQuantity: product.stockQuantity }
+        )
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (response) => {
+              const updated = response?.data;
+              if (updated?.status) product.status = updated.status;
+              if (typeof updated?.isAvailable === 'boolean') {
+                product.isAvailable = updated.isAvailable;
+              }
+              resolve();
+            },
+            error: (error) => reject(error)
+          });
+        return;
+      }
+
       const updateData = {
         customName: product.customName,
         category: product.category,
@@ -1052,6 +1171,24 @@ export class BulkEditComponent implements OnInit, OnDestroy {
           error: (error) => reject(error)
         });
     });
+  }
+
+  private isStockOnlyChange(product: BulkEditProduct): boolean {
+    const orig = product.originalValues;
+    return product.stockQuantity !== orig.stockQuantity &&
+      product.customName === orig.customName &&
+      product.category === orig.category &&
+      product.price === orig.price &&
+      product.originalPrice === orig.originalPrice &&
+      product.status === orig.status &&
+      product.isAvailable === orig.isAvailable &&
+      product.tags === orig.tags &&
+      product.sku === orig.sku &&
+      product.barcode1 === orig.barcode1 &&
+      product.barcode2 === orig.barcode2 &&
+      product.barcode3 === orig.barcode3 &&
+      product.nameTamil === orig.nameTamil &&
+      product.sellByWeight === orig.sellByWeight;
   }
 
   private async saveEditOffline(product: BulkEditProduct): Promise<void> {

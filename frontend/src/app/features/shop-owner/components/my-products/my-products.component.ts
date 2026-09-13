@@ -107,73 +107,10 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
   // Bulk selection
   selectedProducts: ShopProduct[] = [];
   isBulkActivating = false;
-  isRemovingCopy = false;
   private componentDestroyed = false;
-  private readonly copySuffixPattern = /(-COPY(-\d+)?)+$/i;
 
   get inactiveSelectionCount(): number {
     return this.selectedProducts.filter(product => !product.isAvailable).length;
-  }
-
-  get copySkuCount(): number {
-    return this.filteredProducts.filter(p => this.copySuffixPattern.test(p.sku || '')).length;
-  }
-
-  async removeCopyFromShowing(): Promise<void> {
-    if (this.isRemovingCopy) return;
-    const pending = this.filteredProducts.filter(p => this.copySuffixPattern.test(p.sku || ''));
-    if (!pending.length) return;
-    if (this.usingFallbackData) {
-      this.swalService.warning('Unavailable', 'Connect to your shop before updating SKUs.');
-      return;
-    }
-    const confirmed = await this.swalService.confirm(
-      `Remove -COPY-COPY from ${pending.length} SKUs?`,
-      'This deletes -COPY and -COPY-COPY. The real barcode is the number before that.'
-    );
-    if (!confirmed?.isConfirmed) return;
-
-    this.isRemovingCopy = true;
-    let success = 0;
-    let next = 0;
-    try {
-      await Promise.all(Array.from({ length: Math.min(6, pending.length) }, async () => {
-        while (next < pending.length && !this.componentDestroyed) {
-          const product = pending[next++];
-          const sku = (product.sku || '').replace(this.copySuffixPattern, '');
-          if (!sku) continue;
-          try {
-            const response: any = await firstValueFrom(this.http.put(
-              `${this.apiUrl}/shop-products/${product.id}`, { sku },
-              { params: { silentError: '1' } }
-            ).pipe(takeUntil(this.destroy$)));
-            if (response?.statusCode && response.statusCode !== '0000') continue;
-            product.sku = sku;
-            if (product.masterProduct) {
-              product.masterProduct.sku = sku;
-            }
-            success++;
-            try {
-              await this.offlineStorage.updateLocalProduct(product.id, { sku });
-            } catch {
-              // cache is best-effort
-            }
-          } catch (error) {
-            console.warn('Could not strip -COPY from product', product.id, error);
-          }
-        }
-      }));
-      if (this.componentDestroyed) return;
-      this.applyFilters();
-      const failed = pending.length - success;
-      this.swalService.toast(
-        failed ? `${success} updated; ${failed} failed. Search -copy and retry.`
-          : `${success} SKUs updated (-COPY-COPY removed )`,
-        failed ? 'warning' : 'success'
-      );
-    } finally {
-      this.isRemovingCopy = false;
-    }
   }
 
   async activateSelectedProducts(): Promise<void> {

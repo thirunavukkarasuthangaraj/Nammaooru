@@ -17,13 +17,6 @@
       </div>
       <div class="header-actions">
         <button mat-raised-button color="primary"
-                *ngIf="copySkuCount > 0 || isRemovingCopy"
-                [disabled]="isRemovingCopy"
-                (click)="removeCopyFromShowing()">
-          <mat-icon>content_cut</mat-icon>
-          {{ isRemovingCopy ? 'Removing…' : 'Remove COPY suffix from ' + copySkuCount + ' products' }}
-        </button>
-        <button mat-raised-button color="primary"
                 *ngIf="inactiveSelectionCount > 0 || isBulkActivating"
                 [disabled]="isBulkActivating"
                 (click)="activateSelectedProducts()">

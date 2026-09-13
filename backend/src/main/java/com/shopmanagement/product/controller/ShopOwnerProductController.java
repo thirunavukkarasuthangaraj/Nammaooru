@@ -2,6 +2,7 @@ package com.shopmanagement.product.controller;
 
 import com.shopmanagement.common.dto.ApiResponse;
 import com.shopmanagement.product.dto.ProductImageResponse;
+import com.shopmanagement.product.dto.BulkStockUpdateRequest;
 import com.shopmanagement.product.dto.ShopProductRequest;
 import com.shopmanagement.product.dto.ShopProductResponse;
 import com.shopmanagement.product.entity.ShopProduct;
@@ -702,6 +703,34 @@ public class ShopOwnerProductController {
             return ResponseEntity.badRequest().body(ApiResponse.error(
                     "Error updating product: " + e.getMessage()
             ));
+        }
+    }
+
+    @PatchMapping("/bulk-stock")
+    @PreAuthorize("hasRole('SHOP_OWNER') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> bulkSetStock(
+            @Valid @RequestBody BulkStockUpdateRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        try {
+            Shop currentShop = shopService.getShopByOwner(currentUsername);
+            if (currentShop == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("No shop found for current user"));
+            }
+
+            int updatedCount = shopProductService.bulkSetStock(
+                    currentShop.getId(),
+                    request.getProductIds(),
+                    request.getStockQuantity());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("updatedCount", updatedCount),
+                    "Stock updated successfully"));
+        } catch (Exception e) {
+            log.error("Error bulk updating stock for user: {}", currentUsername, e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Error updating stock: " + e.getMessage()));
         }
     }
 

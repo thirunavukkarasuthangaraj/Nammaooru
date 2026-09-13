@@ -25,6 +25,7 @@ public interface ShopProductRepository extends JpaRepository<ShopProduct, Long>,
     Page<ShopProduct> findByShop(Shop shop, Pageable pageable);
     List<ShopProduct> findByShopId(Long shopId);
     Page<ShopProduct> findByShopId(Long shopId, Pageable pageable);
+    List<ShopProduct> findByShopIdAndIdIn(Long shopId, List<Long> ids);
 
     // Product availability and status
     List<ShopProduct> findByShopAndStatus(Shop shop, ShopProduct.ShopProductStatus status);

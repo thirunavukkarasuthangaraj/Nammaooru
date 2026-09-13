@@ -1104,32 +1104,37 @@ interface Category {
       color: #e53935;
     }
 
-    /* Card view - mini version of the root category tile */
+    /* Card view subgroups stay compact inside the parent card. Full square
+       tiles made each expanded parent several screens tall on desktop. */
     .subcategory-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
       margin-bottom: 8px;
     }
 
     .subcategory-card {
       background: #F9FAFB;
       border: 1px solid #ECEFF1;
-      border-radius: 10px;
+      border-radius: 8px;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      transition: border-color 0.15s ease;
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 44px;
+      transition: border-color 0.15s ease, background 0.15s ease;
     }
 
     .subcategory-card:hover {
       border-color: #16a34a;
+      background: #F3FAF5;
     }
 
     .sub-tile {
-      width: 100%;
-      aspect-ratio: 1 / 1;
+      width: 42px;
+      height: 42px;
       background: #EEF1EE;
+      border-right: 1px solid #ECEFF1;
     }
 
     .sub-image {
@@ -1149,19 +1154,19 @@ interface Category {
     }
 
     .sub-tile-placeholder mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
 
     .sub-info {
-      padding: 8px 8px 4px;
+      padding: 5px 7px;
       min-width: 0;
     }
 
     .sub-info h4 {
       margin: 0 0 2px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 700;
       color: #1a1a1a;
       white-space: nowrap;
@@ -1170,26 +1175,27 @@ interface Category {
     }
 
     .sub-info .sub-count {
-      font-size: 11px;
+      display: block;
+      font-size: 10px;
       color: #78909C;
     }
 
     .sub-actions {
       display: flex;
-      justify-content: flex-end;
-      padding: 0 4px 4px;
+      align-items: center;
+      padding: 0 2px 0 0;
     }
 
     .sub-actions .action-btn {
-      width: 26px;
-      height: 26px;
-      line-height: 26px;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
     }
 
     .sub-actions .action-btn mat-icon {
-      font-size: 15px;
-      width: 15px;
-      height: 15px;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
     }
 
     .no-subcategories {

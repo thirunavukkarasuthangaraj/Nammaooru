@@ -49,6 +49,15 @@
         </mat-autocomplete>
       </mat-form-field>
 
+      <mat-form-field appearance="outline" class="filter-field stock-filter-field">
+        <mat-label>Stock</mat-label>
+        <mat-select [value]="stockFilter" (selectionChange)="onStockFilterChange($event.value)">
+          <mat-option value="">All stock</mat-option>
+          <mat-option value="zero">Zero stock</mat-option>
+          <mat-option value="positive">In stock</mat-option>
+        </mat-select>
+      </mat-form-field>
+
       <!-- Subcategory: cascades from the selected Category, like a country -> state picker -->
       <mat-form-field appearance="outline" class="filter-field" *ngIf="subcategoryFilterOptions.length > 0">
         <mat-label>Subcategory</mat-label>
@@ -65,21 +74,44 @@
       <button mat-stroked-button
               color="primary"
               class="add-product-btn"
-              *ngIf="copySuffixCount > 0"
-              [disabled]="saving"
-              (click)="stripCopyFromSkus()">
-        Remove COPY suffix ({{ copySuffixCount }})
-      </button>
-      <button mat-stroked-button
-              color="primary"
-              class="add-product-btn"
               (click)="addNewProduct()">
         <mat-icon>add</mat-icon>
         Add Product
       </button>
+    </div>
+  </div>
+
+  <!-- Apply one stock quantity to every product matching the current filters. -->
+  <div class="bulk-stock-panel" *ngIf="!loading && bulkStockTargetCount > 0">
+    <div class="bulk-stock-copy">
+      <span class="bulk-stock-icon"><mat-icon>inventory_2</mat-icon></span>
+      <div>
+        <strong>Set stock for matching products</strong>
+        <small>Enter one quantity and apply it to all {{ bulkStockTargetCount }} products.</small>
+      </div>
+    </div>
+    <div class="bulk-stock-action">
+      <label for="bulk-stock-quantity">Stock quantity</label>
+      <input id="bulk-stock-quantity"
+             type="number"
+             min="0"
+             step="1"
+             inputmode="numeric"
+             [(ngModel)]="bulkStockQuantity"
+             (keyup.enter)="applyBulkStock()"
+             placeholder="Enter quantity"
+             [disabled]="saving">
+      <button mat-raised-button
+              color="primary"
+              type="button"
+              [disabled]="!canApplyBulkStock"
+              (click)="applyBulkStock()">
+        Apply to all {{ bulkStockTargetCount }}
+      </button>
       <button mat-raised-button
               color="primary"
               class="save-btn"
+              type="button"
               [disabled]="modifiedProducts.size === 0 || saving"
               (click)="saveChanges()">
         <mat-icon>save</mat-icon>

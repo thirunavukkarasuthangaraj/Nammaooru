@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 @Service
@@ -1037,6 +1038,40 @@ public class ShopProductService {
         log.info("Product quick updated successfully: {}", productId);
 
         return productMapper.toResponse(updatedProduct);
+    }
+
+    /**
+     * Set one stock quantity for many products in a single shop-scoped request.
+     * Product IDs belonging to another shop are never updated.
+     */
+    public int bulkSetStock(Long shopId, List<Long> productIds, Integer stockQuantity) {
+        if (stockQuantity == null || stockQuantity < 0) {
+            throw new IllegalArgumentException("Stock quantity cannot be negative");
+        }
+
+        List<Long> uniqueIds = productIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        List<ShopProduct> products = shopProductRepository.findByShopIdAndIdIn(shopId, uniqueIds);
+
+        if (products.size() != uniqueIds.size()) {
+            throw new IllegalArgumentException("One or more products do not belong to this shop");
+        }
+
+        for (ShopProduct product : products) {
+            product.setStockQuantity(stockQuantity);
+            if (stockQuantity == 0) {
+                product.setStatus(ShopProduct.ShopProductStatus.OUT_OF_STOCK);
+                product.setIsAvailable(false);
+            } else if (product.getStatus() == ShopProduct.ShopProductStatus.OUT_OF_STOCK) {
+                product.setStatus(ShopProduct.ShopProductStatus.ACTIVE);
+                product.setIsAvailable(true);
+            }
+        }
+
+        shopProductRepository.saveAll(products);
+        return products.size();
     }
 
     /**
