@@ -10,7 +10,7 @@ import { AuthService } from '@core/services/auth.service';
 import { OfflineStorageService, CachedProduct } from '@core/services/offline-storage.service';
 import { SwalService } from '@core/services/swal.service';
 import { finalize, takeUntil } from 'rxjs/operators';
-import { Subject } from 'rxjs';
+import { firstValueFrom, forkJoin, Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import * as XLSX from 'xlsx';
 
@@ -843,80 +843,80 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
   private syncFromServer(): void {
     const params = new HttpParams()
       .set('page', '0')
-      .set('size', '100000');
+      .set('size', '500');
 
     this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, { params })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          console.log('Inventory API response:', response);
+          const firstPage = response?.data;
+          const firstProducts = Array.isArray(firstPage) ? firstPage : (firstPage?.content || []);
+          const totalPages = Math.max(1, Number(firstPage?.totalPages || 1));
+          const remainingRequests = Array.from({ length: totalPages - 1 }, (_, index) =>
+            this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, {
+              params: params.set('page', String(index + 1))
+            })
+          );
 
-          let products: any[] = [];
-          if (response && response.data) {
-            if (response.data.content) {
-              products = response.data.content;
-            } else if (Array.isArray(response.data)) {
-              products = response.data;
-            }
+          if (!remainingRequests.length) {
+            this.applyServerInventory(firstProducts);
+            return;
           }
 
-          // Store raw data for export
-          this.rawProductData = products;
-
-          // Map API response to InventoryItem interface
-          const inventoryItems = products.map((item: any) => {
-            const currentStock = item.stockQuantity || 0;
-            const minStock = item.minStockLevel || 10;
-            const maxStock = item.maxStockLevel || 100;
-            const price = item.price || item.sellingPrice || 0;
-
-            return {
-              id: item.id,
-              productName: item.customName || item.displayName || item.masterProduct?.name || 'Unknown Product',
-              productNameTamil: item.customNameTamil || item.displayNameTamil || item.nameTamil || item.masterProduct?.nameTamil || '',
-              category: item.masterProduct?.category?.name || item.category || 'Uncategorized',
-              categoryTamil: item.masterProduct?.category?.nameTamil || '',
-              currentStock: currentStock,
-              minStock: minStock,
-              maxStock: maxStock,
-              unit: item.masterProduct?.baseUnit || item.unit || 'piece',
-              price: price,
-              cost: item.costPrice || Math.round(price * 0.7),
-              supplier: 'Local Supplier',
-              lastRestocked: new Date(item.updatedAt || new Date()),
-              status: this.getStockStatus(currentStock, minStock, maxStock),
-              location: 'Main Store',
-              reorderPoint: minStock,
-              // Barcode fields for search
-              barcode: item.barcode || item.masterProduct?.barcode || '',
-              barcode1: item.barcode1 || '',
-              barcode2: item.barcode2 || '',
-              barcode3: item.barcode3 || '',
-              sku: item.sku || item.masterProduct?.sku || ''
-            };
+          forkJoin(remainingRequests).pipe(takeUntil(this.destroy$)).subscribe({
+            next: (responses) => {
+              const allProducts = [
+                ...firstProducts,
+                ...responses.flatMap((page: any) => Array.isArray(page?.data) ? page.data : (page?.data?.content || []))
+              ];
+              this.applyServerInventory(allProducts);
+            },
+            error: (error) => this.handleInventorySyncError(error)
           });
-
-          this.inventoryData = inventoryItems;
-          this.dataSource.data = this.inventoryData;
-
-          // Extract unique categories
-          const categorySet = new Set(inventoryItems.map(item => item.category));
-          this.categories = Array.from(categorySet).filter(c => c !== 'Uncategorized');
-
-          this.loading = false;
-          this.loadedFromCache = false;
-          this.applyFilters();
-          console.log('Synced inventory from server:', inventoryItems.length, 'items');
         },
-        error: (error) => {
-          console.error('Error syncing from server:', error);
-          this.loading = false;
-          // If we already loaded from cache, don't show error
-          if (!this.loadedFromCache) {
-            this.swal.toast('Failed to load inventory data', 'error');
-          }
-        }
+        error: (error) => this.handleInventorySyncError(error)
       });
+  }
+
+  private applyServerInventory(products: any[]): void {
+    this.rawProductData = products;
+    this.inventoryData = products.map((item: any) => {
+      const currentStock = Number(item.stockQuantity ?? 0);
+      const minStock = Number(item.minStockLevel ?? 10);
+      const maxStock = Number(item.maxStockLevel ?? 100);
+      const price = Number(item.price ?? item.sellingPrice ?? 0);
+      return {
+        id: item.id,
+        productName: item.customName || item.displayName || item.masterProduct?.name || 'Unknown Product',
+        productNameTamil: item.customNameTamil || item.displayNameTamil || item.nameTamil || item.masterProduct?.nameTamil || '',
+        category: item.masterProduct?.category?.name || item.category || 'Uncategorized',
+        categoryTamil: item.masterProduct?.category?.nameTamil || '',
+        currentStock, minStock, maxStock,
+        unit: item.masterProduct?.baseUnit || item.unit || 'piece',
+        price,
+        cost: item.costPrice || Math.round(price * 0.7),
+        supplier: 'Local Supplier',
+        lastRestocked: new Date(item.updatedAt || new Date()),
+        status: this.getStockStatus(currentStock, minStock, maxStock),
+        location: 'Main Store',
+        reorderPoint: minStock,
+        barcode: item.barcode || item.masterProduct?.barcode || '',
+        barcode1: item.barcode1 || '', barcode2: item.barcode2 || '', barcode3: item.barcode3 || '',
+        sku: item.sku || item.masterProduct?.sku || ''
+      };
+    });
+    this.dataSource.data = this.inventoryData;
+    this.categories = Array.from(new Set(this.inventoryData.map(item => item.category)))
+      .filter(c => c !== 'Uncategorized');
+    this.loading = false;
+    this.loadedFromCache = false;
+    this.applyFilters();
+  }
+
+  private handleInventorySyncError(error: any): void {
+    console.error('Error syncing from server:', error);
+    this.loading = false;
+    if (!this.loadedFromCache) this.swal.toast('Failed to load inventory data', 'error');
   }
 
   private getStockStatus(currentStock: number, minStock: number, maxStock: number): 'healthy' | 'low' | 'critical' | 'overstock' {
@@ -1136,19 +1136,27 @@ export class InventoryManagementComponent implements OnInit, OnDestroy {
     try {
       // If raw data is not loaded, fetch from API
       if (this.rawProductData.length === 0) {
-        const params = new HttpParams()
-          .set('page', '0')
-          .set('size', '100000');
-
-        const response: any = await this.http.get(`${this.apiUrl}/shop-products/my-products`, { params }).toPromise();
-
-        if (response && response.data) {
-          if (response.data.content) {
-            this.rawProductData = response.data.content;
-          } else if (Array.isArray(response.data)) {
-            this.rawProductData = response.data;
-          }
-        }
+        const params = new HttpParams().set('page', '0').set('size', '500');
+        const firstResponse: any = await firstValueFrom(
+          this.http.get(`${this.apiUrl}/shop-products/my-products`, { params })
+        );
+        const firstData = firstResponse?.data;
+        this.rawProductData = Array.isArray(firstData) ? firstData : (firstData?.content || []);
+        const totalPages = Math.max(1, Number(firstData?.totalPages || 1));
+        const remainingPages = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, index) => firstValueFrom(
+            this.http.get<any>(`${this.apiUrl}/shop-products/my-products`, {
+              params: params.set('page', String(index + 1))
+            })
+          ))
+        );
+        this.rawProductData = [
+          ...this.rawProductData,
+          ...remainingPages.flatMap((response: any) => {
+            const data = response?.data;
+            return Array.isArray(data) ? data : (data?.content || []);
+          })
+        ];
       }
 
       if (this.rawProductData.length === 0) {
