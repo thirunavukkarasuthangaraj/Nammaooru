@@ -98,6 +98,10 @@ export class BulkEditComponent implements OnInit, OnDestroy {
   selectedStatus = '';
   stockFilter: '' | 'zero' | 'positive' = '';
   bulkStockQuantity: number | null = null;
+  bulkPrice: number | null = null;
+  bulkMrp: number | null = null;
+  bulkSelectedStock: number | null = null;
+  bulkSelectedIds = new Set<number>();
   // Cascading like country->state: populated from categoryChildrenMap once a
   // root Category is picked in the top filter bar.
   subcategoryFilterOptions: string[] = [];
@@ -490,11 +494,13 @@ export class BulkEditComponent implements OnInit, OnDestroy {
 
     this.filteredProducts = this.products.filter(product => {
       const matchesSelection = !selectedSet || selectedSet.has(product.id);
-      const matchesSearch = !searchLower ||
-        (product.customName || '').toLowerCase().includes(searchLower) ||
-        (product.nameTamil || '').toLowerCase().includes(searchLower) ||
-        (product.sku || '').toLowerCase().includes(searchLower) ||
-        (product.tags || '').toLowerCase().includes(searchLower);
+      const searchableText = [
+        product.customName, product.nameTamil, product.description, product.sku,
+        product.barcode1, product.barcode2, product.barcode3, product.tags,
+        product.category, product.price, product.originalPrice, product.stockQuantity,
+        product.status
+      ].filter(value => value !== null && value !== undefined).join(' ').toLowerCase();
+      const matchesSearch = !searchLower || searchableText.includes(searchLower);
 
       // A root Category alone matches it AND every one of its subgroups
       // (e.g. picking "Beverages" also shows Tea/Coffee products); picking a
@@ -585,6 +591,53 @@ export class BulkEditComponent implements OnInit, OnDestroy {
       product.stockQuantity = newStock;
       this.markModified(product);
     }
+  }
+
+  get selectedBulkProducts(): BulkEditProduct[] {
+    return this.products.filter(product => this.bulkSelectedIds.has(product.id));
+  }
+
+  get selectedBulkCount(): number {
+    return this.bulkSelectedIds.size;
+  }
+
+  get allFilteredSelected(): boolean {
+    return this.filteredProducts.length > 0 && this.filteredProducts.every(product => this.bulkSelectedIds.has(product.id));
+  }
+
+  toggleBulkSelection(product: BulkEditProduct, checked: boolean): void {
+    checked ? this.bulkSelectedIds.add(product.id) : this.bulkSelectedIds.delete(product.id);
+  }
+
+  toggleAllFiltered(checked: boolean): void {
+    for (const product of this.filteredProducts) {
+      checked ? this.bulkSelectedIds.add(product.id) : this.bulkSelectedIds.delete(product.id);
+    }
+  }
+
+  async applyBulkSelected(): Promise<void> {
+    const targets = this.selectedBulkProducts;
+    const hasPrice = this.bulkPrice !== null && Number.isFinite(this.bulkPrice) && this.bulkPrice >= 0;
+    const hasMrp = this.bulkMrp !== null && Number.isFinite(this.bulkMrp) && this.bulkMrp >= 0;
+    const hasStock = this.bulkSelectedStock !== null && Number.isInteger(this.bulkSelectedStock) && this.bulkSelectedStock >= 0;
+    if (!targets.length || (!hasPrice && !hasMrp && !hasStock)) {
+      this.swalService.toast('Select products and enter at least one value', 'warning');
+      return;
+    }
+    const result = await Swal.fire({
+      title: 'Update selected products?',
+      text: `Apply the entered values to ${targets.length} selected product${targets.length === 1 ? '' : 's'}?`,
+      icon: 'question', showCancelButton: true, confirmButtonText: 'Apply changes', confirmButtonColor: '#22c55e'
+    });
+    if (!result.isConfirmed) return;
+
+    for (const product of targets) {
+      if (hasPrice) product.price = this.bulkPrice as number;
+      if (hasMrp) product.originalPrice = this.bulkMrp as number;
+      if (hasStock) product.stockQuantity = this.bulkSelectedStock as number;
+      this.markModified(product);
+    }
+    this.swalService.toast(`Changes applied to ${targets.length} product${targets.length === 1 ? '' : 's'}. Click Save Changes.`, 'success');
   }
 
   get bulkStockTargetCount(): number {

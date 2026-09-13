@@ -124,6 +124,27 @@
     </div>
   </div>
 
+  <div class="bulk-stock-panel bulk-selected-panel" *ngIf="!loading">
+    <div class="bulk-stock-copy">
+      <span class="bulk-stock-icon"><mat-icon>checklist</mat-icon></span>
+      <div>
+        <strong>Quick update selected products</strong>
+        <small>Select rows below, enter any values, then apply them together.</small>
+      </div>
+    </div>
+    <div class="bulk-stock-action">
+      <span class="selected-count">{{ selectedBulkCount }} selected</span>
+      <input type="number" min="0" step="0.01" [(ngModel)]="bulkPrice" placeholder="Price" aria-label="Bulk price">
+      <input type="number" min="0" step="0.01" [(ngModel)]="bulkMrp" placeholder="MRP" aria-label="Bulk MRP">
+      <input type="number" min="0" step="1" [(ngModel)]="bulkSelectedStock" placeholder="Stock" aria-label="Bulk stock">
+      <button mat-raised-button color="primary" type="button"
+              [disabled]="selectedBulkCount === 0 || saving"
+              (click)="applyBulkSelected()">
+        Apply selected
+      </button>
+    </div>
+  </div>
+
   <!-- Status Bar -->
   <div class="status-bar">
     <div class="status-left">
@@ -165,7 +186,11 @@
       <table class="excel-grid">
         <thead>
           <tr>
-            <th class="col-row-num">#</th>
+            <th class="col-row-num">
+              <input type="checkbox" [checked]="allFilteredSelected"
+                     (change)="toggleAllFiltered($any($event.target).checked)"
+                     aria-label="Select all filtered products">
+            </th>
             <th class="col-image">IMG</th>
             <th class="col-product-name">PRODUCT NAME</th>
             <th class="col-category">CATEGORY</th>
@@ -187,7 +212,12 @@
           <tr *ngFor="let product of paginatedProducts; let i = index"
               [class.modified-row]="isModified(product)">
             <!-- Row Number -->
-            <td class="col-row-num">{{ getRowNumber(i) }}</td>
+            <td class="col-row-num">
+              <input type="checkbox" [checked]="bulkSelectedIds.has(product.id)"
+                     (change)="toggleBulkSelection(product, $any($event.target).checked)"
+                     [attr.aria-label]="'Select ' + product.customName">
+              <span>{{ getRowNumber(i) }}</span>
+            </td>
 
             <!-- Image (with Menu) -->
             <td class="col-image">

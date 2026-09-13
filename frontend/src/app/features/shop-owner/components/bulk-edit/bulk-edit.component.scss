@@ -243,6 +243,34 @@
     }
   }
 
+  .bulk-selected-panel {
+    margin-top: -6px;
+    border-color: #bfdbfe;
+
+    .selected-count {
+      color: #1d4ed8;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    input {
+      width: 110px;
+    }
+  }
+
+  .excel-grid .col-row-num {
+    white-space: nowrap;
+
+    input[type='checkbox'] {
+      width: 16px;
+      height: 16px;
+      margin-right: 5px;
+      accent-color: #22c55e;
+      vertical-align: middle;
+    }
+  }
+
   // Status Bar
   .status-bar {
     display: flex;
