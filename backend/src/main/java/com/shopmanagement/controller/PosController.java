@@ -61,9 +61,10 @@ public class PosController {
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
     public ResponseEntity<ApiResponse<OrderResponse>> addItemsToOrder(
             @PathVariable Long orderId,
+            @RequestParam(defaultValue = "false") boolean ignoreStock,
             @Valid @RequestBody List<com.shopmanagement.dto.order.PosOrderItemRequest> items) {
         log.info("Appending {} item(s) to POS order {}", items.size(), orderId);
-        OrderResponse response = posService.addItemsToOrder(orderId, items);
+        OrderResponse response = posService.addItemsToOrder(orderId, items, ignoreStock);
         return ResponseUtil.success(response, "Items added to bill successfully");
     }
 

@@ -14,7 +14,8 @@ $primary: #2c3e50; $accent: #3498db; $success: #27ae60; $warning: #f39c12; $dang
     .search-box { flex: 2; } .barcode-box { flex: 1; max-width: 200px; }
   }
   .pos-tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding: 8px 12px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .pos-controls { display: flex; align-items: center; gap: 8px;
+  .pos-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    .ignore-stock-toggle { font-size: 12px; white-space: nowrap; }
     .language-toggle { display: flex; align-items: center; gap: 4px; font-size: 11px; .lang-label { color: $text-secondary; &.active { color: $accent; font-weight: 600; } } }
     .sync-status { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 600; mat-icon { font-size: 16px; width: 16px; height: 16px; } &.online { background: #e8f5e9; color: $success; } &.offline { background: #ffebee; color: $danger; } }
     .sync-btn mat-icon { font-size: 18px; &.spinning { animation: spin 1s linear infinite; } }

@@ -367,6 +367,7 @@ export class PosSyncService implements OnDestroy {
 
     // Offline - save locally (reuse the same ID sent with the online attempt)
     const offlineOrder: OfflineOrder = {
+      ignoreStock: orderData.ignoreStock === true,
       offlineOrderId,
       shopId,
       items: orderData.items,
@@ -412,10 +413,11 @@ export class PosSyncService implements OnDestroy {
    * Only works online against a real server order id; offline/append is not
    * supported here, callers should fall back to createPosOrder in that case.
    */
-  async addItemsToOrder(orderId: number, items: any[]): Promise<{ success: boolean; order?: any }> {
+  async addItemsToOrder(orderId: number, items: any[], ignoreStock = false): Promise<{ success: boolean; order?: any }> {
     const response = await this.http.put<{ data: any }>(
       `${this.apiUrl}/pos/orders/${orderId}/items`,
-      items
+      items,
+      { params: { ignoreStock } }
     ).pipe(timeout(PosSyncService.REQUEST_TIMEOUT_MS)).toPromise();
 
     return { success: true, order: response?.data };
@@ -550,6 +552,7 @@ export class PosSyncService implements OnDestroy {
         }
 
         const requestData = {
+          ignoreStock: order.ignoreStock === true,
           shopId: order.shopId,
           items: order.items.map(item => ({
             shopProductId: item.shopProductId,

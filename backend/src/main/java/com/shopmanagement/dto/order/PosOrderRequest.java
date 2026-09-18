@@ -39,6 +39,9 @@ public class PosOrderRequest {
     // For offline sync - unique ID generated on client
     private String offlineOrderId;
 
+    // Explicit per-bill opt-in; absent on older clients means enforce stock.
+    private boolean ignoreStock;
+
     // Optional: Apply discount
     private BigDecimal discountAmount;
 

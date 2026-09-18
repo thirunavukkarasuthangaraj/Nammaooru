@@ -89,7 +89,7 @@ public class PosService {
         Customer customer = getOrCreateWalkInCustomer(request, shop);
 
         // 3-5. Process items, deduct stock, batch-save inventory updates
-        ItemProcessingResult processed = processOrderItems(request.getItems());
+        ItemProcessingResult processed = processOrderItems(request.getItems(), request.isIgnoreStock());
         List<OrderItem> orderItems = processed.orderItems();
         BigDecimal subtotal = processed.subtotal();
 
@@ -139,7 +139,7 @@ public class PosService {
      * items only; items already on the order are untouched.
      */
     @Transactional
-    public OrderResponse addItemsToOrder(Long orderId, List<PosOrderItemRequest> newItems) {
+    public OrderResponse addItemsToOrder(Long orderId, List<PosOrderItemRequest> newItems, boolean ignoreStock) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
@@ -147,7 +147,7 @@ public class PosService {
             return mapToResponse(order);
         }
 
-        ItemProcessingResult processed = processOrderItems(newItems);
+        ItemProcessingResult processed = processOrderItems(newItems, ignoreStock);
 
         for (OrderItem item : processed.orderItems()) {
             item.setOrder(order);
@@ -172,7 +172,7 @@ public class PosService {
      * products, builds OrderItems (custom items included), deducts and batch-saves
      * stock for tracked products, and totals the subtotal.
      */
-    private ItemProcessingResult processOrderItems(List<PosOrderItemRequest> items) {
+    private ItemProcessingResult processOrderItems(List<PosOrderItemRequest> items, boolean ignoreStock) {
         // Custom items (typed name + price at the counter) have null/negative IDs and no catalog row
         List<Long> productIds = items.stream()
                 .map(PosOrderItemRequest::getShopProductId)
@@ -223,7 +223,7 @@ public class PosService {
             // Check and prepare stock deduction
             if (shopProduct.getTrackInventory() != null && shopProduct.getTrackInventory()) {
                 Integer currentStock = shopProduct.getStockQuantity() != null ? shopProduct.getStockQuantity() : 0;
-                if (currentStock < itemRequest.getQuantity()) {
+                if (!ignoreStock && currentStock < itemRequest.getQuantity()) {
                     String stockProductName = shopProduct.getCustomName();
                     if (stockProductName == null && shopProduct.getMasterProduct() != null) {
                         stockProductName = shopProduct.getMasterProduct().getName();
@@ -237,7 +237,9 @@ public class PosService {
                 }
 
                 // Deduct stock (will batch save later)
-                int newStock = currentStock - itemRequest.getQuantity();
+                // Inventory is constrained to nonnegative quantities. Overselling
+                // still records the full sale and consumes any remaining stock.
+                int newStock = Math.max(0, currentStock - itemRequest.getQuantity());
                 shopProduct.setStockQuantity(newStock);
 
                 if (newStock == 0) {

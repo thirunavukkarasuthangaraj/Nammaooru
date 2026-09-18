@@ -37,6 +37,7 @@ export interface CachedProduct {
 }
 
 export interface OfflineOrder {
+  ignoreStock?: boolean;
   offlineOrderId: string;
   shopId: number;
   items: {

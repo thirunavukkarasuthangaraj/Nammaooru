@@ -276,6 +276,25 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Product browse display preferences (persisted per browser)
   viewMode: 'card' | 'list' = 'card';
+  private stockPreferenceShopId: number | null = null;
+  private ignoreStockValue = false;
+
+  get ignoreStock(): boolean {
+    if (this.stockPreferenceShopId !== this.shopId) {
+      this.stockPreferenceShopId = this.shopId;
+      this.ignoreStockValue = this.shopId > 0 &&
+        localStorage.getItem(`pos-ignore-stock-${this.shopId}`) === 'true';
+    }
+    return this.ignoreStockValue;
+  }
+
+  setIgnoreStock(enabled: boolean): void {
+    this.stockPreferenceShopId = this.shopId;
+    this.ignoreStockValue = enabled;
+    if (this.shopId > 0) {
+      localStorage.setItem(`pos-ignore-stock-${this.shopId}`, String(enabled));
+    }
+  }
   showImages: boolean = true;
   private readonly POS_VIEW_MODE_KEY = 'pos-billing-view-mode';
   private readonly POS_SHOW_IMAGES_KEY = 'pos-billing-show-images';
@@ -2073,14 +2092,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    // Out of stock: don't interrupt billing with the restock modal. Add the item
-    // and just warn (non-blocking). The shopkeeper reconciles stock later; stock
-    // may go negative. (Previously this popped a blocking "enter new stock
-    // quantity" prompt, which broke the scan-and-bill flow.)
-    const outOfStock = product.trackInventory && product.stock <= 0;
-    if (outOfStock) {
-      this.swal.toast(`${product.name} is out of stock — added anyway`, 'warning');
-    }
+    // Zero-stock products are added straight to the cart - no restock prompt
+    // during scanning. Stock is only adjusted at bill time.
 
     // Check if already in cart
     const existingItem = this.cart.find(item => item.product.id === product.id);
@@ -2089,9 +2102,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const discount = mrp - product.price;
 
     if (existingItem) {
-      // Enforce the stock ceiling only when there IS stock. Out-of-stock items are
-      // allowed to go negative so scanning the same item repeatedly still bills.
-      if (product.trackInventory && product.stock > 0 && existingItem.quantity >= product.stock) {
+      if (this.exceedsStock(existingItem, existingItem.quantity + 1)) {
         this.swal.warning('Stock Limit', `Only ${product.stock} available`);
         return;
       }
@@ -2131,26 +2142,25 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /**
-   * Out-of-stock product during billing: ask for the new stock quantity,
-   * update it (server or offline queue) and add the product to the cart.
-   */
-  async promptRestockAndAdd(product: CachedProduct): Promise<void> {
+  private async promptRestock(product: CachedProduct, required: number): Promise<boolean> {
     const { value } = await this.swal.prompt(
-      'Out of Stock',
-      `${product.name} is out of stock. Enter new stock quantity to update and continue billing:`,
+      product.stock <= 0 ? 'Out of Stock' : 'Stock Limit',
+      `${product.name}: ${product.stock} available. Enter new stock quantity (at least ${required}) to update and continue billing:`,
       'number'
     );
-    if (!value) return;
-    const newStock = parseInt(String(value), 10);
-    if (isNaN(newStock) || newStock <= 0) {
-      this.swal.error('Invalid Stock', 'Enter a stock quantity greater than 0');
-      return;
+    if (!value) return false;
+    const newStock = Number(value);
+    if (!Number.isSafeInteger(newStock) || newStock < required || newStock <= 0) {
+      this.swal.error('Invalid Stock', `Enter a whole stock quantity of at least ${required}`);
+      return false;
     }
-    const updated = await this.updateProductStock(product, newStock);
-    if (updated) {
-      this.addToCart(product);
-    }
+    return this.updateProductStock(product, newStock);
+  }
+
+  private exceedsStock(item: CartItem, quantity: number): boolean {
+    const billed = this.lastOrder?.id ? this.billedQuantities.get(item) || 0 : 0;
+    return !this.ignoreStock && !item.weightGrams && item.product.trackInventory &&
+      quantity - billed > item.product.stock;
   }
 
   /**
@@ -2185,6 +2195,8 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Optimistic local update everywhere POS reads stock from
       product.stock = newStock;
+      this.cart.filter(item => item.product.id === productId)
+        .forEach(item => item.product.stock = newStock);
       const idx = this.products.findIndex(p => p.id === productId);
       if (idx !== -1) this.products[idx].stock = newStock;
       const fidx = this.filteredProducts.findIndex(p => p.id === productId);
@@ -2395,7 +2407,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const newQty = parseInt(input.value, 10);
     const item = this.cart.find(item => item.product.id === product.id);
     if (item && newQty > 0) {
-      if (item.product.trackInventory && newQty > item.product.stock) {
+      if (this.exceedsStock(item, newQty)) {
         this.swal.warning('Stock Limit', `Only ${item.product.stock} available`);
         input.value = String(item.quantity);
         return;
@@ -2412,7 +2424,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     const input = event.target as HTMLInputElement;
     const newQty = parseInt(input.value, 10);
     if (newQty > 0) {
-      if (item.product.trackInventory && newQty > item.product.stock) {
+      if (this.exceedsStock(item, newQty)) {
         this.swal.warning('Stock Limit', `Only ${item.product.stock} available`);
         input.value = String(item.quantity);
         return;
@@ -2486,7 +2498,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    if (item.product.trackInventory && newQty > item.product.stock) {
+    if (this.exceedsStock(item, newQty)) {
       this.swal.warning('Stock Limit', `Only ${item.product.stock} available`);
       return;
     }
@@ -2742,7 +2754,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Bill at the CURRENT price/stock, not the old order's; clamp to stock
       let qty = Math.max(1, Math.round(it.quantity || 1));
-      if (product.trackInventory && product.stock < qty) {
+      if (!this.ignoreStock && product.trackInventory && product.stock < qty) {
         if (product.stock <= 0) {
           skipped.push(product.name);
           continue;
@@ -2929,6 +2941,23 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
+    // Validate again at checkout: the cashier may have disabled Ignore stock
+    // after filling the cart, or restored an old cart with stale quantities.
+    const billingPairs = isAppend ? deltaPairs : this.cart.map(item => ({ item, quantity: item.quantity }));
+    if (!this.ignoreStock) {
+      const requiredByProduct = new Map<number, { product: CachedProduct; quantity: number }>();
+      for (const { item, quantity } of billingPairs) {
+        if (item.weightGrams || !item.product.trackInventory) continue;
+        const product = this.products.find(p => p.id === item.product.id) || item.product;
+        const previous = requiredByProduct.get(product.id)?.quantity || 0;
+        requiredByProduct.set(product.id, { product, quantity: previous + quantity });
+      }
+      for (const { product, quantity } of requiredByProduct.values()) {
+        if (quantity > product.stock && !await this.promptRestock(product, quantity)) return;
+      }
+    }
+    const ignoreStock = this.ignoreStock;
+
     this.swal.loading(isAppend ? 'Adding item to bill...' : 'Creating bill...');
 
     try {
@@ -2954,10 +2983,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       let result: { success: boolean; order?: any; offline?: boolean };
 
       if (isAppend) {
-        const appendResult = await this.syncService.addItemsToOrder(this.lastOrder.id, resolvedItems);
+        const appendResult = await this.syncService.addItemsToOrder(this.lastOrder.id, resolvedItems, ignoreStock);
         result = { success: appendResult.success, order: appendResult.order, offline: false };
       } else {
         const orderData = {
+          ignoreStock,
           items: resolvedItems,
           paymentMethod: this.selectedPaymentMethod,
           customerName: this.customerName || undefined,

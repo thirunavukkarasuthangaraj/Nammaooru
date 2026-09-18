@@ -25,6 +25,11 @@
               <mat-icon>view_list</mat-icon>
             </mat-button-toggle>
           </mat-button-toggle-group>
+          <mat-slide-toggle class="ignore-stock-toggle" [checked]="ignoreStock"
+                            (change)="setIgnoreStock($event.checked)" color="primary"
+                            title="Allow billing beyond available stock">
+            Ignore stock
+          </mat-slide-toggle>
           <button mat-icon-button type="button" (click)="toggleShowImages()" [title]="showImages ? 'Hide product images' : 'Show product images'">
             <mat-icon class="images-toggle">{{ showImages ? 'image' : 'hide_image' }}</mat-icon>
           </button>
