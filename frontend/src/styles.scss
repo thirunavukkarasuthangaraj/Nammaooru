@@ -2,6 +2,16 @@
 @use '@angular/material' as mat;
 /* Fonts loaded locally from assets/fonts for offline support */
 
+/* Hide native number-input spin arrows app-wide - kept as plain numeric fields everywhere */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 // Import Chennai Theme
 @import 'app/shared/themes/chennai-theme.scss';
 
