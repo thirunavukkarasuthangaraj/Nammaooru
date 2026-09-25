@@ -426,10 +426,6 @@
               <span>Subtotal</span>
               <span>{{ selectedOrder.subtotal | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
-            <div class="order-total-row" *ngIf="selectedOrder.taxAmount">
-              <span>Tax</span>
-              <span>{{ selectedOrder.taxAmount | currency:'INR':'symbol':'1.0-0' }}</span>
-            </div>
             <div class="order-total-row" *ngIf="selectedOrder.deliveryFee">
               <span>Delivery Fee</span>
               <span>{{ selectedOrder.deliveryFee | currency:'INR':'symbol':'1.0-0' }}</span>

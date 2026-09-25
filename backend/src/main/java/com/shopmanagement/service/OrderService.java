@@ -250,7 +250,7 @@ public class OrderService {
                     minimumOrderAmount, subtotal));
         }
 
-        BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
+        BigDecimal taxAmount = BigDecimal.ZERO; // product prices are tax-inclusive
 
         // Determine delivery type - default to HOME_DELIVERY if not specified
         Order.DeliveryType deliveryType = Order.DeliveryType.HOME_DELIVERY;
@@ -2398,7 +2398,7 @@ public class OrderService {
                 .map(OrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal newTaxAmount = newSubtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
+        BigDecimal newTaxAmount = BigDecimal.ZERO; // product prices are tax-inclusive
         BigDecimal deliveryFee = order.getDeliveryFee() != null ? order.getDeliveryFee() : BigDecimal.ZERO;
         BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal newTotalAmount = newSubtotal.add(newTaxAmount).add(deliveryFee).subtract(discountAmount);
@@ -2491,7 +2491,7 @@ public class OrderService {
                 .map(OrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal newTaxAmount = newSubtotal.multiply(BigDecimal.valueOf(0.05)); // 5% tax
+        BigDecimal newTaxAmount = BigDecimal.ZERO; // product prices are tax-inclusive
         BigDecimal deliveryFee = order.getDeliveryFee() != null ? order.getDeliveryFee() : BigDecimal.ZERO;
         BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal newTotalAmount = newSubtotal.add(newTaxAmount).add(deliveryFee).subtract(discountAmount);
