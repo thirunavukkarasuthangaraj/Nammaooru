@@ -1,11 +1,11 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { SwalService } from '../../../../core/services/swal.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, map, catchError } from 'rxjs/operators';
+import { of, Subject, Subscription } from 'rxjs';
 
 interface ShopProduct {
   id: number;
@@ -25,6 +25,11 @@ interface ShopProduct {
   baseUnit?: string;
   unit?: string;
   weight?: string;
+  sku?: string;
+  barcode?: string;
+  barcode1?: string;
+  barcode2?: string;
+  barcode3?: string;
 }
 
 @Component({
@@ -32,17 +37,21 @@ interface ShopProduct {
   templateUrl: './combo-form.component.html',
   styleUrls: ['./combo-form.component.css']
 })
-export class ComboFormComponent implements OnInit {
+export class ComboFormComponent implements OnInit, OnDestroy {
   comboForm!: FormGroup;
   isEditMode = false;
   isLoading = false;
   isSaving = false;
+  isSearching = false;
   isUploadingImage = false;
   shopProducts: ShopProduct[] = [];
   filteredProducts: ShopProduct[] = [];
   searchQuery = '';
   selectedImageFile: File | null = null;
   imagePreviewUrl: string | null = null;
+
+  private searchSubject = new Subject<string>();
+  private searchSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -57,9 +66,44 @@ export class ComboFormComponent implements OnInit {
   ngOnInit(): void {
     this.initForm();
     this.loadProducts();
+    this.setupSearch();
     if (this.isEditMode && this.data.combo) {
       this.populateForm(this.data.combo);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.searchSubscription?.unsubscribe();
+  }
+
+  private setupSearch(): void {
+    this.searchSubscription = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => {
+        if (!query) {
+          return of({ query, response: null as any });
+        }
+        this.isSearching = true;
+        const url = `${environment.apiUrl}/shops/${this.data.shopId}/products?page=0&size=2000&search=${encodeURIComponent(query)}`;
+        return this.http.get<any>(url).pipe(
+          map(response => ({ query, response })),
+          catchError(() => of({ query, response: null as any }))
+        );
+      })
+    ).subscribe(({ query, response }) => {
+      this.isSearching = false;
+      // Ignore stale results if the user has since changed/cleared the search box
+      if (this.searchQuery.trim() !== query) {
+        return;
+      }
+      if (!query) {
+        this.filteredProducts = [];
+        return;
+      }
+      const products = response?.data?.content || response?.content || response?.data || response || [];
+      this.filteredProducts = products;
+    });
   }
 
   initForm(): void {
@@ -90,15 +134,27 @@ export class ComboFormComponent implements OnInit {
     }
 
     this.isLoading = true;
-    // Load all products once - search will filter locally
-    const url = `${environment.apiUrl}/shops/${this.data.shopId}/products?page=0&size=500`;
+    this.shopProducts = [];
+    this.loadProductPage(0);
+  }
+
+  private loadProductPage(page: number): void {
+    const url = `${environment.apiUrl}/shops/${this.data.shopId}/products?page=${page}&size=500&sortBy=id&sortDirection=ASC`;
 
     this.http.get<any>(url).subscribe({
       next: (response) => {
-        this.shopProducts = response.data?.content || response.content || response.data || response || [];
-        // Keep dropdown closed by default - user can click toggle or type to search
-        this.filteredProducts = [];
+        const pageData = response.data || response;
+        const content: ShopProduct[] = pageData?.content || (Array.isArray(pageData) ? pageData : []);
+        this.shopProducts = [...this.shopProducts, ...content];
+        const totalPages: number = pageData?.totalPages ?? 1;
+        if (page + 1 < totalPages) {
+          this.loadProductPage(page + 1);
+          return;
+        }
         this.isLoading = false;
+        if (this.filteredProducts.length > 0 && !this.searchQuery.trim()) {
+          this.filteredProducts = [...this.shopProducts];
+        }
       },
       error: () => {
         this.isLoading = false;
@@ -117,11 +173,10 @@ export class ComboFormComponent implements OnInit {
     }
   }
 
-  hideDropdown(): void {
-    // Small delay to allow click events to register before hiding
-    setTimeout(() => {
-      this.filteredProducts = [];
-    }, 200);
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.filteredProducts = [];
+    this.searchSubject.next('');
   }
 
   toggleProductDropdown(): void {
@@ -133,18 +188,32 @@ export class ComboFormComponent implements OnInit {
   }
 
   filterProducts(): void {
-    const query = this.searchQuery.toLowerCase().trim();
+    const query = this.searchQuery.trim();
     if (!query) {
       // Keep dropdown closed when search is cleared
       this.filteredProducts = [];
+      this.searchSubject.next('');
       return;
     }
-    // Show filtered products when user types
-    this.filteredProducts = this.shopProducts.filter(p => {
-      const name = this.getProductName(p).toLowerCase();
-      const nameTamil = this.getProductNameTamil(p)?.toLowerCase() || '';
-      return name.includes(query) || nameTamil.includes(query);
-    });
+    // Instant local match against the already-loaded products (name/barcode/sku)
+    // so the dropdown reacts immediately, including for a fast barcode scan.
+    const localQuery = query.toLowerCase();
+    this.filteredProducts = this.shopProducts.filter(p => this.matchesQuery(p, localQuery));
+    // Authoritative backend search: covers products beyond the locally-loaded
+    // batch and matches barcode/SKU fields via the server's LIKE search.
+    this.searchSubject.next(query);
+  }
+
+  private matchesQuery(product: ShopProduct, query: string): boolean {
+    const name = this.getProductName(product).toLowerCase();
+    const nameTamil = this.getProductNameTamil(product)?.toLowerCase() || '';
+    const sku = product.sku?.toLowerCase() || '';
+    const barcode = product.barcode?.toLowerCase() || '';
+    const barcode1 = product.barcode1?.toLowerCase() || '';
+    const barcode2 = product.barcode2?.toLowerCase() || '';
+    const barcode3 = product.barcode3?.toLowerCase() || '';
+    return name.includes(query) || nameTamil.includes(query) || sku.includes(query) ||
+      barcode.includes(query) || barcode1.includes(query) || barcode2.includes(query) || barcode3.includes(query);
   }
 
   getProductName(product: ShopProduct): string {
@@ -153,6 +222,10 @@ export class ComboFormComponent implements OnInit {
 
   getProductNameTamil(product: ShopProduct): string | undefined {
     return product.masterProduct?.nameTamil;
+  }
+
+  getProductCode(product: ShopProduct): string {
+    return product.barcode1 || product.barcode || product.sku || '';
   }
 
   getProductImage(product: ShopProduct): string | undefined {

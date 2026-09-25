@@ -1050,6 +1050,20 @@ $white: #ffffff;
   }
 }
 
+.order-total-breakdown {
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+}
+
+.order-total-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: $background;
+  font-size: 13px;
+  color: $text-secondary;
+}
+
 .order-total {
   display: flex;
   justify-content: space-between;
@@ -1058,7 +1072,6 @@ $white: #ffffff;
   font-weight: 600;
   font-size: 15px;
   color: $text-primary;
-  border-radius: 0 0 6px 6px;
 }
 
 .items-header-row {

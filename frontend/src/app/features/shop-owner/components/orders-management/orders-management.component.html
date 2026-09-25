@@ -421,9 +421,27 @@
               <div class="item-total">{{ (item.quantity * (item.price || item.unitPrice)) | currency:'INR':'symbol':'1.0-0' }}</div>
             </div>
           </div>
-          <div class="order-total">
-            <span>Total</span>
-            <span>{{ selectedOrder.totalAmount | currency:'INR':'symbol':'1.0-0' }}</span>
+          <div class="order-total-breakdown">
+            <div class="order-total-row" *ngIf="selectedOrder.subtotal != null">
+              <span>Subtotal</span>
+              <span>{{ selectedOrder.subtotal | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="order-total-row" *ngIf="selectedOrder.taxAmount">
+              <span>Tax</span>
+              <span>{{ selectedOrder.taxAmount | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="order-total-row" *ngIf="selectedOrder.deliveryFee">
+              <span>Delivery Fee</span>
+              <span>{{ selectedOrder.deliveryFee | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="order-total-row" *ngIf="selectedOrder.discountAmount">
+              <span>Discount</span>
+              <span>-{{ selectedOrder.discountAmount | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="order-total">
+              <span>Total</span>
+              <span>{{ selectedOrder.totalAmount | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
           </div>
         </div>
       </div>

@@ -16,6 +16,9 @@ export interface ShopOwnerOrder {
   deliveryAddress?: string;
   deliveryType?: 'HOME_DELIVERY' | 'SELF_PICKUP';
   items: OrderItem[];
+  subtotal?: number;
+  taxAmount?: number;
+  deliveryFee?: number;
   totalAmount: number;
   createdAt: string;
   status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'SELF_PICKUP_COLLECTED' | 'RETURNING_TO_SHOP' | 'RETURNED_TO_SHOP';

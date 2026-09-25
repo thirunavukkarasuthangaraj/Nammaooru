@@ -71,30 +71,37 @@
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Search and add products</mat-label>
             <input matInput [(ngModel)]="searchQuery" [ngModelOptions]="{standalone: true}"
-                   (ngModelChange)="filterProducts()" (focus)="showProducts()" (blur)="hideDropdown()"
-                   placeholder="Type to search...">
+                   (ngModelChange)="filterProducts()" (focus)="showProducts()"
+                   placeholder="Type name, barcode or SKU, or scan a barcode">
             <mat-icon matPrefix>search</mat-icon>
-            <button mat-icon-button matSuffix (click)="toggleProductDropdown()" type="button">
+            <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="clearSearch()" type="button" matTooltip="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+            <button mat-icon-button matSuffix *ngIf="!searchQuery" (click)="toggleProductDropdown()" type="button" matTooltip="Browse all products">
               <mat-icon>{{ filteredProducts.length > 0 ? 'expand_less' : 'expand_more' }}</mat-icon>
             </button>
           </mat-form-field>
 
-          <div class="product-suggestions" *ngIf="filteredProducts.length > 0">
-            <div class="suggestion-item" *ngFor="let product of filteredProducts | slice:0:10"
-                 (mousedown)="addProduct(product); $event.preventDefault()">
-              <img *ngIf="getProductImage(product)" [src]="getProductImage(product)" class="product-thumb" alt="">
-              <div class="product-thumb-placeholder" *ngIf="!getProductImage(product)">
-                <mat-icon>inventory_2</mat-icon>
-              </div>
-              <div class="product-details">
-                <span class="name">{{ getProductName(product) }}</span>
-                <span class="name-tamil" *ngIf="getProductNameTamil(product)">{{ getProductNameTamil(product) }}</span>
-                <span class="price">₹{{ getProductPrice(product) }} <small *ngIf="getProductUnit(product)">/ {{ getProductUnit(product) }}</small></span>
-              </div>
-              <mat-icon class="add-icon">add_circle</mat-icon>
+          <div class="product-suggestions" *ngIf="filteredProducts.length > 0 || isSearching || searchQuery">
+            <div class="suggestions-header">
+              <span *ngIf="isSearching"><mat-spinner diameter="14"></mat-spinner> Searching...</span>
+              <span *ngIf="!isSearching && filteredProducts.length > 0">{{ filteredProducts.length }} product{{ filteredProducts.length === 1 ? '' : 's' }}</span>
+              <span *ngIf="!isSearching && filteredProducts.length === 0">No products found</span>
             </div>
-            <div class="more-products" *ngIf="filteredProducts.length > 10">
-              <small>{{ filteredProducts.length - 10 }} more products. Type to filter.</small>
+            <div class="suggestions-list">
+              <div class="suggestion-item" *ngFor="let product of filteredProducts" (click)="addProduct(product)">
+                <img *ngIf="getProductImage(product)" [src]="getProductImage(product)" class="product-thumb" alt="">
+                <div class="product-thumb-placeholder" *ngIf="!getProductImage(product)">
+                  <mat-icon>inventory_2</mat-icon>
+                </div>
+                <div class="product-details">
+                  <span class="name">{{ getProductName(product) }}</span>
+                  <span class="name-tamil" *ngIf="getProductNameTamil(product)">{{ getProductNameTamil(product) }}</span>
+                  <span class="meta" *ngIf="getProductCode(product)">{{ getProductCode(product) }}</span>
+                </div>
+                <span class="price">₹{{ getProductPrice(product) }}<small *ngIf="getProductUnit(product)"> / {{ getProductUnit(product) }}</small></span>
+                <mat-icon class="add-icon">add_circle</mat-icon>
+              </div>
             </div>
           </div>
         </div>
