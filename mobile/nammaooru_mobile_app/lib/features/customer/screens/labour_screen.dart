@@ -696,6 +696,18 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     return null;
   }
 
+  static List<String> _getAllImageUrls(Map<String, dynamic> post) {
+    final imageUrls = post['imageUrls'];
+    if (imageUrls == null || imageUrls.toString().isEmpty) return [];
+    return imageUrls
+        .toString()
+        .split(',')
+        .map((u) => u.trim())
+        .where((u) => u.isNotEmpty)
+        .map((u) => ImageUrlHelper.getFullImageUrl(u))
+        .toList();
+  }
+
   void _navigateToDetail(Map<String, dynamic> post) {
     Navigator.push(
       context,
@@ -724,7 +736,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
 
   Widget _buildPostCard(Map<String, dynamic> post) {
     final isUnavailable = post['status'] == 'SOLD';
-    final fullImageUrl = _getFirstImageUrl(post);
+    final allImageUrls = _getAllImageUrls(post);
     final category = post['category']?.toString() ?? '';
     final categoryIcon = _categoryIcons[category] ?? Icons.work;
     final experience = post['experience']?.toString();
@@ -753,21 +765,12 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Image or icon
-                  if (fullImageUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: fullImageUrl,
+                  if (allImageUrls.isNotEmpty)
+                    _SmartThumbnail(
+                      imageUrls: allImageUrls,
                       width: 110,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        width: 110,
-                        color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        width: 110,
-                        color: _labourBlue.withOpacity(0.08),
-                        child: Icon(categoryIcon, size: 36, color: _labourBlue),
-                      ),
+                      icon: categoryIcon,
+                      accentColor: _labourBlue,
                     )
                   else
                     Container(
@@ -1761,6 +1764,83 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
         ],
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+// A post can mix a real photo with wide flyer/poster graphics. The list card
+// thumbnail should show an actual photo (portrait/square) rather than
+// whichever image happens to be uploaded first - so this probes each image's
+// natural aspect ratio and swaps to the first portrait-ish one found.
+class _SmartThumbnail extends StatefulWidget {
+  final List<String> imageUrls;
+  final double width;
+  final IconData icon;
+  final Color accentColor;
+
+  const _SmartThumbnail({
+    required this.imageUrls,
+    required this.width,
+    required this.icon,
+    required this.accentColor,
+  });
+
+  @override
+  State<_SmartThumbnail> createState() => _SmartThumbnailState();
+}
+
+class _SmartThumbnailState extends State<_SmartThumbnail> {
+  late String _chosenUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _chosenUrl = widget.imageUrls.first;
+    if (widget.imageUrls.length > 1) _pickBestPhoto();
+  }
+
+  Future<void> _pickBestPhoto() async {
+    for (final url in widget.imageUrls.take(4)) {
+      final ratio = await _aspectRatio(url);
+      if (ratio != null && ratio <= 1.15 && mounted && url != _chosenUrl) {
+        setState(() => _chosenUrl = url);
+        return;
+      }
+    }
+  }
+
+  Future<double?> _aspectRatio(String url) {
+    final completer = Completer<double?>();
+    final stream = CachedNetworkImageProvider(url).resolve(const ImageConfiguration());
+    late ImageStreamListener listener;
+    listener = ImageStreamListener((info, _) {
+      if (!completer.isCompleted) completer.complete(info.image.width / info.image.height);
+      stream.removeListener(listener);
+    }, onError: (error, stack) {
+      if (!completer.isCompleted) completer.complete(null);
+      stream.removeListener(listener);
+    });
+    stream.addListener(listener);
+    return completer.future.timeout(const Duration(seconds: 4), onTimeout: () => null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CachedNetworkImage(
+      key: ValueKey(_chosenUrl),
+      imageUrl: _chosenUrl,
+      width: widget.width,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        width: widget.width,
+        color: Colors.grey[200],
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      errorWidget: (context, url, error) => Container(
+        width: widget.width,
+        color: widget.accentColor.withOpacity(0.08),
+        child: Icon(widget.icon, size: 36, color: widget.accentColor),
+      ),
     );
   }
 }
