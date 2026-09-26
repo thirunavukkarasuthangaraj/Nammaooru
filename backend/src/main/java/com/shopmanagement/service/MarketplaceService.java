@@ -411,6 +411,22 @@ public class MarketplaceService {
     }
 
     @Transactional
+    public MarketplacePost adminUpdateImage(Long id, boolean removeExisting, MultipartFile newImage) throws IOException {
+        MarketplacePost post = marketplacePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (newImage != null && !newImage.isEmpty()) {
+            post.setImageUrl(fileUploadService.uploadFile(newImage, "marketplace"));
+        } else if (removeExisting) {
+            post.setImageUrl(null);
+        }
+
+        MarketplacePost saved = marketplacePostRepository.save(post);
+        log.info("Marketplace post image admin-updated: id={}", id);
+        return saved;
+    }
+
+    @Transactional
     public MarketplacePost userEditPost(Long id, Map<String, Object> updates, String username) {
         MarketplacePost post = marketplacePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

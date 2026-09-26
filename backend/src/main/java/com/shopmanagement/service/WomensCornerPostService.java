@@ -448,6 +448,26 @@ public class WomensCornerPostService {
     }
 
     @Transactional
+    public WomensCornerPost adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        WomensCornerPost post = womensCornerPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "womens-corner"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        WomensCornerPost saved = womensCornerPostRepository.save(post);
+        log.info("Women's corner post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public WomensCornerPost userEditPost(Long id, Map<String, Object> updates, String username) {
         WomensCornerPost post = womensCornerPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

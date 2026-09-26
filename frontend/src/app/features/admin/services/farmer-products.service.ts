@@ -52,4 +52,11 @@ export class FarmerProductsAdminService {
   adminUpdatePost(id: number, data: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/admin-update`, data);
   }
+
+  adminUpdateImages(id: number, keepImageUrls: string[], newImages: File[]): Observable<any> {
+    const formData = new FormData();
+    formData.append('keepImageUrls', keepImageUrls.join(','));
+    newImages.forEach(file => formData.append('images', file));
+    return this.http.put(`${this.apiUrl}/${id}/admin-images`, formData);
+  }
 }

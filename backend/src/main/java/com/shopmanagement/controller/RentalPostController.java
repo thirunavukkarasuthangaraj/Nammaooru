@@ -253,6 +253,24 @@ public class RentalPostController {
         }
     }
 
+    @PutMapping(value = "/{id}/admin-images", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<RentalPost>> adminUpdateImages(
+            @PathVariable Long id,
+            @RequestParam(value = "keepImageUrls", required = false) String keepImageUrls,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+        try {
+            List<String> keep = (keepImageUrls != null && !keepImageUrls.isBlank())
+                    ? java.util.Arrays.stream(keepImageUrls.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
+                    : List.of();
+            RentalPost post = rentalPostService.adminUpdateImages(id, keep, images);
+            return ResponseUtil.success(post, "Images updated successfully");
+        } catch (Exception e) {
+            log.error("Error updating rental post images", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}/featured")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<RentalPost>> toggleFeatured(@PathVariable Long id) {

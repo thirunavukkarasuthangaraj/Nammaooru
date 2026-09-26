@@ -256,6 +256,21 @@ public class MarketplaceController {
         }
     }
 
+    @PutMapping(value = "/{id}/admin-image", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<MarketplacePost>> adminUpdateImage(
+            @PathVariable Long id,
+            @RequestParam(value = "removeExisting", defaultValue = "false") boolean removeExisting,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        try {
+            MarketplacePost post = marketplaceService.adminUpdateImage(id, removeExisting, image);
+            return ResponseUtil.success(post, "Image updated successfully");
+        } catch (Exception e) {
+            log.error("Error updating marketplace post image", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}/featured")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<MarketplacePost>> toggleFeatured(@PathVariable Long id) {

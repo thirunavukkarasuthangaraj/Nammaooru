@@ -28,6 +28,58 @@
       </mat-form-field>
 
     </ng-container>
+
+    <!-- Multi-image editing -->
+    <div class="image-section" *ngIf="imageMode === 'multi'">
+      <label class="image-section-label">Images</label>
+      <div class="image-grid">
+        <div class="image-tile" *ngFor="let url of existingImageUrls">
+          <img [src]="displayImageUrl(url)" alt="Post image">
+          <button type="button" class="remove-btn" (click)="removeExistingImage(url)" title="Remove image">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="image-tile new" *ngFor="let preview of newImagePreviews; let i = index">
+          <img [src]="preview" alt="New image">
+          <span class="new-badge">New</span>
+          <button type="button" class="remove-btn" (click)="removeNewImage(i)" title="Remove image">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <label class="image-tile add-tile">
+          <input type="file" accept="image/*" multiple hidden (change)="onFilesSelected($event)">
+          <mat-icon>add_photo_alternate</mat-icon>
+          <span>Add</span>
+        </label>
+      </div>
+      <p class="paste-hint">Tip: you can also paste an image (Ctrl+V) to add it.</p>
+    </div>
+
+    <!-- Single-image editing (marketplace) -->
+    <div class="image-section" *ngIf="imageMode === 'single'">
+      <label class="image-section-label">Image</label>
+      <div class="image-grid">
+        <div class="image-tile" *ngIf="existingSingleImageUrl">
+          <img [src]="displayImageUrl(existingSingleImageUrl)" alt="Post image">
+          <button type="button" class="remove-btn" (click)="removeSingleImage()" title="Remove image">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="image-tile new" *ngIf="newSingleImagePreview">
+          <img [src]="newSingleImagePreview" alt="New image">
+          <span class="new-badge">New</span>
+          <button type="button" class="remove-btn" (click)="removeNewSingleImage()" title="Remove image">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <label class="image-tile add-tile" *ngIf="!existingSingleImageUrl && !newSingleImagePreview">
+          <input type="file" accept="image/*" hidden (change)="onFilesSelected($event)">
+          <mat-icon>add_photo_alternate</mat-icon>
+          <span>Add</span>
+        </label>
+      </div>
+      <p class="paste-hint">Tip: you can also paste an image (Ctrl+V) to add it.</p>
+    </div>
   </form>
 </mat-dialog-content>
 <mat-dialog-actions align="end">

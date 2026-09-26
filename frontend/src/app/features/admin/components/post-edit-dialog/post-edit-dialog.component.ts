@@ -1,10 +1,30 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, HostListener, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { getImageUrl } from '../../../../core/utils/image-url.util';
+
+export type PostEditPostType = 'labour' | 'travel' | 'parcel' | 'marketplace' | 'farmer' | 'realEstate' | 'rental' | 'womensCorner';
 
 export interface PostEditDialogData {
-  postType: 'labour' | 'travel' | 'parcel' | 'marketplace' | 'farmer' | 'realEstate';
+  postType: PostEditPostType;
   post: any;
+}
+
+export interface MultiImageChanges {
+  mode: 'multi';
+  keepImageUrls: string[];
+  newImages: File[];
+}
+
+export interface SingleImageChange {
+  mode: 'single';
+  removeExisting: boolean;
+  newImage: File | null;
+}
+
+export interface PostEditDialogResult {
+  fieldUpdates?: Record<string, any>;
+  imageChanges?: MultiImageChanges | SingleImageChange;
 }
 
 interface FieldConfig {
@@ -13,6 +33,8 @@ interface FieldConfig {
   type: 'text' | 'textarea' | 'number' | 'select';
   options?: { value: string; label: string }[];
 }
+
+type ImageMode = 'multi' | 'single' | 'none';
 
 @Component({
   selector: 'app-post-edit-dialog',
@@ -23,6 +45,21 @@ export class PostEditDialogComponent implements OnInit {
   form!: FormGroup;
   fields: FieldConfig[] = [];
   title = 'Edit Post';
+
+  // Images (multi mode - labour/travel/parcel/farmer/realEstate/womensCorner/rental)
+  imageMode: ImageMode = 'none';
+  existingImageUrls: string[] = [];
+  newImageFiles: File[] = [];
+  newImagePreviews: string[] = [];
+
+  // Images (single mode - marketplace)
+  existingSingleImageUrl: string | null = null;
+  singleImageRemoved = false;
+  newSingleImageFile: File | null = null;
+  newSingleImagePreview: string | null = null;
+
+  private originalImageUrls: string[] = [];
+  private originalSingleImageUrl: string | null = null;
 
   private fieldConfigs: Record<string, FieldConfig[]> = {
     labour: [
@@ -140,6 +177,32 @@ export class PostEditDialogComponent implements OnInit {
       { key: 'bathrooms', label: 'Bathrooms', type: 'number' },
       { key: 'location', label: 'Location', type: 'text' },
       { key: 'description', label: 'Description', type: 'textarea' }
+    ],
+    rental: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'category', label: 'Category', type: 'select', options: [
+        { value: 'BIKE', label: 'Bike' }, { value: 'AUTO', label: 'Auto' }, { value: 'CAR', label: 'Car' },
+        { value: 'SCOOTER', label: 'Scooter' }, { value: 'TRACTOR', label: 'Tractor' }, { value: 'LORRY', label: 'Lorry' },
+        { value: 'VAN', label: 'Van' }, { value: 'CYCLE', label: 'Cycle' },
+        { value: 'HOUSE', label: 'House' }, { value: 'SHOP', label: 'Shop' }, { value: 'LAND', label: 'Land' },
+        { value: 'OFFICE', label: 'Office' }, { value: 'WAREHOUSE', label: 'Warehouse' }, { value: 'FARM_LAND', label: 'Farm Land' },
+        { value: 'EQUIPMENT', label: 'Equipment' }, { value: 'FARM_EQUIPMENT', label: 'Farm Equipment' }, { value: 'GENERATOR', label: 'Generator' },
+        { value: 'PUMP', label: 'Pump' }, { value: 'CRANE', label: 'Crane' }, { value: 'COMPRESSOR', label: 'Compressor' },
+        { value: 'TENT', label: 'Tent' }, { value: 'CHAIRS', label: 'Chairs' }, { value: 'SOUND_SYSTEM', label: 'Sound System' }, { value: 'LIGHTS', label: 'Lights' },
+        { value: 'CAMERA', label: 'Camera' }, { value: 'PROJECTOR', label: 'Projector' },
+        { value: 'FURNITURE', label: 'Furniture' }
+      ]},
+      { key: 'location', label: 'Location', type: 'text' },
+      { key: 'price', label: 'Price', type: 'number' },
+      { key: 'priceUnit', label: 'Price Unit', type: 'text' },
+      { key: 'description', label: 'Description', type: 'textarea' }
+    ],
+    womensCorner: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'category', label: 'Category', type: 'text' },
+      { key: 'price', label: 'Price', type: 'number' },
+      { key: 'location', label: 'Location', type: 'text' },
+      { key: 'description', label: 'Description', type: 'textarea' }
     ]
   };
 
@@ -149,7 +212,22 @@ export class PostEditDialogComponent implements OnInit {
     parcel: 'Edit Packers & Movers Post',
     marketplace: 'Edit Marketplace Post',
     farmer: 'Edit Farmer Product',
-    realEstate: 'Edit Real Estate Post'
+    realEstate: 'Edit Real Estate Post',
+    rental: 'Edit Rental Post',
+    womensCorner: "Edit Women's Corner Post"
+  };
+
+  // Which post types support image editing, and how their images are stored.
+  // Local Shops is deliberately left out - its edit dialog is untouched.
+  private imageModeMap: Partial<Record<PostEditPostType, { mode: ImageMode; urlField: string }>> = {
+    labour: { mode: 'multi', urlField: 'imageUrls' },
+    travel: { mode: 'multi', urlField: 'imageUrls' },
+    parcel: { mode: 'multi', urlField: 'imageUrls' },
+    farmer: { mode: 'multi', urlField: 'imageUrls' },
+    realEstate: { mode: 'multi', urlField: 'imageUrls' },
+    rental: { mode: 'multi', urlField: 'imageUrls' },
+    womensCorner: { mode: 'multi', urlField: 'imageUrls' },
+    marketplace: { mode: 'single', urlField: 'imageUrl' }
   };
 
   constructor(
@@ -167,23 +245,134 @@ export class PostEditDialogComponent implements OnInit {
       formControls[field.key] = [this.data.post[field.key] ?? ''];
     });
     this.form = this.fb.group(formControls);
+
+    const imageConfig = this.imageModeMap[this.data.postType];
+    this.imageMode = imageConfig?.mode ?? 'none';
+
+    if (this.imageMode === 'multi' && imageConfig) {
+      const raw = (this.data.post[imageConfig.urlField] || '') as string;
+      this.originalImageUrls = raw.split(',').map(u => u.trim()).filter(u => !!u);
+      this.existingImageUrls = [...this.originalImageUrls];
+    } else if (this.imageMode === 'single' && imageConfig) {
+      this.originalSingleImageUrl = (this.data.post[imageConfig.urlField] || null) || null;
+      this.existingSingleImageUrl = this.originalSingleImageUrl;
+    }
+  }
+
+  displayImageUrl(path: string): string {
+    return getImageUrl(path);
+  }
+
+  removeExistingImage(url: string): void {
+    this.existingImageUrls = this.existingImageUrls.filter(u => u !== url);
+  }
+
+  onFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    this.addNewFiles(Array.from(input.files));
+    input.value = '';
+  }
+
+  private addNewFiles(files: File[]): void {
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      if (this.imageMode === 'multi') {
+        this.newImageFiles.push(file);
+        this.newImagePreviews.push(URL.createObjectURL(file));
+      } else if (this.imageMode === 'single') {
+        if (this.newSingleImagePreview) URL.revokeObjectURL(this.newSingleImagePreview);
+        this.newSingleImageFile = file;
+        this.newSingleImagePreview = URL.createObjectURL(file);
+      }
+    }
+  }
+
+  removeNewImage(index: number): void {
+    URL.revokeObjectURL(this.newImagePreviews[index]);
+    this.newImageFiles.splice(index, 1);
+    this.newImagePreviews.splice(index, 1);
+  }
+
+  removeNewSingleImage(): void {
+    if (this.newSingleImagePreview) URL.revokeObjectURL(this.newSingleImagePreview);
+    this.newSingleImageFile = null;
+    this.newSingleImagePreview = null;
+  }
+
+  removeSingleImage(): void {
+    this.existingSingleImageUrl = null;
+    this.singleImageRemoved = true;
+  }
+
+  // Lets an admin paste a screenshot/copied image straight from the
+  // clipboard instead of having to save it to disk first and browse to it.
+  @HostListener('document:paste', ['$event'])
+  onPaste(event: ClipboardEvent): void {
+    if (this.imageMode === 'none') return;
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    if (files.length > 0) {
+      event.preventDefault();
+      this.addNewFiles(files);
+    }
+  }
+
+  private hasImageChanges(): boolean {
+    if (this.imageMode === 'multi') {
+      return this.newImageFiles.length > 0 ||
+        this.existingImageUrls.length !== this.originalImageUrls.length;
+    }
+    if (this.imageMode === 'single') {
+      return !!this.newSingleImageFile || this.singleImageRemoved;
+    }
+    return false;
+  }
+
+  private buildImageChanges(): MultiImageChanges | SingleImageChange | undefined {
+    if (!this.hasImageChanges()) return undefined;
+    if (this.imageMode === 'multi') {
+      return {
+        mode: 'multi',
+        keepImageUrls: this.existingImageUrls,
+        newImages: this.newImageFiles
+      };
+    }
+    if (this.imageMode === 'single') {
+      return {
+        mode: 'single',
+        removeExisting: this.singleImageRemoved,
+        newImage: this.newSingleImageFile
+      };
+    }
+    return undefined;
   }
 
   onSave(): void {
-    if (this.form.valid) {
-      const updates: Record<string, any> = {};
-      this.fields.forEach(field => {
-        const val = this.form.get(field.key)?.value;
-        if (val !== this.data.post[field.key]) {
-          updates[field.key] = val;
-        }
-      });
-      if (Object.keys(updates).length > 0) {
-        this.dialogRef.close(updates);
-      } else {
-        this.dialogRef.close();
+    if (!this.form.valid) return;
+
+    const fieldUpdates: Record<string, any> = {};
+    this.fields.forEach(field => {
+      const val = this.form.get(field.key)?.value;
+      if (val !== this.data.post[field.key]) {
+        fieldUpdates[field.key] = val;
       }
-    }
+    });
+
+    const imageChanges = this.buildImageChanges();
+    const result: PostEditDialogResult = {};
+    if (Object.keys(fieldUpdates).length > 0) result.fieldUpdates = fieldUpdates;
+    if (imageChanges) result.imageChanges = imageChanges;
+
+    this.dialogRef.close((result.fieldUpdates || result.imageChanges) ? result : undefined);
   }
 
   onCancel(): void {

@@ -420,6 +420,26 @@ public class RentalPostService {
     }
 
     @Transactional
+    public RentalPost adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        RentalPost post = rentalPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Rental post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "rentals"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        RentalPost saved = rentalPostRepository.save(post);
+        log.info("Rental post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public RentalPost userEditPost(Long id, Map<String, Object> updates, String username) {
         RentalPost post = rentalPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rental post not found"));

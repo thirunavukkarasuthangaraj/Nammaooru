@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { LabourAdminService } from '../../services/labour.service';
-import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
+import { PostEditDialogComponent, PostEditDialogResult } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 import { SwalService } from '../../../../core/services/swal.service';
 
@@ -134,17 +134,31 @@ export class LabourManagementComponent implements OnInit {
       maxHeight: '90vh',
       data: { postType: 'labour', post: { ...post } }
     });
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.labourService.adminUpdatePost(post.id, result).subscribe({
+    dialogRef.afterClosed().subscribe((result: PostEditDialogResult | undefined) => {
+      if (!result) return;
+
+      const applyFieldUpdates = () => {
+        if (!result.fieldUpdates) return;
+        this.labourService.adminUpdatePost(post.id, result.fieldUpdates).subscribe({
           next: () => {
             this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
-          error: () => {
-            this.swal.toast('Failed to update post', 'error');
-          }
+          error: () => this.swal.toast('Failed to update post', 'error')
         });
+      };
+
+      if (result.imageChanges && result.imageChanges.mode === 'multi') {
+        this.labourService.adminUpdateImages(post.id, result.imageChanges.keepImageUrls, result.imageChanges.newImages).subscribe({
+          next: () => {
+            this.swal.toast('Images updated', 'success');
+            applyFieldUpdates();
+            this.loadPosts();
+          },
+          error: () => this.swal.toast('Failed to update images', 'error')
+        });
+      } else {
+        applyFieldUpdates();
       }
     });
   }

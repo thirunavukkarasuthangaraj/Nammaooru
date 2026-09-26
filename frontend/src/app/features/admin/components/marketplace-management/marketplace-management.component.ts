@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MarketplaceAdminService } from '../../services/marketplace.service';
-import { PostEditDialogComponent } from '../post-edit-dialog/post-edit-dialog.component';
+import { PostEditDialogComponent, PostEditDialogResult } from '../post-edit-dialog/post-edit-dialog.component';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 import { SwalService } from '../../../../core/services/swal.service';
 
@@ -144,17 +144,31 @@ export class MarketplaceManagementComponent implements OnInit {
       maxHeight: '90vh',
       data: { postType: 'marketplace', post: { ...post } }
     });
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.marketplaceService.adminUpdatePost(post.id, result).subscribe({
+    dialogRef.afterClosed().subscribe((result: PostEditDialogResult | undefined) => {
+      if (!result) return;
+
+      const applyFieldUpdates = () => {
+        if (!result.fieldUpdates) return;
+        this.marketplaceService.adminUpdatePost(post.id, result.fieldUpdates).subscribe({
           next: () => {
             this.swal.toast('Post updated', 'success');
             this.loadPosts();
           },
-          error: () => {
-            this.swal.toast('Failed to update post', 'error');
-          }
+          error: () => this.swal.toast('Failed to update post', 'error')
         });
+      };
+
+      if (result.imageChanges && result.imageChanges.mode === 'single') {
+        this.marketplaceService.adminUpdateImage(post.id, result.imageChanges.removeExisting, result.imageChanges.newImage).subscribe({
+          next: () => {
+            this.swal.toast('Image updated', 'success');
+            applyFieldUpdates();
+            this.loadPosts();
+          },
+          error: () => this.swal.toast('Failed to update image', 'error')
+        });
+      } else {
+        applyFieldUpdates();
       }
     });
   }

@@ -49,6 +49,13 @@ export class MarketplaceAdminService {
     return this.http.put(`${this.apiUrl}/${id}/admin-update`, data);
   }
 
+  adminUpdateImage(id: number, removeExisting: boolean, newImage: File | null): Observable<any> {
+    const formData = new FormData();
+    formData.append('removeExisting', String(removeExisting));
+    if (newImage) formData.append('image', newImage);
+    return this.http.put(`${this.apiUrl}/${id}/admin-image`, formData);
+  }
+
   toggleFeatured(id: number): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}/featured`, {});
   }
