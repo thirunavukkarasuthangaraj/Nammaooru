@@ -416,6 +416,26 @@ public class RealEstateService {
     }
 
     @Transactional
+    public RealEstatePost adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        RealEstatePost post = realEstatePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "real-estate"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        RealEstatePost saved = realEstatePostRepository.save(post);
+        log.info("Real estate post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public RealEstatePost userEditPost(Long id, Map<String, Object> updates, String username) {
         RealEstatePost post = realEstatePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

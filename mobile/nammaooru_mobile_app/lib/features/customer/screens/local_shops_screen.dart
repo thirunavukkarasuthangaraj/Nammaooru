@@ -34,7 +34,7 @@ class _LocalShopsScreenState extends State<LocalShopsScreen> with SingleTickerPr
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
-  double _selectedRadius = 50.0;
+  double _selectedRadius = PostFilterBar.kUnlimitedRadius;
   String _searchText = '';
 
   late TabController _tabController;

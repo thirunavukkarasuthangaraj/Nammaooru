@@ -30,7 +30,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
   bool _isLoading = true;
   String? _selectedCategory;
   String _searchText = '';
-  double _selectedRadius = 50.0;
+  double _selectedRadius = PostFilterBar.kUnlimitedRadius;
   int _currentPage = 0;
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();

@@ -41,7 +41,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
-  double _selectedRadius = 50.0;
+  double _selectedRadius = PostFilterBar.kUnlimitedRadius;
   String _searchText = '';
 
   // My Posts tab

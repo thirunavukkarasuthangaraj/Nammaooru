@@ -427,6 +427,26 @@ public class FarmerProductService {
     }
 
     @Transactional
+    public FarmerProduct adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        FarmerProduct post = farmerProductRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "farmer-products"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        FarmerProduct saved = farmerProductRepository.save(post);
+        log.info("Farmer product images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public FarmerProduct userEditPost(Long id, Map<String, Object> updates, String username) {
         FarmerProduct post = farmerProductRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

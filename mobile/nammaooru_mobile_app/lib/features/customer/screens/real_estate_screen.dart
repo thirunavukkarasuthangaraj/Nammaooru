@@ -49,7 +49,7 @@ class _RealEstateScreenState extends State<RealEstateScreen>
   final ScrollController _scrollController = ScrollController();
   String _searchText = '';
 
-  double _selectedRadius = 50.0;
+  double _selectedRadius = PostFilterBar.kUnlimitedRadius;
   double? _userLatitude;
   double? _userLongitude;
 

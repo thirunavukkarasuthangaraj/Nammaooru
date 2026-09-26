@@ -446,6 +446,26 @@ public class LabourPostService {
     }
 
     @Transactional
+    public LabourPost adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        LabourPost post = labourPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "labours"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        LabourPost saved = labourPostRepository.save(post);
+        log.info("Labour post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public LabourPost userEditPost(Long id, Map<String, Object> updates, String username) {
         LabourPost post = labourPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

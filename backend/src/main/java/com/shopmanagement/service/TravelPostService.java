@@ -451,6 +451,26 @@ public class TravelPostService {
     }
 
     @Transactional
+    public TravelPost adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        TravelPost post = travelPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "travels"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        TravelPost saved = travelPostRepository.save(post);
+        log.info("Travel post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public TravelPost userEditPost(Long id, Map<String, Object> updates, String username) {
         TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));

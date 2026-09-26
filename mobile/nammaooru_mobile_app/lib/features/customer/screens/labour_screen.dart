@@ -38,7 +38,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
   double? _userLatitude;
   double? _userLongitude;
-  double _selectedRadius = 50.0;
+  double _selectedRadius = PostFilterBar.kUnlimitedRadius;
   String _searchText = '';
 
   // My Posts tab

@@ -282,6 +282,24 @@ public class FarmerProductController {
         }
     }
 
+    @PutMapping(value = "/{id}/admin-images", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<FarmerProduct>> adminUpdateImages(
+            @PathVariable Long id,
+            @RequestParam(value = "keepImageUrls", required = false) String keepImageUrls,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+        try {
+            List<String> keep = (keepImageUrls != null && !keepImageUrls.isBlank())
+                    ? java.util.Arrays.stream(keepImageUrls.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
+                    : List.of();
+            FarmerProduct post = farmerProductService.adminUpdateImages(id, keep, images);
+            return ResponseUtil.success(post, "Images updated successfully");
+        } catch (Exception e) {
+            log.error("Error updating farmer product images", e);
+            return ResponseUtil.error(e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}/renew")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FarmerProduct>> renewPost(

@@ -453,6 +453,26 @@ public class ParcelServicePostService {
     }
 
     @Transactional
+    public ParcelServicePost adminUpdateImages(Long id, List<String> keepImageUrls, List<MultipartFile> newImages) throws IOException {
+        ParcelServicePost post = parcelServicePostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    finalUrls.add(fileUploadService.uploadFile(image, "parcels"));
+                }
+            }
+        }
+
+        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        ParcelServicePost saved = parcelServicePostRepository.save(post);
+        log.info("Parcel service post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
+        return saved;
+    }
+
+    @Transactional
     public ParcelServicePost userEditPost(Long id, Map<String, Object> updates, String username) {
         ParcelServicePost post = parcelServicePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
