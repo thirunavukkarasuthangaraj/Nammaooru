@@ -162,12 +162,20 @@ public class MarketplaceService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<MarketplacePost> posts = marketplacePostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = marketplacePostRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<MarketplacePost> posts = marketplacePostRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = marketplacePostRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<MarketplacePost> posts = marketplacePostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = marketplacePostRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -183,12 +191,20 @@ public class MarketplaceService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<MarketplacePost> posts = marketplacePostRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radius, limit, offset);
-            long total = marketplacePostRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<MarketplacePost> posts = marketplacePostRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radiusKm, limit, offset);
+                long total = marketplacePostRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post in this
+            // category (even ones without saved coordinates), nearest-first.
+            List<MarketplacePost> posts = marketplacePostRepository.findAllByCategorySortedByDistance(statuses, category, lat, lng, limit, offset);
+            long total = marketplacePostRepository.countByStatusInAndCategory(visibleStatuses, category);
             return new PageImpl<>(posts, pageable, total);
         }
 

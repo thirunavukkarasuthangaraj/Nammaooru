@@ -175,12 +175,20 @@ public class TravelPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<TravelPost> posts = travelPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = travelPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<TravelPost> posts = travelPostRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = travelPostRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<TravelPost> posts = travelPostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = travelPostRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -203,12 +211,20 @@ public class TravelPostService {
         }
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<TravelPost> posts = travelPostRepository.findNearbyPostsByVehicleType(statuses, vehicleType.name(), lat, lng, radius, limit, offset);
-            long total = travelPostRepository.countNearbyPostsByVehicleType(statuses, vehicleType.name(), lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<TravelPost> posts = travelPostRepository.findNearbyPostsByVehicleType(statuses, vehicleType.name(), lat, lng, radiusKm, limit, offset);
+                long total = travelPostRepository.countNearbyPostsByVehicleType(statuses, vehicleType.name(), lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post of this
+            // vehicle type (even ones without saved coordinates), nearest-first.
+            List<TravelPost> posts = travelPostRepository.findAllByVehicleTypeSortedByDistance(statuses, vehicleType.name(), lat, lng, limit, offset);
+            long total = travelPostRepository.countByStatusInAndVehicleType(visibleStatuses, vehicleType);
             return new PageImpl<>(posts, pageable, total);
         }
 

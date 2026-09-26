@@ -172,12 +172,20 @@ public class LabourPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<LabourPost> posts = labourPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = labourPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<LabourPost> posts = labourPostRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = labourPostRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<LabourPost> posts = labourPostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = labourPostRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -200,12 +208,20 @@ public class LabourPostService {
         }
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<LabourPost> posts = labourPostRepository.findNearbyPostsByCategory(statuses, category.name(), lat, lng, radius, limit, offset);
-            long total = labourPostRepository.countNearbyPostsByCategory(statuses, category.name(), lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<LabourPost> posts = labourPostRepository.findNearbyPostsByCategory(statuses, category.name(), lat, lng, radiusKm, limit, offset);
+                long total = labourPostRepository.countNearbyPostsByCategory(statuses, category.name(), lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post in this
+            // category (even ones without saved coordinates), nearest-first.
+            List<LabourPost> posts = labourPostRepository.findAllByCategorySortedByDistance(statuses, category.name(), lat, lng, limit, offset);
+            long total = labourPostRepository.countByStatusInAndCategory(visibleStatuses, category);
             return new PageImpl<>(posts, pageable, total);
         }
 

@@ -165,12 +165,20 @@ public class FarmerProductService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<FarmerProduct> posts = farmerProductRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = farmerProductRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<FarmerProduct> posts = farmerProductRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = farmerProductRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<FarmerProduct> posts = farmerProductRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = farmerProductRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -186,12 +194,20 @@ public class FarmerProductService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<FarmerProduct> posts = farmerProductRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radius, limit, offset);
-            long total = farmerProductRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<FarmerProduct> posts = farmerProductRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radiusKm, limit, offset);
+                long total = farmerProductRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post in this
+            // category (even ones without saved coordinates), nearest-first.
+            List<FarmerProduct> posts = farmerProductRepository.findAllByCategorySortedByDistance(statuses, category, lat, lng, limit, offset);
+            long total = farmerProductRepository.countByStatusInAndCategory(visibleStatuses, category);
             return new PageImpl<>(posts, pageable, total);
         }
 

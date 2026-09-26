@@ -156,12 +156,20 @@ public class LocalShopPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<LocalShopPost> posts = localShopPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = localShopPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<LocalShopPost> posts = localShopPostRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = localShopPostRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<LocalShopPost> posts = localShopPostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = localShopPostRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -184,12 +192,20 @@ public class LocalShopPostService {
         }
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<LocalShopPost> posts = localShopPostRepository.findNearbyPostsByCategory(statuses, category.name(), lat, lng, radius, limit, offset);
-            long total = localShopPostRepository.countNearbyPostsByCategory(statuses, category.name(), lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<LocalShopPost> posts = localShopPostRepository.findNearbyPostsByCategory(statuses, category.name(), lat, lng, radiusKm, limit, offset);
+                long total = localShopPostRepository.countNearbyPostsByCategory(statuses, category.name(), lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post in this
+            // category (even ones without saved coordinates), nearest-first.
+            List<LocalShopPost> posts = localShopPostRepository.findAllByCategorySortedByDistance(statuses, category.name(), lat, lng, limit, offset);
+            long total = localShopPostRepository.countByStatusInAndCategory(visibleStatuses, category);
             return new PageImpl<>(posts, pageable, total);
         }
 

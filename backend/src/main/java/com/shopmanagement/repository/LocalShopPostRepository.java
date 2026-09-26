@@ -41,6 +41,10 @@ public interface LocalShopPostRepository extends JpaRepository<LocalShopPost, Lo
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 
+    long countByStatusIn(List<PostStatus> statuses);
+
+    long countByStatusInAndCategory(List<PostStatus> statuses, ShopCategory category);
+
     Page<LocalShopPost> findByStatusInAndAddressContainingIgnoreCaseOrderByCreatedAtDesc(
             List<PostStatus> statuses, String address, Pageable pageable);
 
@@ -52,6 +56,38 @@ public interface LocalShopPostRepository extends JpaRepository<LocalShopPost, Lo
             LocalDateTime from, LocalDateTime to, List<PostStatus> statuses);
 
     List<LocalShopPost> findByValidToBeforeAndStatusIn(LocalDateTime before, List<PostStatus> statuses);
+
+    // "All" distance filter - no radius cap, so every approved post is shown.
+    // Posts with saved coordinates are ordered nearest-first; posts without
+    // coordinates (can't compute a distance) sort after all of those instead
+    // of being excluded like the radius-bounded queries below.
+    @Query(value = "SELECT * FROM local_shop_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) " +
+           "ORDER BY (CASE WHEN lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
+           "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(lp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "lp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<LocalShopPost> findAllSortedByDistance(@Param("statuses") String[] statuses,
+                                                @Param("lat") double lat,
+                                                @Param("lng") double lng,
+                                                @Param("limit") int limit,
+                                                @Param("offset") int offset);
+
+    @Query(value = "SELECT * FROM local_shop_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "lp.category = CAST(:category AS text) " +
+           "ORDER BY (CASE WHEN lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
+           "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(lp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "lp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<LocalShopPost> findAllByCategorySortedByDistance(@Param("statuses") String[] statuses,
+                                                          @Param("category") String category,
+                                                          @Param("lat") double lat,
+                                                          @Param("lng") double lng,
+                                                          @Param("limit") int limit,
+                                                          @Param("offset") int offset);
 
     @Query(value = "SELECT * FROM local_shop_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND " +
            "lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL AND " +

@@ -172,7 +172,7 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
 
@@ -393,7 +393,7 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
           onCategoryChanged: (cat) => _onCategorySelected(cat),
           selectedRadius: _selectedRadius,
           onRadiusChanged: (radius) {
-            setState(() => _selectedRadius = radius ?? 50.0);
+            setState(() => _selectedRadius = radius);
             _loadPosts(refresh: true);
           },
           searchText: _searchText,

@@ -43,6 +43,42 @@ public interface ParcelServicePostRepository extends JpaRepository<ParcelService
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 
+    long countByStatusIn(List<PostStatus> statuses);
+
+    long countByStatusInAndServiceType(List<PostStatus> statuses, ServiceType serviceType);
+
+    // "All" distance filter - no radius cap, so every approved post is shown.
+    // Posts with saved coordinates are ordered nearest-first; posts without
+    // coordinates (can't compute a distance) sort after all of those instead
+    // of being excluded like the radius-bounded queries below.
+    @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) " +
+           "ORDER BY (CASE WHEN pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
+           "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(pp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "pp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<ParcelServicePost> findAllSortedByDistance(@Param("statuses") String[] statuses,
+                                                    @Param("lat") double lat,
+                                                    @Param("lng") double lng,
+                                                    @Param("limit") int limit,
+                                                    @Param("offset") int offset);
+
+    @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "pp.service_type = CAST(:serviceType AS text) " +
+           "ORDER BY (CASE WHEN pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(pp.latitude AS double precision))) * " +
+           "cos(radians(CAST(pp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(pp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "pp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<ParcelServicePost> findAllByServiceTypeSortedByDistance(@Param("statuses") String[] statuses,
+                                                                  @Param("serviceType") String serviceType,
+                                                                  @Param("lat") double lat,
+                                                                  @Param("lng") double lng,
+                                                                  @Param("limit") int limit,
+                                                                  @Param("offset") int offset);
+
     // Haversine nearby queries - only posts with valid coordinates within radius
     @Query(value = "SELECT * FROM parcel_service_posts pp WHERE pp.status = ANY(CAST(:statuses AS text[])) AND " +
            "pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL AND " +

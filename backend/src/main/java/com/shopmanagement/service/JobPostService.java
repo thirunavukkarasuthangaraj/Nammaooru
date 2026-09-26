@@ -143,6 +143,27 @@ public class JobPostService {
             return new PageImpl<>(posts, pageable, total);
         }
 
+        if (lat != null && lng != null) {
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            int limit = pageable.getPageSize();
+            int offset = (int) pageable.getOffset();
+            String[] statuses = activeStatuses.stream().map(Enum::name).toArray(String[]::new);
+            List<JobPost> posts = jobPostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = jobPostRepository.countByStatusIn(activeStatuses);
+
+            if (category != null && !category.isEmpty()) {
+                try {
+                    JobCategory cat = JobCategory.valueOf(category.toUpperCase());
+                    posts = posts.stream().filter(p -> p.getCategory() == cat).toList();
+                    total = posts.size();
+                } catch (IllegalArgumentException e) {
+                    // fall through - unrecognized category, return unfiltered
+                }
+            }
+            return new PageImpl<>(posts, pageable, total);
+        }
+
         if (category != null && !category.isEmpty()) {
             try {
                 JobCategory cat = JobCategory.valueOf(category.toUpperCase());

@@ -28,10 +28,12 @@ class ParcelService {
       if (serviceType != null && serviceType.isNotEmpty) {
         queryParams['serviceType'] = serviceType;
       }
-      if (radiusKm != null && latitude != null && longitude != null) {
+      if (latitude != null && longitude != null) {
         queryParams['lat'] = latitude.toString();
         queryParams['lng'] = longitude.toString();
-        queryParams['radius'] = radiusKm.toString();
+        if (radiusKm != null) {
+          queryParams['radius'] = radiusKm.toString();
+        }
       }
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
 

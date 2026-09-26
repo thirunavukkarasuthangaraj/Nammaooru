@@ -172,12 +172,20 @@ public class WomensCornerPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<WomensCornerPost> posts = womensCornerPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = womensCornerPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<WomensCornerPost> posts = womensCornerPostRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = womensCornerPostRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<WomensCornerPost> posts = womensCornerPostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = womensCornerPostRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -193,12 +201,20 @@ public class WomensCornerPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<WomensCornerPost> posts = womensCornerPostRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radius, limit, offset);
-            long total = womensCornerPostRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<WomensCornerPost> posts = womensCornerPostRepository.findNearbyPostsByCategory(statuses, category, lat, lng, radiusKm, limit, offset);
+                long total = womensCornerPostRepository.countNearbyPostsByCategory(statuses, category, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post in this
+            // category (even ones without saved coordinates), nearest-first.
+            List<WomensCornerPost> posts = womensCornerPostRepository.findAllByCategorySortedByDistance(statuses, category, lat, lng, limit, offset);
+            long total = womensCornerPostRepository.countByStatusInAndCategory(visibleStatuses, category);
             return new PageImpl<>(posts, pageable, total);
         }
 

@@ -32,6 +32,25 @@ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 
+    long countByStatusIn(List<PostStatus> statuses);
+
+    // "All" distance filter - no radius cap, so every approved post is shown.
+    // Posts with saved coordinates are ordered nearest-first; posts without
+    // coordinates (can't compute a distance) sort after all of those instead
+    // of being excluded like the radius-bounded query below.
+    @Query(value = "SELECT * FROM jobs j WHERE j.status = ANY(CAST(:statuses AS text[])) " +
+           "ORDER BY (CASE WHEN j.latitude IS NOT NULL AND j.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(j.latitude AS double precision))) * " +
+           "cos(radians(CAST(j.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(j.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "j.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<JobPost> findAllSortedByDistance(@Param("statuses") String[] statuses,
+                                          @Param("lat") double lat,
+                                          @Param("lng") double lng,
+                                          @Param("limit") int limit,
+                                          @Param("offset") int offset);
+
     Page<JobPost> findByReportCountGreaterThanOrderByReportCountDesc(int minReportCount, Pageable pageable);
 
     Page<JobPost> findByReportCountGreaterThanAndStatusNotInOrderByReportCountDesc(int minReportCount, List<PostStatus> excludedStatuses, Pageable pageable);

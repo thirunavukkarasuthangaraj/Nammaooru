@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import '../../core/theme/village_theme.dart';
 
 class PostFilterBar extends StatelessWidget {
+  // PopupMenuButton treats a selected value of `null` as "menu dismissed"
+  // (it calls onCanceled, not onSelected) - so "All" cannot use null as its
+  // value or tapping it silently does nothing. This sentinel stands in for
+  // "no distance cap" instead; convert it back to null at the API boundary
+  // (see screens' onRadiusChanged) before passing radiusKm to a service.
+  static const double kUnlimitedRadius = -1;
+
   final List<String> categories;
   final String? selectedCategory;
   final ValueChanged<String?> onCategoryChanged;
-  final double? selectedRadius;
-  final ValueChanged<double?> onRadiusChanged;
+  final double selectedRadius;
+  final ValueChanged<double> onRadiusChanged;
   final String searchText;
   final ValueChanged<String> onSearchSubmitted;
   final Color accentColor;
@@ -31,7 +38,7 @@ class PostFilterBar extends StatelessWidget {
     _RadiusOption(25, '25 km'),
     _RadiusOption(50, '50 km'),
     _RadiusOption(100, '100 km'),
-    _RadiusOption(null, 'All'),
+    _RadiusOption(kUnlimitedRadius, 'All'),
   ];
 
   @override
@@ -120,12 +127,12 @@ class PostFilterBar extends StatelessWidget {
       (o) => o.value == selectedRadius,
       orElse: () => radiusOptions[3], // default 50km
     );
-    return PopupMenuButton<double?>(
+    return PopupMenuButton<double>(
       onSelected: onRadiusChanged,
       offset: const Offset(0, 36),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       itemBuilder: (context) => radiusOptions.map((option) {
-        return PopupMenuItem<double?>(
+        return PopupMenuItem<double>(
           value: option.value,
           child: Row(
             children: [
@@ -153,7 +160,7 @@ class PostFilterBar extends StatelessWidget {
 }
 
 class _RadiusOption {
-  final double? value;
+  final double value;
   final String label;
   const _RadiusOption(this.value, this.label);
 }

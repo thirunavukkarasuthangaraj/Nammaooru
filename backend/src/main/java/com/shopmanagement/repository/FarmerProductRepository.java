@@ -42,6 +42,42 @@ public interface FarmerProductRepository extends JpaRepository<FarmerProduct, Lo
 
     long countBySellerUserIdAndStatusIn(Long sellerUserId, List<PostStatus> statuses);
 
+    long countByStatusIn(List<PostStatus> statuses);
+
+    long countByStatusInAndCategory(List<PostStatus> statuses, String category);
+
+    // "All" distance filter - no radius cap, so every approved post is shown.
+    // Posts with saved coordinates are ordered nearest-first; posts without
+    // coordinates (can't compute a distance) sort after all of those instead
+    // of being excluded like the radius-bounded queries below.
+    @Query(value = "SELECT * FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) " +
+           "ORDER BY (CASE WHEN fp.latitude IS NOT NULL AND fp.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(fp.latitude AS double precision))) * " +
+           "cos(radians(CAST(fp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(fp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "fp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<FarmerProduct> findAllSortedByDistance(@Param("statuses") String[] statuses,
+                                                @Param("lat") double lat,
+                                                @Param("lng") double lng,
+                                                @Param("limit") int limit,
+                                                @Param("offset") int offset);
+
+    @Query(value = "SELECT * FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) AND " +
+           "fp.category = CAST(:category AS text) " +
+           "ORDER BY (CASE WHEN fp.latitude IS NOT NULL AND fp.longitude IS NOT NULL THEN " +
+           "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(fp.latitude AS double precision))) * " +
+           "cos(radians(CAST(fp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
+           "sin(radians(CAST(fp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
+           "fp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<FarmerProduct> findAllByCategorySortedByDistance(@Param("statuses") String[] statuses,
+                                                          @Param("category") String category,
+                                                          @Param("lat") double lat,
+                                                          @Param("lng") double lng,
+                                                          @Param("limit") int limit,
+                                                          @Param("offset") int offset);
+
     // Haversine nearby queries - only posts with valid coordinates within radius
     @Query(value = "SELECT * FROM farmer_products fp WHERE fp.status = ANY(CAST(:statuses AS text[])) AND " +
            "fp.latitude IS NOT NULL AND fp.longitude IS NOT NULL AND " +

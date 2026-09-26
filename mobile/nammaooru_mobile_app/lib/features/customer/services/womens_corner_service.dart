@@ -61,10 +61,12 @@ class WomensCornerService {
         queryParams['category'] = category;
       }
 
-      if (radiusKm != null && latitude != null && longitude != null) {
+      if (latitude != null && longitude != null) {
         queryParams['lat'] = latitude.toString();
         queryParams['lng'] = longitude.toString();
-        queryParams['radius'] = radiusKm.toString();
+        if (radiusKm != null) {
+          queryParams['radius'] = radiusKm.toString();
+        }
       }
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
 

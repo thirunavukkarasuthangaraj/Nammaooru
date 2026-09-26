@@ -368,7 +368,7 @@ class _RealEstateScreenState extends State<RealEstateScreen>
           },
           selectedRadius: _selectedRadius,
           onRadiusChanged: (radius) {
-            setState(() => _selectedRadius = radius ?? 50.0);
+            setState(() => _selectedRadius = radius);
             _fetchListings(refresh: true);
           },
           searchText: _searchText,

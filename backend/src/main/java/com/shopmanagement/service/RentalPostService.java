@@ -162,12 +162,20 @@ public class RentalPostService {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<RentalPost> posts = rentalPostRepository.findNearbyPosts(statuses, lat, lng, radius, limit, offset);
-            long total = rentalPostRepository.countNearbyPosts(statuses, lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<RentalPost> posts = rentalPostRepository.findNearbyPosts(statuses, lat, lng, radiusKm, limit, offset);
+                long total = rentalPostRepository.countNearbyPosts(statuses, lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post (even ones
+            // without saved coordinates), nearest-first.
+            List<RentalPost> posts = rentalPostRepository.findAllSortedByDistance(statuses, lat, lng, limit, offset);
+            long total = rentalPostRepository.countByStatusIn(visibleStatuses);
             return new PageImpl<>(posts, pageable, total);
         }
 
@@ -190,12 +198,20 @@ public class RentalPostService {
         }
 
         if (lat != null && lng != null) {
-            double radius = (radiusKm != null) ? radiusKm : Double.parseDouble(settingService.getSettingValue("post.default_radius_km", "10"));
             String[] statuses = visibleStatuses.stream().map(Enum::name).toArray(String[]::new);
             int limit = pageable.getPageSize();
             int offset = (int) pageable.getOffset();
-            List<RentalPost> posts = rentalPostRepository.findNearbyPostsByCategory(statuses, category.toUpperCase(), lat, lng, radius, limit, offset);
-            long total = rentalPostRepository.countNearbyPostsByCategory(statuses, category.toUpperCase(), lat, lng, radius);
+
+            if (radiusKm != null) {
+                List<RentalPost> posts = rentalPostRepository.findNearbyPostsByCategory(statuses, category.toUpperCase(), lat, lng, radiusKm, limit, offset);
+                long total = rentalPostRepository.countNearbyPostsByCategory(statuses, category.toUpperCase(), lat, lng, radiusKm);
+                return new PageImpl<>(posts, pageable, total);
+            }
+
+            // "All" - no radius cap, so include every approved post in this
+            // category (even ones without saved coordinates), nearest-first.
+            List<RentalPost> posts = rentalPostRepository.findAllByCategorySortedByDistance(statuses, category.toUpperCase(), lat, lng, limit, offset);
+            long total = rentalPostRepository.countByStatusInAndCategory(visibleStatuses, rentalCategory);
             return new PageImpl<>(posts, pageable, total);
         }
 

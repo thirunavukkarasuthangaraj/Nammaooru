@@ -172,7 +172,7 @@ class _LocalShopsScreenState extends State<LocalShopsScreen> with SingleTickerPr
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
 
@@ -198,7 +198,7 @@ class _LocalShopsScreenState extends State<LocalShopsScreen> with SingleTickerPr
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
       if (mounted) {
@@ -684,7 +684,7 @@ class _LocalShopsScreenState extends State<LocalShopsScreen> with SingleTickerPr
                 onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
                 selectedRadius: _selectedRadius,
                 onRadiusChanged: (radius) {
-                  setState(() => _selectedRadius = radius ?? 50.0);
+                  setState(() => _selectedRadius = radius);
                   _loadPosts();
                 },
                 searchText: _searchText,

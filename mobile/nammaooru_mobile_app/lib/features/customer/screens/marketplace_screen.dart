@@ -125,7 +125,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
 
@@ -155,7 +155,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
 
@@ -426,7 +426,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
           onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
           selectedRadius: _selectedRadius,
           onRadiusChanged: (radius) {
-            setState(() => _selectedRadius = radius ?? 50.0);
+            setState(() => _selectedRadius = radius);
             _loadPosts();
           },
           searchText: _searchText,

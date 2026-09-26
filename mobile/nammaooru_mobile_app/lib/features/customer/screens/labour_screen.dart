@@ -184,7 +184,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
 
@@ -214,7 +214,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
         category: _selectedCategory,
         latitude: _userLatitude,
         longitude: _userLongitude,
-        radiusKm: _selectedRadius,
+        radiusKm: _selectedRadius == PostFilterBar.kUnlimitedRadius ? null : _selectedRadius,
         search: _searchText.isNotEmpty ? _searchText : null,
       );
 
@@ -419,7 +419,9 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     if (!mounted) return;
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CreateLabourScreen()),
+      MaterialPageRoute(
+        builder: (context) => CreateLabourScreen(initialCategory: _selectedCategory),
+      ),
     ).then((_) {
       _loadPosts();
       _myPostsLoaded = false;
@@ -463,7 +465,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           _buildMyPostsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _posts.isEmpty && _tabController.index == 0 ? null : FloatingActionButton(
         onPressed: () => _navigateToCreatePost(),
         backgroundColor: _labourBlue,
         foregroundColor: Colors.white,
@@ -491,7 +493,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           onCategoryChanged: (cat) => _onCategorySelected(cat ?? 'All'),
           selectedRadius: _selectedRadius,
           onRadiusChanged: (radius) {
-            setState(() => _selectedRadius = radius ?? 50.0);
+            setState(() => _selectedRadius = radius);
             _loadPosts();
           },
           searchText: _searchText,
@@ -700,26 +702,30 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
 
   Widget _buildEmptyState() {
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.construction_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.construction_outlined, size: 48, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
+            textAlign: TextAlign.center,
             langProvider.getText('No labourers listed yet', 'தொழிலாளர்கள் இன்னும் பதிவிடப்படவில்லை'),
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.grey[600],
             ),
           ),
           const SizedBox(height: 8),
           Text(
+            textAlign: TextAlign.center,
             langProvider.getText('Be the first to post!', 'முதலில் பதிவு செய்யுங்கள்!'),
             style: TextStyle(color: Colors.grey[500]),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () => _navigateToCreatePost(),
             icon: const Icon(Icons.add),
