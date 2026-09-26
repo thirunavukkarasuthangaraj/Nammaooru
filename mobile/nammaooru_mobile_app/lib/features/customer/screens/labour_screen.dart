@@ -533,7 +533,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                       );
                     }),
                     Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                       child: Column(
                         children: _posts.map((p) => _buildPostCard(p)).toList(),
                       ),
@@ -543,6 +543,9 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                         padding: EdgeInsets.all(16),
                         child: Center(child: CircularProgressIndicator()),
                       ),
+                    // Clears the floating "+" button so it never overlaps
+                    // the last card's Call/Report row.
+                    const SizedBox(height: 88),
                   ],
                 ],
               ),
@@ -702,209 +705,205 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     );
   }
 
+  Widget _infoChip(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: Colors.grey[500]),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 12.5, color: Colors.grey[600], fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPostCard(Map<String, dynamic> post) {
     final isUnavailable = post['status'] == 'SOLD';
     final fullImageUrl = _getFirstImageUrl(post);
     final category = post['category']?.toString() ?? '';
     final categoryIcon = _categoryIcons[category] ?? Icons.work;
+    final experience = post['experience']?.toString();
+    final location = post['location']?.toString();
 
     return GestureDetector(
       onTap: () => _navigateToDetail(post),
-      child: Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image or icon
-              if (fullImageUrl != null)
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomLeft: Radius.circular(12),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: fullImageUrl,
-                    width: 100,
-                    height: 130,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      width: 100,
-                      height: 130,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      width: 100,
-                      height: 130,
-                      color: _labourBlue.withOpacity(0.1),
-                      child: Icon(categoryIcon, size: 40, color: _labourBlue),
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  width: 100,
-                  height: 130,
-                  decoration: BoxDecoration(
-                    color: _labourBlue.withOpacity(0.1),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      bottomLeft: Radius.circular(12),
-                    ),
-                  ),
-                  child: Icon(categoryIcon, size: 40, color: _labourBlue),
-                ),
-              // Details
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Name
-                      Builder(builder: (context) {
-                        final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-                        return isLoggedIn
-                            ? Text(
-                                post['name'] ?? '',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: VillageTheme.primaryText,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              )
-                            : ClipRect(
-                                child: ImageFiltered(
-                                  imageFilter: _nameBlurFilter,
-                                  child: Text(
-                                    post['name'] ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: VillageTheme.primaryText,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              );
-                      }),
-                      const SizedBox(height: 4),
-                      // Category badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _labourBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _getCategoryDisplay(category),
-                          style: const TextStyle(fontSize: 11, color: _labourBlue, fontWeight: FontWeight.w500),
-                        ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Image or icon
+                  if (fullImageUrl != null)
+                    CachedNetworkImage(
+                      imageUrl: fullImageUrl,
+                      width: 110,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        width: 110,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                       ),
-                      const SizedBox(height: 4),
-                      // Experience
-                      if (post['experience'] != null && post['experience'].toString().isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.work_history, size: 14, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
-                            Text(
-                              post['experience'],
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      // Location
-                      if (post['location'] != null && post['location'].toString().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                post['location'],
-                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                                overflow: TextOverflow.ellipsis,
+                      errorWidget: (context, url, error) => Container(
+                        width: 110,
+                        color: _labourBlue.withOpacity(0.08),
+                        child: Icon(categoryIcon, size: 36, color: _labourBlue),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 110,
+                      color: _labourBlue.withOpacity(0.08),
+                      child: Icon(categoryIcon, size: 36, color: _labourBlue),
+                    ),
+                  // Details
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Name
+                          Builder(builder: (context) {
+                            final isLoggedIn = Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+                            final nameText = Text(
+                              post['name'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w700,
+                                color: VillageTheme.primaryText,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                            return isLoggedIn
+                                ? nameText
+                                : ClipRect(
+                                    child: ImageFiltered(
+                                      imageFilter: _nameBlurFilter,
+                                      child: nameText,
+                                    ),
+                                  );
+                          }),
+                          const SizedBox(height: 8),
+                          // Category badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _labourBlue.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      // Call & Report buttons
-                      if (!isUnavailable)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 32,
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _callOrLogin(post),
-                                  icon: const Icon(Icons.call, size: 16),
-                                  label: const Text('Call', style: TextStyle(fontSize: 13)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _labourBlue,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(categoryIcon, size: 12, color: _labourBlue),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _getCategoryDisplay(category),
+                                  style: const TextStyle(fontSize: 11.5, color: _labourBlue, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (experience != null && experience.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: _infoChip(Icons.work_history_rounded, experience),
+                            ),
+                          if (location != null && location.isNotEmpty)
+                            _infoChip(Icons.location_on_rounded, location),
+                          const Spacer(),
+                          // Call & Report buttons
+                          if (!isUnavailable)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 36,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => _callOrLogin(post),
+                                      icon: const Icon(Icons.call, size: 16),
+                                      label: const Text('Call', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _labourBlue,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  height: 36,
+                                  width: 36,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: IconButton(
+                                    onPressed: () => _showReportDialog(post),
+                                    icon: Icon(Icons.flag_outlined, color: Colors.grey[500], size: 17),
+                                    padding: EdgeInsets.zero,
+                                    tooltip: 'Report this listing',
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 4),
-                            SizedBox(
-                              height: 32,
-                              width: 32,
-                              child: IconButton(
-                                onPressed: () => _showReportDialog(post),
-                                icon: Icon(Icons.flag_outlined, color: Colors.grey[500], size: 18),
-                                padding: EdgeInsets.zero,
-                                tooltip: 'Report this listing',
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
-          ),
-          // UNAVAILABLE badge
-          if (isUnavailable)
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'UNAVAILABLE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
-                ),
+                ],
               ),
             ),
-        ],
+            // UNAVAILABLE badge
+            if (isUnavailable)
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'UNAVAILABLE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -1631,7 +1630,6 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
             itemBuilder: (context, index) {
               final post = widget.posts[index];
               final imageUrls = _parseImageUrls(post);
-              final firstImage = imageUrls.isNotEmpty ? imageUrls.first : null;
 
               return GestureDetector(
                 onTap: () => widget.onPostTap(post),
@@ -1648,21 +1646,7 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        if (firstImage != null)
-                          CachedNetworkImage(
-                            imageUrl: ImageUrlHelper.getFullImageUrl(firstImage),
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(color: Colors.grey[300]),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.image, size: 40, color: Colors.grey),
-                            ),
-                          )
-                        else
-                          Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.image, size: 40, color: Colors.grey),
-                          ),
+                        _AutoSlideImages(imageUrls: imageUrls),
                         // Gradient overlay
                         Container(
                           decoration: BoxDecoration(
@@ -1776,6 +1760,100 @@ class _FeaturedBannerCarouselState extends State<_FeaturedBannerCarousel> {
           ),
         ],
         const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+// Auto-slides between a post's own photos (when it has more than one) inside
+// a featured banner card - independent of the outer carousel, which slides
+// between different featured posts.
+class _AutoSlideImages extends StatefulWidget {
+  final List<String> imageUrls;
+
+  const _AutoSlideImages({required this.imageUrls});
+
+  @override
+  State<_AutoSlideImages> createState() => _AutoSlideImagesState();
+}
+
+class _AutoSlideImagesState extends State<_AutoSlideImages> {
+  late final PageController _controller;
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+    if (widget.imageUrls.length > 1) {
+      _timer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+        if (!_controller.hasClients) return;
+        final next = (_index + 1) % widget.imageUrls.length;
+        _controller.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.imageUrls.isEmpty) {
+      return Container(
+        color: Colors.grey[300],
+        child: const Icon(Icons.image, size: 40, color: Colors.grey),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _controller,
+          onPageChanged: (i) => setState(() => _index = i),
+          itemCount: widget.imageUrls.length,
+          itemBuilder: (context, i) => CachedNetworkImage(
+            imageUrl: ImageUrlHelper.getFullImageUrl(widget.imageUrls[i]),
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(color: Colors.grey[300]),
+            errorWidget: (context, url, error) => Container(
+              color: Colors.grey[300],
+              child: const Icon(Icons.image, size: 40, color: Colors.grey),
+            ),
+          ),
+        ),
+        if (widget.imageUrls.length > 1)
+          Positioned(
+            top: 10,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.imageUrls.length, (i) {
+                final active = _index == i;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: active ? 12 : 5,
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(active ? 0.95 : 0.5),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+          ),
       ],
     );
   }

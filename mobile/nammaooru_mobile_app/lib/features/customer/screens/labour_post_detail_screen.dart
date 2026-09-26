@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,7 @@ class _LabourPostDetailScreenState extends State<LabourPostDetailScreen> {
   static const Color _labourBlue = Color(0xFF1565C0);
   late PageController _pageController;
   int _currentImageIndex = 0;
+  Timer? _autoSlideTimer;
 
   Map<String, dynamic> get post => widget.post;
 
@@ -84,10 +86,22 @@ class _LabourPostDetailScreenState extends State<LabourPostDetailScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    if (_imageUrls.length > 1) {
+      _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (!_pageController.hasClients) return;
+        final next = (_currentImageIndex + 1) % _imageUrls.length;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
   }
 
   @override
   void dispose() {
+    _autoSlideTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }

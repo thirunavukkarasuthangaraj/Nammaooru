@@ -38,7 +38,7 @@ class PostFilterBar extends StatelessWidget {
     _RadiusOption(25, '25 km'),
     _RadiusOption(50, '50 km'),
     _RadiusOption(100, '100 km'),
-    _RadiusOption(kUnlimitedRadius, 'All'),
+    _RadiusOption(kUnlimitedRadius, 'Any Distance'),
   ];
 
   @override
