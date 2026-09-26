@@ -1,3 +1,5 @@
+import '../../../shared/widgets/auth_copy.dart';
+import '../../../shared/widgets/customer_auth_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -43,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       final success = await authProvider.login(
         _emailController.text.trim(),
         _passwordController.text,
@@ -52,14 +54,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         if (success) {
           await Future.delayed(const Duration(milliseconds: 100));
-          
+
           // Initialize post-login essentials (non-blocking)
           PostLoginService().initializePostLogin().then((_) {
             print('Post-login initialization completed');
           }).catchError((error) {
             print('Post-login initialization failed: $error');
           });
-          
+
           await authProvider.refreshAuthState();
           final isNowLoggedIn = authProvider.isAuthenticated;
 
@@ -77,8 +79,8 @@ class _LoginScreenState extends State<LoginScreen> {
               // Return to previous page with success result
               Navigator.of(context).pop(true);
             } else {
-              // No previous page, go to dashboard
-              context.go('/customer/dashboard');
+              // No previous page, go to the dashboard for this user's role
+              context.go(authProvider.getHomeRoute());
             }
           } else {
             Helpers.showSnackBar(
@@ -87,7 +89,6 @@ class _LoginScreenState extends State<LoginScreen> {
               isError: true,
             );
           }
-          
         } else if (authProvider.errorMessage != null) {
           Helpers.showSnackBar(
             context,
@@ -107,6 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LanguageProvider>();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -115,178 +117,151 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       child: Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        top: false,
-              child: Consumer2<AuthProvider, LanguageProvider>(
-                builder: (context, authProvider, languageProvider, child) {
-                  return LoadingOverlay(
-                    isLoading: authProvider.authState == AuthState.loading,
-                    loadingMessage: 'Logging in...',
-                    child: SingleChildScrollView(
-                      child: AutofillGroup(
-                        child: Form(
+        backgroundColor: const Color(0xFFF3F7F3),
+        body: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) =>
+                Consumer2<AuthProvider, LanguageProvider>(
+              builder: (context, authProvider, languageProvider, child) {
+                return LoadingOverlay(
+                  isLoading: authProvider.authState == AuthState.loading,
+                  loadingMessage: 'Logging in...',
+                  child: SingleChildScrollView(
+                    child: AutofillGroup(
+                      child: Form(
                         key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildHeader(),
-                            Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildEmailField(),
-                                  const SizedBox(height: 12),
-                                  _buildPasswordField(),
-                                  const SizedBox(height: 8),
-                                  _buildRememberMeAndForgotPassword(),
-                                  const SizedBox(height: 16),
-                                  _buildLoginButton(),
-                                  const SizedBox(height: 12),
-                                  _buildSignUpLink(),
-                                  const SizedBox(height: 24),
-                                ],
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildHeader(),
+                              Transform.translate(
+                                offset: const Offset(0, -18),
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 18),
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(22),
+                                    border: Border.all(
+                                        color: const Color(0xFFE4ECE4)),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x1A173A1A),
+                                        blurRadius: 24,
+                                        offset: Offset(0, 10),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      const Text(
+                                        'Welcome back',
+                                        style: TextStyle(
+                                          color: Color(0xFF173A1A),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Enter your registered mobile number to continue',
+                                        style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12.5),
+                                      ),
+                                      const SizedBox(height: 18),
+                                      _buildEmailField(),
+                                      const SizedBox(height: 12),
+                                      _buildPasswordField(),
+                                      const SizedBox(height: 8),
+                                      _buildRememberMeAndForgotPassword(),
+                                      const SizedBox(height: 16),
+                                      _buildLoginButton(),
+                                      const SizedBox(height: 12),
+                                      _buildSignUpLink(),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                              _buildTrustFooter(),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    ),
-                  );
-                },
-              ),
-    ),
-    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrustFooter() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _trustItem(Icons.storefront_outlined, 'Local shops'),
+          const SizedBox(width: 22),
+          _trustItem(Icons.delivery_dining_outlined, 'Quick delivery'),
+          const SizedBox(width: 22),
+          _trustItem(Icons.verified_user_outlined, 'Secure'),
+        ],
+      ),
+    );
+  }
+
+  Widget _trustItem(IconData icon, String label) {
+    return Flexible(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF4CAF50)),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF667568),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildHeader() {
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    // Signature curved green header, matching the dashboard.
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-          24, MediaQuery.of(context).padding.top + 12, 24, 36),
-      decoration: const BoxDecoration(
-        color: VillageTheme.primaryGreen,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.elliptical(200, 40),
-          bottomRight: Radius.elliptical(200, 40),
-        ),
-      ),
-      child: Column(
-      children: [
-        // Language toggle at top-right
-        Align(
-          alignment: Alignment.centerRight,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'En',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: languageProvider.showTamil ? FontWeight.w400 : FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () => languageProvider.toggleLanguage(),
-                  child: Container(
-                    width: 36,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: AnimatedAlign(
-                      alignment: languageProvider.showTamil
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      duration: const Duration(milliseconds: 200),
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'த',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: languageProvider.showTamil ? FontWeight.bold : FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: 110,
-          height: 110,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Image.asset(
-            'assets/icons/logo-new.png',
-            fit: BoxFit.contain,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          languageProvider.getText('Welcome!', 'வரவேற்கிறோம்!'),
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          languageProvider.getText('Login to continue', 'தொடர உள்நுழையுங்கள்'),
-          style: TextStyle(
-            fontSize: 15,
-            color: Colors.white.withOpacity(0.9),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          languageProvider.getText('Serving Thirupattur zone', 'திருப்பத்தூர் பகுதிக்கு சேவை'),
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.white.withOpacity(0.75),
-          ),
-        ),
-      ],
-      ),
+    final lang = Provider.of<LanguageProvider>(context);
+    return CustomerAuthHeader(
+      title: authCopy(context, 'Login'),
+      subtitle: authCopy(context, 'Sign in to your account'),
+      languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
+      onLanguageChanged: () => lang.toggleLanguage(),
     );
   }
 
   Widget _buildEmailField() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECEFF1),
+        color: const Color(0xFFF7FAF7),
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDCE7DD)),
       ),
       child: TextFormField(
         controller: _emailController,
@@ -313,11 +288,11 @@ class _LoginScreenState extends State<LoginScreen> {
         },
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
-            return 'Please enter your mobile number';
+            return authCopy(context, 'Please enter your mobile number');
           }
           final digits = value.trim().replaceAll(RegExp(r'[^0-9]'), '');
           if (digits.length != 10) {
-            return 'Mobile number must be 10 digits';
+            return authCopy(context, 'Mobile number must be 10 digits');
           }
           return null;
         },
@@ -326,7 +301,7 @@ class _LoginScreenState extends State<LoginScreen> {
           color: Color(0xFF2C3E50),
         ),
         decoration: InputDecoration(
-          hintText: 'Mobile Number',
+          labelText: authCopy(context, 'Mobile Number'),
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
@@ -338,13 +313,22 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Icon(Icons.phone, color: Colors.black54, size: 20),
                 const SizedBox(width: 6),
-                const Text('+91', style: TextStyle(fontSize: 15, color: Color(0xFF2C3E50), fontWeight: FontWeight.w500)),
-                Container(width: 1, height: 20, margin: const EdgeInsets.only(left: 8), color: Colors.black26),
+                const Text('+91',
+                    style: TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF2C3E50),
+                        fontWeight: FontWeight.w500)),
+                Container(
+                    width: 1,
+                    height: 20,
+                    margin: const EdgeInsets.only(left: 8),
+                    color: Colors.black26),
               ],
             ),
           ),
           border: InputBorder.none,
           counterText: '',
+          errorMaxLines: 3,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -357,8 +341,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPasswordField() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECEFF1),
+        color: const Color(0xFFF7FAF7),
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDCE7DD)),
       ),
       child: TextFormField(
         controller: _passwordController,
@@ -367,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen> {
         autofillHints: const [AutofillHints.password],
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'Please enter your password';
+            return authCopy(context, 'Please enter your password');
           }
           return null;
         },
@@ -377,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
           color: Color(0xFF2C3E50),
         ),
         decoration: InputDecoration(
-          hintText: 'Enter your password',
+          labelText: authCopy(context, 'Enter your password'),
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
@@ -389,7 +374,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              _obscurePassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
               color: Colors.black54,
               size: 20,
             ),
@@ -430,7 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               Flexible(
                 child: Text(
-                  'Remember me',
+                  authCopy(context, 'Remember me'),
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[800],
@@ -451,8 +438,8 @@ class _LoginScreenState extends State<LoginScreen> {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text(
-              'Forgot Password?',
+            child: Text(
+              authCopy(context, 'Forgot Password?'),
               style: TextStyle(
                 fontSize: 14,
                 color: VillageTheme.primaryGreen,
@@ -474,10 +461,10 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ElevatedButton(
         onPressed: _isLoggingIn ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
-          backgroundColor: VillageTheme.primaryGreen,
+          backgroundColor: const Color(0xFF4CAF50),
           foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
+          elevation: 2,
+          shadowColor: const Color(0x554CAF50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -492,7 +479,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               )
             : Text(
-                langProvider.getText('Login', 'உள்நுழை'),
+                langProvider.getText(authCopy(context, 'Login'), 'உள்நுழை'),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -508,7 +495,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         Text(
-          langProvider.getText('New to Namma Ooru Connect?', 'நம்ம ஊரு கனெக்ட்-வில் புதியவரா?'),
+          langProvider.getText(
+              'New to Namma Ooru Connect?', 'நம்ம ஊரு கனெக்ட்-வில் புதியவரா?'),
           style: TextStyle(
             fontSize: 13,
             color: Colors.grey[600],
@@ -533,7 +521,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             child: Text(
-              langProvider.getText('Register', 'பதிவு செய்'),
+              langProvider.getText(authCopy(context, 'Register'), 'பதிவு செய்'),
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,

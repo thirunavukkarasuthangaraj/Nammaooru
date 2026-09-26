@@ -1567,7 +1567,30 @@ public class OrderService {
         }
         return "system";
     }
-    
+
+    // Shop owners can order from any shop except their own. Ownership is resolved
+    // the same way the rest of the codebase does (createdBy / ownerEmail match) -
+    // never by role string, since some shop-owner logins lack a literal
+    // ROLE_SHOP_OWNER authority and a role check would silently no-op for them.
+    private void validateNotOwnShop(Shop shop) {
+        String currentUsername = getCurrentUsername();
+        if (currentUsername == null || "system".equals(currentUsername)) {
+            return;
+        }
+
+        Shop ownShop = shopRepository.findByCreatedBy(currentUsername).orElse(null);
+        if (ownShop == null) {
+            User currentUser = userRepository.findByUsername(currentUsername).orElse(null);
+            if (currentUser != null && currentUser.getEmail() != null) {
+                ownShop = shopRepository.findByOwnerEmail(currentUser.getEmail()).orElse(null);
+            }
+        }
+
+        if (ownShop != null && ownShop.getId().equals(shop.getId())) {
+            throw new RuntimeException("You cannot place an order at your own shop.");
+        }
+    }
+
     private OrderResponse mapToResponse(Order order) {
         return mapToResponse(order, null);
     }
@@ -1785,6 +1808,8 @@ public class OrderService {
         // Validate shop
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
+
+        validateNotOwnShop(shop);
 
         validateOnlinePaymentAllowed(Order.PaymentMethod.valueOf(request.getPaymentMethod()), shop);
 

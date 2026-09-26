@@ -207,7 +207,10 @@ class AuthProvider with ChangeNotifier {
       case 'USER':  // Backend returns USER for customers
         return '/customer/dashboard';
       case 'SHOP_OWNER':
-        return '/shop-owner/dashboard';
+        // Shop owners land on the same customer dashboard as everyone else;
+        // they can browse normally but are blocked server-side from ordering
+        // at their own shop.
+        return '/customer/dashboard';
       case 'DELIVERY_PARTNER':
         return '/delivery-partner/dashboard';
       default:

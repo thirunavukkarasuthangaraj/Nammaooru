@@ -137,10 +137,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
         }
         // User is now authenticated, redirect to appropriate dashboard based on role
         // Use context.go() so the ShellRoute (bottom nav) is included
-        if (authProvider.isCustomer) {
+        if (authProvider.isCustomer || authProvider.isShopOwner) {
           context.go('/customer/dashboard');
-        } else if (authProvider.isShopOwner) {
-          context.go('/shop-owner/dashboard');
         } else if (authProvider.isDeliveryPartner) {
           context.go('/delivery-partner/dashboard');
         } else {

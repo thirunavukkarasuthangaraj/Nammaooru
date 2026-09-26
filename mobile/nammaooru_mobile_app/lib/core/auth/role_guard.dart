@@ -81,7 +81,7 @@ class RoleGuard {
     if (userRole == null) return false;
 
     if (path.startsWith('/customer/')) {
-      return userRole == 'CUSTOMER' || userRole == 'USER';
+      return userRole == 'CUSTOMER' || userRole == 'USER' || userRole == 'SHOP_OWNER';
     }
 
     if (path.startsWith('/shop-owner/')) {
@@ -95,9 +95,8 @@ class RoleGuard {
     switch (userRole) {
       case 'CUSTOMER':
       case 'USER':  // USER role from backend maps to customer dashboard
+      case 'SHOP_OWNER':  // Shop owners browse the normal customer dashboard too
         return '/customer/dashboard';
-      case 'SHOP_OWNER':
-        return '/shop-owner/dashboard';
       default:
         return '/login';
     }
