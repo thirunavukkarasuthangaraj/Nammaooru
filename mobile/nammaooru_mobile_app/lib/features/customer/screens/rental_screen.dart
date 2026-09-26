@@ -415,9 +415,7 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
               child: Column(
                 children: [
                   if (_selectedCategory == null)
-                    _buildCategoryGrid()
-                  else
-                    _buildSelectedCategoryHeader(),
+                    _buildCategoryGrid(),
                   if (_isLoading && _posts.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(40),
@@ -553,58 +551,6 @@ class _RentalScreenState extends State<RentalScreen> with SingleTickerProviderSt
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildSelectedCategoryHeader() {
-    final cat = _selectedCategory!;
-    final english = _categoryLabels[cat] ?? cat;
-    final tamil = _categoryTamilMap[cat] ?? cat;
-    final icon = _categoryIcons[cat] ?? Icons.vpn_key;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: BoxDecoration(
-        color: _rentalOrange.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _rentalOrange, width: 2),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SizedBox(width: 40),
-              Icon(icon, size: 52, color: _rentalOrange),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.grey),
-                onPressed: () => _onCategorySelected(null),
-                tooltip: 'Show all categories',
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            english,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: _rentalOrange,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            tamil,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }

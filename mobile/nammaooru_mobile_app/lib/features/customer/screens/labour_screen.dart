@@ -514,9 +514,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
               child: Column(
                 children: [
                   if (_selectedCategory == null)
-                    _buildCategoryGrid()
-                  else
-                    _buildSelectedCategoryHeader(),
+                    _buildCategoryGrid(),
                   if (_isLoading)
                     const Padding(
                       padding: EdgeInsets.all(40),
@@ -641,61 +639,6 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildSelectedCategoryHeader() {
-    final cat = _selectedCategory!;
-    final english = _categoryLabels[cat] ?? cat;
-    final tamil = _categoryTamilMap[cat] ?? cat;
-    final icon = _categoryIcons[cat] ?? Icons.work;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: BoxDecoration(
-        color: VillageTheme.primaryGreen.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: VillageTheme.primaryGreen,
-          width: 2,
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SizedBox(width: 40),
-              Icon(icon, size: 52, color: VillageTheme.primaryGreen),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.grey),
-                onPressed: () => _onCategorySelected('All'),
-                tooltip: 'Show all categories',
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            english,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: VillageTheme.primaryGreen,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            tamil,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }
