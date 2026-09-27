@@ -115,6 +115,10 @@ export class PromoCodeFormComponent implements OnInit {
   }
 
   onSubmit(): void {
+    if (this.isUploading) {
+      this.showSnackBar('Please wait for the image to finish uploading', 'error');
+      return;
+    }
     if (this.promoForm.valid) {
       this.isLoading = true;
 
@@ -226,6 +230,13 @@ export class PromoCodeFormComponent implements OnInit {
         this.imagePreview = e.target?.result as string;
       };
       reader.readAsDataURL(file);
+
+      // Upload immediately - previously this required a separate manual
+      // "Upload" button click before saving, which was easy to miss: the
+      // preview shown above already made it look attached, so clicking
+      // Save/Update right after selecting a file saved the promo with no
+      // image at all.
+      this.uploadImage();
     }
   }
 

@@ -243,9 +243,10 @@
     <button mat-button (click)="onCancel()" [disabled]="isLoading">
       Cancel
     </button>
-    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="isLoading || promoForm.invalid">
+    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="isLoading || isUploading || promoForm.invalid">
       <mat-spinner diameter="20" *ngIf="isLoading" class="button-spinner"></mat-spinner>
-      <span *ngIf="!isLoading">{{ isEditMode ? 'Update' : 'Create' }}</span>
+      <span *ngIf="isUploading && !isLoading">Uploading image...</span>
+      <span *ngIf="!isLoading && !isUploading">{{ isEditMode ? 'Update' : 'Create' }}</span>
     </button>
   </mat-dialog-actions>
 </div>
