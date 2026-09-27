@@ -78,9 +78,12 @@ public class GoogleMapsProxyService {
     }
 
     public String reverseGeocode(double lat, double lng) {
+        // "%7C" is the pre-encoded "|" - build(true) below skips re-encoding
+        // but still validates that no illegal raw characters (like a literal
+        // "|") are present, so this must already be in its encoded form.
         String url = "https://maps.googleapis.com/maps/api/geocode/json?"
                 + "latlng=" + lat + "," + lng
-                + "&result_type=street_address|route|neighborhood|locality|sublocality"
+                + "&result_type=street_address%7Croute%7Cneighborhood%7Clocality%7Csublocality"
                 + "&key=" + apiKey;
         return get(url);
     }
