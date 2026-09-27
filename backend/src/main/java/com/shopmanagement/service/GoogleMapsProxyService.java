@@ -77,6 +77,14 @@ public class GoogleMapsProxyService {
         return get(url);
     }
 
+    public String nearbyPlaces(double lat, double lng, int radiusMeters) {
+        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?"
+                + "location=" + lat + "," + lng
+                + "&radius=" + radiusMeters
+                + "&key=" + apiKey;
+        return get(url);
+    }
+
     public String reverseGeocode(double lat, double lng) {
         // No result_type filter: the client (LocationService.getAddressFromCoordinates)
         // already walks every result looking for the best available component

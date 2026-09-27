@@ -62,6 +62,19 @@ public class GoogleMapsProxyController {
         }
     }
 
+    @GetMapping(value = "/nearby", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> nearby(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "50") int radius) {
+        try {
+            return ResponseEntity.ok(googleMapsProxyService.nearbyPlaces(lat, lng, radius));
+        } catch (Exception e) {
+            log.error("Nearby places proxy failed", e);
+            return ResponseEntity.ok("{\"status\":\"UNKNOWN_ERROR\",\"results\":[]}");
+        }
+    }
+
     @GetMapping(value = "/reverse-geocode", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> reverseGeocode(
             @RequestParam double lat,
