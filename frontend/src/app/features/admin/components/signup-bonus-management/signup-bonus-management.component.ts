@@ -10,6 +10,7 @@ interface SignupBonusRow {
   createdAt: string;
   // Local UI state
   referenceInput?: string;
+  selected?: boolean;
 }
 
 @Component({
@@ -28,6 +29,9 @@ export class SignupBonusManagementComponent implements OnInit {
   amount = 10;
   reminderIntervalMinutes = 60;
   isSavingConfig = false;
+
+  bulkNote = '';
+  isBulkProcessing = false;
 
   constructor(
     private signupBonusService: SignupBonusService,
@@ -103,6 +107,65 @@ export class SignupBonusManagementComponent implements OnInit {
         this.processingId = null;
         console.error('Error marking welcome bonus paid:', error);
         this.swal.toast('Error marking welcome bonus as paid', 'error');
+      }
+    });
+  }
+
+  get selectedBonuses(): SignupBonusRow[] {
+    return this.bonuses.filter((b) => b.selected);
+  }
+
+  get selectedTotal(): number {
+    return this.selectedBonuses.reduce((sum, b) => sum + b.amount, 0);
+  }
+
+  get allSelected(): boolean {
+    return this.bonuses.length > 0 && this.bonuses.every((b) => b.selected);
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    this.bonuses.forEach((b) => (b.selected = checked));
+  }
+
+  // Copies "mobileNumber - amount" for every selected row, one per line, so you
+  // can open your UPI app once and pay through the whole batch from one list
+  // instead of switching back to this page for each person.
+  copySelectedList(): void {
+    const rows = this.selectedBonuses;
+    if (rows.length === 0) {
+      this.swal.toast('Select at least one row first', 'warning');
+      return;
+    }
+    const text = rows.map((r) => `${r.mobileNumber} - ₹${r.amount.toFixed(2)}`).join('\n');
+    navigator.clipboard.writeText(text).then(
+      () => this.swal.toast(`Copied ${rows.length} number(s)`, 'success'),
+      () => this.swal.toast('Could not copy - copy rows manually', 'warning')
+    );
+  }
+
+  markSelectedPaid(): void {
+    const rows = this.selectedBonuses;
+    if (rows.length === 0) {
+      this.swal.toast('Select at least one row first', 'warning');
+      return;
+    }
+    this.isBulkProcessing = true;
+    const ids = rows.map((r) => r.id);
+    this.signupBonusService.markPaidBulk(ids, this.bulkNote.trim()).subscribe({
+      next: (response) => {
+        this.isBulkProcessing = false;
+        if (this.isSuccess(response)) {
+          this.swal.toast(`Marked ${ids.length} welcome bonus(es) as paid`, 'success');
+          this.bonuses = this.bonuses.filter((b) => !ids.includes(b.id));
+          this.bulkNote = '';
+        } else {
+          this.swal.toast(response.message || 'Failed to mark selected as paid', 'error');
+        }
+      },
+      error: (error) => {
+        this.isBulkProcessing = false;
+        console.error('Error bulk-marking welcome bonuses paid:', error);
+        this.swal.toast('Error marking selected as paid', 'error');
       }
     });
   }

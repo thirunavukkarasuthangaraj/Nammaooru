@@ -19,6 +19,10 @@ export class SignupBonusService {
     return this.http.post(`${this.apiUrl}/${id}/mark-paid`, { payoutReference });
   }
 
+  markPaidBulk(ids: number[], note: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/mark-paid-bulk`, { ids, note });
+  }
+
   getConfig(): Observable<any> {
     return this.http.get(`${this.apiUrl}/config`);
   }

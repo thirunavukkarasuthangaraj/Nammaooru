@@ -156,6 +156,30 @@ public class SignupBonusService {
     }
 
     /**
+     * Marks several bonuses paid from one banking session at once - a single shared
+     * note (e.g. "Bulk UPI batch 27-Sep") stands in for per-transaction references,
+     * since collecting one UTR per payout defeats the point of batching. Skips (does
+     * not fail the whole batch on) any id that's missing or already paid, since the
+     * selection could be stale if two admins work the list at the same time.
+     */
+    @Transactional
+    public List<SignupBonus> markPaidBulk(List<Long> ids, String note, String processedBy) {
+        List<SignupBonus> updated = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            signupBonusRepository.findById(id).ifPresent(bonus -> {
+                if (bonus.getStatus() == SignupBonus.Status.UNPAID) {
+                    bonus.setStatus(SignupBonus.Status.PAID);
+                    bonus.setPayoutReference(note);
+                    bonus.setProcessedBy(processedBy);
+                    bonus.setPaidAt(LocalDateTime.now());
+                    updated.add(signupBonusRepository.save(bonus));
+                }
+            });
+        }
+        return updated;
+    }
+
+    /**
      * Ticks every 5 minutes but only actually sends a reminder once the admin-configured
      * interval (default 60 min) has elapsed since the last one - lets the interval be
      * changed at runtime via settings without touching the fixed Spring schedule itself.

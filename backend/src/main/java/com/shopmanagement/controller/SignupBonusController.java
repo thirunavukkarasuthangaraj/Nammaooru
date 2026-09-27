@@ -86,6 +86,15 @@ public class SignupBonusController {
         return ResponseUtil.success(bonus, "Welcome bonus marked as paid");
     }
 
+    @PostMapping("/admin/signup-bonuses/mark-paid-bulk")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<?> markPaidBulk(
+            @RequestBody MarkPaidBulkRequest request,
+            Authentication authentication) {
+        var updated = signupBonusService.markPaidBulk(request.ids(), request.note(), authentication.getName());
+        return ResponseUtil.success(updated, updated.size() + " welcome bonus(es) marked as paid");
+    }
+
     @GetMapping("/admin/signup-bonuses/amount")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> getAmount() {
@@ -124,6 +133,7 @@ public class SignupBonusController {
     }
 
     public record MarkPaidRequest(String payoutReference) {}
+    public record MarkPaidBulkRequest(java.util.List<Long> ids, String note) {}
     public record AmountRequest(BigDecimal amount) {}
     public record EnabledRequest(boolean enabled) {}
     public record ReminderIntervalRequest(int minutes) {}

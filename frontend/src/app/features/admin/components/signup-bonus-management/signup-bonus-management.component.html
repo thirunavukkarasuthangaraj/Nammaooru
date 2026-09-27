@@ -37,9 +37,33 @@
     <p>No pending welcome bonus payouts right now.</p>
   </div>
 
+  <mat-card class="bulk-bar" *ngIf="!isLoading && bonuses.length > 0">
+    <mat-checkbox [checked]="allSelected" (change)="toggleSelectAll($event.checked)">
+      Select all ({{ bonuses.length }})
+    </mat-checkbox>
+    <span class="bulk-summary" *ngIf="selectedBonuses.length > 0">
+      {{ selectedBonuses.length }} selected &middot; ₹{{ selectedTotal | number: '1.2-2' }} total
+    </span>
+    <button mat-stroked-button color="primary" (click)="copySelectedList()" [disabled]="selectedBonuses.length === 0">
+      <mat-icon>content_copy</mat-icon> Copy Selected List
+    </button>
+    <mat-form-field appearance="outline" class="bulk-note-field">
+      <mat-label>Batch note (e.g. "Paid via GPay 27-Sep")</mat-label>
+      <input matInput [(ngModel)]="bulkNote" />
+    </mat-form-field>
+    <button
+      mat-flat-button
+      color="primary"
+      [disabled]="selectedBonuses.length === 0 || isBulkProcessing"
+      (click)="markSelectedPaid()">
+      Mark Selected as Paid
+    </button>
+  </mat-card>
+
   <div class="bonus-list" *ngIf="!isLoading">
-    <mat-card class="bonus-card" *ngFor="let row of bonuses">
+    <mat-card class="bonus-card" *ngFor="let row of bonuses" [class.selected]="row.selected">
       <div class="card-top">
+        <mat-checkbox [(ngModel)]="row.selected"></mat-checkbox>
         <div class="mobile-info">
           <mat-icon>smartphone</mat-icon>
           <span class="mobile-number">{{ row.mobileNumber }}</span>
