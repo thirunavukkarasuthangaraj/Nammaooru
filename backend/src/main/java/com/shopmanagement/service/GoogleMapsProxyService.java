@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
@@ -17,6 +19,12 @@ import java.time.Duration;
  * ships inside the app/APK - it can then be IP-restricted in Google Cloud
  * Console to just this server, instead of being unrestricted (the only
  * option for a key embedded in client code).
+ *
+ * URLs are built by hand rather than with UriComponentsBuilder#encode():
+ * that percent-encodes structural characters like the "|" in result_type
+ * (e.g. "route|locality") into %7C, which Google's Geocoding API then
+ * rejects with "Invalid 'result_type' parameter" - only true free-text
+ * values (address/input/placeId) need encoding here.
  */
 @Service
 @Slf4j
@@ -35,54 +43,57 @@ public class GoogleMapsProxyService {
     }
 
     public String autocomplete(String input, String languageCode, Double biasLat, Double biasLng, String sessionToken) {
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl("https://maps.googleapis.com/maps/api/place/autocomplete/json")
-                .queryParam("input", input)
-                .queryParam("components", "country:in")
-                .queryParam("language", languageCode)
-                .queryParam("key", apiKey);
+        StringBuilder url = new StringBuilder("https://maps.googleapis.com/maps/api/place/autocomplete/json?")
+                .append("input=").append(encode(input))
+                .append("&components=country:in")
+                .append("&language=").append(encode(languageCode))
+                .append("&key=").append(apiKey);
         if (biasLat != null && biasLng != null) {
-            builder.queryParam("locationbias", "circle:50000@" + biasLat + "," + biasLng);
+            url.append("&locationbias=circle:50000@").append(biasLat).append(',').append(biasLng);
         }
         if (sessionToken != null && !sessionToken.isBlank()) {
-            builder.queryParam("sessiontoken", sessionToken);
+            url.append("&sessiontoken=").append(encode(sessionToken));
         }
-        return get(builder);
+        return get(url.toString());
     }
 
     public String placeDetails(String placeId, String sessionToken) {
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl("https://maps.googleapis.com/maps/api/place/details/json")
-                .queryParam("place_id", placeId)
-                .queryParam("fields", "geometry,formatted_address,name")
-                .queryParam("key", apiKey);
+        StringBuilder url = new StringBuilder("https://maps.googleapis.com/maps/api/place/details/json?")
+                .append("place_id=").append(encode(placeId))
+                .append("&fields=geometry,formatted_address,name")
+                .append("&key=").append(apiKey);
         if (sessionToken != null && !sessionToken.isBlank()) {
-            builder.queryParam("sessiontoken", sessionToken);
+            url.append("&sessiontoken=").append(encode(sessionToken));
         }
-        return get(builder);
+        return get(url.toString());
     }
 
     public String geocodeAddress(String address, String languageCode) {
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl("https://maps.googleapis.com/maps/api/geocode/json")
-                .queryParam("address", address)
-                .queryParam("components", "country:IN")
-                .queryParam("language", languageCode)
-                .queryParam("key", apiKey);
-        return get(builder);
+        String url = "https://maps.googleapis.com/maps/api/geocode/json?"
+                + "address=" + encode(address)
+                + "&components=country:IN"
+                + "&language=" + encode(languageCode)
+                + "&key=" + apiKey;
+        return get(url);
     }
 
     public String reverseGeocode(double lat, double lng) {
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl("https://maps.googleapis.com/maps/api/geocode/json")
-                .queryParam("latlng", lat + "," + lng)
-                .queryParam("result_type", "street_address|route|neighborhood|locality|sublocality")
-                .queryParam("key", apiKey);
-        return get(builder);
+        String url = "https://maps.googleapis.com/maps/api/geocode/json?"
+                + "latlng=" + lat + "," + lng
+                + "&result_type=street_address|route|neighborhood|locality|sublocality"
+                + "&key=" + apiKey;
+        return get(url);
     }
 
-    private String get(UriComponentsBuilder builder) {
-        String url = builder.build().encode(StandardCharsets.UTF_8).toUriString();
-        return restTemplate.getForObject(url, String.class);
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private String get(String url) {
+        // build(true) = "the string is already correctly encoded" - skips
+        // Spring's automatic re-encoding pass, which is what was turning the
+        // literal "|" in result_type into "%7C" (Google rejects that form).
+        URI uri = UriComponentsBuilder.fromHttpUrl(url).build(true).toUri();
+        return restTemplate.getForObject(uri, String.class);
     }
 }
