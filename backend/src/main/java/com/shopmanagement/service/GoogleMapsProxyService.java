@@ -78,12 +78,17 @@ public class GoogleMapsProxyService {
     }
 
     public String reverseGeocode(double lat, double lng) {
-        // "%7C" is the pre-encoded "|" - build(true) below skips re-encoding
-        // but still validates that no illegal raw characters (like a literal
-        // "|") are present, so this must already be in its encoded form.
+        // No result_type filter: the client (LocationService.getAddressFromCoordinates)
+        // already walks every result looking for the best available component
+        // (premise/neighborhood/sublocality_level_2/3/locality, in that
+        // preference order) - restricting result_type here to only
+        // street_address/route/neighborhood/locality/sublocality was starving
+        // it of exactly the finer entries (premise, sublocality_level_2/3)
+        // it's designed to prefer, which is common for rural points with no
+        // formal street data, showing only the broad locality name instead
+        // of the most specific one Google actually has.
         String url = "https://maps.googleapis.com/maps/api/geocode/json?"
                 + "latlng=" + lat + "," + lng
-                + "&result_type=street_address%7Croute%7Cneighborhood%7Clocality%7Csublocality"
                 + "&key=" + apiKey;
         return get(url);
     }
