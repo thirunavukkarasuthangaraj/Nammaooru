@@ -2,6 +2,7 @@ import 'package:location/location.dart' as loc;
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../config/env_config.dart';
 
 class LocationService {
   static LocationService? _instance;
@@ -45,17 +46,9 @@ class LocationService {
     _manualLocationLabel = null;
   }
 
-  // Use your Google Maps API key from env config
-  static const String _googleApiKey = 'AIzaSyAnAf-HWVsvKdYuzY7gMMiqTfyahKJSd1I';
-
-  // This key is restricted (Android apps) in Google Cloud Console to
-  // com.nammaooru.app's signing certificate. Since these are plain REST
-  // calls (not the native Maps SDK, which would attach this automatically),
-  // every request must carry these two headers itself or Google rejects it.
-  static const Map<String, String> _googleApiHeaders = {
-    'X-Android-Package': 'com.nammaooru.app',
-    'X-Android-Cert': '8A:BE:5D:FC:7A:67:6A:0C:D2:DA:07:91:DA:C0:53:B7:AD:3D:09:72',
-  };
+  // Places/Geocoding calls go through our own backend (see EnvConfig.fullApiUrl
+  // below), which holds the real Google Maps API key server-side. This keeps
+  // the key out of the app entirely instead of shipping it in client code.
 
   /// Human-readable label for the manually selected location, shown in the
   /// "Deliver to" bar (e.g. the village name the user searched for).
@@ -167,12 +160,10 @@ class LocationService {
   Future<List<Map<String, dynamic>>> _searchPlacesGoogle(
       String query, String languageCode) async {
     try {
-      final url = 'https://maps.googleapis.com/maps/api/geocode/json?'
+      final url = '${EnvConfig.fullApiUrl}/places/geocode?'
           'address=${Uri.encodeComponent(query)}&'
-          'components=country:IN&'
-          'language=$languageCode&'
-          'key=$_googleApiKey';
-      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders).timeout(_providerTimeout);
+          'language=$languageCode';
+      final response = await http.get(Uri.parse(url)).timeout(_providerTimeout);
       if (response.statusCode != 200) return [];
 
       final data = json.decode(response.body);
@@ -255,17 +246,15 @@ class LocationService {
       final biasLat = cachedLatitude;
       final biasLng = cachedLongitude;
       final locationBias = (biasLat != null && biasLng != null)
-          ? 'locationbias=circle:50000@$biasLat,$biasLng&'
+          ? 'lat=$biasLat&lng=$biasLng&'
           : '';
 
-      final url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
+      final url = '${EnvConfig.fullApiUrl}/places/autocomplete?'
           'input=${Uri.encodeComponent(trimmed)}&'
-          'components=country:in&'
           '$locationBias'
           'language=$languageCode&'
-          '${sessionToken != null ? 'sessiontoken=$sessionToken&' : ''}'
-          'key=$_googleApiKey';
-      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders).timeout(_providerTimeout);
+          '${sessionToken != null ? 'sessionToken=$sessionToken&' : ''}';
+      final response = await http.get(Uri.parse(url)).timeout(_providerTimeout);
       if (response.statusCode != 200) {
         return _searchOsmProviders(trimmed, languageCode);
       }
@@ -303,12 +292,10 @@ class LocationService {
     String? sessionToken,
   }) async {
     try {
-      final url = 'https://maps.googleapis.com/maps/api/place/details/json?'
-          'place_id=${Uri.encodeComponent(placeId)}&'
-          'fields=geometry,formatted_address,name&'
-          '${sessionToken != null ? 'sessiontoken=$sessionToken&' : ''}'
-          'key=$_googleApiKey';
-      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders).timeout(_providerTimeout);
+      final url = '${EnvConfig.fullApiUrl}/places/details?'
+          'placeId=${Uri.encodeComponent(placeId)}&'
+          '${sessionToken != null ? 'sessionToken=$sessionToken&' : ''}';
+      final response = await http.get(Uri.parse(url)).timeout(_providerTimeout);
       if (response.statusCode != 200) return null;
 
       final data = json.decode(response.body);
@@ -331,13 +318,10 @@ class LocationService {
     try {
       print('🌍 GOOGLE API REQUEST: lat=$latitude, lng=$longitude');
 
-      // Add result_type to prioritize locality (village/town) results
-      final url = 'https://maps.googleapis.com/maps/api/geocode/json?'
-                  'latlng=$latitude,$longitude&'
-                  'result_type=street_address|route|neighborhood|locality|sublocality&'
-                  'key=$_googleApiKey';
+      final url = '${EnvConfig.fullApiUrl}/places/reverse-geocode?'
+                  'lat=$latitude&lng=$longitude';
 
-      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders);
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

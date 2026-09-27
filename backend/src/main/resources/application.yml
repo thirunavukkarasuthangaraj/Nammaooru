@@ -337,6 +337,12 @@ gemini:
     per-key-rpm: 15  # Requests per minute per key
     total-rpm: 60     # Total requests per minute (4 keys × 15)
 
+# Google Maps Platform (Places/Geocoding) - proxied server-side so the key
+# never ships inside the mobile app and can be IP-restricted to this server.
+google:
+  maps:
+    api-key: ${GOOGLE_MAPS_API_KEY:AIzaSyAnAf-HWVsvKdYuzY7gMMiqTfyahKJSd1I}
+
 # Groq Configuration (fallback when Gemini fails / quota exhausted)
 groq:
   enabled: ${GROQ_ENABLED:true}
