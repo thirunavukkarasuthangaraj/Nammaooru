@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:geocoding/geocoding.dart';
+import '../../../core/services/location_service.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/storage/local_storage.dart';
@@ -1292,12 +1292,16 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     for (final candidate in candidates) {
       if (candidate.trim().isEmpty) continue;
       try {
-        final locations = await locationFromAddress(candidate);
+        // Backend-proxied geocoding (accurate Google results, OSM fallback) -
+        // the on-device geocoder previously used here was unreliable for
+        // rural Indian villages.
+        final locations = await LocationService.instance.searchPlaces(candidate);
         if (locations.isNotEmpty) {
-          print('✅ Geocoded "$candidate" to: ${locations.first.latitude}, ${locations.first.longitude}');
+          final first = locations.first;
+          print('✅ Geocoded "$candidate" to: ${first['latitude']}, ${first['longitude']}');
           return (
-            latitude: locations.first.latitude,
-            longitude: locations.first.longitude
+            latitude: first['latitude'] as double,
+            longitude: first['longitude'] as double
           );
         }
       } catch (e) {

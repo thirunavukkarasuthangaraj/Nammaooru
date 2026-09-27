@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart' as loc;
-import 'package:geocoding/geocoding.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../../../core/services/location_service.dart';
@@ -427,21 +426,25 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     });
 
     try {
-      // Use geocoding to find the location
-      final locations = await locationFromAddress(address);
+      // Backend-proxied geocoding (accurate Google results, OSM fallback) -
+      // replaces the on-device geocoder previously used here, which was
+      // unreliable for rural Indian villages.
+      final results = await LocationService.instance.searchPlaces(address);
 
-      if (locations.isNotEmpty) {
-        final location = locations.first;
+      if (results.isNotEmpty) {
+        final location = results.first;
+        final lat = location['latitude'] as double;
+        final lng = location['longitude'] as double;
         setState(() {
-          _selectedLatitude = location.latitude;
-          _selectedLongitude = location.longitude;
+          _selectedLatitude = lat;
+          _selectedLongitude = lng;
         });
 
         // Move map to searched location
-        final searchedLocation = LatLng(location.latitude, location.longitude);
+        final searchedLocation = LatLng(lat, lng);
         _updateMarker(searchedLocation);
-        _animateToPosition(location.latitude, location.longitude);
-        await _getAddressFromCoordinates(location.latitude, location.longitude);
+        _animateToPosition(lat, lng);
+        await _getAddressFromCoordinates(lat, lng);
 
         FocusScope.of(context).unfocus();
       } else {
@@ -493,19 +496,22 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     void addSuggestion({
       required String name,
       required String full,
-      required double lat,
-      required double lng,
+      double? lat,
+      double? lng,
+      String? placeId,
       String street = '',
       String area = '',
       String city = '',
       int relevance = 0,
       bool isKnownVillage = false,
     }) {
-      final locationKey = '${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}';
+      final locationKey = (lat != null && lng != null)
+          ? '${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}'
+          : 'place_$placeId';
       if (processedLocations.contains(locationKey)) return;
       processedLocations.add(locationKey);
 
-      final distance = (currentLat != null && currentLng != null)
+      final distance = (currentLat != null && currentLng != null && lat != null && lng != null)
           ? _calculateDistance(currentLat, currentLng, lat, lng)
           : 0.0;
 
@@ -514,6 +520,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
         'full': full,
         'lat': lat,
         'lng': lng,
+        'placeId': placeId,
         'street': street,
         'area': area,
         'city': city,
@@ -523,100 +530,34 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       });
     }
 
-    // Source 1: Google's geocoder — good for cities, streets, well-mapped areas.
+    // Source 1: our backend-proxied Google Places Autocomplete - accurate,
+    // ranked partial-match predictions. Coordinates are resolved lazily via
+    // getPlaceDetails only once the user taps a suggestion (Google's own
+    // recommended Autocomplete -> Place Details flow). This replaces the
+    // on-device geocoder previously used here, which was inaccurate for
+    // rural Indian villages and had a fallback bug: when its placemark
+    // didn't textually contain the query, the label defaulted to just
+    // echoing the raw search text - so a suggestion could show e.g.
+    // "Marimanikuppam" while actually resolving to a different, nearby
+    // village's coordinates.
     try {
-      List<Location> locations = [];
-      try {
-        locations = await locationFromAddress(query).timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => [],
+      final predictions = await LocationService.instance
+          .autocompletePlaces(query)
+          .timeout(const Duration(seconds: 6), onTimeout: () => []);
+
+      final searchLower = query.toLowerCase();
+      for (final p in predictions) {
+        if (suggestions.length >= 10) break;
+        final name = p['name'] as String;
+        addSuggestion(
+          name: name,
+          full: name,
+          placeId: p['placeId'] as String?,
+          relevance: name.toLowerCase().contains(searchLower) ? 100 : 10,
         );
-      } catch (e) {
-        locations = await locationFromAddress('$query, India').timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => [],
-        );
-      }
-
-      String searchLower = query.toLowerCase();
-
-      for (int i = 0; i < locations.length && suggestions.length < 10; i++) {
-        final location = locations[i];
-        try {
-          final placemarks = await placemarkFromCoordinates(
-            location.latitude,
-            location.longitude,
-          );
-          if (placemarks.isEmpty) continue;
-          final placemark = placemarks.first;
-
-          String businessName = query;
-          String locationArea = '';
-          String cityName = placemark.locality ?? '';
-
-          if (placemark.name != null && placemark.name!.toLowerCase().contains(searchLower)) {
-            businessName = placemark.name!;
-          } else if (placemark.street != null && placemark.street!.toLowerCase().contains(searchLower)) {
-            businessName = placemark.street!;
-          } else if (placemark.subLocality != null && placemark.subLocality!.toLowerCase().contains(searchLower)) {
-            businessName = placemark.subLocality!;
-          } else if (placemark.locality != null && placemark.locality!.toLowerCase().contains(searchLower)) {
-            businessName = placemark.locality!;
-          }
-
-          String streetName = placemark.street ?? '';
-          if (placemark.subLocality != null &&
-              placemark.subLocality!.isNotEmpty &&
-              placemark.subLocality != businessName &&
-              placemark.subLocality != streetName) {
-            locationArea = placemark.subLocality!;
-          } else if (placemark.street != null &&
-              placemark.street!.isNotEmpty &&
-              placemark.street != businessName) {
-            locationArea = placemark.street!;
-          }
-
-          String displayName;
-          if (businessName.toLowerCase().contains(searchLower)) {
-            if (streetName.isNotEmpty && streetName != businessName) {
-              displayName = '$businessName - $streetName, $cityName';
-            } else if (locationArea.isNotEmpty && locationArea != businessName) {
-              displayName = '$businessName - $locationArea, $cityName';
-            } else {
-              displayName = '$businessName - $cityName';
-            }
-          } else {
-            if (streetName.isNotEmpty) {
-              displayName = '$query - $streetName, $cityName';
-            } else if (locationArea.isNotEmpty) {
-              displayName = '$query - $locationArea, $cityName';
-            } else {
-              displayName = '$query - $cityName';
-            }
-          }
-
-          int relevanceScore = 0;
-          if (businessName.toLowerCase().contains(searchLower)) relevanceScore += 100;
-          if (businessName.toLowerCase().startsWith(searchLower)) relevanceScore += 50;
-          if (streetName.toLowerCase().contains(searchLower)) relevanceScore += 40;
-          if (locationArea.toLowerCase().contains(searchLower)) relevanceScore += 30;
-
-          addSuggestion(
-            name: displayName,
-            full: _formatAddress(placemark),
-            lat: location.latitude,
-            lng: location.longitude,
-            street: streetName,
-            area: locationArea,
-            city: cityName,
-            relevance: relevanceScore,
-          );
-        } catch (e) {
-          print('Error getting placemark: $e');
-        }
       }
     } catch (e) {
-      print('Error in locationFromAddress: $e');
+      print('Places autocomplete failed: $e');
     }
 
     // Source 2: this app's own shop/delivery-village database. Google's
@@ -683,54 +624,45 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     return 12742 * math.asin(math.sqrt(a)); // 2 * R; R = 6371 km
   }
 
-  String _formatAddress(Placemark placemark) {
-    final parts = <String>[];
-
-    // Add street name first
-    if (placemark.street?.isNotEmpty == true) {
-      parts.add(placemark.street!);
-    }
-
-    // Add area/sublocality
-    if (placemark.subLocality?.isNotEmpty == true &&
-        placemark.subLocality != placemark.street) {
-      parts.add(placemark.subLocality!);
-    }
-
-    // Add locality (city)
-    if (placemark.locality?.isNotEmpty == true &&
-        placemark.locality != placemark.subLocality) {
-      parts.add(placemark.locality!);
-    }
-
-    // Add state
-    if (placemark.administrativeArea?.isNotEmpty == true) {
-      parts.add(placemark.administrativeArea!);
-    }
-
-    // Add postal code
-    if (placemark.postalCode?.isNotEmpty == true) {
-      parts.add(placemark.postalCode!);
-    }
-
-    return parts.join(', ');
-  }
-
-  void _selectSuggestion(Map<String, dynamic> suggestion) {
+  Future<void> _selectSuggestion(Map<String, dynamic> suggestion) async {
     _addressController.text = suggestion['full'];
     setState(() {
       _showSuggestions = false;
-      _selectedLatitude = suggestion['lat'];
-      _selectedLongitude = suggestion['lng'];
+    });
+    FocusScope.of(context).unfocus();
+
+    double? lat = suggestion['lat'] as double?;
+    double? lng = suggestion['lng'] as double?;
+
+    // Autocomplete predictions (Source 1) carry a placeId instead of
+    // coordinates - resolve the real lat/lng now, only for the one place
+    // the user actually picked.
+    if (lat == null || lng == null) {
+      final placeId = suggestion['placeId'] as String?;
+      if (placeId == null) return;
+      setState(() => _isSearching = true);
+      final details = await LocationService.instance.getPlaceDetails(placeId);
+      setState(() => _isSearching = false);
+      if (details == null) {
+        if (mounted) {
+          Helpers.showSnackBar(context, 'Could not load that location. Try another suggestion.', isError: true);
+        }
+        return;
+      }
+      lat = details['latitude'] as double;
+      lng = details['longitude'] as double;
+    }
+
+    setState(() {
+      _selectedLatitude = lat;
+      _selectedLongitude = lng;
     });
 
     // Move map to the selected location and add marker
-    final selectedLocation = LatLng(suggestion['lat'], suggestion['lng']);
+    final selectedLocation = LatLng(lat, lng);
     _updateMarker(selectedLocation);
-    _animateToPosition(suggestion['lat'], suggestion['lng']);
-    _getAddressFromCoordinates(suggestion['lat'], suggestion['lng']);
-
-    FocusScope.of(context).unfocus();
+    _animateToPosition(lat, lng);
+    _getAddressFromCoordinates(lat, lng);
   }
 
   Future<void> _saveLocation() async {
