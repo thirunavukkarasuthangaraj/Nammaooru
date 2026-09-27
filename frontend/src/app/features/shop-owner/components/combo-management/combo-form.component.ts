@@ -357,6 +357,15 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
+    // Belt-and-suspenders alongside the disabled Save button: the image
+    // upload is async and patches bannerImageUrl into the form only once it
+    // completes, so submitting a moment too early silently saves the combo
+    // with no image at all - the completed upload response then just gets
+    // discarded when the dialog closes.
+    if (this.isUploadingImage) {
+      this.showSnackBar('Please wait for the image to finish uploading', 'error');
+      return;
+    }
     if (this.comboForm.invalid) {
       this.markFormGroupTouched(this.comboForm);
       if (this.itemsFormArray.length < 2) {

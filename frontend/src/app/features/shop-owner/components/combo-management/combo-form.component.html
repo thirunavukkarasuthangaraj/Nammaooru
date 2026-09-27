@@ -191,9 +191,10 @@
   <mat-dialog-actions align="end">
     <button mat-button (click)="onCancel()" [disabled]="isSaving">Cancel</button>
     <button mat-raised-button color="primary" (click)="onSubmit()"
-            [disabled]="isSaving || itemsFormArray.length < 2">
+            [disabled]="isSaving || isUploadingImage || itemsFormArray.length < 2">
       <mat-spinner diameter="20" *ngIf="isSaving"></mat-spinner>
-      <span *ngIf="!isSaving">{{ isEditMode ? 'Update Combo' : 'Create Combo' }}</span>
+      <span *ngIf="!isSaving && isUploadingImage">Uploading image...</span>
+      <span *ngIf="!isSaving && !isUploadingImage">{{ isEditMode ? 'Update Combo' : 'Create Combo' }}</span>
     </button>
   </mat-dialog-actions>
 </div>
