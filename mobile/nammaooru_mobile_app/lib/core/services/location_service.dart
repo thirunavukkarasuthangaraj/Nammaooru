@@ -48,6 +48,15 @@ class LocationService {
   // Use your Google Maps API key from env config
   static const String _googleApiKey = 'AIzaSyAnAf-HWVsvKdYuzY7gMMiqTfyahKJSd1I';
 
+  // This key is restricted (Android apps) in Google Cloud Console to
+  // com.nammaooru.app's signing certificate. Since these are plain REST
+  // calls (not the native Maps SDK, which would attach this automatically),
+  // every request must carry these two headers itself or Google rejects it.
+  static const Map<String, String> _googleApiHeaders = {
+    'X-Android-Package': 'com.nammaooru.app',
+    'X-Android-Cert': '8A:BE:5D:FC:7A:67:6A:0C:D2:DA:07:91:DA:C0:53:B7:AD:3D:09:72',
+  };
+
   /// Human-readable label for the manually selected location, shown in the
   /// "Deliver to" bar (e.g. the village name the user searched for).
   static String? _manualLocationLabel;
@@ -98,11 +107,16 @@ class LocationService {
       final googleResults = await _searchPlacesGoogle(query, languageCode);
       if (googleResults.isNotEmpty) return googleResults;
     }
+    return _searchOsmProviders(query, languageCode);
+  }
 
-    // Nominatim honours the app language (Tamil names in Tamil mode) but is
-    // strict about spelling; Photon is typo-tolerant. Query BOTH in parallel
-    // and prefer by language strength, so total wait is one round-trip and a
-    // failing provider never blanks the results.
+  // Nominatim honours the app language (Tamil names in Tamil mode) but is
+  // strict about spelling; Photon is typo-tolerant. Query BOTH in parallel
+  // and prefer by language strength, so total wait is one round-trip and a
+  // failing provider never blanks the results. No API key/billing needed -
+  // the fallback of last resort when Google rejects a request.
+  Future<List<Map<String, dynamic>>> _searchOsmProviders(
+      String query, String languageCode) async {
     final results = await Future.wait([
       _searchPlacesPhoton(query),
       _searchPlacesNominatim(query, languageCode),
@@ -158,7 +172,7 @@ class LocationService {
           'components=country:IN&'
           'language=$languageCode&'
           'key=$_googleApiKey';
-      final response = await http.get(Uri.parse(url)).timeout(_providerTimeout);
+      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders).timeout(_providerTimeout);
       if (response.statusCode != 200) return [];
 
       final data = json.decode(response.body);
@@ -212,6 +226,107 @@ class LocationService {
     }
   }
 
+  // The Geocoding API above (searchPlaces) resolves ONE specific address to
+  // coordinates - it's the wrong tool for "suggest as you type" and is why
+  // typing a partial village name only ever returned a single match instead
+  // of the multi-result dropdown Zomato/Swiggy show. Places Autocomplete is
+  // the API actually built for that: it returns ranked partial-match
+  // predictions (streets, localities, POIs) as the user types.
+  //
+  // Session tokens batch every keystroke's autocomplete call plus the final
+  // Place Details call into one billable "session" instead of billing each
+  // call separately - generate one per search (see AddressSelectionDialog)
+  // and pass it through both calls, then start a new one after a selection.
+  Future<List<Map<String, dynamic>>> autocompletePlaces(
+    String input, {
+    String? sessionToken,
+    String languageCode = 'en',
+  }) async {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return [];
+
+    try {
+      // Soft bias (not a hard filter) toward wherever the device actually is
+      // right now - a customer in Bangalore typing "alanga" should see
+      // nearby Karnataka matches first, one in Kolkata should see West
+      // Bengal matches first, while still being able to find a place in any
+      // other state (e.g. ordering for family back in their native village).
+      // 50km keeps the bias city-scale rather than country-scale.
+      final biasLat = cachedLatitude;
+      final biasLng = cachedLongitude;
+      final locationBias = (biasLat != null && biasLng != null)
+          ? 'locationbias=circle:50000@$biasLat,$biasLng&'
+          : '';
+
+      final url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
+          'input=${Uri.encodeComponent(trimmed)}&'
+          'components=country:in&'
+          '$locationBias'
+          'language=$languageCode&'
+          '${sessionToken != null ? 'sessiontoken=$sessionToken&' : ''}'
+          'key=$_googleApiKey';
+      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders).timeout(_providerTimeout);
+      if (response.statusCode != 200) {
+        return _searchOsmProviders(trimmed, languageCode);
+      }
+
+      final data = json.decode(response.body);
+      if (data['status'] != 'OK' || data['predictions'] == null) {
+        // REQUEST_DENIED (no billing on the Maps project), quota errors, etc.
+        // all fall back to the free OSM-based providers below rather than
+        // showing "not found" - same providers plain searchPlaces() uses.
+        if (data['status'] != 'ZERO_RESULTS') {
+          print('⚠️ Places autocomplete: ${data['status']} - falling back to OSM');
+        }
+        return _searchOsmProviders(trimmed, languageCode);
+      }
+
+      final predictions = (data['predictions'] as List).map<Map<String, dynamic>>((p) {
+        return {
+          'name': p['description'] as String,
+          'placeId': p['place_id'] as String,
+        };
+      }).toList();
+      if (predictions.isNotEmpty) return predictions;
+      return _searchOsmProviders(trimmed, languageCode);
+    } catch (e) {
+      print('❌ Places autocomplete failed: $e - falling back to OSM');
+      return _searchOsmProviders(trimmed, languageCode);
+    }
+  }
+
+  /// Resolves an autocomplete prediction's place_id to coordinates. Ends the
+  /// billing session started by [autocompletePlaces] - callers should start a
+  /// fresh session token for the next search.
+  Future<Map<String, dynamic>?> getPlaceDetails(
+    String placeId, {
+    String? sessionToken,
+  }) async {
+    try {
+      final url = 'https://maps.googleapis.com/maps/api/place/details/json?'
+          'place_id=${Uri.encodeComponent(placeId)}&'
+          'fields=geometry,formatted_address,name&'
+          '${sessionToken != null ? 'sessiontoken=$sessionToken&' : ''}'
+          'key=$_googleApiKey';
+      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders).timeout(_providerTimeout);
+      if (response.statusCode != 200) return null;
+
+      final data = json.decode(response.body);
+      if (data['status'] != 'OK' || data['result'] == null) return null;
+
+      final result = data['result'];
+      final location = result['geometry']['location'];
+      return {
+        'name': result['formatted_address'] as String? ?? result['name'] as String?,
+        'latitude': (location['lat'] as num).toDouble(),
+        'longitude': (location['lng'] as num).toDouble(),
+      };
+    } catch (e) {
+      print('❌ Place details lookup failed: $e');
+      return null;
+    }
+  }
+
   Future<Map<String, String>?> getAddressFromGoogleAPI(double latitude, double longitude) async {
     try {
       print('🌍 GOOGLE API REQUEST: lat=$latitude, lng=$longitude');
@@ -222,7 +337,7 @@ class LocationService {
                   'result_type=street_address|route|neighborhood|locality|sublocality&'
                   'key=$_googleApiKey';
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url), headers: _googleApiHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
