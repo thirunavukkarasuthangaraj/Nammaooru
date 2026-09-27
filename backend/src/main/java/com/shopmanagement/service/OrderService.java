@@ -1891,6 +1891,31 @@ public class OrderService {
                 })
                 .collect(Collectors.toList());
         
+        // Re-validate the promo code against THIS order, server-side, right before it's
+        // applied - the client already called /promotions/validate once to preview the
+        // discount, but nothing stopped it from resubmitting that same promoCode/discount
+        // on a second, third, etc. order without calling validate again, since this method
+        // used to just trust request.getDiscount()/getPromoCode() as-is. That let a promo
+        // meant to be one-time-per-customer (or first-time-only) be reused indefinitely.
+        // The discount actually applied is always the server-computed amount, never the
+        // client-supplied one, so a tampered request.getDiscount() can't inflate it either.
+        BigDecimal validatedDiscount = BigDecimal.ZERO;
+        Long validatedPromotionId = null;
+        if (request.getPromoCode() != null && !request.getPromoCode().trim().isEmpty()) {
+            PromotionService.PromoCodeValidationResult validation = promotionService.validatePromoCode(
+                    request.getPromoCode(),
+                    customer.getId(),
+                    request.getDeviceUuid(),
+                    customer.getMobileNumber(),
+                    request.getSubtotal(),
+                    shop.getId());
+            if (!validation.isValid()) {
+                throw new RuntimeException(validation.getMessage());
+            }
+            validatedDiscount = validation.getDiscountAmount();
+            validatedPromotionId = validation.getPromotion().getId();
+        }
+
         // Create order
         Order order = Order.builder()
                 .customer(customer)
@@ -1901,7 +1926,7 @@ public class OrderService {
                 .subtotal(request.getSubtotal())
                 .taxAmount(BigDecimal.ZERO)
                 .deliveryFee(request.getDeliveryFee())
-                .discountAmount(request.getDiscount())
+                .discountAmount(validatedDiscount)
                 .couponCode(request.getPromoCode())
                 .totalAmount(request.getTotal())
                 .notes(request.getNotes())
@@ -1925,15 +1950,16 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Record promo code usage if promo code was applied
-        if (request.getPromoCode() != null && !request.getPromoCode().trim().isEmpty() &&
-            request.getPromotionId() != null) {
+        // Record promo code usage if promo code was applied and passed the server-side
+        // re-validation above (validatedPromotionId is only ever set on that success path).
+        if (validatedPromotionId != null) {
+            final Long promotionIdForUsage = validatedPromotionId;
             try {
                 log.info("Recording promo code usage: {} for order: {}", request.getPromoCode(), savedOrder.getOrderNumber());
 
                 // Find the promotion
-                com.shopmanagement.entity.Promotion promotion = promotionRepository.findById(request.getPromotionId())
-                    .orElseThrow(() -> new RuntimeException("Promotion not found: " + request.getPromotionId()));
+                com.shopmanagement.entity.Promotion promotion = promotionRepository.findById(promotionIdForUsage)
+                    .orElseThrow(() -> new RuntimeException("Promotion not found: " + promotionIdForUsage));
 
                 // Determine if this is customer's first order
                 long customerOrderCount = orderRepository.countByCustomerId(customer.getId());
@@ -1947,7 +1973,7 @@ public class OrderService {
                     request.getDeviceUuid(), // Device UUID from request
                     customer.getMobileNumber(), // Customer phone
                     customer.getEmail(), // Customer email
-                    request.getDiscount(), // Discount amount applied
+                    validatedDiscount, // Discount amount actually applied (server-computed)
                     request.getSubtotal(), // Order subtotal before discount
                     isFirstOrder,
                     null, // IP address (not available here)
