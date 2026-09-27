@@ -46,7 +46,8 @@ public class CustomerService {
     private final ShopRepository shopRepository;
     private final ShopProductRepository shopProductRepository;
     private final OrderService orderService;
-    
+    private final SignupBonusService signupBonusService;
+
     // Get all customers for admin
     public Page<CustomerResponse> getAllCustomers(int page, int size, String sortBy, String sortDirection) {
         Sort.Direction direction = sortDirection.equalsIgnoreCase("DESC") ? 
@@ -471,7 +472,18 @@ public class CustomerService {
             }
             
             log.info("Customer saved successfully with ID: {}", savedCustomer.getId());
-            
+
+            // Queue the welcome bonus (no-op if the feature is disabled in settings).
+            // Deliberately placed right after the existsByMobileNumber check above
+            // confirmed this is a genuinely brand-new registration, never reachable
+            // from a customer-callable endpoint that any existing account could hit.
+            try {
+                signupBonusService.grantOnRegistration(savedCustomer.getMobileNumber());
+            } catch (Exception e) {
+                log.error("Failed to grant signup bonus for {}: {}", savedCustomer.getMobileNumber(), e.getMessage());
+                // Never fail registration itself over a bonus-granting problem.
+            }
+
             // Generate authentication tokens
             Map<String, Object> tokens = generateMobileAuthTokens(savedCustomer);
             

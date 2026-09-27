@@ -132,6 +132,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Subscription Pricing', icon: 'request_quote', route: '/admin/payment-collect', badge: null },
         { title: 'Shop Payments', icon: 'storefront', route: '/admin/shop-payments', badge: null },
         { title: 'Withdrawals', icon: 'account_balance_wallet', route: '/admin/withdrawals', badge: null },
+        { title: 'Welcome Bonus', icon: 'redeem', route: '/admin/signup-bonuses', badge: null },
         { title: 'Financial Reports', icon: 'assessment', route: '/finance/reports', badge: null }
       ]
     },

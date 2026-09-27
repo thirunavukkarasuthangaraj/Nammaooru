@@ -1,0 +1,73 @@
+<div class="bonus-page">
+  <div class="page-header">
+    <h1>Welcome Bonus Payouts</h1>
+    <p class="subtitle">Send the welcome bonus to a new customer's UPI-linked mobile number, then confirm here</p>
+  </div>
+
+  <mat-card class="config-card">
+    <div class="config-row">
+      <mat-slide-toggle [(ngModel)]="enabled" [disabled]="isSavingConfig" (change)="toggleEnabled()">
+        Welcome bonus {{ enabled ? 'enabled' : 'disabled' }}
+      </mat-slide-toggle>
+    </div>
+
+    <div class="config-row">
+      <mat-form-field appearance="outline" class="config-field">
+        <mat-label>Bonus amount (₹)</mat-label>
+        <input matInput type="number" min="0" [(ngModel)]="amount" />
+      </mat-form-field>
+      <button mat-stroked-button color="primary" [disabled]="isSavingConfig" (click)="saveAmount()">Save</button>
+    </div>
+
+    <div class="config-row">
+      <mat-form-field appearance="outline" class="config-field">
+        <mat-label>Admin reminder interval (minutes)</mat-label>
+        <input matInput type="number" min="5" [(ngModel)]="reminderIntervalMinutes" />
+      </mat-form-field>
+      <button mat-stroked-button color="primary" [disabled]="isSavingConfig" (click)="saveReminderInterval()">Save</button>
+    </div>
+  </mat-card>
+
+  <div class="loading-row" *ngIf="isLoading">
+    <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && bonuses.length === 0">
+    <mat-icon>check_circle</mat-icon>
+    <p>No pending welcome bonus payouts right now.</p>
+  </div>
+
+  <div class="bonus-list" *ngIf="!isLoading">
+    <mat-card class="bonus-card" *ngFor="let row of bonuses">
+      <div class="card-top">
+        <div class="mobile-info">
+          <mat-icon>smartphone</mat-icon>
+          <span class="mobile-number">{{ row.mobileNumber }}</span>
+        </div>
+        <div class="amount">₹{{ row.amount | number: '1.2-2' }}</div>
+      </div>
+
+      <div class="card-meta">
+        <span>Registered {{ row.createdAt | date: 'dd MMM y, h:mm a' }}</span>
+        <span> &middot; Open your UPI app and pay this number directly</span>
+      </div>
+
+      <div class="card-actions">
+        <button mat-stroked-button color="primary" (click)="copyMobileNumber(row)" class="upi-pay-btn">
+          <mat-icon>content_copy</mat-icon> Copy Number
+        </button>
+        <mat-form-field appearance="outline" class="reference-field">
+          <mat-label>UPI Transaction Reference</mat-label>
+          <input matInput [(ngModel)]="row.referenceInput" placeholder="e.g. UPI txn ID after paying" />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="processingId === row.id"
+          (click)="markPaid(row)">
+          Mark as Paid
+        </button>
+      </div>
+    </mat-card>
+  </div>
+</div>

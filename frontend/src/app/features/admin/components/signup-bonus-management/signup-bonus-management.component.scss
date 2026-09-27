@@ -1,0 +1,131 @@
+.bonus-page {
+  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 24px;
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #333;
+  }
+
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+.config-card {
+  padding: 20px !important;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .config-field {
+      width: 220px;
+
+      ::ng-deep .mat-mdc-form-field-infix {
+        min-height: 40px;
+      }
+    }
+  }
+}
+
+.loading-row {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #666;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #4caf50;
+    margin-bottom: 12px;
+  }
+}
+
+.bonus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bonus-card {
+  padding: 20px !important;
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    .mobile-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      mat-icon {
+        color: #666;
+      }
+
+      .mobile-number {
+        font-size: 17px;
+        font-weight: 700;
+        color: #222;
+      }
+    }
+
+    .amount {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1a7f4b;
+    }
+  }
+
+  .card-meta {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 12px;
+  }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .upi-pay-btn {
+      white-space: nowrap;
+    }
+
+    .reference-field {
+      flex: 1;
+      min-width: 220px;
+
+      ::ng-deep .mat-mdc-form-field-infix {
+        min-height: 40px;
+      }
+    }
+  }
+}

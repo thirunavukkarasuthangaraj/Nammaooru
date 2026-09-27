@@ -57,6 +57,9 @@ public class AuthController {
     @Autowired
     private com.shopmanagement.repository.UserRepository userRepository;
 
+    @Autowired
+    private com.shopmanagement.service.SignupBonusService signupBonusService;
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse authResponse = authService.register(request);
@@ -263,8 +266,22 @@ public class AuthController {
             if (isOtpValid && user != null) {
                 // Mark mobile as verified
                 if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                    // Captured before overwriting below - only a mobile number that was NOT
+                    // already verified is a genuinely new registration completing right now.
+                    // Without this check, an existing verified customer re-running OTP
+                    // verification for some other purpose (e.g. re-login) would also pass
+                    // through here and could be made to re-trigger a bonus grant.
+                    boolean isFirstVerification = !Boolean.TRUE.equals(user.getMobileVerified());
                     user.setMobileVerified(true);
                     userRepository.save(user);
+
+                    if (isFirstVerification && "REGISTRATION".equalsIgnoreCase(purpose)) {
+                        try {
+                            signupBonusService.grantOnRegistration(user.getMobileNumber());
+                        } catch (Exception e) {
+                            log.error("Failed to grant signup bonus for {}: {}", user.getMobileNumber(), e.getMessage());
+                        }
+                    }
                 }
 
                 var jwtToken = authService.generateTokenForUser(user);
