@@ -1916,6 +1916,15 @@ public class OrderService {
             validatedPromotionId = validation.getPromotion().getId();
         }
 
+        // request.getTotal() used to be trusted as-is here - so even with the promo-code
+        // re-validation above, a customer's app could still submit an arbitrary total
+        // (e.g. left over from an earlier cart state where a promo applied and was then
+        // removed, or simple tampering) with no server-side check that it actually
+        // matches subtotal + delivery - discount. Compute it authoritatively instead.
+        BigDecimal computedTotal = request.getSubtotal()
+                .add(request.getDeliveryFee() != null ? request.getDeliveryFee() : BigDecimal.ZERO)
+                .subtract(validatedDiscount);
+
         // Create order
         Order order = Order.builder()
                 .customer(customer)
@@ -1928,7 +1937,7 @@ public class OrderService {
                 .deliveryFee(request.getDeliveryFee())
                 .discountAmount(validatedDiscount)
                 .couponCode(request.getPromoCode())
-                .totalAmount(request.getTotal())
+                .totalAmount(computedTotal)
                 .notes(request.getNotes())
                 .deliveryType(Order.DeliveryType.valueOf(deliveryType))
                 .deliveryAddress(request.getDeliveryAddress() != null ? request.getDeliveryAddress().getStreetAddress() : null)
