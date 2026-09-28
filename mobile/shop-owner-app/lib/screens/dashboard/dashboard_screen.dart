@@ -43,6 +43,15 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   bool _isLoading = true;
   int _unreadNotificationCount = 0;
   int? _shopId;
+  String? _shopName;
+  String? _shopLogoUrl;
+  bool _logoLoadFailed = false;
+
+  // Shop online/offline toggle. Null while unknown (still loading, or the
+  // status call failed) - the switch stays disabled rather than guessing.
+  bool? _isShopOpen;
+  bool _isManualOverride = false;
+  bool _isTogglingShopStatus = false;
 
   @override
   void initState() {
@@ -96,7 +105,26 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
       final shopId = shopData['id'] ?? shopData['shopId'];
       print('Raw shopId value: $shopId (type: ${shopId.runtimeType})');
       _shopId = shopId is int ? shopId : int.tryParse(shopId.toString());
-      print('Loaded shopId: $_shopId');
+      _shopName = shopData['name'] ?? shopData['businessName'];
+
+      // Same LOGO-then-primary lookup as the Profile screen, so the header
+      // avatar shows the shop's real photo instead of a letter placeholder.
+      final images = shopData['images'] as List<dynamic>? ?? [];
+      final logoImage = images.cast<Map<String, dynamic>?>().firstWhere(
+            (img) => img?['imageType'] == 'LOGO',
+            orElse: () => null,
+          ) ??
+          images.cast<Map<String, dynamic>?>().firstWhere(
+            (img) => img?['isPrimary'] == true,
+            orElse: () => null,
+          );
+      _shopLogoUrl = logoImage?['imageUrl'] as String?;
+
+      print('Loaded shopId: $_shopId, shopName: $_shopName, logo: $_shopLogoUrl');
+
+      if (_shopId != null) {
+        _fetchShopAvailability(token);
+      }
 
       final dashboardResponse = await http.get(
         Uri.parse('${AppConfig.apiBaseUrl}/shops/$shopId/dashboard'),
@@ -153,6 +181,85 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     });
   }
 
+  // Backend already exposes /api/shop-availability/{shopId}/... to
+  // SHOP_OWNER (ShopAvailabilityController.java) - this only wires it up
+  // on the mobile side, no backend changes needed.
+  Future<void> _fetchShopAvailability(String token) async {
+    if (_shopId == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/shop-availability/$_shopId/status'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _isShopOpen = data['isAvailable'] == true;
+            _isManualOverride = data['isManualOverride'] == true;
+          });
+        }
+      }
+    } catch (e) {
+      // Leave _isShopOpen null - the toggle stays disabled rather than
+      // showing a guessed state.
+    }
+  }
+
+  Future<void> _toggleShopStatus(bool goOnline) async {
+    if (_shopId == null || _isTogglingShopStatus) return;
+
+    setState(() => _isTogglingShopStatus = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? widget.token;
+
+      final http.Response response;
+      if (goOnline) {
+        // Resume following the business-hours schedule instead of forcing
+        // "open" - if it's outside scheduled hours this correctly leaves the
+        // shop closed rather than lying about being open.
+        response = await http.post(
+          Uri.parse('${AppConfig.apiBaseUrl}/shop-availability/$_shopId/clear-override'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+      } else {
+        response = await http.post(
+          Uri.parse('${AppConfig.apiBaseUrl}/shop-availability/$_shopId/override'
+              '?isAvailable=false&reason=${Uri.encodeComponent('Closed by shop owner')}'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _isShopOpen = data['isAvailable'] == true;
+            _isManualOverride = data['isManualOverride'] == true;
+          });
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update shop status. Please try again.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Network error updating shop status.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isTogglingShopStatus = false);
+    }
+  }
+
   Future<void> _logout() async {
     try {
       await http.delete(
@@ -205,85 +312,123 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
-                      // Header
-                      SliverAppBar(
-                        expandedHeight: 110,
-                        floating: false,
-                        pinned: true,
-                        backgroundColor: const Color(0xFF2E7D32),
-                        flexibleSpace: FlexibleSpaceBar(
-                          background: Container(
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF1B5E20), Color(0xFF388E3C)],
-                              ),
+                      // Header - avatar/welcome row plus a shop open/closed
+                      // status pill (dot + label + switch) so the owner's
+                      // most time-sensitive control isn't buried in the body.
+                      SliverToBoxAdapter(
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF1B5E20), Color(0xFF388E3C)],
                             ),
-                            child: SafeArea(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      languageProvider.getText('Welcome back,', 'வணக்கம்,'),
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 14,
+                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                          ),
+                          child: SafeArea(
+                            bottom: false,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 12, 16, 20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 22,
+                                        backgroundColor: Colors.white.withOpacity(0.2),
+                                        backgroundImage: (!_logoLoadFailed &&
+                                                _shopLogoUrl != null &&
+                                                _shopLogoUrl!.isNotEmpty)
+                                            ? NetworkImage(AppConfig.getImageUrl(_shopLogoUrl))
+                                            : null,
+                                        onBackgroundImageError: (_shopLogoUrl != null && _shopLogoUrl!.isNotEmpty)
+                                            ? (error, stackTrace) {
+                                                if (mounted) setState(() => _logoLoadFailed = true);
+                                              }
+                                            : null,
+                                        child: (_logoLoadFailed || _shopLogoUrl == null || _shopLogoUrl!.isEmpty)
+                                            ? Text(
+                                                (_shopName?.isNotEmpty ?? false) ? _shopName![0].toUpperCase() : '?',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              )
+                                            : null,
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      widget.userName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              languageProvider.getText('Welcome back,', 'வணக்கம்,'),
+                                              style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              // Shop name, not the login username - "murugesan_79998"
+                                              // means nothing to the shop owner at a glance.
+                                              _shopName ?? '...',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 19,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          _HeaderIconButton(
+                                            icon: Icons.notifications_outlined,
+                                            onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(builder: (context) => NotificationsScreen(token: widget.token)),
+                                            ),
+                                          ),
+                                          if (_unreadNotificationCount > 0)
+                                            Positioned(
+                                              right: 2,
+                                              top: 2,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                                child: Text(
+                                                  '$_unreadNotificationCount',
+                                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _HeaderIconButton(
+                                        icon: Icons.logout_outlined,
+                                        onPressed: () => _showLogoutDialog(context, languageProvider),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _ShopStatusPill(
+                                    isOpen: _isShopOpen,
+                                    isManualOverride: _isManualOverride,
+                                    isToggling: _isTogglingShopStatus,
+                                    onChanged: _shopId == null ? null : _toggleShopStatus,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        actions: [
-                          Stack(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 26),
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => NotificationsScreen(token: widget.token)),
-                                ),
-                              ),
-                              if (_unreadNotificationCount > 0)
-                                Positioned(
-                                  right: 8,
-                                  top: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                                    child: Text(
-                                      '$_unreadNotificationCount',
-                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.logout_outlined, color: Colors.white, size: 24),
-                            onPressed: () => _showLogoutDialog(context, languageProvider),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
                       ),
 
                       // Content
@@ -536,6 +681,108 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
             },
             child: Text(languageProvider.logout, style: const TextStyle(color: Colors.red)),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// Circular translucent icon button used in the dashboard header - plain
+// white icons on the gradient had no tap-target affordance.
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _HeaderIconButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.15),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+// Shop open/closed status + manual toggle, shown in the dashboard header.
+// null isOpen (still loading / status call failed) disables the switch
+// rather than showing a guessed state.
+class _ShopStatusPill extends StatelessWidget {
+  final bool? isOpen;
+  final bool isManualOverride;
+  final bool isToggling;
+  final ValueChanged<bool>? onChanged;
+
+  const _ShopStatusPill({
+    required this.isOpen,
+    required this.isManualOverride,
+    required this.isToggling,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final known = isOpen != null;
+    final open = isOpen ?? false;
+    final statusColor = !known
+        ? Colors.white70
+        : (open ? const Color(0xFF69F0AE) : Colors.redAccent.shade100);
+
+    String label;
+    if (!known) {
+      label = 'Checking status...';
+    } else if (open) {
+      label = isManualOverride ? 'Open (manual)' : 'Shop is Open';
+    } else {
+      label = isManualOverride ? 'Closed by you' : 'Shop is Closed';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (isToggling)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          else
+            Switch(
+              value: open,
+              onChanged: known ? onChanged : null,
+              activeColor: Colors.white,
+              activeTrackColor: const Color(0xFF69F0AE),
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: Colors.white24,
+            ),
         ],
       ),
     );

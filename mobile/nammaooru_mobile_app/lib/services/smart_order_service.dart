@@ -278,7 +278,7 @@ class SmartOrderService {
   }
 
   /// Speak custom message
-  Future<void> speak(String text) => _ttsService.speak(text);
+  Future<void> speak(String text, {String? language}) => _ttsService.speak(text, language: language);
 
   /// Stop speaking
   Future<void> stopSpeaking() => _ttsService.stop();

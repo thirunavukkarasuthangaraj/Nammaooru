@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/combo_model.dart';
@@ -191,6 +192,54 @@ class _ComboCardState extends State<_ComboCard> {
   @override
   Widget build(BuildContext context) {
     final combo = widget.combo;
+    final hasBannerImage = combo.bannerImageUrl != null && combo.bannerImageUrl!.trim().isNotEmpty;
+
+    // Same treatment as the Home screen: a fully-designed banner image reads
+    // far better as the whole card than squeezed into the left thumbnail
+    // next to separately-rendered name/price text.
+    if (hasBannerImage) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CachedNetworkImage(
+              imageUrl: _getFullImageUrl(combo.bannerImageUrl),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => Container(
+                color: const Color(0xFF4CAF50).withOpacity(0.08),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0x804CAF50)),
+                ),
+              ),
+              errorWidget: (_, __, ___) => _buildTextCard(combo),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _buildTextCard(combo);
+  }
+
+  Widget _buildTextCard(CustomerCombo combo) {
     final hasImages = combo.items.any((item) => item.imageUrl != null && item.imageUrl!.isNotEmpty);
 
     return GestureDetector(

@@ -187,6 +187,14 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
     _setLocale(_currentLocale == 'en-IN' ? 'ta-IN' : 'en-IN');
   }
 
+  // Speaking/showing the English name in a Tamil sentence is what made Tamil
+  // mode still sound/read like English - the product's Tamil name was already
+  // being fetched (nameTamil) but never actually used here.
+  String _tamilName(Map<String, dynamic> product) {
+    final tamil = (product['nameTamil'] ?? '').toString().trim();
+    return tamil.isNotEmpty ? tamil : (product['name'] ?? '').toString();
+  }
+
   /// Add a suggested product directly to cart
   Future<void> _addSuggestionToCart(Map<String, dynamic> product) async {
     final cart = Provider.of<CartProvider>(context, listen: false);
@@ -195,12 +203,17 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
 
     if (success && mounted) {
       final name = product['name'] ?? '';
+      final tamilName = _tamilName(product);
       final weight = product['weightDisplay']?.toString() ?? '';
       final weightLabel = weight.isNotEmpty ? ' $weight' : '';
       setState(() => _suggestions = []);
       _textController.clear();
-      _addBotMessage('$name$weightLabel கார்ட்டில் சேர்க்கப்பட்டது!\n$name$weightLabel added to cart!');
-      _service.speak('$name$weightLabel சேர்க்கப்பட்டது. வேற add பண்ணவா?');
+      _addBotMessage('$tamilName$weightLabel கார்ட்டில் சேர்க்கப்பட்டது!\n$name$weightLabel added to cart!');
+      if (_currentLocale == 'en-IN') {
+        _service.speak('$name$weightLabel added to cart. Add anything else?', language: 'en-IN');
+      } else {
+        _service.speak('$tamilName$weightLabel சேர்க்கப்பட்டது. வேற add பண்ணவா?', language: 'ta-IN');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -328,9 +341,16 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
       // Speak items added + cart total
       final cartTotal = cart.total.toStringAsFixed(0);
       final cartCount = cart.productCount;
-      await _service.speak(
-          '$added பொருட்கள் கார்ட்டில் சேர்க்கப்பட்டன. '
-          'கார்ட்டில் $cartCount பொருட்கள், Total ₹$cartTotal');
+      if (_currentLocale == 'en-IN') {
+        await _service.speak(
+            '$added items added to cart. Cart has $cartCount items, Total ₹$cartTotal',
+            language: 'en-IN');
+      } else {
+        await _service.speak(
+            '$added பொருட்கள் கார்ட்டில் சேர்க்கப்பட்டன. '
+            'கார்ட்டில் $cartCount பொருட்கள், Total ₹$cartTotal',
+            language: 'ta-IN');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -359,7 +379,11 @@ class _SmartOrderScreenState extends State<SmartOrderScreen> {
         item.isAdded = true;
       });
 
-      _service.speak('${productData['name']} சேர்க்கப்பட்டது');
+      if (_currentLocale == 'en-IN') {
+        _service.speak('${productData['name'] ?? ''} added to cart', language: 'en-IN');
+      } else {
+        _service.speak('${_tamilName(productData)} சேர்க்கப்பட்டது', language: 'ta-IN');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

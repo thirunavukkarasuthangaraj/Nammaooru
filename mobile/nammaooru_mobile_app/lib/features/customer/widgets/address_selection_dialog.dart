@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/models/address_model.dart';
 import '../../../core/services/address_service.dart';
 import '../../../core/services/location_service.dart';
+import '../../../services/address_api_service.dart';
+import '../../../services/shop_api_service.dart';
+import '../../../core/utils/helpers.dart';
 import '../screens/address_management_screen.dart';
 import '../screens/google_maps_location_picker_screen.dart';
-import 'location_search_sheet.dart';
 
 class AddressSelectionDialog extends StatefulWidget {
   final String? currentLocation;
@@ -25,10 +29,28 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
   List<SavedAddress> _savedAddresses = [];
   bool _isLoading = true;
 
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _isSearching = false;
+  bool _hasSearched = false;
+  bool _isResolvingSelection = false;
+  // One token per search "session" (first keystroke to final pick) so Google
+  // bills the autocomplete keystrokes + the details lookup as a single
+  // session instead of per-request - a fresh token starts after each pick.
+  String? _sessionToken;
+
   @override
   void initState() {
     super.initState();
     _loadSavedAddresses();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSavedAddresses() async {
@@ -41,6 +63,108 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.trim().length < 2) {
+      setState(() {
+        _searchResults = [];
+        _hasSearched = false;
+      });
+      return;
+    }
+    _sessionToken ??= const Uuid().v4();
+    _debounce = Timer(
+      const Duration(milliseconds: 250),
+      () => _performSearch(query.trim()),
+    );
+  }
+
+  // Places Autocomplete is what actually powers Zomato/Swiggy-style
+  // suggest-as-you-type (ranked partial matches: streets, localities, POIs) -
+  // plain Geocoding only resolves one specific address, which is why the old
+  // search returned a single result for a partial name. Merged with the shop
+  // network's own known villages (e.g. "Mittur", which Google frequently has
+  // no listing for at all), run in parallel so one slow/failing source never
+  // blanks the other's results.
+  Future<void> _performSearch(String query) async {
+    setState(() => _isSearching = true);
+    final sessionToken = _sessionToken;
+    final lookups = await Future.wait<List<Map<String, dynamic>>>([
+      ShopApiService()
+          .searchShopLocations(query)
+          .timeout(const Duration(seconds: 3), onTimeout: () => <Map<String, dynamic>>[])
+          .catchError((_) => <Map<String, dynamic>>[]),
+      LocationService.instance
+          .autocompletePlaces(query, sessionToken: sessionToken)
+          .catchError((_) => <Map<String, dynamic>>[]),
+    ]);
+    final shopLocations = lookups[0]
+        .map((l) => {...l, 'isKnownVillage': true})
+        .toList();
+    final predictions = lookups[1];
+
+    final seen = shopLocations
+        .map((l) => (l['name'] as String).toLowerCase())
+        .toSet();
+    final results = [
+      ...shopLocations,
+      ...predictions.where((p) => !seen
+          .contains((p['name'] as String).toLowerCase().split(',').first.trim())),
+    ];
+    if (!mounted) return;
+    setState(() {
+      _searchResults = results;
+      _isSearching = false;
+      _hasSearched = true;
+    });
+  }
+
+  Future<void> _selectSearchResult(Map<String, dynamic> result) async {
+    var latitude = result['latitude'] as double?;
+    var longitude = result['longitude'] as double?;
+    var name = result['name'] as String;
+
+    final placeId = result['placeId'] as String?;
+    if (placeId != null) {
+      setState(() => _isResolvingSelection = true);
+      final details = await LocationService.instance
+          .getPlaceDetails(placeId, sessionToken: _sessionToken);
+      _sessionToken = null; // session ends once details are resolved
+      if (!mounted) return;
+      if (details == null) {
+        setState(() => _isResolvingSelection = false);
+        Helpers.showSnackBar(context, 'Could not load that place. Try another result.',
+            isError: true);
+        return;
+      }
+      latitude = details['latitude'] as double;
+      longitude = details['longitude'] as double;
+      name = details['name'] as String? ?? name;
+    }
+
+    if (latitude != null && longitude != null) {
+      LocationService.setManualPosition(latitude, longitude);
+      LocationService.manualLocationLabel = name;
+    }
+    widget.onLocationSelected(name);
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _useCurrentLocation() async {
+    LocationService.clearManualPosition();
+    final position = await LocationService.instance.getCurrentPosition();
+    if (position?.latitude == null || position?.longitude == null) return;
+    final address = await LocationService.instance.getAddressFromCoordinates(
+      position!.latitude!,
+      position.longitude!,
+    );
+    final label = address != null
+        ? '${address['locality'] ?? ''}${address['administrativeArea'] != null ? ', ${address['administrativeArea']}' : ''}'
+        : 'Current location';
+    widget.onLocationSelected(label.isNotEmpty ? label : 'Current location');
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _showAddAddressOptionsDialog(BuildContext context) async {
@@ -98,22 +222,15 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                 // Option 1: Enter Manually (Only option for now)
                 InkWell(
                   onTap: () async {
-                    Navigator.of(dialogContext)
-                        .pop(); // Close the options dialog
-                    // Small delay to ensure dialog is closed
-                    await Future.delayed(const Duration(milliseconds: 100));
-                    if (context.mounted) {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AddressManagementScreen(
-                              autoOpenManualForm: true),
-                        ),
-                      );
-                      if (mounted) {
-                        await _loadSavedAddresses();
-                      }
-                    }
+                    final navigator = Navigator.of(context, rootNavigator: true);
+                    Navigator.of(dialogContext).pop(); // close the options dialog
+                    Navigator.of(context).pop(); // close "Select Delivery Address" too
+                    await navigator.push(
+                      MaterialPageRoute(
+                        builder: (context) => const AddressManagementScreen(
+                            autoOpenManualForm: true),
+                      ),
+                    );
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -175,13 +292,12 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: () async {
-                    Navigator.of(dialogContext).pop();
-                    await Future<void>.delayed(
-                        const Duration(milliseconds: 150));
-                    if (!context.mounted) return;
+                    final navigator = Navigator.of(context, rootNavigator: true);
+                    final onLocationSelected = widget.onLocationSelected;
+                    Navigator.of(dialogContext).pop(); // close the options dialog
+                    Navigator.of(context).pop(); // close "Select Delivery Address" too
 
-                    final selectedLocation = await Navigator.push<String>(
-                      context,
+                    final selectedLocation = await navigator.push<String>(
                       MaterialPageRoute(
                         builder: (_) => GoogleMapsLocationPickerScreen(
                           currentLocation: widget.currentLocation,
@@ -189,9 +305,8 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                       ),
                     );
 
-                    if (selectedLocation != null && context.mounted) {
-                      widget.onLocationSelected(selectedLocation);
-                      await _loadSavedAddresses();
+                    if (selectedLocation != null) {
+                      onLocationSelected(selectedLocation);
                     }
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -251,103 +366,6 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                // Search by village/town name - looks up the shop network's
-                // own known locations (e.g. "Mittur") alongside the geocoder,
-                // so small villages a plain address form can't resolve still
-                // work here instead of silently falling back to a wrong
-                // default location.
-                InkWell(
-                  onTap: () async {
-                    Navigator.of(dialogContext).pop();
-                    await Future<void>.delayed(
-                        const Duration(milliseconds: 150));
-                    if (!context.mounted) return;
-                    final result = await LocationSearchSheet.show(context);
-                    if (result == null) return;
-                    if (result['useCurrentLocation'] == true) {
-                      LocationService.clearManualPosition();
-                      final position =
-                          await LocationService.instance.getCurrentPosition();
-                      if (position?.latitude == null ||
-                          position?.longitude == null) {
-                        return;
-                      }
-                      final address =
-                          await LocationService.instance.getAddressFromCoordinates(
-                        position!.latitude!,
-                        position.longitude!,
-                      );
-                      final label = address != null
-                          ? '${address['locality'] ?? ''}${address['administrativeArea'] != null ? ', ${address['administrativeArea']}' : ''}'
-                          : 'Current location';
-                      widget.onLocationSelected(
-                          label.isNotEmpty ? label : 'Current location');
-                    } else {
-                      final latitude = result['latitude'] as double;
-                      final longitude = result['longitude'] as double;
-                      final name = result['name'] as String;
-                      LocationService.setManualPosition(latitude, longitude);
-                      LocationService.manualLocationLabel = name;
-                      widget.onLocationSelected(name);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.orange, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.orange.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.search,
-                              color: Colors.orange, size: 32),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Search Location',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Find your village or town by name',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.arrow_forward_ios,
-                            color: Colors.orange, size: 16),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -396,9 +414,13 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            _buildSearchField(),
+            const SizedBox(height: 12),
 
-            if (_isLoading)
+            if (_searchController.text.trim().length >= 3)
+              _buildSearchResultsSection()
+            else if (_isLoading)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20),
@@ -430,6 +452,140 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {}); // refresh so switching to/from the results view
+          _onSearchChanged(value);
+        },
+        style: const TextStyle(fontSize: 14.5),
+        decoration: InputDecoration(
+          hintText: 'Search for a new address or village...',
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 13.5),
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          suffixIcon: _isSearching
+              ? const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: VillageTheme.primaryGreen,
+                    ),
+                  ),
+                )
+              : (_searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                      onPressed: () {
+                        _searchController.clear();
+                        _sessionToken = null;
+                        setState(() {
+                          _searchResults = [];
+                          _hasSearched = false;
+                        });
+                      },
+                    )
+                  : null),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsSection() {
+    return Expanded(
+      child: Stack(
+        children: [
+          AbsorbPointer(
+            absorbing: _isResolvingSelection,
+            child: Opacity(
+              opacity: _isResolvingSelection ? 0.5 : 1,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: VillageTheme.primaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.my_location,
+                          color: VillageTheme.primaryGreen, size: 20),
+                    ),
+                    title: const Text(
+                      'Use my current location',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                    onTap: _useCurrentLocation,
+                  ),
+                  if (_searchResults.isNotEmpty)
+                    ..._searchResults.map((place) {
+                      final isKnownVillage = place['isKnownVillage'] == true;
+                      return ListTile(
+                        leading: Icon(
+                          isKnownVillage
+                              ? Icons.holiday_village
+                              : Icons.location_on_outlined,
+                          color:
+                              isKnownVillage ? Colors.orange.shade700 : Colors.orange,
+                        ),
+                        title: Text(
+                          place['name'] as String,
+                          style: const TextStyle(fontSize: 14),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: isKnownVillage
+                            ? const Text(
+                                'Known village',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : null,
+                        onTap: () => _selectSearchResult(place),
+                      );
+                    })
+                  else if (_hasSearched && !_isSearching)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Text(
+                        'Place not found. Try a different name, or use "Add New Address" below for an exact pin.',
+                        style: TextStyle(fontSize: 12.5, color: Colors.grey),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (_isResolvingSelection)
+            const Center(
+              child: CircularProgressIndicator(
+                color: VillageTheme.primaryGreen,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -551,7 +707,7 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                       ),
                     ),
                     if (isDefault) ...[
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
@@ -569,6 +725,16 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
                         ),
                       ),
                     ],
+                    const Spacer(),
+                    InkWell(
+                      onTap: () => _confirmDeleteAddress(address),
+                      borderRadius: BorderRadius.circular(20),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.delete_outline,
+                            size: 18, color: Colors.redAccent),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -644,6 +810,45 @@ class _AddressSelectionDialogState extends State<AddressSelectionDialog> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAddress(SavedAddress address) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Delete Address'),
+        content: const Text('Are you sure you want to delete this address?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final addressId = int.tryParse(address.id);
+    if (addressId == null) return;
+
+    final result = await AddressApiService.deleteAddress(addressId);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      Helpers.showSnackBar(context, result['message'] ?? 'Address deleted');
+      await _loadSavedAddresses();
+    } else {
+      Helpers.showSnackBar(
+        context,
+        result['message'] ?? 'Failed to delete address',
+        isError: true,
+      );
+    }
   }
 
   IconData _getAddressTypeIcon(String addressType) {

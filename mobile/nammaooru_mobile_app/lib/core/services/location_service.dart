@@ -2,6 +2,7 @@ import 'package:location/location.dart' as loc;
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math' as math;
 import '../config/env_config.dart';
 
 class LocationService {
@@ -305,6 +306,10 @@ class LocationService {
       final location = result['geometry']['location'];
       return {
         'name': result['formatted_address'] as String? ?? result['name'] as String?,
+        // The place's own name (e.g. "Murugesan maligai") when it's a named
+        // business/POI - null for a plain street address prediction, where
+        // Google doesn't return a 'name' distinct from formatted_address.
+        'placeName': result['name'] as String?,
         'latitude': (location['lat'] as num).toDouble(),
         'longitude': (location['lng'] as num).toDouble(),
       };
@@ -312,6 +317,65 @@ class LocationService {
       print('❌ Place details lookup failed: $e');
       return null;
     }
+  }
+
+  /// Finds the name of the closest business/POI to a pin (e.g. a shop the
+  /// user dropped or dragged the map marker onto) - the Geocoding API used by
+  /// [getAddressFromGoogleAPI] only knows street/locality addresses, never
+  /// business names, so a separate Places Nearby Search is needed to show
+  /// "Murugesan maligai" the way Google Maps' own app does. Returns null when
+  /// nothing is within [radiusMeters] (default 50m) - a rice field shouldn't
+  /// get labelled with the nearest shop half a village away.
+  Future<String?> getNearestPlaceName(
+    double latitude,
+    double longitude, {
+    int radiusMeters = 50,
+  }) async {
+    try {
+      final url = '${EnvConfig.fullApiUrl}/places/nearby?'
+          'lat=$latitude&lng=$longitude&radius=$radiusMeters';
+      final response = await http.get(Uri.parse(url)).timeout(_providerTimeout);
+      if (response.statusCode != 200) return null;
+
+      final data = json.decode(response.body);
+      if (data['status'] != 'OK' || data['results'] == null) return null;
+
+      final results = data['results'] as List;
+      if (results.isEmpty) return null;
+
+      String? closestName;
+      double closestDistance = double.infinity;
+      for (final place in results) {
+        final name = place['name'] as String?;
+        final loc = place['geometry']?['location'];
+        if (name == null || loc == null) continue;
+        final distance = _distanceMeters(
+          latitude,
+          longitude,
+          (loc['lat'] as num).toDouble(),
+          (loc['lng'] as num).toDouble(),
+        );
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestName = name;
+        }
+      }
+
+      return closestDistance <= radiusMeters ? closestName : null;
+    } catch (e) {
+      print('❌ Nearby place lookup failed: $e');
+      return null;
+    }
+  }
+
+  double _distanceMeters(double lat1, double lon1, double lat2, double lon2) {
+    const p = 0.017453292519943295; // PI / 180
+    final a = 0.5 -
+        math.cos((lat2 - lat1) * p) / 2 +
+        math.cos(lat1 * p) *
+            math.cos(lat2 * p) *
+            (1 - math.cos((lon2 - lon1) * p)) / 2;
+    return 12742000 * math.asin(math.sqrt(a)); // 2 * R(meters) * asin(sqrt(a))
   }
 
   Future<Map<String, String>?> getAddressFromGoogleAPI(double latitude, double longitude) async {
@@ -329,19 +393,8 @@ class LocationService {
         print('📍 Total results: ${data['results'].length}');
 
         if (data['status'] == 'OK' && data['results'].isNotEmpty) {
-          // Try to find the best result - prefer locality over neighborhood
-          var result = data['results'][0];
-
-          // Look for a result with locality type (actual village/town)
-          for (var res in data['results']) {
-            final types = res['types'] as List;
-            if (types.contains('locality') || types.contains('sublocality_level_1')) {
-              result = res;
-              print('✅ Found locality type result, using that instead');
-              break;
-            }
-          }
-          final addressComponents = result['address_components'] as List;
+          final List allResults = data['results'];
+          final result = allResults[0]; // used below only for formatted_address/name
 
           String streetNumber = '';
           String route = '';
@@ -356,37 +409,46 @@ class LocationService {
           String postalCode = '';
           String country = '';
 
-          // Parse address components with better street name extraction
-          for (var component in addressComponents) {
-            final types = component['types'] as List;
-            final longName = component['long_name'] as String;
+          // Google's reverse-geocode returns the SAME point as multiple
+          // separate result entries at different granularities (rooftop
+          // street_address, then sublocality, then locality, then postal_code
+          // zone, etc). Merge fields across ALL of them - first occurrence
+          // wins (Google orders results most-specific-first) - instead of
+          // picking a single result and discarding whatever fields (like
+          // postal_code) only existed on a different, more precise entry.
+          for (var res in allResults) {
+            final addressComponents = res['address_components'] as List;
+            for (var component in addressComponents) {
+              final types = component['types'] as List;
+              final longName = component['long_name'] as String;
 
-            if (types.contains('street_number')) {
-              streetNumber = longName;
-            } else if (types.contains('route')) {
-              route = longName;
-            } else if (types.contains('premise')) {
-              premise = longName;
-            } else if (types.contains('neighborhood')) {
-              neighborhood = longName;
-            } else if (types.contains('sublocality_level_1') || types.contains('sublocality')) {
-              subLocality = longName;
-            } else if (types.contains('sublocality_level_2')) {
-              subLocalityLevel2 = longName;
-            } else if (types.contains('sublocality_level_3')) {
-              subLocalityLevel3 = longName;
-            } else if (types.contains('locality')) {
-              locality = longName;
-            } else if (types.contains('administrative_area_level_2')) {
-              // District/taluk town (e.g. "Tirupattur") - this is what should
-              // show as the City, not the fine-grained village-level locality.
-              administrativeAreaLevel2 = longName;
-            } else if (types.contains('administrative_area_level_1')) {
-              administrativeArea = longName;
-            } else if (types.contains('postal_code')) {
-              postalCode = longName;
-            } else if (types.contains('country')) {
-              country = longName;
+              if (types.contains('street_number') && streetNumber.isEmpty) {
+                streetNumber = longName;
+              } else if (types.contains('route') && route.isEmpty) {
+                route = longName;
+              } else if (types.contains('premise') && premise.isEmpty) {
+                premise = longName;
+              } else if (types.contains('neighborhood') && neighborhood.isEmpty) {
+                neighborhood = longName;
+              } else if ((types.contains('sublocality_level_1') || types.contains('sublocality')) && subLocality.isEmpty) {
+                subLocality = longName;
+              } else if (types.contains('sublocality_level_2') && subLocalityLevel2.isEmpty) {
+                subLocalityLevel2 = longName;
+              } else if (types.contains('sublocality_level_3') && subLocalityLevel3.isEmpty) {
+                subLocalityLevel3 = longName;
+              } else if (types.contains('locality') && locality.isEmpty) {
+                locality = longName;
+              } else if (types.contains('administrative_area_level_2') && administrativeAreaLevel2.isEmpty) {
+                // District/taluk town (e.g. "Tirupattur") - this is what should
+                // show as the City, not the fine-grained village-level locality.
+                administrativeAreaLevel2 = longName;
+              } else if (types.contains('administrative_area_level_1') && administrativeArea.isEmpty) {
+                administrativeArea = longName;
+              } else if (types.contains('postal_code') && postalCode.isEmpty) {
+                postalCode = longName;
+              } else if (types.contains('country') && country.isEmpty) {
+                country = longName;
+              }
             }
           }
 

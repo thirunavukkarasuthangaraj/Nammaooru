@@ -8,6 +8,7 @@ class SaveAddressDialog extends StatefulWidget {
   final double longitude;
   final String detectedAddress;
   final String detectedStreet;
+  final String detectedLandmark;
   final String detectedCity;
   final String detectedVillage;
   final String detectedState;
@@ -19,6 +20,7 @@ class SaveAddressDialog extends StatefulWidget {
     required this.longitude,
     required this.detectedAddress,
     this.detectedStreet = '',
+    this.detectedLandmark = '',
     required this.detectedCity,
     required this.detectedVillage,
     required this.detectedState,
@@ -64,6 +66,7 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
     // are the same cleaned locality name from the map picker, so only one
     // field is kept instead of showing the identical value twice.
     _streetController.text = widget.detectedStreet;
+    _landmarkController.text = widget.detectedLandmark;
     _villageController.text = widget.detectedVillage.isNotEmpty
         ? widget.detectedVillage
         : widget.detectedAddress;
@@ -538,40 +541,17 @@ class _SaveAddressDialogState extends State<SaveAddressDialog> {
   // flow (house no. + landmark + save-as) reads clean like Zomato/Swiggy —
   // still reachable for the rural addresses where geocoding gets it wrong.
   Widget _buildAddressDetailsExpander() {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        // Auto-open when geocoding didn't resolve a locality or pincode —
-        // those fields are required, so they can't stay hidden in that case.
-        initiallyExpanded: _villageController.text.trim().isEmpty ||
-            _pincodeController.text.trim().isEmpty,
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(top: 12),
-        title: Row(
-          children: [
-            Icon(Icons.edit_location_alt_outlined,
-                size: 16, color: Colors.grey.shade600),
-            const SizedBox(width: 6),
-            Text(
-              'Edit street, area, city & PIN',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ],
-        ),
-        children: [
-          _buildStreetField(),
-          const SizedBox(height: 16),
-          _buildVillageField(),
-          const SizedBox(height: 16),
-          _buildCityStateRow(),
-          const SizedBox(height: 16),
-          _buildPincodeField(),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStreetField(),
+        const SizedBox(height: 16),
+        _buildVillageField(),
+        const SizedBox(height: 16),
+        _buildCityStateRow(),
+        const SizedBox(height: 16),
+        _buildPincodeField(),
+      ],
     );
   }
 

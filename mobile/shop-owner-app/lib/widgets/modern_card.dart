@@ -181,16 +181,20 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image with Badges
-            Stack(
-              children: [
+            // Product Image with Badges. Expanded (not a fixed height) so the
+            // image absorbs whatever space is left after the text block below
+            // - the grid cell's total height is fixed by its aspect ratio, so
+            // a fixed image height here would overflow once that ratio shrinks.
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
                   child: Container(
-                    height: 150,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -292,12 +296,13 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
 
             // Product Info
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -305,22 +310,22 @@ class ProductCard extends StatelessWidget {
                   Text(
                     name,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
-                      height: 1.3,
+                      height: 1.25,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
 
                   // Weight/Unit Info - More Prominent
                   if (weight != null && unit != null && unit!.isNotEmpty)
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppTheme.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
@@ -359,7 +364,7 @@ class ProductCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
 
                   // Price Row
                   Row(
@@ -375,18 +380,18 @@ class ProductCard extends StatelessWidget {
                               Text(
                                 '₹${originalPrice!.toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: Colors.grey[500],
                                   decoration: TextDecoration.lineThrough,
                                   decorationThickness: 2,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 1),
                             ],
                             Text(
                               '₹${price.toStringAsFixed(0)}',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: hasDiscount ? Colors.green[700] : AppTheme.primary,
                                 letterSpacing: -0.5,
@@ -408,17 +413,17 @@ class ProductCard extends StatelessWidget {
                                 onTap: onEdit,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(6),
                                   child: Icon(
                                     Icons.edit_outlined,
-                                    size: 18,
+                                    size: 16,
                                     color: Colors.blue[700],
                                   ),
                                 ),
                               ),
                             ),
                           if (onDelete != null) ...[
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Material(
                               color: Colors.red[50],
                               borderRadius: BorderRadius.circular(8),
@@ -426,10 +431,10 @@ class ProductCard extends StatelessWidget {
                                 onTap: onDelete,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(6),
                                   child: Icon(
                                     Icons.delete_outline,
-                                    size: 18,
+                                    size: 16,
                                     color: Colors.red[700],
                                   ),
                                 ),

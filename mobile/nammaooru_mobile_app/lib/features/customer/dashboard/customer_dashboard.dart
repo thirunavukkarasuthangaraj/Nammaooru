@@ -1,3 +1,4 @@
+import '../../../shared/widgets/gentle_motion.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -66,7 +67,7 @@ class CustomerDashboard extends StatefulWidget {
   State<CustomerDashboard> createState() => _CustomerDashboardState();
 }
 
-class _CustomerDashboardState extends State<CustomerDashboard> {
+class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindingObserver {
   // App tour — one key per visible menu tile
   final Map<String, GlobalKey> _featureTourKeys = {};
   bool _tourChecked = false;
@@ -95,6 +96,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   // Featured posts from all categories for banner carousel
   List<Map<String, dynamic>> _featuredPosts = [];
+  bool _launchBannerShown = false;
 
   bool _serviceAreaBlocked = false;
   Future<void>? _serviceAreaCheckFuture;
@@ -111,10 +113,67 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     print('🔵 CustomerDashboard initState called');
     _checkVersionOnStartup();
     _initLocationThenLoadData();
+    _checkSignupBonus();
     // App version checking is handled globally in app.dart, no need for duplicate check here
+  }
+
+  // If the OS silently killed and fast-restarted the app process while it was
+  // backgrounded (common under memory pressure - feels instant to the user,
+  // but every in-memory list including _promos/_combos comes back empty),
+  // the "SPECIAL OFFERS" banner would otherwise just stay blank forever since
+  // nothing else re-triggers that fetch. Retry once on resume, only when
+  // there's actually nothing loaded - a no-op the vast majority of the time.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted && _promos.isEmpty && _combos.isEmpty) {
+      _loadPromos();
+      _loadCombos();
+    }
+  }
+
+  // Shows the welcome-bonus banner once, the first time the Home screen sees
+  // an UNPAID bonus for this account - the grant itself always happens
+  // server-side at registration; this is purely a read-only status check.
+  Future<void> _checkSignupBonus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('signup_bonus_banner_shown') ?? false) return;
+
+      final result = await _apiService.get('/customer/signup-bonus/mine');
+      if (!mounted || result['success'] != true) return;
+
+      final data = result['data'];
+      if (data == null || data['status'] != 'UNPAID') return;
+
+      await prefs.setBool('signup_bonus_banner_shown', true);
+      final amount = (data['amount'] as num?)?.toStringAsFixed(0) ?? '10';
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('🎉 Welcome Gift!'),
+          content: Text(
+            'You\'ve received ₹$amount as a welcome bonus. '
+            'We\'ll send it to your registered mobile number via UPI shortly.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Awesome!'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      // Never let a bonus-status check disrupt the Home screen.
+      print('Signup bonus check failed: $e');
+    }
   }
 
   Future<void> _startTourIfNeeded(BuildContext showcaseCtx) async {
@@ -158,11 +217,21 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     // Load feature config immediately — doesn't need GPS
     _loadFeatureConfig();
 
-    // Get location for shops and service area (runs in background)
-    await _getCurrentLocationOnStartup();
-
-    // Load dashboard data after GPS
+    // Previously this awaited GPS + reverse-geocoding before even starting
+    // the shops/combos/promos/orders fetch, serially stacking a ~1-3s GPS
+    // fix plus a network round-trip on top of everything else - the actual
+    // source of the slow cold start. Now they run concurrently: the
+    // location-independent sections (combos, recent orders, marketplace,
+    // featured posts) render immediately, and location-dependent ones
+    // (shops, promos) refresh once GPS resolves.
+    final locationFuture = _getCurrentLocationOnStartup();
     _loadDashboardData();
+    await locationFuture;
+
+    if (mounted) {
+      _loadFeaturedShops();
+      _loadPromos();
+    }
 
     // Check service area in background — stores future so _guardedNavigate can await it
     _serviceAreaCheckFuture = _checkServiceArea();
@@ -209,6 +278,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autoSlideTimer?.cancel();
     _unifiedOffersController.dispose();
     super.dispose();
@@ -320,6 +390,123 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       _loadFeaturedPosts(),
     ]);
     _startAutoSlideOffers();
+    // The one-time launch interstitial was removed - redundant with the
+    // "SPECIAL OFFERS" carousel already on the home screen.
+  }
+
+  Future<void> _showLaunchBanner() async {
+    if (!mounted || _launchBannerShown || _featuredPosts.isEmpty) return;
+
+    final banner = _featuredPosts.first;
+    final imageUrl = (banner['image'] ?? '').toString();
+    // A full-screen interstitial with no real banner image just shows a
+    // generic gradient + icon placeholder, which looks unfinished/broken
+    // rather than promotional - skip it entirely until a real image is set,
+    // instead of showing that fallback as if it were the actual offer.
+    if (imageUrl.isEmpty) return;
+    _launchBannerShown = true;
+    final color = banner['color'] is Color ? banner['color'] as Color : VillageTheme.primaryGreen;
+    final icon = banner['icon'] is IconData ? banner['icon'] as IconData : Icons.local_offer_rounded;
+    final title = (banner['title'] ?? 'Special Offer').toString();
+    final subtitle = (banner['subtitle'] ?? '').toString();
+
+    var dialogOpen = true;
+    final dialogFuture = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.78),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 620),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: color.withOpacity(0.35), blurRadius: 28, spreadRadius: 2),
+              ],
+            ),
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 330,
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                ImageUrlHelper.getFullImageUrl(imageUrl),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildLaunchBannerFallback(color, icon),
+                              )
+                            : _buildLaunchBannerFallback(color, icon),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                              child: Text(
+                                (banner['label'] ?? 'SPECIAL OFFER').toString().toUpperCase(),
+                                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(title, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Colors.black87)),
+                            if (subtitle.isNotEmpty) ...[
+                              const SizedBox(height: 7),
+                              Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.35)),
+                            ],
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                  _onFeaturedPostTap(banner);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: color,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                child: const Text('Explore now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    Future.delayed(const Duration(seconds: 5), () {
+      if (dialogOpen && mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+    await dialogFuture;
+    dialogOpen = false;
+  }
+
+  Widget _buildLaunchBannerFallback(Color color, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [color, color.withOpacity(0.68)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+      child: Center(child: Icon(icon, size: 110, color: Colors.white.withOpacity(0.75))),
+    );
   }
 
   Future<void> _loadFeaturedPosts() async {
@@ -714,7 +901,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         ),
         // Unified carousel
         SizedBox(
-          height: 200,
+          height: 165,
           child: PageView.builder(
             controller: _unifiedOffersController,
             itemCount: totalItems,
@@ -734,7 +921,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         // Page indicator dots
         if (totalItems > 1)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 2, bottom: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(totalItems > 10 ? 10 : totalItems, (dotIndex) {
@@ -1075,6 +1262,61 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildPromoCard(PromoCode promo) {
+    final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
+
+    // A fully-designed banner image (offer text, code, and call-to-action all
+    // baked into the graphic) reads far better than plain text drawn over a
+    // flat gradient - when one's uploaded, show it as the whole card instead
+    // of squeezing it into a side thumbnail next to a second, redundant copy
+    // of the same text. Falls back to the text/gradient card below only if
+    // no image was uploaded, or it fails to load.
+    if (hasImage) {
+      return GestureDetector(
+        onTap: () => _navigateToPromoShop(promo),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            // Cached (not plain Image.network) so a banner that already
+            // loaded once - very likely, since the same handful of promos
+            // show on every visit - paints instantly from disk instead of
+            // re-downloading and re-showing a loading state every time.
+            child: CachedNetworkImage(
+              imageUrl: ImageUrlHelper.getFullImageUrl(promo.imageUrl),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => Container(
+                color: VillageTheme.primaryGreen.withOpacity(0.08),
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: VillageTheme.primaryGreen.withOpacity(0.5)),
+                ),
+              ),
+              errorWidget: (_, __, ___) => _buildPromoCardTextContent(promo),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _buildPromoCardTextContent(promo);
+  }
+
+  Widget _buildPromoCardTextContent(PromoCode promo) {
     return GestureDetector(
       onTap: () => _navigateToPromoShop(promo),
       child: Container(
@@ -1126,7 +1368,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
             // Content
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
@@ -1134,6 +1376,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
                           children: [
@@ -1156,28 +1399,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                             const Icon(Icons.local_offer, color: Colors.white, size: 16),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Text(
                           '₹${promo.discountValue.toStringAsFixed(0)} OFF',
                           style: const TextStyle(
-                            fontSize: 32,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           promo.description ?? '',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.white.withOpacity(0.9),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -1185,7 +1428,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                           child: Text(
                             'Code: ${promo.code}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: VillageTheme.primaryGreen,
                             ),
@@ -1194,19 +1437,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       ],
                     ),
                   ),
-                  if (promo.imageUrl != null)
-                    Expanded(
-                      flex: 2,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          ImageUrlHelper.getFullImageUrl(promo.imageUrl),
-                          fit: BoxFit.cover,
-                          height: 120,
-                          errorBuilder: (_, __, ___) => const SizedBox(),
-                        ),
-                      ),
-                    ),
+                  // No uploaded image (or it failed to load, via errorBuilder above) -
+                  // a decorative icon instead of leaving this side empty.
+                  Expanded(
+                    flex: 2,
+                    child: Icon(Icons.local_offer_rounded, size: 64, color: Colors.white.withOpacity(0.3)),
+                  ),
                 ],
               ),
             ),
@@ -1217,6 +1453,54 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildComboCard(CustomerCombo combo) {
+    final hasImage = combo.bannerImageUrl != null && combo.bannerImageUrl!.trim().isNotEmpty;
+
+    // Same treatment as the promo card: a fully-designed banner image reads
+    // far better as the whole card than squeezed into a side thumbnail next
+    // to separately-rendered name/price text.
+    if (hasImage) {
+      return GestureDetector(
+        onTap: () => _showComboDetails(combo),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CachedNetworkImage(
+              imageUrl: ImageUrlHelper.getFullImageUrl(combo.bannerImageUrl),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => Container(
+                color: VillageTheme.primaryGreen.withOpacity(0.08),
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: VillageTheme.primaryGreen.withOpacity(0.5)),
+                ),
+              ),
+              errorWidget: (_, __, ___) => _buildComboCardTextContent(combo),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _buildComboCardTextContent(combo);
+  }
+
+  Widget _buildComboCardTextContent(CustomerCombo combo) {
     return GestureDetector(
       onTap: () => _showComboDetails(combo),
       child: Container(
@@ -1243,8 +1527,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               child: Stack(
                 children: [
                   SizedBox(
-                    width: 140,
-                    height: 200,
+                    width: 130,
+                    height: 165,
                     child: combo.bannerImageUrl != null
                         ? Image.network(
                             ImageUrlHelper.getFullImageUrl(combo.bannerImageUrl),
@@ -1285,15 +1569,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             // Right side - Details
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       combo.name,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
@@ -1301,32 +1586,32 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (combo.nameTamil != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         combo.nameTamil!,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Colors.grey[600],
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       '${combo.itemCount} items included',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
                           '₹${combo.comboPrice.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: VillageTheme.primaryGreen,
                           ),
@@ -1335,15 +1620,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                         Text(
                           '₹${combo.originalPrice.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             color: Colors.grey[500],
                             decoration: TextDecoration.lineThrough,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    _AnimatedViewButton(onTap: () => _showComboDetails(combo)),
                   ],
                 ),
               ),
@@ -1630,6 +1913,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     print('🔵 CustomerDashboard build called');
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return ShowCaseWidget(
+      enableAutoScroll: true,
+      disableMovingAnimation: true,
       builder: (showcaseCtx) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _startTourIfNeeded(showcaseCtx));
         return _buildDashboardContent(context, showcaseCtx, isDarkMode);
@@ -1640,77 +1925,35 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _buildDashboardContent(BuildContext context, BuildContext showcaseCtx, bool isDarkMode) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool didPop) async {
-        if (didPop) {
-          return;
-        }
-        final bool shouldPop = await _onWillPop();
-        if (shouldPop) {
-          // Exit the app when user presses back twice on home screen
-          SystemNavigator.pop();
-        }
+      onPopInvoked: (didPop) async {
+        if (!didPop && await _onWillPop()) SystemNavigator.pop();
       },
       child: Scaffold(
-        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        backgroundColor: isDarkMode ? const Color(0xFF171E19) : const Color(0xFFFFFFFF),
         body: SingleChildScrollView(
-          child: Stack(
-            children: [
-              // Green curved header background
-              _buildCurvedHeader(),
-              // Content that overlaps the header
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Spacer to position content below header top area
-                  SizedBox(height: MediaQuery.of(context).padding.top + 80),
-                  Consumer<FeatureConfigProvider>(
-                    builder: (context, featureConfig, _) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // "Deliver To" bar and offer banner moved to the
-                          // Grocery/Food listing screens - they're shop-specific
-                          // (delivery radius, category), not relevant to the
-                          // other categories (Labour, Travel, etc.) that also
-                          // live behind this home screen.
-
-                          // Main content area
-                          Container(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.grey[900]
-                                : Colors.grey[50],
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 12),
-                                  _buildServiceCategories(),
-                                  const SizedBox(height: 20),
-                                  _buildNearbyOnHome(),
-                                  if (featureConfig.isVisible('section_featured_shops') &&
-                                      (_isLoadingShops || _featuredShops.isNotEmpty)) ...[
-                                    const SizedBox(height: 8),
-                                    _buildFeaturedShops(),
-                                  ],
-                                  // Recent Orders — controlled by section_recent_orders
-                                  if (featureConfig.isVisible('section_recent_orders')) ...[
-                                    const SizedBox(height: 24),
-                                    _buildRecentOrders(),
-                                  ],
-                                  const SizedBox(height: 20),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-              ],
-            ),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _buildCurvedHeader(),
+            Consumer<FeatureConfigProvider>(builder: (context, featureConfig, _) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (featureConfig.isVisible('section_special_offers')) ...[
+                    _buildUnifiedOffersCarousel(),
+                    const SizedBox(height: 4),
+                  ],
+                  _buildServiceCategories(),
+                  const SizedBox(height: 24),
+                  _buildNearbyOnHome(),
+                  if (featureConfig.isVisible('section_featured_shops') && (_isLoadingShops || _featuredShops.isNotEmpty)) ...[
+                    const SizedBox(height: 8), _buildFeaturedShops(),
+                  ],
+                  if (featureConfig.isVisible('section_recent_orders')) ...[
+                    const SizedBox(height: 24), _buildRecentOrders(),
+                  ],
+                ]),
+              );
+            }),
+          ]),
         ),
       ),
     );
@@ -1769,180 +2012,24 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildCurvedHeader() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final statusBarHeight = MediaQuery.of(context).padding.top;
-    final headerHeight = statusBarHeight + 120;
-
-    return Stack(
-      children: [
-        // Green background with curve using Container
-        Container(
-          height: headerHeight,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: isDarkMode
-                ? null
-                : const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [VillageTheme.primaryGreen, Color(0xFF3D9140)],
-                  ),
-            color: isDarkMode ? Colors.grey[900] : null,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.elliptical(200, 50),
-              bottomRight: Radius.elliptical(200, 50),
-            ),
-          ),
+    final lang = Provider.of<LanguageProvider>(context);
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 8, 20, 16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF3D9140)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+      ),
+      child: Row(children: [
+        Expanded(child: Text(lang.appName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5))),
+        TextButton(onPressed: () => lang.toggleLanguage(), style: TextButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.white12), child: Text(lang.showTamil ? 'English' : 'தமிழ்')),
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          tooltip: lang.getText('Notifications', 'அறிவிப்புகள்'),
+          style: IconButton.styleFrom(backgroundColor: Colors.white12, foregroundColor: Colors.white),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+          icon: const Icon(Icons.notifications_none_rounded),
         ),
-        // Content
-        SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome text and app name
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Consumer<LanguageProvider>(
-                      builder: (context, languageProvider, child) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              languageProvider.appName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              languageProvider.getText(
-                                'Serving Thirupattur zone',
-                                'திருப்பத்தூர் பகுதிக்கு சேவை',
-                              ),
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                // Language toggle and notification
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Language toggle
-                      Consumer<LanguageProvider>(
-                        builder: (context, languageProvider, child) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'En',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: languageProvider.showTamil ? FontWeight.w400 : FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                GestureDetector(
-                                  onTap: () => languageProvider.toggleLanguage(),
-                                  child: Container(
-                                    width: 40,
-                                    height: 22,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(11),
-                                    ),
-                                    child: AnimatedAlign(
-                                      alignment: languageProvider.showTamil
-                                          ? Alignment.centerRight
-                                          : Alignment.centerLeft,
-                                      duration: const Duration(milliseconds: 200),
-                                      child: Container(
-                                        width: 18,
-                                        height: 18,
-                                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      // Notification bell
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationsScreen(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              const Icon(Icons.notifications_outlined, color: Colors.white, size: 24),
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ]),
     );
   }
 
@@ -2312,9 +2399,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       // Same fixed tile height as the real tiles — width-independent
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 124,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        mainAxisExtent: 96,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
       ),
       children: List.generate(4, (index) => Container(
         decoration: BoxDecoration(
@@ -2388,21 +2475,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Consumer<LanguageProvider>(
-          builder: (context, lang, _) {
-            return Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 10),
-              child: Text(
-                lang.getText('Services', 'சேவைகள்'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-            );
-          },
-        ),
         GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -2410,9 +2482,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           // aspect ratio, so narrow screens can never overflow
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisExtent: 124,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            mainAxisExtent: 96,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
           ),
           children: _dynamicFeatures.map((feature) {
             final featureName = feature['featureName']?.toString() ?? '';
@@ -2430,18 +2502,75 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               onTap: () => _navigateToFeature(feature['route']),
             );
             if (tourKey == null || desc.isEmpty) return tile;
-            return Showcase(
+            final tooltipWidth = (MediaQuery.sizeOf(context).width - 40)
+                .clamp(0.0, 320.0).toDouble();
+            return Showcase.withWidget(
               key: tourKey,
-              title: title,
-              description: desc,
-              tooltipBackgroundColor: Colors.white,
-              textColor: Colors.grey.shade800,
-              titleTextStyle: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: _parseColor(feature['color']),
+              height: null,
+              width: tooltipWidth,
+              onBarrierClick: _dismissTour,
+              container: Container(
+                width: tooltipWidth,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 4, 8, 8),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(title, style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _parseColor(feature['color']),
+                            )),
+                          ),
+                          IconButton(
+                            tooltip: languageProvider.getText('Dismiss tour', 'வழிகாட்டியை மூடு'),
+                            onPressed: _dismissTour,
+                            icon: const Icon(Icons.close_rounded, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(desc, style: const TextStyle(
+                          fontSize: 13, height: 1.5, color: Colors.black87,
+                        )),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: _dismissTour,
+                            child: Text(languageProvider.getText('Skip tour', 'தவிர்')),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              if (_showcaseCtx != null) {
+                                ShowCaseWidget.of(_showcaseCtx!).next();
+                              }
+                            },
+                            child: Text(languageProvider.getText(
+                              tourKey == _featureTourKeys.values.last ? 'Done' : 'Next',
+                              tourKey == _featureTourKeys.values.last ? 'முடிந்தது' : 'அடுத்து',
+                            )),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
               child: tile,
             );
           }).toList(),
@@ -2516,97 +2645,37 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     required VoidCallback onTap,
     String? imageUrl,
   }) {
-    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tint = Color.lerp(color, dark ? const Color(0xFF202923) : Colors.white, dark ? 0.85 : 0.93)!;
+    return DepthPress(child: Material(
+      color: dark ? tint : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: dark ? Colors.white12 : const Color(0xFFE8ECE8))),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFEEEEEE)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+                child: imageUrl != null && imageUrl.isNotEmpty
+                    ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(ImageUrlHelper.getFullImageUrl(imageUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(icon, color: Colors.white, size: 26)))
+                    : Icon(icon, color: Colors.white, size: 26),
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color, Color.lerp(color, Colors.black, 0.25)!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.35),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: hasImage
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            ImageUrlHelper.getFullImageUrl(imageUrl),
-                            width: 56,
-                            height: 56,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(icon, color: Colors.white, size: 30),
-                          ),
-                        )
-                      : Icon(icon, color: Colors.white, size: 30),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-            ),
-          ),
+              const Spacer(),
+              Icon(Icons.north_east_rounded, size: 17, color: dark ? Colors.white54 : const Color(0xFF78877C)),
+            ]),
+            // A flexible Spacer here pushed the label down by a large,
+            // inconsistent gap on every tile with a short (1-line) title -
+            // most of them - instead of a small, fixed gap right after the icon.
+            const SizedBox(height: 10),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, height: 1.25, fontWeight: FontWeight.w600, color: dark ? Colors.white : const Color(0xFF23392E))),
+          ]),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildBuySellCard(String name) {

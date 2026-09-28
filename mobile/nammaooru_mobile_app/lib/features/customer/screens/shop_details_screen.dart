@@ -575,173 +575,174 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             return true;
           },
           child: Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.white,
-      body: _isLoadingShop
-          ? const Center(child: LoadingWidget())
-          : _hasError
-              ? _buildErrorState()
-              : Column(
-                  children: [
-                    // Toolbar/AppBar area
-                    Container(
-                      height: 64,
-                      color: VillageTheme.primaryGreen,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
+            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            body: _isLoadingShop
+                ? const Center(child: LoadingWidget())
+                : _hasError
+                    ? _buildErrorState()
+                    : Column(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back,
-                                color: Colors.white, size: 24),
-                            onPressed: () {
-                              if (_showCategoryDetail) {
-                                setState(() => _showCategoryDetail = false);
-                                return;
-                              }
-                              // Leaving mid-tour lets the showcase overlay
-                              // try to find a target that's no longer in the
-                              // tree ("inactive element" crash) — dismiss
-                              // first.
-                              try {
-                                ShowCaseWidget.of(context).dismiss();
-                              } catch (_) {}
-                              if (context.canPop()) {
-                                context.pop();
-                              } else if (Navigator.of(context).canPop()) {
-                                Navigator.of(context).pop();
-                              }
-                            },
-                            tooltip: 'Back',
+                          // Toolbar/AppBar area
+                          Container(
+                            height: 64,
+                            color: VillageTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back,
+                                      color: Colors.white, size: 24),
+                                  onPressed: () {
+                                    if (_showCategoryDetail) {
+                                      setState(
+                                          () => _showCategoryDetail = false);
+                                      return;
+                                    }
+                                    // Leaving mid-tour lets the showcase overlay
+                                    // try to find a target that's no longer in the
+                                    // tree ("inactive element" crash) — dismiss
+                                    // first.
+                                    try {
+                                      ShowCaseWidget.of(context).dismiss();
+                                    } catch (_) {}
+                                    if (context.canPop()) {
+                                      context.pop();
+                                    } else if (Navigator.of(context).canPop()) {
+                                      Navigator.of(context).pop();
+                                    }
+                                  },
+                                  tooltip: 'Back',
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    _showCategoryDetail
+                                        ? (_selectedCategoryName ??
+                                            _shop?['name']?.toString() ??
+                                            'Products')
+                                        : _shop?['name']?.toString() ?? 'Shop',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                            ),
                           ),
+                          // Content area below toolbar
                           Expanded(
-                            child: Text(
-                              _showCategoryDetail
-                                  ? (_selectedCategoryName ??
-                                      _shop?['name']?.toString() ??
-                                      'Products')
-                                  : _shop?['name']?.toString() ?? 'Shop',
+                            child: _buildShopDetailsContent(),
+                          ),
+                        ],
+                      ),
+            floatingActionButton: Consumer<CartProvider>(
+              builder: (context, cartProvider, child) {
+                if (cartProvider.isEmpty) return const SizedBox.shrink();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(28),
+                    child: InkWell(
+                      onTap: () {
+                        context.push('/customer/cart');
+                      },
+                      borderRadius: BorderRadius.circular(28),
+                      child: Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              VillageTheme.primaryGreen,
+                              VillageTheme.primaryGreen.withBlue(150),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const Icon(
+                                  Icons.shopping_cart,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                Positioned(
+                                  right: -8,
+                                  top: -8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 20,
+                                      minHeight: 20,
+                                    ),
+                                    child: Text(
+                                      '${cartProvider.productCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'View Cart',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                    ),
-                    // Content area below toolbar
-                    Expanded(
-                      child: _buildShopDetailsContent(),
-                    ),
-                  ],
-                ),
-      floatingActionButton: Consumer<CartProvider>(
-        builder: (context, cartProvider, child) {
-          if (cartProvider.isEmpty) return const SizedBox.shrink();
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(28),
-              child: InkWell(
-                onTap: () {
-                  context.push('/customer/cart');
-                },
-                borderRadius: BorderRadius.circular(28),
-                child: Container(
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        VillageTheme.primaryGreen,
-                        VillageTheme.primaryGreen.withBlue(150),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(
-                            Icons.shopping_cart,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          Positioned(
-                            right: -8,
-                            top: -8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
                               ),
-                              constraints: const BoxConstraints(
-                                minWidth: 20,
-                                minHeight: 20,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                '${cartProvider.productCount}',
+                                '₹${cartProvider.total.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'View Cart',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '₹${cartProvider.total.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
-          );
-        },
-      ),
-      floatingActionButtonLocation: const _RightFloatingButtonLocation(),
+            floatingActionButtonLocation: const _RightFloatingButtonLocation(),
           ),
         );
       },
@@ -875,7 +876,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               return GestureDetector(
                 onTap: () => _selectCategory(categoryId, categoryName),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   // Single highlight only: the image tile carries the green
                   // border, so the wrapper stays a plain soft card - no
@@ -1245,8 +1247,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         color: Colors.amberAccent, size: 16),
                     const SizedBox(width: 6),
                     Text(
-                      lang.getText(
-                          "Today's Special", 'இன்றைய சிறப்பு சலுகை'),
+                      lang.getText("Today's Special", 'இன்றைய சிறப்பு சலுகை'),
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -1337,7 +1338,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 6,
             children: [
               Text(
                 lang.getText('Shop by Category', 'பொருட்களின் வகைகள்'),
@@ -1349,8 +1352,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: VillageTheme.primaryGreen.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
@@ -1366,13 +1368,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            lang.getText(
-                'Explore hyper-local grocery aisles with fresh daily stock',
-                'புதிய பொருட்களுடன் உள்ளூர் கடை வகைகளை பாருங்கள்'),
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
         ],
       ),
     );
@@ -1381,9 +1376,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   // Real categories only - the synthetic "All Items" entry has no photo and
   // stays reachable via the tab row lower down instead.
   List<dynamic> _browsableCategories() {
-    return _categories
-        .where((c) => (c['name']?.toString() ?? '').toLowerCase() != 'all items')
+    final categories = _categories
+        .where(
+            (c) => (c['name']?.toString() ?? '').toLowerCase() != 'all items')
         .toList();
+    return [
+      ...categories.where(
+          (c) => _categoryPriority(c['name']?.toString()) == 0),
+      ...categories.where(
+          (c) => _categoryPriority(c['name']?.toString()) != 0),
+    ];
   }
 
   // 2-column photo grid of aisles, replacing the old slim icon strip so each
@@ -1401,11 +1403,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          mainAxisExtent: 190,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: MediaQuery.sizeOf(context).width < 350 ||
+                  MediaQuery.textScalerOf(context).scale(12) > 16
+              ? 2
+              : 3,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          mainAxisExtent: 108 + MediaQuery.textScalerOf(context).scale(12) * 2.6,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) => _buildCategoryGridCard(categories[index]),
@@ -1415,135 +1420,113 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     );
   }
 
+  IconData _categoryIcon(String name) {
+    final key = name.toLowerCase();
+    const icons = <String, IconData>{
+      'ghee': Icons.water_drop_outlined,
+      'oil': Icons.water_drop_outlined,
+      'ready': Icons.microwave_outlined,
+      'bakery': Icons.bakery_dining_outlined,
+      'bread': Icons.bakery_dining_outlined,
+      'baby': Icons.child_care_outlined,
+      'rice': Icons.rice_bowl_outlined,
+      'biryani': Icons.rice_bowl_outlined,
+      'tiffin': Icons.breakfast_dining_outlined,
+      'chicken': Icons.kebab_dining_outlined,
+      'meat': Icons.restaurant_outlined,
+      'mutton': Icons.restaurant_outlined,
+      'fish': Icons.set_meal_outlined,
+      'vegetable': Icons.eco_outlined,
+      'fruit': Icons.spa_outlined,
+      'milk': Icons.local_drink_outlined,
+      'dairy': Icons.local_drink_outlined,
+      'drink': Icons.local_cafe_outlined,
+      'beverage': Icons.local_cafe_outlined,
+      'chocolate': Icons.cookie_outlined,
+      'snack': Icons.cookie_outlined,
+      'sweet': Icons.cake_outlined,
+      'clean': Icons.cleaning_services_outlined,
+      'care': Icons.face_retouching_natural,
+      'spice': Icons.grain_outlined,
+      'dal': Icons.grain_outlined,
+      'pulse': Icons.grain_outlined,
+      'flour': Icons.grain_outlined,
+      'egg': Icons.egg_outlined,
+      'tea': Icons.emoji_food_beverage_outlined,
+      'coffee': Icons.coffee_outlined,
+    };
+    for (final entry in icons.entries) {
+      if (key.contains(entry.key)) return entry.value;
+    }
+    return Icons.shopping_basket_outlined;
+  }
+
   Widget _buildCategoryGridCard(Map<String, dynamic> category) {
     final lang = Provider.of<LanguageProvider>(context);
-    final isTamil = lang.currentLanguage == 'ta';
     final categoryName = category['name']?.toString() ?? '';
     final tamilName = (category['displayNameTamil'] ?? category['nameTamil'])
         ?.toString()
         .trim();
     final englishName =
         _titleCaseLabel(category['displayName']?.toString() ?? categoryName);
-    final primaryName = (isTamil && tamilName != null && tamilName.isNotEmpty)
+    final name = lang.currentLanguage == 'ta' &&
+            tamilName != null &&
+            tamilName.isNotEmpty
         ? tamilName
         : englishName;
-    // Second line shows the OTHER language; showing the same text twice
-    // (English title + identical English subtitle) just reads as a mistake.
-    final secondaryName = primaryName == englishName
-        ? (tamilName != null && tamilName.isNotEmpty ? tamilName : null)
-        : englishName;
     final imageUrl = category['imageUrl']?.toString();
-    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
     final categoryId = category['id']?.toString();
-    final isSelected = _selectedCategory == categoryId;
-    final tileColor =
-        _tilePalette[categoryName.hashCode.abs() % _tilePalette.length];
-
+    final selected = _selectedCategory == categoryId;
+    final icon = _categoryIcon('$categoryName $englishName');
+    final fallback = Icon(icon, color: VillageTheme.primaryGreen, size: 30);
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      elevation: isSelected ? 3 : 1,
-      shadowColor: Colors.black26,
+      color: selected ? const Color(0xFFEAF6E9) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+            color:
+                selected ? VillageTheme.primaryGreen : const Color(0xFFE5EBE4)),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
         onTap: () {
           _selectCategory(categoryId, categoryName);
           setState(() => _showCategoryDetail = true);
         },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? VillageTheme.primaryGreen
-                  : Colors.transparent,
-              width: 1.5,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(children: [
+            Container(
+              height: 72,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                  color: const Color(0xFFF3F8F1),
+                  borderRadius: BorderRadius.circular(12)),
+              clipBehavior: Clip.antiAlias,
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? Image.network(
+                      ImageUrlHelper.getFullImageUrl(imageUrl),
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
+                      errorBuilder: (_, __, ___) => fallback,
+                    )
+                  : fallback,
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(13)),
-                child: SizedBox(
-                  height: 100,
-                  width: double.infinity,
-                  child: hasImage
-                      ? Image.network(
-                          ImageUrlHelper.getFullImageUrl(imageUrl),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                            color: const Color(0xFFF3E9EA),
-                            child: Center(
-                              child: Icon(Icons.category_rounded,
-                                  color: tileColor, size: 32),
-                            ),
-                          ),
-                        )
-                      : Container(
-                          color: const Color(0xFFF3E9EA),
-                          child: Center(
-                            child: Icon(Icons.category_rounded,
-                                color: tileColor, size: 32),
-                          ),
-                        ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      primaryName,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF212121),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (secondaryName != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        secondaryName,
-                        style:
-                            TextStyle(fontSize: 11, color: Colors.grey[600]),
-                        maxLines: 1,
+            const SizedBox(height: 8),
+            Expanded(
+                child: Center(
+                    child: Text(name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.circle,
-                            size: 6, color: VillageTheme.primaryGreen),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            lang.getText('Tap to browse', 'பார்க்க தட்டவும்'),
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              color: VillageTheme.primaryGreen,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Icon(Icons.arrow_forward,
-                            size: 13, color: VillageTheme.primaryGreen),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.3,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF212121))))),
+          ]),
         ),
       ),
     );
@@ -1959,72 +1942,73 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ),
       descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
       child: Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      // White field with a hairline border, like the reference design.
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC9CDD1)),
-      ),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'பொருட்களைத் தேடுங்கள்',
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon: const Icon(Icons.search, color: Colors.grey),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_searchController.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged();
-                  },
-                ),
-              Showcase(
-                key: _tourVoiceKey,
-                title: lang.getText('Voice Order', 'பேசி ஆர்டர்'),
-                description: lang.getText(
-                    'Tap and just say what you need — the app finds and adds it.',
-                    'தட்டி தேவையானதைச் சொல்லுங்கள் — ஆப் தேடிச் சேர்க்கும்.'),
-                tooltipBackgroundColor: Colors.white,
-                textColor: Colors.grey.shade800,
-                titleTextStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: VillageTheme.primaryGreen,
-                ),
-                descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.assistant,
-                        color: Colors.white, size: 20),
-                    onPressed: () {
-                      context.push('/customer/voice-assistant', extra: {
-                        'shopId': widget.shopId,
-                        'shopName': _shop?['name'] ?? _shop?['shopName'] ?? '',
-                      });
-                    },
-                    tooltip: 'Talk & Order',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        // White field with a hairline border, like the reference design.
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFC9CDD1)),
         ),
-      ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'பொருட்களைத் தேடுங்கள்',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+            prefixIcon: const Icon(Icons.search, color: Colors.grey),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.grey),
+                    onPressed: () {
+                      _searchController.clear();
+                      _onSearchChanged();
+                    },
+                  ),
+                Showcase(
+                  key: _tourVoiceKey,
+                  title: lang.getText('Voice Order', 'பேசி ஆர்டர்'),
+                  description: lang.getText(
+                      'Tap and just say what you need — the app finds and adds it.',
+                      'தட்டி தேவையானதைச் சொல்லுங்கள் — ஆப் தேடிச் சேர்க்கும்.'),
+                  tooltipBackgroundColor: Colors.white,
+                  textColor: Colors.grey.shade800,
+                  titleTextStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: VillageTheme.primaryGreen,
+                  ),
+                  descTextStyle: const TextStyle(fontSize: 12, height: 1.5),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.assistant,
+                          color: Colors.white, size: 20),
+                      onPressed: () {
+                        context.push('/customer/voice-assistant', extra: {
+                          'shopId': widget.shopId,
+                          'shopName':
+                              _shop?['name'] ?? _shop?['shopName'] ?? '',
+                        });
+                      },
+                      tooltip: 'Talk & Order',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          ),
+        ),
       ),
     );
   }
@@ -2152,143 +2136,153 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       offerText = promo.description ?? 'Special Offer';
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top section with gradient
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              gradient: LinearGradient(
-                colors: [Colors.orange[700]!, Colors.orange[500]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.local_offer,
-                        color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          code,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        Text(
-                          offerText,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    void copyCode() {
+      Clipboard.setData(ClipboardData(text: code));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Code "$code" copied!'),
+          backgroundColor: const Color(0xFF2E7D32),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
 
-          // Bottom section
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
+
+    // Same treatment as the Home screen: a fully-designed banner image reads
+    // far better as the whole card than text over a gradient - and even the
+    // no-image fallback now matches Home's green-gradient card instead of
+    // this screen's old separate orange design.
+    if (hasImage) {
+      return GestureDetector(
+        onTap: copyCode,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CachedNetworkImage(
+              imageUrl: ImageUrlHelper.getFullImageUrl(promo.imageUrl),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => Container(
+                color: VillageTheme.primaryGreen.withOpacity(0.08),
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: VillageTheme.primaryGreen.withOpacity(0.5)),
+                ),
+              ),
+              errorWidget: (_, __, ___) => const SizedBox(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: copyCode,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              VillageTheme.primaryGreen,
+              VillageTheme.primaryGreen.withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: VillageTheme.primaryGreen.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.1)),
+              ),
+            ),
+            Positioned(
+              right: 30,
+              bottom: -30,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.1)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
+                    flex: 3,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          offerText,
-                          style: TextStyle(
-                            color: Colors.orange[700],
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                              child: Text('OFFER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen)),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.local_offer, color: Colors.white, size: 16),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        Text(offerText, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                        const SizedBox(height: 2),
                         Text(
-                          minOrderAmount > 0
-                              ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
-                              : 'No minimum order',
-                          style:
-                              TextStyle(color: Colors.grey[600], fontSize: 11),
+                          minOrderAmount > 0 ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}' : 'No minimum order',
+                          style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.9)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                          child: Text('Code: $code', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen)),
                         ),
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Code "$code" copied!'),
-                          backgroundColor: const Color(0xFF2E7D32),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[700],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.copy, color: Colors.white, size: 14),
-                          SizedBox(width: 6),
-                          Text('Copy Code',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
+                  Expanded(
+                    flex: 2,
+                    child: Icon(Icons.local_offer_rounded, size: 64, color: Colors.white.withOpacity(0.3)),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2456,97 +2450,158 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 offerText = promo.description ?? 'Special Offer';
               }
 
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top section with gradient
-                    Container(
-                      height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(16)),
-                        gradient: LinearGradient(
-                          colors: [Colors.orange[700]!, Colors.orange[500]!],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+              // Same as the Home screen banner: a fully-designed image reads
+              // far better than plain text over a gradient - show it as the
+              // whole card when uploaded, instead of the code/discount text
+              // block below.
+              final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
+              if (hasImage) {
+                return GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: code));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Code "$code" copied!'),
+                        backgroundColor: const Color(0xFF2E7D32),
+                        duration: const Duration(seconds: 2),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.local_offer,
-                                  color: Colors.white, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    code,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                  Text(
-                                    offerText,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(promo.imageUrl),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fadeInDuration: const Duration(milliseconds: 150),
+                        placeholder: (_, __) => Container(
+                          color: Colors.orange.withOpacity(0.08),
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange.withOpacity(0.5)),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => const SizedBox(),
                       ),
                     ),
+                  ),
+                );
+              }
 
-                    // Bottom section
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+              // Same card style as the Home screen's fallback (no-image)
+              // promo card - green gradient, decorative circles, code pill -
+              // instead of this screen's old separate orange two-tier design.
+              return GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Code "$code" copied!'),
+                      backgroundColor: const Color(0xFF2E7D32),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        VillageTheme.primaryGreen,
+                        VillageTheme.primaryGreen.withOpacity(0.8),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: VillageTheme.primaryGreen.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: -20,
+                        top: -20,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 30,
+                        bottom: -30,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         child: Row(
                           children: [
-                            // Min order info
                             Expanded(
+                              flex: 3,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'OFFER',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: VillageTheme.primaryGreen,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.local_offer, color: Colors.white, size: 16),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
                                   Text(
                                     offerText,
-                                    style: TextStyle(
-                                      color: Colors.orange[700],
-                                      fontSize: 20,
+                                    style: const TextStyle(
+                                      fontSize: 24,
                                       fontWeight: FontWeight.bold,
+                                      color: Colors.white,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -2555,51 +2610,40 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                         ? 'Min. order ₹${minOrderAmount.toStringAsFixed(0)}'
                                         : 'No minimum order',
                                     style: TextStyle(
-                                        color: Colors.grey[600], fontSize: 12),
+                                      fontSize: 11,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      'Code: $code',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: VillageTheme.primaryGreen,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            // Copy Code button
-                            GestureDetector(
-                              onTap: () {
-                                // Copy code to clipboard
-                                Clipboard.setData(ClipboardData(text: code));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Code "$code" copied!'),
-                                    backgroundColor: const Color(0xFF2E7D32),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange[700],
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.copy,
-                                        color: Colors.white, size: 14),
-                                    SizedBox(width: 6),
-                                    Text('Copy Code',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ),
+                            Expanded(
+                              flex: 2,
+                              child: Icon(Icons.local_offer_rounded, size: 64, color: Colors.white.withOpacity(0.3)),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -2676,106 +2720,106 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       onTap: () =>
           _showProductDetails(productModel, weightDisplay, originalPrice),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFECEFF1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () =>
-                _showProductDetails(productModel, weightDisplay, originalPrice),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 64,
-                height: 64,
-                child: imageUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => _showProductDetails(
+                  productModel, weightDisplay, originalPrice),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.inventory_2,
+                                size: 24, color: Colors.grey),
+                          ),
+                        )
+                      : Container(
                           color: Colors.grey[200],
                           child: const Icon(Icons.inventory_2,
                               size: 24, color: Colors.grey),
                         ),
-                      )
-                    : Container(
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.inventory_2,
-                            size: 24, color: Colors.grey),
-                      ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  productName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF212121),
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  languageProvider.getText(
-                      'Stock $stockQuantity', 'இருப்பு $stockQuantity'),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: VillageTheme.primaryGreen,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    productName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121),
+                      height: 1.2,
                     ),
-                    if (hasDiscount) ...[
-                      const SizedBox(width: 4),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    languageProvider.getText(
+                        'Stock $stockQuantity', 'இருப்பு $stockQuantity'),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
                       Flexible(
                         child: Text(
-                          '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                          '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
                           style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                            decoration: TextDecoration.lineThrough,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: VillageTheme.primaryGreen,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (hasDiscount) ...[
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 82,
-            child: _buildListCartControl(productModel, isInStock),
-          ),
-        ],
-      ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 82,
+              child: _buildListCartControl(productModel, isInStock),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3058,22 +3102,21 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     // Explicit flag from Bulk Edit's "Sell By: Weight (250g price)" - works
     // in any category, the shop owner opted this product in.
     final unit = (product['baseUnit'] ?? '').toString().toLowerCase();
-    final weight =
-        double.tryParse(product['baseWeight']?.toString() ?? '');
+    final weight = double.tryParse(product['baseWeight']?.toString() ?? '');
     if (unit == 'g' && weight == 250) return true;
 
     // Convention fallback for vegetables: a product named "... 250g"
     // (e.g. "Beans 250g") is priced per 250g.
     if (!_isVegetableProduct(product)) return false;
-    final name = (product['displayName'] ?? product['customName'] ?? '')
-        .toString();
+    final name =
+        (product['displayName'] ?? product['customName'] ?? '').toString();
     final split = _weightSplit(name);
     return split != null && split['grams'] == 250.0;
   }
 
   String _weightPricedTitle(Map<String, dynamic> product) {
-    final name = (product['displayName'] ?? product['customName'] ?? '')
-        .toString();
+    final name =
+        (product['displayName'] ?? product['customName'] ?? '').toString();
     final split = _weightSplit(name);
     return split != null ? split['base'] as String : name;
   }
@@ -3183,8 +3226,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                                   final cart = Provider.of<CartProvider>(
                                       context,
                                       listen: false);
-                                  await _handleAddToCartQty(
-                                      cart, pm, qty);
+                                  await _handleAddToCartQty(cart, pm, qty);
                                   if (mounted) setState(() {});
                                 },
                                 child: Container(
@@ -3255,14 +3297,14 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     for (final p in _products) {
       final map = p as Map<String, dynamic>;
       if (_isVegetableProduct(map)) {
-        final name =
-            (map['displayName'] ?? map['customName'] ?? '').toString();
+        final name = (map['displayName'] ?? map['customName'] ?? '').toString();
         final split = _weightSplit(name);
         if (split != null) {
           final key = (split['base'] as String).toLowerCase();
           final existing = groups[key];
           if (existing != null) {
-            existing.add(map, split['label'] as String, split['grams'] as double);
+            existing.add(
+                map, split['label'] as String, split['grams'] as double);
             continue;
           }
           final group = _VariantGroup(split['base'] as String)
@@ -3287,20 +3329,18 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           .toLowerCase();
       final group = groups[name];
       if (group == null) continue;
-      final baseWeight = map['baseWeight'] ??
-          map['masterProduct']?['baseWeight'];
-      final baseUnit = (map['baseUnit'] ??
-              map['masterProduct']?['baseUnit'] ??
-              '')
-          .toString()
-          .toLowerCase();
+      final baseWeight =
+          map['baseWeight'] ?? map['masterProduct']?['baseWeight'];
+      final baseUnit =
+          (map['baseUnit'] ?? map['masterProduct']?['baseUnit'] ?? '')
+              .toString()
+              .toLowerCase();
       String label;
       double grams;
       if (baseWeight != null && (baseUnit == 'kg' || baseUnit == 'g')) {
         final qty = double.tryParse(baseWeight.toString()) ?? 1;
         grams = baseUnit == 'kg' ? qty * 1000 : qty;
-        label =
-            '${qty == qty.roundToDouble() ? qty.toInt() : qty}$baseUnit';
+        label = '${qty == qty.roundToDouble() ? qty.toInt() : qty}$baseUnit';
       } else {
         grams = double.maxFinite; // unknown size sorts last
         label = 'Regular';
@@ -3450,8 +3490,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         .map((v) => double.tryParse(v['price']?.toString() ?? '0') ?? 0.0)
         .toList();
     final minPrice = prices.reduce((a, b) => a < b ? a : b);
-    final anyInStock = group.variants.any((v) =>
-        (int.tryParse(v['stockQuantity']?.toString() ?? '0') ?? 0) > 0);
+    final anyInStock = group.variants.any(
+        (v) => (int.tryParse(v['stockQuantity']?.toString() ?? '0') ?? 0) > 0);
     final imageUrl = group.variants
         .map((v) =>
             v['primaryImageUrl']?.toString() ??
@@ -4042,131 +4082,132 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       onTap: () =>
           _showProductDetails(productModel, weightDisplay, originalPrice),
       child: Container(
-      // Old design: flat soft-grey card on a white page, no drop shadow.
-      decoration: BoxDecoration(
-        color: const Color(0xFFECEFF1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Product Image with discount badge
-          Expanded(
-            flex: 2,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _showProductDetails(
-                productModel,
-                weightDisplay,
-                originalPrice,
-              ),
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        // Old design: flat soft-grey card on a white page, no drop shadow.
+        decoration: BoxDecoration(
+          color: const Color(0xFFECEFF1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product Image with discount badge
+            Expanded(
+              flex: 2,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _showProductDetails(
+                  productModel,
+                  weightDisplay,
+                  originalPrice,
                 ),
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: imageUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl:
-                                  ImageUrlHelper.getFullImageUrl(imageUrl),
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                color: Colors.grey[100],
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: VillageTheme.primaryGreen,
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16)),
+                        child: imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl:
+                                    ImageUrlHelper.getFullImageUrl(imageUrl),
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  color: Colors.grey[100],
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: VillageTheme.primaryGreen,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              errorWidget: (_, __, ___) => Container(
+                                errorWidget: (_, __, ___) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(
+                                    child: Icon(Icons.inventory_2,
+                                        size: 30, color: Colors.grey),
+                                  ),
+                                ),
+                              )
+                            : Container(
                                 color: Colors.grey[200],
                                 child: const Center(
                                   child: Icon(Icons.inventory_2,
-                                      size: 30, color: Colors.grey),
+                                      size: 40, color: Colors.grey),
                                 ),
                               ),
-                            )
-                          : Container(
-                              color: Colors.grey[200],
-                              child: const Center(
-                                child: Icon(Icons.inventory_2,
-                                    size: 40, color: Colors.grey),
-                              ),
-                            ),
-                    ),
-                    // Discount badge overlay at top left
-                    if (hasDiscount && discountPercentage > 0)
-                      Positioned(
-                        top: 4,
-                        left: 4,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B6B),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            '${discountPercentage.toStringAsFixed(0)}% OFF',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                       ),
-                    // Keep only "Out of Stock" overlay on image
-                    if (!isInStock)
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16)),
-                          ),
-                          child: Center(
+                      // Discount badge overlay at top left
+                      if (hasDiscount && discountPercentage > 0)
+                        Positioned(
+                          top: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF6B6B),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
                             child: Text(
-                              languageProvider.getText(
-                                  'Out of Stock', 'இருப்பு இல்லை'),
+                              '${discountPercentage.toStringAsFixed(0)}% OFF',
                               style: const TextStyle(
                                 color: Colors.white,
+                                fontSize: 9,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                      // Keep only "Out of Stock" overlay on image
+                      if (!isInStock)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                            ),
+                            child: Center(
+                              child: Text(
+                                languageProvider.getText(
+                                    'Out of Stock', 'இருப்பு இல்லை'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Product Details — natural height (not flex-split), so long Tamil
-          // names + low-stock line can never overflow; the image above
-          // absorbs whatever space is left.
-          Padding(
+            // Product Details — natural height (not flex-split), so long Tamil
+            // names + low-stock line can never overflow; the image above
+            // absorbs whatever space is left.
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4425,8 +4466,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 ],
               ),
             ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -4794,7 +4835,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
               isOpen: _isShopOpen,
               shopName: _shop?['name'],
               minOrderAmount: (_shop?['minOrderAmount'] as num?)?.toDouble(),
-              onlinePaymentEnabled: _shop?['onlinePaymentEnabled'] as bool? ?? true,
+              onlinePaymentEnabled:
+                  _shop?['onlinePaymentEnabled'] as bool? ?? true,
             );
           }
           if (context.mounted) {
@@ -5261,6 +5303,51 @@ class _ComboCardWithSlideshowState extends State<_ComboCardWithSlideshow> {
 
   @override
   Widget build(BuildContext context) {
+    final bannerImageUrl = widget.combo.bannerImageUrl;
+    final hasBannerImage = bannerImageUrl != null && bannerImageUrl.trim().isNotEmpty;
+
+    // Same treatment as the Home screen: a fully-designed banner image reads
+    // far better as the whole card than squeezed into the left thumbnail
+    // next to separately-rendered name/price text.
+    if (hasBannerImage) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CachedNetworkImage(
+              imageUrl: ImageUrlHelper.getFullImageUrl(bannerImageUrl),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => Container(
+                color: const Color(0xFF2E7D32).withOpacity(0.08),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0x802E7D32)),
+                ),
+              ),
+              errorWidget: (_, __, ___) => const SizedBox(),
+            ),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(

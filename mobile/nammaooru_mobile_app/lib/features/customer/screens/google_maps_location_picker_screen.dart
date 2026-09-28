@@ -37,6 +37,11 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
   String _selectedVillage = '';
   String _selectedState = '';
   String _selectedPincode = '';
+  // The business/shop name at this pin (from a picked search suggestion or a
+  // nearby-places lookup) - shown in the address bar but not part of any
+  // structured field above, so it's carried separately into the save form's
+  // landmark field instead of being silently dropped there.
+  String _selectedPlaceName = '';
   bool _isLoadingLocation = false;
   bool _isLoadingMap = false;
   bool _isSearching = false;
@@ -154,9 +159,18 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     }
   }
 
-  Future<void> _getAddressFromCoordinates(double latitude, double longitude) async {
+  Future<void> _getAddressFromCoordinates(double latitude, double longitude,
+      {String? preferredLabel, String? placeName}) async {
+    // Kick off both lookups together (rather than one after the other) -
+    // the nearby-place call is skipped when preferredLabel is already set
+    // (the user picked a specific search suggestion, so it wins regardless).
+    final addressFuture = LocationService.instance.getAddressFromCoordinates(latitude, longitude);
+    final nearbyPlaceFuture = preferredLabel == null
+        ? LocationService.instance.getNearestPlaceName(latitude, longitude)
+        : Future<String?>.value(null);
     try {
-      final address = await LocationService.instance.getAddressFromCoordinates(latitude, longitude);
+      final address = await addressFuture;
+      final nearbyPlaceName = await nearbyPlaceFuture;
       if (address != null && mounted) {
         // Get all available components
         String? name = address['name']; // Often contains village/area name
@@ -218,9 +232,26 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
           }
         }
 
+        // A shop/business sitting right at this pin (like Google Maps shows)
+        // is a more useful label than the bare road/village address - prefix
+        // it on when nothing more specific was already picked from search.
+        final nearbyLabel = nearbyPlaceName?.isNotEmpty == true
+            ? (fullAddress.isNotEmpty ? '$nearbyPlaceName, $fullAddress' : nearbyPlaceName)
+            : null;
+
         if (!mounted) return;
         setState(() {
-          _selectedAddress = fullAddress.isNotEmpty ? fullAddress : 'Selected Location';
+          // A place picked from search suggestions (e.g. a named shop) is a
+          // more useful label than the generic road/village reverse-geocode
+          // result - keep it instead of clobbering it here.
+          _selectedAddress = preferredLabel?.isNotEmpty == true
+              ? preferredLabel!
+              : (nearbyLabel ?? (fullAddress.isNotEmpty ? fullAddress : 'Selected Location'));
+          // Keep the bare business name too, separate from the combined
+          // address string above - the save form's landmark field needs just
+          // "Murugesan maligai", not the whole "Murugesan maligai, State
+          // Highway 122, ..." string.
+          _selectedPlaceName = placeName ?? nearbyPlaceName ?? '';
           _selectedStreet = street;
           _selectedVillage = village;
           _selectedCity = city;
@@ -245,7 +276,8 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       } catch (_) {}
       if (mounted) {
         setState(() {
-          _selectedAddress = 'Selected Location';
+          _selectedAddress = preferredLabel?.isNotEmpty == true ? preferredLabel! : 'Selected Location';
+          _selectedPlaceName = placeName ?? '';
           _selectedCity = '';
           _selectedVillage = '';
           _selectedState = state.isNotEmpty ? state : 'Tamil Nadu';
@@ -633,6 +665,12 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
 
     double? lat = suggestion['lat'] as double?;
     double? lng = suggestion['lng'] as double?;
+    // Source 2 (this app's own shop DB) already gives a bare shop name here -
+    // Source 1 (Google autocomplete) only gives the full description string,
+    // so its bare name comes from place details below instead.
+    String? placeName = suggestion['isKnownVillage'] == true
+        ? suggestion['name'] as String?
+        : null;
 
     // Autocomplete predictions (Source 1) carry a placeId instead of
     // coordinates - resolve the real lat/lng now, only for the one place
@@ -651,6 +689,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
       }
       lat = details['latitude'] as double;
       lng = details['longitude'] as double;
+      placeName = details['placeName'] as String?;
     }
 
     setState(() {
@@ -662,7 +701,8 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
     final selectedLocation = LatLng(lat, lng);
     _updateMarker(selectedLocation);
     _animateToPosition(lat, lng);
-    _getAddressFromCoordinates(lat, lng);
+    _getAddressFromCoordinates(lat, lng,
+        preferredLabel: suggestion['full'] as String?, placeName: placeName);
   }
 
   Future<void> _saveLocation() async {
@@ -729,6 +769,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
         longitude: _selectedLongitude!,
         detectedAddress: cleanVillage, // Pass cleaned area/locality
         detectedStreet: _selectedStreet, // Pass street name separately
+        detectedLandmark: _selectedPlaceName, // Shop/POI name at this pin, if any
         detectedCity: _selectedCity,
         detectedVillage: cleanVillage, // Pass cleaned village name
         detectedState: _selectedState,
@@ -773,44 +814,30 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
           duration: const Duration(milliseconds: 180),
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           decoration: BoxDecoration(
-            color: _addressFocusNode.hasFocus
-                ? Colors.white
-                : const Color(0xFFF5F6F8),
-            borderRadius: BorderRadius.circular(28),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _addressFocusNode.hasFocus
-                  ? VillageTheme.primaryGreen
-                  : Colors.transparent,
-              width: 1.6,
+                  ? VillageTheme.primaryGreen.withOpacity(0.6)
+                  : Colors.grey.shade200,
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: _addressFocusNode.hasFocus
-                    ? VillageTheme.primaryGreen.withOpacity(0.15)
-                    : Colors.black.withOpacity(0.06),
-                blurRadius: _addressFocusNode.hasFocus ? 14 : 8,
-                offset: const Offset(0, 3),
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 18),
-                child: Icon(
-                  Icons.search_rounded,
-                  color: _addressFocusNode.hasFocus
-                      ? VillageTheme.primaryGreen
-                      : Colors.grey.shade500,
-                  size: 22,
-                ),
-              ),
               Expanded(
                 child: TextField(
                   controller: _addressController,
                   style: const TextStyle(
                     color: Colors.black87,
-                    fontSize: 15.5,
+                    fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
                   cursorColor: VillageTheme.primaryGreen,
@@ -821,10 +848,21 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                       fontSize: 14.5,
                       fontWeight: FontWeight.w400,
                     ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey.shade500,
+                      size: 21,
+                    ),
+                    // Flutter's default prefixIcon box reserves ~48px, which
+                    // leaves a visible gap before the hint/typed text - pull
+                    // it in so the icon and text sit close together.
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 38,
+                      minHeight: 0,
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
+                      vertical: 13,
                     ),
                   ),
                   onChanged: (value) {
@@ -847,10 +885,10 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
               ),
               if (_isSearching)
                 const Padding(
-                  padding: EdgeInsets.only(right: 12),
+                  padding: EdgeInsets.only(right: 14),
                   child: SizedBox(
-                    width: 18,
-                    height: 18,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
@@ -861,7 +899,7 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                 )
               else if (_addressController.text.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.only(right: 8),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {
@@ -874,12 +912,12 @@ class _GoogleMapsLocationPickerScreenState extends State<GoogleMapsLocationPicke
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: Colors.grey.shade200,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.close_rounded,
-                        color: Colors.grey.shade700,
+                        color: Colors.grey.shade600,
                         size: 15,
                       ),
                     ),

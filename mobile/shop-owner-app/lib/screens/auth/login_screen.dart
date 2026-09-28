@@ -93,9 +93,20 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.store, size: 80, color: Theme.of(context).primaryColor),
+                  Image.asset(
+                    'assets/icons/logo-new.png',
+                    width: 100,
+                    height: 100,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Icon(Icons.store, size: 80, color: Theme.of(context).primaryColor),
+                  ),
                   const SizedBox(height: 24),
-                  const Text('NammaOoru Shop Owner', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'NammaOoru Shop Owner',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: 8),
                   const Text('Manage your shop efficiently', style: TextStyle(fontSize: 16, color: Colors.grey)),
                   const SizedBox(height: 48),

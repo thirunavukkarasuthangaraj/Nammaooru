@@ -10,7 +10,9 @@ import '../../../shared/models/product_model.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/services/shop_service.dart';
 import 'add_edit_product_screen.dart';
+import 'browse_catalog_screen.dart';
 
 class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({super.key});
@@ -21,6 +23,7 @@ class ProductManagementScreen extends StatefulWidget {
 
 class _ProductManagementScreenState extends State<ProductManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ShopService _shopService = ShopService();
   List<ProductModel> _products = [];
   List<ProductModel> _filteredProducts = [];
   bool _isLoading = true;
@@ -44,47 +47,20 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
 
   Future<void> _loadProducts() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      // TODO: Implement API call to fetch shop products
-      await Future.delayed(const Duration(seconds: 2));
-      
-      _products = _generateSampleProducts();
+      _products = await _shopService.getMyShopProducts();
       _filteredProducts = List.from(_products);
       _applySortAndFilter();
     } catch (e) {
       if (mounted) {
-        Helpers.showSnackBar(context, 'Failed to load products', isError: true);
+        Helpers.showSnackBar(context, 'Failed to load products: $e', isError: true);
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  List<ProductModel> _generateSampleProducts() {
-    return List.generate(15, (index) {
-      final isOutOfStock = index % 7 == 0;
-      return ProductModel(
-        id: 'product_$index',
-        name: 'Product ${index + 1}',
-        description: 'High quality product with great features and benefits.',
-        price: 50.0 + (index * 15),
-        discountPrice: index % 3 == 0 ? 40.0 + (index * 12) : null,
-        category: ['Vegetables', 'Fruits', 'Dairy', 'Snacks', 'Beverages'][index % 5],
-        shopId: 'shop_1',
-        shopName: 'My Shop',
-        images: ['https://via.placeholder.com/300x300'],
-        stockQuantity: isOutOfStock ? 0 : 10 + index,
-        unit: ['kg', 'piece', 'liter', 'pack'][index % 4],
-        rating: 3.5 + (index % 3 * 0.5),
-        reviewCount: 5 + index,
-        isAvailable: !isOutOfStock,
-        createdAt: DateTime.now().subtract(Duration(days: index)),
-        updatedAt: DateTime.now(),
-      );
-    });
   }
 
   void _filterProducts() {
@@ -658,26 +634,84 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AddEditProductScreen(),
+        builder: (context) => const BrowseCatalogScreen(),
       ),
-    ).then((result) {
-      if (result == true) {
-        _loadProducts();
-      }
+    ).then((_) {
+      // Always refresh - the catalog screen may have added one or more
+      // products before the owner navigated back.
+      _loadProducts();
     });
   }
 
   void _editProduct(ProductModel product) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEditProductScreen(product: product),
+    final priceController = TextEditingController(text: product.price.toString());
+    final mrpController = TextEditingController(text: product.discountPrice?.toString() ?? '');
+    final stockController = TextEditingController(text: product.stockQuantity.toString());
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Edit - ${product.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: priceController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Selling Price *', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: mrpController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Original Price / MRP (optional)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: stockController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Stock Quantity', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final price = double.tryParse(priceController.text);
+              if (price == null || price <= 0) {
+                Helpers.showSnackBar(context, 'Please enter a valid price', isError: true);
+                return;
+              }
+              final mrp = mrpController.text.isEmpty ? null : double.tryParse(mrpController.text);
+              final stock = int.tryParse(stockController.text);
+
+              Navigator.pop(dialogContext);
+              try {
+                await _shopService.updateShopProductQuick(
+                  int.parse(product.id),
+                  price: price,
+                  originalPrice: mrp,
+                  stockQuantity: stock,
+                );
+                if (mounted) {
+                  Helpers.showSnackBar(context, 'Product updated successfully');
+                  _loadProducts();
+                }
+              } catch (e) {
+                if (mounted) {
+                  Helpers.showSnackBar(context, '$e', isError: true);
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
-    ).then((result) {
-      if (result == true) {
-        _loadProducts();
-      }
-    });
+    );
   }
 
   void _duplicateProduct(ProductModel product) {
@@ -700,10 +734,11 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
 
   void _updateStock(ProductModel product) {
     final controller = TextEditingController(text: product.stockQuantity.toString());
-    
+    final screenContext = context;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text('Update Stock - ${product.name}'),
         content: TextField(
           controller: controller,
@@ -715,15 +750,28 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              // TODO: Update stock via API
-              Navigator.pop(context);
-              Helpers.showSnackBar(context, 'Stock updated successfully');
-              _loadProducts();
+            onPressed: () async {
+              final stock = int.tryParse(controller.text);
+              if (stock == null || stock < 0) {
+                Helpers.showSnackBar(dialogContext, 'Please enter a valid stock quantity', isError: true);
+                return;
+              }
+              Navigator.pop(dialogContext);
+              try {
+                await _shopService.updateShopProductQuick(int.parse(product.id), stockQuantity: stock);
+                if (mounted) {
+                  Helpers.showSnackBar(screenContext, 'Stock updated successfully');
+                  _loadProducts();
+                }
+              } catch (e) {
+                if (mounted) {
+                  Helpers.showSnackBar(screenContext, '$e', isError: true);
+                }
+              }
             },
             child: const Text('Update'),
           ),
@@ -742,22 +790,32 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
   }
 
   void _deleteProduct(ProductModel product) {
+    final screenContext = context;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Product'),
         content: Text('Are you sure you want to delete "${product.name}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              // TODO: Delete product via API
-              Navigator.pop(context);
-              Helpers.showSnackBar(context, 'Product deleted successfully');
-              _loadProducts();
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await _shopService.deleteShopProduct(int.parse(product.id));
+                if (mounted) {
+                  Helpers.showSnackBar(screenContext, 'Product deleted successfully');
+                  _loadProducts();
+                }
+              } catch (e) {
+                if (mounted) {
+                  Helpers.showSnackBar(screenContext, '$e', isError: true);
+                }
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),

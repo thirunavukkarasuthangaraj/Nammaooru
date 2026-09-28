@@ -40,6 +40,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   String _searchQuery = '';
   String? _selectedCategoryId;
   String? _selectedCategoryName;
+  bool _isGridView = true;
   final TextEditingController _searchController = TextEditingController();
   final VoiceSearchService _voiceService = VoiceSearchService();
   OverlayEntry? _voiceSearchOverlay;
@@ -324,6 +325,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
             backgroundColor: Colors.green.shade700,
             foregroundColor: Colors.white,
             elevation: 0,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  _isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                  color: Colors.white,
+                ),
+                tooltip: _isGridView ? 'List view' : 'Grid view',
+                onPressed: () => setState(() => _isGridView = !_isGridView),
+              ),
+            ],
           ),
           body: Column(
             children: [
@@ -456,8 +467,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                       height: 58,
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) {
-                                        return const Center(
-                                          child: Icon(Icons.category, size: 26, color: Colors.white),
+                                        return Center(
+                                          child: Text(
+                                            displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         );
                                       },
                                       loadingBuilder: (context, child, loadingProgress) {
@@ -479,8 +497,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                       style: const TextStyle(fontSize: 26),
                                     ),
                                   )
-                                : const Center(
-                                    child: Icon(Icons.category, size: 26, color: Colors.white),
+                                : Center(
+                                    child: Text(
+                                      displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
                             ),
                           ),
@@ -552,35 +577,49 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           )
                     : RefreshIndicator(
                         onRefresh: _fetchProducts,
-                        child: GridView.builder(
-                          controller: _scrollController,
-                          padding: padding,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: gridColumns,
-                            // Responsive spacing - smaller on mobile
-                            crossAxisSpacing: screenWidth < 600 ? AppTheme.space12 : AppTheme.space16,
-                            mainAxisSpacing: screenWidth < 600 ? AppTheme.space12 : AppTheme.space16,
-                            // Responsive aspect ratio - taller cards on small screens
-                            childAspectRatio: screenWidth < 600
-                                ? 0.48  // Small phones: taller cards (e.g., 140px wide → 292px tall)
-                                : screenWidth < 900
-                                    ? 0.65  // Tablets: balanced ratio
-                                    : 0.7,  // Desktop: current ratio
-                          ),
-                          itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == _filteredProducts.length) {
-                              return const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(AppTheme.space16),
-                                  child: CircularProgressIndicator(),
+                        child: _isGridView
+                            ? GridView.builder(
+                                controller: _scrollController,
+                                padding: padding,
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridColumns,
+                                  // Matches the customer app's product grid spacing/ratio
+                                  // (mobile/nammaooru_mobile_app products_screen.dart)
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 0.75,
                                 ),
-                              );
-                            }
-                            final product = _filteredProducts[index];
-                            return _buildProductCard(product);
-                          },
-                        ),
+                                itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == _filteredProducts.length) {
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(AppTheme.space16),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+                                  final product = _filteredProducts[index];
+                                  return _buildProductCard(product);
+                                },
+                              )
+                            : ListView.builder(
+                                controller: _scrollController,
+                                padding: padding,
+                                itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == _filteredProducts.length) {
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(AppTheme.space16),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+                                  final product = _filteredProducts[index];
+                                  return _buildProductListTile(product);
+                                },
+                              ),
                       ),
               ),
             ],
@@ -623,56 +662,202 @@ class _ProductsScreenState extends State<ProductsScreen> {
       imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
       onTap: () => _showEditProductDialog(product),
       onEdit: () => _showEditProductDialog(product),
-      onDelete: () async {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Remove Product'),
+      onDelete: () => _confirmAndDeleteProduct(product, productName),
+    );
+  }
+
+  // Shared by both grid card and list tile so the confirm dialog and
+  // removeProductFromShop call only live in one place.
+  Future<void> _confirmAndDeleteProduct(dynamic product, String productName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Product'),
+        content: Text(
+          'Are you sure you want to remove "$productName" from your shop?\n\nNote: Product can only be removed if all orders are completed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ModernButton(
+            text: 'Remove',
+            variant: ButtonVariant.error,
+            size: ButtonSize.small,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final deleteResult = await ApiService.removeProductFromShop(
+        productId: product['id'],
+      );
+
+      if (deleteResult.isSuccess) {
+        _fetchProducts();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product removed from shop successfully'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text(
-              'Are you sure you want to remove "$productName" from your shop?\n\nNote: Product can only be removed if all orders are completed.',
+              'Error: ${deleteResult.error ?? "Cannot remove product with pending orders"}',
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  // Same clean list-row layout as the customer app's _buildProductListTile
+  // (Card + leading thumbnail + title/subtitle), with edit/delete actions
+  // added since the shop owner (unlike a customer) manages inventory here.
+  Widget _buildProductListTile(dynamic product) {
+    final languageProvider = context.read<LanguageProvider>();
+    final primaryImageUrl = product['primaryImageUrl'] ?? product['image'];
+    final productName = languageProvider.getDisplayName(product);
+    final displayName = productName.isNotEmpty
+        ? productName
+        : (product['displayName'] ?? product['name'] ?? 'Unknown Product');
+    final price = (product['price'] ?? 0).toDouble();
+    final originalPrice = product['originalPrice']?.toDouble();
+    final hasDiscount = originalPrice != null && originalPrice > price;
+    final stock = product['stockQuantity'] ?? product['stock'] ?? 0;
+    final lowStock = product['lowStock'] ?? (stock < 10);
+    final imageUrl = AppConfig.getImageUrl(primaryImageUrl);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showEditProductDialog(product),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  color: Colors.grey[100],
+                  child: imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.shopping_bag_outlined,
+                            color: Colors.grey[300],
+                          ),
+                        )
+                      : Icon(Icons.shopping_bag_outlined, color: Colors.grey[300]),
+                ),
               ),
-              ModernButton(
-                text: 'Remove',
-                variant: ButtonVariant.error,
-                size: ButtonSize.small,
-                onPressed: () => Navigator.pop(context, true),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (hasDiscount) ...[
+                          Text(
+                            '₹${originalPrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(
+                          '₹${price.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: hasDiscount ? Colors.green[700] : AppTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: lowStock ? Colors.orange[50] : Colors.green[50],
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: lowStock ? Colors.orange[300]! : Colors.green[300]!,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        'Stock: $stock',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: lowStock ? Colors.orange[700] : Colors.green[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Material(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      onTap: () => _showEditProductDialog(product),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(Icons.edit_outlined, size: 16, color: Colors.blue[700]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Material(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      onTap: () => _confirmAndDeleteProduct(product, displayName),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(Icons.delete_outline, size: 16, color: Colors.red[700]),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        );
-
-        if (confirmed == true) {
-          final deleteResult = await ApiService.removeProductFromShop(
-            productId: product['id'],
-          );
-
-          if (deleteResult.isSuccess) {
-            _fetchProducts();
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Product removed from shop successfully'),
-                backgroundColor: AppTheme.success,
-              ),
-            );
-          } else {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Error: ${deleteResult.error ?? "Cannot remove product with pending orders"}',
-                ),
-                backgroundColor: AppTheme.error,
-              ),
-            );
-          }
-        }
-      },
+        ),
+      ),
     );
   }
 

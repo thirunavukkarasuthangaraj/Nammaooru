@@ -1,3 +1,5 @@
+import '../../../shared/widgets/auth_copy.dart';
+import '../../../shared/widgets/customer_auth_header.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -91,6 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LanguageProvider>();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -99,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       },
       child: Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFFFF),
       body: SafeArea(
         top: false,
               child: Consumer<AuthProvider>(
@@ -115,7 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: VillageTheme.spacingM),
                           Text(
-                            'Registering...',
+                            authCopy(context, 'Registering...'),
                             style: VillageTheme.bodyLarge.copyWith(
                               color: VillageTheme.primaryGreen,
                             ),
@@ -134,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             _buildHeader(),
                             Padding(
-                              padding: const EdgeInsets.all(24.0),
+                              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -167,54 +170,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildHeader() {
-    final languageProvider = Provider.of<LanguageProvider>(context);
-    // Signature curved green header, matching the dashboard and login.
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-          24, MediaQuery.of(context).padding.top + 24, 24, 36),
-      decoration: const BoxDecoration(
-        color: VillageTheme.primaryGreen,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.elliptical(200, 40),
-          bottomRight: Radius.elliptical(200, 40),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Image.asset(
-              'assets/icons/logo-new.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            languageProvider.getText('Register!', 'பதிவு செய்யுங்கள்!'),
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            languageProvider.getText(
-                'Join Namma Ooru Connect', 'நம்ம ஊரு கனெக்ட்-இல் இணையுங்கள்'),
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-        ],
-      ),
+    final lang = Provider.of<LanguageProvider>(context);
+    return CustomerAuthHeader(
+      title: authCopy(context, 'Create account'),
+      subtitle: authCopy(context, 'Enter your details to get started'),
+      languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
+      onLanguageChanged: () => lang.toggleLanguage(),
     );
   }
 
@@ -252,7 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         validator: validator,
         decoration: InputDecoration(
-          hintText: hint,
+          labelText: hint,
           hintStyle: const TextStyle(
             color: Colors.black54,
             fontSize: 16,
@@ -261,6 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           counterText: '',
+          errorMaxLines: 3,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -273,16 +235,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildNameField() {
     return _buildInputField(
       controller: _nameController,
-      hint: 'Full Name',
+      hint: authCopy(context, 'Full Name'),
       icon: Icons.person_outlined,
       maxLength: 50,
       autofillHints: const [AutofillHints.name],
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return 'Please enter your name';
+          return authCopy(context, 'Please enter your name');
         }
         if (value.trim().length < 2) {
-          return 'Name must be at least 2 characters';
+          return authCopy(context, 'Name must be at least 2 characters');
         }
         return null;
       },
@@ -292,17 +254,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildEmailField() {
     return _buildInputField(
       controller: _emailController,
-      hint: 'Email',
+      hint: authCopy(context, 'Email'),
       icon: Icons.email_outlined,
       keyboardType: TextInputType.emailAddress,
       maxLength: 100,
       autofillHints: const [AutofillHints.email],
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return 'Please enter your email';
+          return authCopy(context, 'Please enter your email');
         }
         if (!value.contains('@') || !value.contains('.')) {
-          return 'Please enter a valid email';
+          return authCopy(context, 'Please enter a valid email');
         }
         return null;
       },
@@ -312,7 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildPhoneField() {
     return _buildInputField(
       controller: _phoneController,
-      hint: 'Phone Number',
+      hint: authCopy(context, 'Phone Number'),
       icon: Icons.phone_outlined,
       keyboardType: TextInputType.phone,
       autofillHints: const [AutofillHints.telephoneNumber],
@@ -331,11 +293,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       },
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return 'Please enter your phone number';
+          return authCopy(context, 'Please enter your phone number');
         }
         final digits = value.trim().replaceAll(RegExp(r'[^0-9]'), '');
         if (digits.length != 10) {
-          return 'Enter a valid 10-digit phone number';
+          return authCopy(context, 'Enter a valid 10-digit phone number');
         }
         return null;
       },
@@ -345,7 +307,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildPasswordField() {
     return _buildInputField(
       controller: _passwordController,
-      hint: 'Password (min 4 characters)',
+      hint: authCopy(context, 'Password (min 4 characters)'),
       icon: Icons.lock_outlined,
       obscureText: _obscurePassword,
       maxLength: 50,
@@ -366,10 +328,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter a password';
+          return authCopy(context, 'Please enter a password');
         }
         if (value.length < 4) {
-          return 'Password must be at least 4 characters';
+          return authCopy(context, 'Password must be at least 4 characters');
         }
         return null;
       },
@@ -401,13 +363,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Wrap(
             children: [
               Text(
-                'I agree to ',
+                authCopy(context, 'I agree to '),
                 style: TextStyle(fontSize: 13, color: Colors.grey[800]),
               ),
               GestureDetector(
                 onTap: () => PrivacyPolicyDialog.show(context),
-                child: const Text(
-                  'Terms & Privacy Policy',
+                child: Text(
+                  authCopy(context, 'Terms & Privacy Policy'),
                   style: TextStyle(
                     fontSize: 13,
                     color: VillageTheme.primaryGreen,
@@ -430,7 +392,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: ElevatedButton(
         onPressed: _handleRegister,
         style: ElevatedButton.styleFrom(
-          backgroundColor: VillageTheme.primaryGreen,
+          backgroundColor: const Color(0xFF4CAF50),
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -438,8 +400,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        child: const Text(
-          'Register',
+        child: Text(
+          authCopy(context, 'Register'),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -455,13 +417,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         Text(
-          'Already have an account?',
+          authCopy(context, 'Already have an account?'),
           style: TextStyle(fontSize: 15, color: Colors.grey[700]),
         ),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: 52,
           child: OutlinedButton(
             onPressed: () => context.go('/login'),
             style: OutlinedButton.styleFrom(
@@ -470,9 +432,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              // A tight fixed height clipped the descender of "Login" on
+              // real devices (Android's font renderer needs a bit more room
+              // than Chrome's web renderer does for the same text) - explicit
+              // vertical padding plus the taller box above fixes it.
+              padding: const EdgeInsets.symmetric(vertical: 8),
             ),
-            child: const Text(
-              'Login',
+            child: Text(
+              authCopy(context, 'Login'),
               style: TextStyle(
                 fontSize: 17,
                 color: VillageTheme.primaryGreen,

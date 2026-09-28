@@ -162,8 +162,13 @@ class AppConfig {
     if (!cleanPath.startsWith('/')) {
       cleanPath = '/$cleanPath';
     }
-    // Add /uploads prefix if not already present
-    if (!cleanPath.startsWith('/uploads/')) {
+    // Uploaded media (shop/product photos) lives under /uploads. Curated
+    // category artwork is served directly from the backend classpath at
+    // /category-artwork/ instead - forcing the /uploads prefix onto it
+    // (as this used to) 404s and silently falls back to a placeholder icon.
+    // Mirrors ImageUrlHelper.getFullImageUrl in the customer app.
+    if (!cleanPath.startsWith('/uploads/') &&
+        !cleanPath.startsWith('/category-artwork/')) {
       cleanPath = '/uploads$cleanPath';
     }
     // Otherwise, prepend the image base URL (for static file serving)

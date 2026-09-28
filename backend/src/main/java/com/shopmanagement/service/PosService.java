@@ -540,7 +540,7 @@ public class PosService {
      * Only creates new customer if phone number is provided
      */
     private Customer getOrCreateWalkInCustomer(PosOrderRequest request, Shop shop) {
-        String customerPhone = request.getCustomerPhone();
+        String customerPhone = normalizePhone(request.getCustomerPhone());
         String customerName = request.getCustomerName();
 
         String customerEmail = request.getCustomerEmail() != null && request.getCustomerEmail().contains("@")
@@ -625,6 +625,23 @@ public class PosService {
         }
     }
 
+    /**
+     * Strips everything but digits and drops a country code / trunk zero so
+     * "+91 98765 43210", "09876543210" and "9876543210" all resolve to the
+     * same customer. The customer app always stores a bare 10-digit number
+     * (login_screen/register_screen strip +91 client-side); an un-normalized
+     * phone typed at the POS silently created a second, disconnected
+     * Customer row that never appeared in the customer's own app.
+     */
+    private static String normalizePhone(String raw) {
+        if (raw == null) return null;
+        String digits = raw.replaceAll("[^0-9]", "");
+        if (digits.length() > 10) {
+            digits = digits.substring(digits.length() - 10);
+        }
+        return digits;
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
@@ -677,7 +694,8 @@ public class PosService {
     @Transactional
     public Map<String, Object> updateShopCustomer(Long shopId, Long customerId, String name, String phone) {
         String newName = name == null ? "" : name.trim();
-        String newPhone = phone == null ? "" : phone.trim();
+        String newPhone = normalizePhone(phone);
+        if (newPhone == null) newPhone = "";
         if (newName.isEmpty()) {
             throw new RuntimeException("Customer name is required");
         }

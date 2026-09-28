@@ -728,7 +728,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                             Expanded(
                               child: _buildStatCard(
                                 languageProvider.totalValue,
-                                '₹${_totalInventoryValue.toStringAsFixed(0)}',
+                                '₹${_formatCompactAmount(_totalInventoryValue)}',
                                 Icons.account_balance_wallet,
                                 Colors.green.shade700,
                               ),
@@ -832,6 +832,17 @@ class _InventoryScreenState extends State<InventoryScreen>
     return Icon(Icons.inventory_2, color: statusColor, size: 30);
   }
 
+  // Matches the Dashboard's Revenue cards (₹3.1L) - a raw ₹3371799 was
+  // overflowing this half-width stat card and wrapping mid-digit.
+  String _formatCompactAmount(double amount) {
+    if (amount >= 100000) {
+      return '${(amount / 100000).toStringAsFixed(1)}L';
+    } else if (amount >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(1)}K';
+    }
+    return amount.toStringAsFixed(0);
+  }
+
   Widget _buildStatCard(
       String label, String value, IconData icon, Color color) {
     return Container(
@@ -868,7 +879,9 @@ class _InventoryScreenState extends State<InventoryScreen>
                           .copyWith(color: AppTheme.textSecondary)),
                   const SizedBox(height: AppTheme.space4),
                   Text(value,
-                      style: AppTheme.h5.copyWith(fontWeight: FontWeight.bold)),
+                      style: AppTheme.h5.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -977,10 +990,18 @@ class _InventoryScreenState extends State<InventoryScreen>
                           ),
                         ),
                         const SizedBox(width: AppTheme.space8),
-                        Text(
-                          '₹${price.toStringAsFixed(0)}/unit',
-                          style: AppTheme.bodySmall
-                              .copyWith(color: AppTheme.textSecondary),
+                        // Flexible+ellipsis instead of a bare Text: a long
+                        // price (or a longer stock label at wider fonts) was
+                        // overflowing this Row with no room to shrink,
+                        // rendering as the yellow/black striped overflow bar.
+                        Flexible(
+                          child: Text(
+                            '₹${price.toStringAsFixed(0)}/unit',
+                            style: AppTheme.bodySmall
+                                .copyWith(color: AppTheme.textSecondary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),

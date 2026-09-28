@@ -190,9 +190,19 @@ class OrderService {
         print('❌ Backend response status: ${e.response?.statusCode}');
         print('❌ Backend response body: ${e.response?.data}');
       }
+      // The backend sends a specific, actionable message for rejected orders
+      // (out of stock, outside delivery radius, etc.) via the response body
+      // even on 4xx/5xx status codes - surface that instead of a generic
+      // "check your connection" message that hides the real reason.
+      final responseData = e is DioException ? e.response?.data : null;
+      final backendMessage = responseData is Map<String, dynamic>
+          ? (responseData['message'] ?? responseData['error'])?.toString()
+          : null;
       return {
         'success': false,
-        'message': 'Failed to place order. Please check your connection and try again.',
+        'message': backendMessage?.isNotEmpty == true
+            ? backendMessage!
+            : 'Failed to place order. Please check your connection and try again.',
         'error': e.toString()
       };
     }

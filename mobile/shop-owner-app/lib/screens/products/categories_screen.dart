@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service_simple.dart';
 import '../../utils/constants.dart';
+import '../../utils/app_config.dart';
+import '../../utils/app_theme.dart';
 import 'category_products_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
@@ -41,7 +43,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         final List<Map<String, dynamic>> categoryList = [];
         if (content is List) {
           for (var cat in content) {
-            final iconUrl = cat['iconUrl'] ?? '';
+            // The shop-categories endpoint this screen calls returns the
+            // category image as 'imageUrl' (see api_service_simple.dart
+            // getCategories() comment) - 'iconUrl' is a different, legacy
+            // field that's usually empty, which was silently forcing every
+            // category to fall back to its emoji/letter placeholder.
+            final iconUrl = (cat['imageUrl'] ?? cat['iconUrl'] ?? '').toString();
             final imageUrl = iconUrl.isNotEmpty && (iconUrl.startsWith('/') || iconUrl.startsWith('http'))
                 ? iconUrl
                 : null;
@@ -123,13 +130,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text(
           'Product Categories',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -211,178 +218,86 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final icon = category['icon'] as String;
     final categoryColor = category['color'] as Color;
 
-    return InkWell(
-      onTap: () => _navigateToCategoryProducts(categoryName, productCount),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              categoryColor.withOpacity(0.02),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: categoryColor.withOpacity(0.2),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: categoryColor.withOpacity(0.15),
-              blurRadius: 15,
-              offset: const Offset(0, 6),
-              spreadRadius: 1,
-            ),
-            BoxShadow(
-              color: Colors.white.withOpacity(0.5),
-              blurRadius: 8,
-              offset: const Offset(-4, -4),
-            ),
-          ],
-        ),
+    // Simplified to a plain Card (radius 12, single soft shadow) so this
+    // matches the flat, low-noise card style used across the rest of the
+    // app instead of the heavy double-shadow/gradient-border look.
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _navigateToCategoryProducts(categoryName, productCount),
+        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Category Image/Icon Display
             Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          categoryColor.withOpacity(0.15),
-                          categoryColor.withOpacity(0.05),
-                        ],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
-                      ),
-                    ),
-                    child: imageUrl != null && imageUrl.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              topRight: Radius.circular(20),
-                            ),
-                            child: Image.network(
-                              imageUrl.startsWith('http')
-                                  ? imageUrl
-                                  : 'http://localhost:8080${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}',
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                print('❌ Error loading category image: $imageUrl');
-                                print('   Error details: $error');
-                                return _buildFallbackIcon(iconEmoji, icon, categoryColor);
-                              },
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) {
-                                  print('✅ Category image loaded: $imageUrl');
-                                  return child;
-                                }
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    color: categoryColor,
-                                    strokeWidth: 2,
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        : _buildFallbackIcon(iconEmoji, icon, categoryColor),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: categoryColor.withOpacity(0.08),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
                   ),
-                ],
+                ),
+                child: imageUrl != null && imageUrl.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          AppConfig.getImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildFallbackIcon(iconEmoji, icon, categoryColor),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                color: categoryColor,
+                                strokeWidth: 2,
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : _buildFallbackIcon(iconEmoji, icon, categoryColor),
               ),
             ),
 
-            // Category Info with Enhanced Design
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
+            // Category Info
+            Padding(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     displayName,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       color: Colors.grey[900],
-                      height: 1.2,
-                      letterSpacing: 0.2,
+                      height: 1.25,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                categoryColor.withOpacity(0.15),
-                                categoryColor.withOpacity(0.08),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: categoryColor.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.shopping_bag_outlined,
-                                size: 14,
-                                color: categoryColor,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  productCount > 0 ? '$productCount items' : 'Empty',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: categoryColor,
-                                    letterSpacing: 0.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: categoryColor,
-                      ),
-                    ],
+                  const SizedBox(height: 6),
+                  Text(
+                    productCount > 0 ? '$productCount items' : 'Empty',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: categoryColor,
+                    ),
                   ),
                 ],
               ),
@@ -393,170 +308,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  // Build fallback icon when image is not available
+  // Fallback when a category has no valid image: the real emoji if the API
+  // gave us one, else a plain letter badge (never a generic dummy icon).
   Widget _buildFallbackIcon(String? iconEmoji, String defaultIcon, Color categoryColor) {
     final displayIcon = iconEmoji ?? defaultIcon;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center,
-          radius: 0.8,
-          colors: [
-            categoryColor.withOpacity(0.2),
-            categoryColor.withOpacity(0.1),
-            categoryColor.withOpacity(0.05),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: categoryColor.withOpacity(0.25),
-                blurRadius: 15,
-                spreadRadius: 3,
-              ),
-            ],
-          ),
-          child: Text(
-            displayIcon,
-            style: const TextStyle(fontSize: 42),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductImageGrid(List products, String icon, Color categoryColor) {
-    // If we have products with images, show a 2x2 grid
-    if (products.isNotEmpty) {
-      final productImages = products
-          .where((p) => p['imageUrl'] != null && (p['imageUrl'] as String).isNotEmpty)
-          .take(4)
-          .toList();
-
-      if (productImages.length >= 2) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 3,
-              mainAxisSpacing: 3,
-            ),
-            itemCount: 4,
-            itemBuilder: (context, index) {
-              if (index < productImages.length) {
-                return Stack(
-                  children: [
-                    Image.network(
-                      productImages[index]['imageUrl'],
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                categoryColor.withOpacity(0.15),
-                                categoryColor.withOpacity(0.08),
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.image_not_supported_outlined,
-                              color: categoryColor.withOpacity(0.4),
-                              size: 28,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    // Subtle overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.05),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              } else {
-                // Empty grid cell with subtle background
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        categoryColor.withOpacity(0.08),
-                        categoryColor.withOpacity(0.03),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.add_photo_alternate_outlined,
-                      color: categoryColor.withOpacity(0.25),
-                      size: 24,
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
-        );
-      }
-    }
-
-    // Fallback to large emoji icon with gradient background
-    return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center,
-          radius: 0.8,
-          colors: [
-            categoryColor.withOpacity(0.15),
-            categoryColor.withOpacity(0.05),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: categoryColor.withOpacity(0.2),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Text(
-            icon,
-            style: const TextStyle(fontSize: 48),
-          ),
-        ),
+    return Center(
+      child: Text(
+        displayIcon,
+        style: const TextStyle(fontSize: 36),
+        textAlign: TextAlign.center,
       ),
     );
   }

@@ -161,19 +161,27 @@ class _CreateLocalShopScreenState extends State<CreateLocalShopScreen> {
           position.longitude != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        final address =
-            await LocationService.instance.getAddressFromCoordinates(
+        final addressFuture = LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
         );
+        final nearbyPlaceFuture = LocationService.instance.getNearestPlaceName(
+          position.latitude!,
+          position.longitude!,
+        );
+        final address = await addressFuture;
+        final nearbyPlaceName = await nearbyPlaceFuture;
         if (address != null && mounted) {
           final name = address['name'] ?? address['subLocality'] ?? '';
           final city = address['locality'] ?? '';
+          // A shop/business right at this pin (from Places Nearby Search) is
+          // a more recognisable label than the bare village name.
+          final label = nearbyPlaceName?.isNotEmpty == true ? nearbyPlaceName! : name;
           setState(() {
-            if (name.isNotEmpty && city.isNotEmpty && name != city) {
-              _addressController.text = '$name, $city';
-            } else if (name.isNotEmpty) {
-              _addressController.text = name;
+            if (label.isNotEmpty && city.isNotEmpty && label != city) {
+              _addressController.text = '$label, $city';
+            } else if (label.isNotEmpty) {
+              _addressController.text = label;
             } else if (city.isNotEmpty) {
               _addressController.text = city;
             }

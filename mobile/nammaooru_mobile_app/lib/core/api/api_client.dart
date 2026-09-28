@@ -77,6 +77,24 @@ class ApiClient {
     );
   }
 
+  static Future<Response> patch(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    bool includeAuth = true,
+  }) async {
+    if (includeAuth) {
+      await _addAuthToken();
+    }
+    return await _dio.patch(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
+  }
+
   static Future<Response> delete(
     String path, {
     dynamic data,

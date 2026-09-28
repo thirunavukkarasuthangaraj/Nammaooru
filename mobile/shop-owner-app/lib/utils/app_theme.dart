@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Modern Design System for Shop Owner App
 ///
@@ -223,8 +224,15 @@ class AppTheme {
   // ==================== THEME DATA ====================
 
   static ThemeData get lightTheme {
+    // Plus Jakarta Sans matches the customer app's design language exactly
+    // (mobile/nammaooru_mobile_app/lib/app/theme.dart) - applying it via
+    // textTheme so every Text widget picks it up without per-widget changes.
+    final baseTextTheme = GoogleFonts.plusJakartaSansTextTheme();
+
     return ThemeData(
       useMaterial3: true,
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+      textTheme: baseTextTheme,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         primary: primary,
@@ -234,14 +242,19 @@ class AppTheme {
         surface: surface,
       ),
 
-      // App Bar Theme
+      // App Bar Theme. No explicit iconTheme here on purpose: every real
+      // screen sets its own `foregroundColor: Colors.white` on a green
+      // AppBar, and Flutter derives icon color from foregroundColor when
+      // iconTheme isn't set. A hardcoded dark iconTheme here was silently
+      // overriding that per-screen white, which is why AppBar icons without
+      // an explicit `color:` (back button, unstyled actions) rendered dark
+      // on a green bar across every screen in the app.
       appBarTheme: const AppBarTheme(
         elevation: 0,
         centerTitle: false,
         backgroundColor: surface,
         foregroundColor: textPrimary,
         titleTextStyle: h5,
-        iconTheme: IconThemeData(color: textPrimary),
       ),
 
       // Card Theme

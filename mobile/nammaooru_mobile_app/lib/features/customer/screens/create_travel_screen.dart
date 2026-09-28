@@ -1,3 +1,4 @@
+import '../../../shared/widgets/gentle_motion.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -130,13 +131,22 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
           position.longitude != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        final address =
-            await LocationService.instance.getAddressFromCoordinates(
+        final addressFuture = LocationService.instance.getAddressFromCoordinates(
           position.latitude!,
           position.longitude!,
         );
+        final nearbyPlaceFuture = LocationService.instance.getNearestPlaceName(
+          position.latitude!,
+          position.longitude!,
+        );
+        final address = await addressFuture;
+        final nearbyPlaceName = await nearbyPlaceFuture;
         if (address != null && mounted) {
-          final village = address['subLocality'] ?? '';
+          // A shop/business right at this pin (from Places Nearby Search) is
+          // a more recognisable label than the bare village name.
+          final village = nearbyPlaceName?.isNotEmpty == true
+              ? nearbyPlaceName!
+              : (address['subLocality'] ?? '');
           final city = address['locality'] ?? '';
           setState(() {
             if (village.isNotEmpty && city.isNotEmpty) {
@@ -378,7 +388,7 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Color(0xFF00897B), size: 64),
+            const SuccessPop(color: Color(0xFF00897B)),
             const SizedBox(height: 16),
             Text(
               langProvider.getText('Travel Listing Submitted!',

@@ -5,13 +5,14 @@ class TtsService {
   final FlutterTts _tts = FlutterTts();
   bool _isInitialized = false;
   bool _isSpeaking = false;
+  String _currentLanguage = 'ta-IN';
 
   bool get isSpeaking => _isSpeaking;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
     try {
-      await _tts.setLanguage('ta-IN');
+      await _tts.setLanguage(_currentLanguage);
       await _tts.setSpeechRate(0.45);
       await _tts.setVolume(1.0);
       await _tts.setPitch(1.0);
@@ -33,9 +34,16 @@ class TtsService {
     }
   }
 
-  Future<void> speak(String text) async {
+  /// [language] switches the TTS voice itself (e.g. 'en-IN' vs 'ta-IN') -
+  /// without this, text was always read in the ta-IN voice regardless of
+  /// which language the sentence was actually written in.
+  Future<void> speak(String text, {String? language}) async {
     if (!_isInitialized) await initialize();
     if (text.isEmpty) return;
+    if (language != null && language != _currentLanguage) {
+      _currentLanguage = language;
+      await _tts.setLanguage(_currentLanguage);
+    }
     await _tts.stop();
     _isSpeaking = true;
     await _tts.speak(text); // Now waits for speech to complete
