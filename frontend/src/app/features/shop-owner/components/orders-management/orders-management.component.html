@@ -430,9 +430,9 @@
               <span>Delivery Fee</span>
               <span>{{ selectedOrder.deliveryFee | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
-            <div class="order-total-row" *ngIf="selectedOrder.discountAmount">
-              <span>Discount</span>
-              <span>-{{ selectedOrder.discountAmount | currency:'INR':'symbol':'1.0-0' }}</span>
+            <div class="order-total-row" *ngIf="getOrderDiscount(selectedOrder) > 0">
+              <span>Promo Discount<span *ngIf="selectedOrder.couponCode"> ({{ selectedOrder.couponCode }})</span></span>
+              <span>-{{ getOrderDiscount(selectedOrder) | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
             <div class="order-total">
               <span>Total</span>

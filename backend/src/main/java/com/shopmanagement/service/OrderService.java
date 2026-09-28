@@ -1963,19 +1963,17 @@ public class OrderService {
         // re-validation above (validatedPromotionId is only ever set on that success path).
         if (validatedPromotionId != null) {
             final Long promotionIdForUsage = validatedPromotionId;
-            try {
-                log.info("Recording promo code usage: {} for order: {}", request.getPromoCode(), savedOrder.getOrderNumber());
+            log.info("Recording promo code usage: {} for order: {}", request.getPromoCode(), savedOrder.getOrderNumber());
 
-                // Find the promotion
-                com.shopmanagement.entity.Promotion promotion = promotionRepository.findById(promotionIdForUsage)
-                    .orElseThrow(() -> new RuntimeException("Promotion not found: " + promotionIdForUsage));
+            // Keep the discounted order and its redemption record in the same transaction.
+            // A recording failure must roll the order back or the code remains reusable.
+            com.shopmanagement.entity.Promotion promotion = promotionRepository.findById(promotionIdForUsage)
+                .orElseThrow(() -> new RuntimeException("Promotion not found: " + promotionIdForUsage));
 
-                // Determine if this is customer's first order
-                long customerOrderCount = orderRepository.countByCustomerId(customer.getId());
-                Boolean isFirstOrder = customerOrderCount <= 1; // This order is already saved, so count includes it
+            long customerOrderCount = orderRepository.countByCustomerId(customer.getId());
+            Boolean isFirstOrder = customerOrderCount <= 1;
 
-                // Record the promotion usage with all identifiers
-                promotionService.recordPromotionUsage(
+            promotionService.recordPromotionUsage(
                     promotion,
                     customer,
                     savedOrder,
@@ -1987,16 +1985,11 @@ public class OrderService {
                     isFirstOrder,
                     null, // IP address (not available here)
                     null  // User agent (not available here)
-                );
+            );
 
-                log.info("✅ Promo code usage recorded successfully: {} for customer: {}",
-                    request.getPromoCode(), customer.getId());
+            log.info("Promo code usage recorded successfully: {} for customer: {}",
+                request.getPromoCode(), customer.getId());
 
-            } catch (Exception e) {
-                log.error("❌ Failed to record promo code usage: {}", e.getMessage(), e);
-                // Don't fail the order creation if promo recording fails
-                // The order is already created, we just log the error
-            }
         }
 
         // Tell the shop owner a real order exists (FCM push + web dashboard

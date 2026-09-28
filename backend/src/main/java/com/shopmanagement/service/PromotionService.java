@@ -5,6 +5,7 @@ import com.shopmanagement.entity.Order;
 import com.shopmanagement.entity.Promotion;
 import com.shopmanagement.entity.PromotionUsage;
 import com.shopmanagement.repository.CustomerRepository;
+import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.repository.PromotionRepository;
 import com.shopmanagement.repository.PromotionUsageRepository;
 import com.shopmanagement.shop.entity.Shop;
@@ -32,6 +33,7 @@ public class PromotionService {
 
     private final PromotionRepository promotionRepository;
     private final PromotionUsageRepository promotionUsageRepository;
+    private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
     private final ShopRepository shopRepository;
     private final GeoLocationUtils geoLocationUtils;
@@ -66,6 +68,7 @@ public class PromotionService {
         }
 
         Promotion promotion = promotionOpt.get();
+        String normalizedPhone = normalizePhone(phone);
 
         // 2. Check if promotion is active
         if (!promotion.isActive()) {
@@ -105,7 +108,7 @@ public class PromotionService {
         // This prevents users from applying the same promo code to multiple orders before completion
         // Validates by customerId and phone only (deviceUuid removed as it can change)
         Boolean hasActivePendingOrder = promotionUsageRepository.hasActivePendingOrderWithPromotion(
-            promotion.getId(), customerId, null, phone);
+            promotion.getId(), customerId, null, normalizedPhone);
         if (hasActivePendingOrder) {
             return PromoCodeValidationResult.error(
                 "This promo code is already applied to one of your pending orders. " +
@@ -116,11 +119,27 @@ public class PromotionService {
         // This ensures that every promo code can only be used ONCE per user, regardless of settings
         // Blocks if user has EVER used this promo (by customerId OR phone - deviceUuid removed)
         Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
-            promotion.getId(), customerId, null, phone);
-        if (hasUsed) {
+            promotion.getId(), customerId, null, normalizedPhone);
+        Boolean hasCouponOrder = orderRepository.hasCustomerUsedCoupon(
+            promotion.getCode(), customerId, normalizedPhone);
+        if (hasUsed || hasCouponOrder) {
             return PromoCodeValidationResult.error(
                 "This promo code can only be used once per customer. You have already used it. " +
                 "This promo code will never be available for your account again.");
+        }
+
+        // A first-time offer is only valid before the customer's first order. Checking
+        // promotion_usage alone only tells us whether this particular code was used;
+        // it does not tell us whether the customer has ordered before without a promo.
+        if (Boolean.TRUE.equals(promotion.getIsFirstTimeOnly())) {
+            if (customerId == null && normalizedPhone == null) {
+                return PromoCodeValidationResult.error(
+                    "Please login or provide your phone number to use this first-order promo code.");
+            }
+            if (orderRepository.countByCustomerIdentifier(customerId, normalizedPhone) > 0) {
+                return PromoCodeValidationResult.error(
+                    "This promo code is only available on your first order.");
+            }
         }
 
         // 9. STRICT: Check per-customer usage limit (if configured)
@@ -130,10 +149,10 @@ public class PromotionService {
             // Check usage across user identifiers (customerId, phone - deviceUuid removed)
             Long totalUsage = 0L;
 
-            if (customerId != null || phone != null) {
+            if (customerId != null || normalizedPhone != null) {
                 // Use the comprehensive check that looks across identifiers
                 totalUsage = promotionUsageRepository.countByPromotionAndAnyIdentifier(
-                    promotion.getId(), customerId, null, phone);
+                    promotion.getId(), customerId, null, normalizedPhone);
             }
 
             if (totalUsage <= 0 && customerId != null) {
@@ -142,13 +161,13 @@ public class PromotionService {
                     promotion.getId(), customerId);
             }
 
-            if (totalUsage <= 0 && phone != null) {
+            if (totalUsage <= 0 && normalizedPhone != null) {
                 // Fallback: Check by phone only
                 totalUsage = promotionUsageRepository.countByPromotionIdAndPhone(
-                    promotion.getId(), phone);
+                    promotion.getId(), normalizedPhone);
             }
 
-            if (totalUsage <= 0 && customerId == null && phone == null) {
+            if (totalUsage <= 0 && customerId == null && normalizedPhone == null) {
                 return PromoCodeValidationResult.error("Unable to validate promo code usage. Please provide phone number or login to continue.");
             }
 
@@ -170,6 +189,14 @@ public class PromotionService {
             discountAmount,
             "Promo code applied successfully!"
         );
+    }
+
+    private String normalizePhone(String rawPhone) {
+        if (rawPhone == null || rawPhone.isBlank()) {
+            return null;
+        }
+        String digits = rawPhone.replaceAll("[^0-9]", "");
+        return digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;
     }
 
     /**
@@ -194,7 +221,7 @@ public class PromotionService {
                 .customer(customer)
                 .order(order)
                 .deviceUuid(deviceUuid)
-                .customerPhone(phone)
+                .customerPhone(normalizePhone(phone))
                 .customerEmail(email)
                 .discountApplied(discountApplied)
                 .orderAmount(orderAmount)

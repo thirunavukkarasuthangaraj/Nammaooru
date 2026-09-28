@@ -210,6 +210,25 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o WHERE o.customer.id = :customerId")
     Long countByCustomerId(@Param("customerId") Long customerId);
 
+    /**
+     * PromotionUsage was introduced after orders already stored coupon codes. Use the
+     * order itself as the source of truth too, so legacy orders and a failed usage-log
+     * insert cannot make a one-time code reusable.
+     */
+    @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END FROM Order o " +
+           "WHERE UPPER(o.couponCode) = UPPER(:couponCode) " +
+           "AND ((:customerId IS NOT NULL AND o.customer.id = :customerId) " +
+           "OR (:phone IS NOT NULL AND (o.customer.mobileNumber = :phone OR o.deliveryPhone = :phone)))")
+    Boolean hasCustomerUsedCoupon(@Param("couponCode") String couponCode,
+                                  @Param("customerId") Long customerId,
+                                  @Param("phone") String phone);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE " +
+           "(:customerId IS NOT NULL AND o.customer.id = :customerId) " +
+           "OR (:phone IS NOT NULL AND (o.customer.mobileNumber = :phone OR o.deliveryPhone = :phone))")
+    Long countByCustomerIdentifier(@Param("customerId") Long customerId,
+                                   @Param("phone") String phone);
+
     // Find orders that are searching for drivers (for driver search scheduler)
     @Query("SELECT o FROM Order o WHERE o.status = :status AND o.driverSearchStartedAt IS NOT NULL AND o.driverSearchCompleted = false")
     List<Order> findByStatusAndDriverSearchStartedAtIsNotNullAndDriverSearchCompletedFalse(@Param("status") Order.OrderStatus status);

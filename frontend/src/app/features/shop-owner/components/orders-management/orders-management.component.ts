@@ -2598,6 +2598,21 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     this.showDetailsModal = true;
   }
 
+  getOrderDiscount(order: ShopOwnerOrder): number {
+    const recordedDiscount = Number(order.discountAmount || 0);
+    if (recordedDiscount > 0) {
+      return recordedDiscount;
+    }
+
+    // Older customer-app orders sent the discounted total but used the wrong
+    // promo field name, so couponCode/discountAmount can be absent. The amount
+    // is still recoverable from the persisted bill totals.
+    const subtotal = Number(order.subtotal || 0);
+    const deliveryFee = Number(order.deliveryFee || 0);
+    const total = Number(order.totalAmount || 0);
+    return Math.max(0, subtotal + deliveryFee - total);
+  }
+
   closeDetailsModal(): void {
     this.showDetailsModal = false;
     this.selectedOrder = null;

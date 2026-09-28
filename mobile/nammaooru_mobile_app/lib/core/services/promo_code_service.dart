@@ -40,6 +40,7 @@ class PromoCodeService {
         return PromoCodeValidationResult(
           isValid: true,
           message: data['message'] ?? 'Promo code applied successfully!',
+          promoCode: promoCode,
           discountAmount: (data['discountAmount'] ?? 0).toDouble(),
           promotionId: data['promotionId'],
           promotionTitle: data['promotionTitle'],
@@ -143,6 +144,7 @@ class PromoCodeService {
 class PromoCodeValidationResult {
   final bool isValid;
   final String message;
+  final String? promoCode;
   final double discountAmount;
   final int? promotionId;
   final String? promotionTitle;
@@ -151,6 +153,7 @@ class PromoCodeValidationResult {
   PromoCodeValidationResult({
     required this.isValid,
     required this.message,
+    this.promoCode,
     required this.discountAmount,
     this.promotionId,
     this.promotionTitle,

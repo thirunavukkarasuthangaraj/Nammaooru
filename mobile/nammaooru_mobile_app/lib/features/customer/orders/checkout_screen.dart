@@ -1794,12 +1794,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 shopId: cartProvider.items.isNotEmpty
                     ? cartProvider.items.first.product.shopDatabaseId?.toString()
                     : null,
-                customerId: Provider.of<AuthProvider>(context, listen: false).userId?.toString(),
+                // AuthProvider.userId is the login User ID, while the promotions API
+                // expects a Customer table ID. The phone identifies the same customer
+                // reliably; order placement performs a second check with the real ID.
+                customerId: null,
                 customerPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
                 onPromoApplied: (result) {
                   setState(() {
                     _appliedPromo = result;
-                    _appliedPromoCode = result.promotionTitle;
+                    _appliedPromoCode = result.promoCode;
                   });
                   // Update cart provider with discount
                   cartProvider.applyPromoDiscount(result.discountAmount);
@@ -2334,7 +2337,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }).toList(),
         // Include promo code if applied
         if (_appliedPromo != null && _appliedPromo!.promotionId != null) ...{
-          'couponCode': _appliedPromoCode,
+          'promoCode': _appliedPromoCode,
           'promotionId': _appliedPromo!.promotionId,
           'deviceUuid': deviceUuid,
         },
