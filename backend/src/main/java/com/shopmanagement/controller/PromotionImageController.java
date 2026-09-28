@@ -23,7 +23,7 @@ public class PromotionImageController {
     private final FileUploadService fileUploadService;
 
     @PostMapping(value = "/promotion", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER')")
     public ResponseEntity<Map<String, Object>> uploadPromotionImage(
             @RequestParam("file") MultipartFile file) {
 
