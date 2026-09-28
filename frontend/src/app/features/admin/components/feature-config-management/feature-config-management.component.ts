@@ -52,6 +52,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     section_deliver_to:     { label: 'Deliver To Bar',  icon: 'location_on',  desc: 'Address selector at top of home screen' },
     section_featured_shops: { label: 'Featured Shops',  icon: 'store',        desc: 'Featured shops section on home screen' },
     section_recent_orders:  { label: 'Recent Orders',   icon: 'receipt_long', desc: 'Recent orders section on home screen' },
+    section_special_offers: { label: 'Special Offers Banner', icon: 'local_offer', desc: 'Promo codes & combo offers carousel on home screen' },
   };
 
   getNavMeta(f: FeatureConfig) {

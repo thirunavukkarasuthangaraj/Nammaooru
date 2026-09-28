@@ -204,11 +204,14 @@ export class PromoCodeService {
   uploadPromoImage(file: File): Observable<{ imageUrl: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('folder', 'promos');
 
-    return this.http.post<any>(`${environment.apiUrl}/uploads/image`, formData).pipe(
+    // PromotionImageController's dedicated endpoint - the generic
+    // "/uploads/image" this used to call doesn't exist on the backend at
+    // all, so every promo banner upload was silently 404ing regardless of
+    // timing (the auto-upload-on-select fix alone couldn't have helped).
+    return this.http.post<any>(`${environment.apiUrl}/uploads/promotion`, formData).pipe(
       map(response => ({
-        imageUrl: response.data?.url || response.url || response.imageUrl || response
+        imageUrl: response.url || response.data?.url || response.imageUrl || response
       }))
     );
   }
