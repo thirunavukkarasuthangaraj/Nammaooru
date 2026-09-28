@@ -2320,6 +2320,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     print('🎁 Adding combo to cart: ${combo.name}');
     print('🎁 Combo has ${combo.items.length} items');
 
+    // The combo's discounted bundle price only exists on the CustomerCombo
+    // itself - each item still carries its own regular unitPrice. Scale
+    // every item's price down proportionally so the cart total matches the
+    // combo price the customer was shown, instead of the sum of full prices.
+    final actualTotal = combo.items.fold<double>(
+        0, (sum, item) => sum + (item.unitPrice * item.quantity));
+    final denominator = combo.originalPrice > 0 ? combo.originalPrice : actualTotal;
+    final discountRatio =
+        denominator > 0 ? (combo.comboPrice / denominator) : 1.0;
+
     // Add each item in the combo to cart
     for (final item in combo.items) {
       // Debug: Log item info before creating ProductModel
@@ -2333,6 +2343,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         nameTamil: item.productNameTamil,
         description: item.productName,
         price: item.unitPrice,
+        discountPrice: double.parse(
+            (item.unitPrice * discountRatio).toStringAsFixed(2)),
         images: item.imageUrl != null ? [item.imageUrl!] : [],
         unit: item.unit ?? 'piece',
         category: 'Combo Item',

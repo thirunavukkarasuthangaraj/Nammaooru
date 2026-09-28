@@ -6,6 +6,8 @@ class Order {
   final double totalAmount;
   final double subtotal;
   final double deliveryFee;
+  final double discountAmount;
+  final String? couponCode;
   final String paymentMethod;
   final String paymentStatus;
   final List<OrderItem> items;
@@ -24,6 +26,8 @@ class Order {
     required this.totalAmount,
     this.subtotal = 0,
     this.deliveryFee = 0,
+    this.discountAmount = 0,
+    this.couponCode,
     required this.paymentMethod,
     required this.paymentStatus,
     required this.items,
@@ -55,6 +59,8 @@ class Order {
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       deliveryFee: (json['deliveryFee'] ?? 0).toDouble(),
+      discountAmount: (json['discountAmount'] ?? 0).toDouble(),
+      couponCode: (json['couponCode'] as String?)?.isNotEmpty == true ? json['couponCode'] : null,
       paymentMethod: json['paymentMethod'] ?? 'CASH_ON_DELIVERY',
       paymentStatus: json['paymentStatus'] ?? 'PENDING',
       items: (json['orderItems'] as List<dynamic>? ?? [])

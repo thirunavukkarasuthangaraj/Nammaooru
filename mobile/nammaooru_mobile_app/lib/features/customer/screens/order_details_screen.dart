@@ -600,6 +600,23 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 Text('₹${_order!.deliveryFee.toStringAsFixed(2)}'),
               ],
             ),
+            if (_order!.discountAmount > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _order!.couponCode != null
+                        ? 'Discount (${_order!.couponCode}):'
+                        : 'Discount:',
+                  ),
+                  Text(
+                    '-₹${_order!.discountAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(color: Colors.green),
+                  ),
+                ],
+              ),
+            ],
             const Divider(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
