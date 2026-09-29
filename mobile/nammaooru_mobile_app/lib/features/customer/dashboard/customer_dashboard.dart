@@ -822,14 +822,31 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   Future<void> _addComboToCart(CustomerCombo combo) async {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
+    // The combo's discounted bundle price only exists on the CustomerCombo
+    // itself - each item still carries its own regular unitPrice. Scale
+    // every item's price down proportionally so the cart total matches the
+    // combo price the customer was shown, instead of the sum of full prices.
+    final actualTotal = combo.items.fold<double>(
+        0, (sum, item) => sum + (item.unitPrice * item.quantity));
+    final denominator = combo.originalPrice > 0 ? combo.originalPrice : actualTotal;
+    final discountRatio =
+        denominator > 0 ? (combo.comboPrice / denominator) : 1.0;
+
     // Add each item in the combo to cart
     for (final item in combo.items) {
+      // The id is made combo-specific so this cart row never merges with a
+      // standalone add of the same product at full price (which would
+      // silently overwrite one price with the other for the whole merged
+      // quantity).
       final product = ProductModel(
-        id: item.shopProductId.toString(),
+        id: 'combo_${combo.id}_${item.shopProductId}',
+        realProductId: item.shopProductId.toString(),
         name: item.productName,
         nameTamil: item.productNameTamil,
         description: item.productName,
         price: item.unitPrice,
+        discountPrice: double.parse(
+            (item.unitPrice * discountRatio).toStringAsFixed(2)),
         images: item.imageUrl != null ? [item.imageUrl!] : [],
         unit: item.unit ?? 'piece',
         category: 'Combo Item',
@@ -2117,7 +2134,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
         final List<dynamic> raw = json.decode(cached);
         final cachedFeatures = raw
             .map((e) => Map<String, dynamic>.from(e))
-            .where((f) => !(f['route']?.toString().contains('local-shops') ?? false))
             .toList();
         if (cachedFeatures.isNotEmpty && mounted) {
           for (final f in cachedFeatures) {
@@ -2138,9 +2154,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       final provider = Provider.of<FeatureConfigProvider>(context, listen: false);
       await provider.load(lat, lng).timeout(const Duration(seconds: 8));
 
-      final features = provider.serviceFeatures
-          .where((f) => !(f['route']?.toString().contains('local-shops') ?? false))
-          .toList();
+      final features = provider.serviceFeatures;
       if (features.isNotEmpty) {
         // Save to cache for next app open
         await prefs.setString(_featureCacheKey, json.encode(features));
