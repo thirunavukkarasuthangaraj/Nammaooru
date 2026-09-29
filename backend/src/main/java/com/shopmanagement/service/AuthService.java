@@ -39,6 +39,9 @@ public class AuthService {
     @Autowired
     private MobileOtpService mobileOtpService;
 
+    @Autowired
+    private SignupBonusService signupBonusService;
+
     public AuthResponse register(RegisterRequest request) {
         // Normalize email and username to lowercase
         String normalizedEmail = request.getEmail() != null ? request.getEmail().toLowerCase().trim() : null;
@@ -107,7 +110,7 @@ public class AuthService {
                     }
                 }
 
-                // Update existing unverified user's details and resend OTP
+                // Update existing unverified user's details
                 String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
                 existingUser.setUsername(normalizedUsername);
                 existingUser.setEmail(normalizedEmail);
@@ -116,25 +119,39 @@ public class AuthService {
                 existingUser.setLastName(fullName);
                 existingUser.setGender(request.getGender());
                 existingUser.setMobileNumber(request.getMobileNumber());
-                existingUser.setMobileVerified(false);
+
+                // Phone-first flow: the mobile app already sent/verified an OTP for this
+                // number via /register/send-otp + /register/verify-otp before asking for
+                // name/email, so there is nothing left to confirm — activate immediately
+                // instead of making the user re-enter an OTP they already typed once.
+                boolean alreadyVerified = request.getMobileNumber() != null
+                        && mobileOtpService.hasVerifiedOtp(request.getMobileNumber(), "REGISTRATION", null);
+                existingUser.setMobileVerified(alreadyVerified);
                 existingUser.setEmailVerified(false);
 
                 userRepository.save(existingUser);
 
-                // Resend OTP
-                try {
-                    if (existingUser.getMobileNumber() != null && !existingUser.getMobileNumber().isEmpty()) {
-                        com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
-                            com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
-                                .mobileNumber(existingUser.getMobileNumber())
-                                .purpose("REGISTRATION")
-                                .deviceType("WEB")
-                                .deviceId("web-" + existingUser.getId())
-                                .build();
-                        mobileOtpService.generateAndSendOtp(otpRequest);
+                if (!alreadyVerified) {
+                    try {
+                        if (existingUser.getMobileNumber() != null && !existingUser.getMobileNumber().isEmpty()) {
+                            com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                                com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                                    .mobileNumber(existingUser.getMobileNumber())
+                                    .purpose("REGISTRATION")
+                                    .deviceType("WEB")
+                                    .deviceId("web-" + existingUser.getId())
+                                    .build();
+                            mobileOtpService.generateAndSendOtp(otpRequest);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to send OTP SMS on re-registration: " + e.getMessage());
                     }
-                } catch (Exception e) {
-                    System.err.println("Failed to send OTP SMS on re-registration: " + e.getMessage());
+                } else {
+                    try {
+                        signupBonusService.grantOnRegistration(existingUser.getMobileNumber());
+                    } catch (Exception e) {
+                        log.error("Failed to grant signup bonus for {}: {}", existingUser.getMobileNumber(), e.getMessage());
+                    }
                 }
 
                 var jwtToken = jwtService.generateToken(existingUser);
@@ -162,6 +179,12 @@ public class AuthService {
         // Store full name in both firstName and lastName as per requirement
         String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
 
+        // Phone-first flow: OTP for this number may already be verified via
+        // /register/send-otp + /register/verify-otp before name/email were
+        // collected — activate right away instead of sending a redundant OTP.
+        boolean alreadyVerified = request.getMobileNumber() != null
+                && mobileOtpService.hasVerifiedOtp(request.getMobileNumber(), "REGISTRATION", null);
+
         var user = User.builder()
                 .username(normalizedUsername)
                 .email(normalizedEmail)
@@ -172,27 +195,35 @@ public class AuthService {
                 .mobileNumber(request.getMobileNumber())
                 .role(User.UserRole.USER)  // Mobile users get USER role for customer functionality
                 .emailVerified(false)
-                .mobileVerified(false)
+                .mobileVerified(alreadyVerified)
                 .build();
 
         userRepository.save(user);
 
-        // Send OTP SMS after successful registration using mobile OTP service
-        try {
-            if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
-                com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
-                    com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
-                        .mobileNumber(user.getMobileNumber())
-                        .purpose("REGISTRATION")
-                        .deviceType("WEB")
-                        .deviceId("web-" + user.getId())
-                        .build();
-                mobileOtpService.generateAndSendOtp(otpRequest);
+        if (!alreadyVerified) {
+            // Send OTP SMS after successful registration using mobile OTP service
+            try {
+                if (user.getMobileNumber() != null && !user.getMobileNumber().isEmpty()) {
+                    com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                        com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                            .mobileNumber(user.getMobileNumber())
+                            .purpose("REGISTRATION")
+                            .deviceType("WEB")
+                            .deviceId("web-" + user.getId())
+                            .build();
+                    mobileOtpService.generateAndSendOtp(otpRequest);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to send OTP SMS: " + e.getMessage());
             }
-        } catch (Exception e) {
-            System.err.println("Failed to send OTP SMS: " + e.getMessage());
+        } else {
+            try {
+                signupBonusService.grantOnRegistration(user.getMobileNumber());
+            } catch (Exception e) {
+                log.error("Failed to grant signup bonus for {}: {}", user.getMobileNumber(), e.getMessage());
+            }
         }
-        
+
         var jwtToken = jwtService.generateToken(user);
         
         return AuthResponse.builder()

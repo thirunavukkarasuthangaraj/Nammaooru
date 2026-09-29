@@ -112,10 +112,82 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-  Future<bool> verifyOtp(String mobileNumber, String otp) async {
+  // Phone-first registration, step 1: send OTP (no account yet).
+  Future<bool> sendRegistrationOtp(String mobileNumber) async {
+    _setLoading();
+    final result = await AuthService.sendRegistrationOtp(mobileNumber);
+    _authState = AuthState.unauthenticated;
+    _errorMessage = result.isSuccess ? null : result.message;
+    notifyListeners();
+    return result.isSuccess;
+  }
+
+  // Phone-first registration, step 2: confirm OTP before asking for name/email.
+  Future<bool> verifyRegistrationOtp(String mobileNumber, String otp) async {
+    _setLoading();
+    final result = await AuthService.verifyRegistrationOtp(mobileNumber, otp);
+    _authState = AuthState.unauthenticated;
+    _errorMessage = result.isSuccess ? null : result.message;
+    notifyListeners();
+    return result.isSuccess;
+  }
+
+  // Login with OTP, step 1: send OTP to an existing account's mobile number.
+  Future<bool> sendLoginOtp(String mobileNumber) async {
+    _setLoading();
+    final result = await AuthService.sendLoginOtp(mobileNumber);
+    _authState = AuthState.unauthenticated;
+    _errorMessage = result.isSuccess ? null : result.message;
+    notifyListeners();
+    return result.isSuccess;
+  }
+
+  // Phone-first registration, final step: create the account (OTP already
+  // verified) and log straight in.
+  Future<bool> completeRegistration({
+    required String name,
+    String? email,
+    required String phoneNumber,
+    required String password,
+    required String username,
+  }) async {
     _setLoading();
 
-    final result = await AuthService.verifyOtp(mobileNumber, otp);
+    final result = await AuthService.completeRegistration(
+      name: name,
+      email: email,
+      phoneNumber: phoneNumber,
+      password: password,
+      username: username,
+    );
+
+    if (result.isSuccess && result.token != null) {
+      _userRole = result.userRole;
+      _userId = result.userId;
+      _authState = AuthState.authenticated;
+      _errorMessage = null;
+      await _registerFcmToken();
+      notifyListeners();
+      return true;
+    } else if (result.isSuccess) {
+      // Created but no token in response — fall back to unauthenticated so
+      // the caller can route to login rather than claim a session that isn't there.
+      _authState = AuthState.unauthenticated;
+      _errorMessage = null;
+      notifyListeners();
+      return true;
+    } else {
+      _authState = AuthState.unauthenticated;
+      _errorMessage = result.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtp(String mobileNumber, String otp, {String purpose = 'REGISTRATION'}) async {
+    _setLoading();
+
+    final result = await AuthService.verifyOtp(mobileNumber, otp, purpose: purpose);
 
     if (result.isSuccess) {
       _userRole = result.userRole;
@@ -136,10 +208,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-  Future<bool> resendOtp(String mobileNumber) async {
+  Future<bool> resendOtp(String mobileNumber, {String purpose = 'REGISTRATION'}) async {
     _setLoading();
 
-    final result = await AuthService.resendOtp(mobileNumber);
+    final result = await AuthService.resendOtp(mobileNumber, purpose: purpose);
     
     if (result.isSuccess) {
       _authState = AuthState.unauthenticated;

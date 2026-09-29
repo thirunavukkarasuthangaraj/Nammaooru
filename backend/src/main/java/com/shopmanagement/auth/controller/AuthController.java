@@ -60,6 +60,132 @@ public class AuthController {
     @Autowired
     private com.shopmanagement.service.SignupBonusService signupBonusService;
 
+    /**
+     * Phone-first registration, step 1: send an OTP to a mobile number that
+     * doesn't have an account yet (no name/email needed). Rejects numbers
+     * that already have a verified, active account — those should log in
+     * instead.
+     */
+    @PostMapping("/register/send-otp")
+    public ResponseEntity<ApiResponse<String>> sendRegistrationOtp(@RequestBody Map<String, String> request) {
+        try {
+            String mobileNumber = request.get("mobileNumber");
+            if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Mobile number is required"));
+            }
+            mobileNumber = com.shopmanagement.util.PhoneNumberUtil.normalize(mobileNumber);
+
+            User existing = authService.findUserByMobileNumber(mobileNumber);
+            if (existing != null && Boolean.TRUE.equals(existing.getMobileVerified())
+                    && Boolean.TRUE.equals(existing.getIsActive())) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.VALIDATION_ERROR,
+                        "This mobile number is already registered. Please log in instead."));
+            }
+
+            com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                    .mobileNumber(mobileNumber)
+                    .purpose("REGISTRATION")
+                    .deviceType("MOBILE")
+                    .deviceId("register-" + mobileNumber)
+                    .build();
+            Map<String, Object> result = mobileOtpService.generateAndSendOtp(otpRequest);
+            boolean sent = (Boolean) result.getOrDefault("success", false);
+            if (sent) {
+                return ResponseEntity.ok(ApiResponse.success("OTP sent to your mobile number", "OTP sent successfully"));
+            }
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, String.valueOf(result.get("message"))));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.VALIDATION_ERROR, "Please enter a valid 10-digit mobile number"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, e.getMessage()));
+        }
+    }
+
+    /**
+     * Phone-first registration, step 2: confirm the OTP is correct before
+     * asking for name/email. Does not create a user or issue a token —
+     * {@link #register} checks hasVerifiedOtp and completes the account once
+     * name (and optional email) are collected.
+     */
+    @PostMapping("/register/verify-otp")
+    public ResponseEntity<ApiResponse<String>> verifyRegistrationOtp(@RequestBody Map<String, String> request) {
+        try {
+            String mobileNumber = request.get("mobileNumber");
+            String otp = request.get("otp");
+            if (mobileNumber == null || mobileNumber.trim().isEmpty() || otp == null || otp.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Mobile number and OTP are required"));
+            }
+            mobileNumber = com.shopmanagement.util.PhoneNumberUtil.normalize(mobileNumber);
+
+            com.shopmanagement.dto.mobile.MobileOtpVerificationRequest verificationRequest =
+                com.shopmanagement.dto.mobile.MobileOtpVerificationRequest.builder()
+                    .mobileNumber(mobileNumber)
+                    .otp(otp)
+                    .purpose("REGISTRATION")
+                    .deviceId("register-" + mobileNumber)
+                    .build();
+            Map<String, Object> result = mobileOtpService.verifyOtp(verificationRequest);
+            boolean valid = (Boolean) result.getOrDefault("success", false);
+            if (valid) {
+                return ResponseEntity.ok(ApiResponse.success("OTP verified", "OTP verified successfully"));
+            }
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.VALIDATION_ERROR, String.valueOf(result.get("message"))));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, e.getMessage()));
+        }
+    }
+
+    /**
+     * Login with OTP, step 1: send an OTP to an EXISTING account's mobile
+     * number. Companion to /verify-otp (purpose=LOGIN), which already
+     * resolves the user by mobile and issues a token.
+     */
+    @PostMapping("/login/send-otp")
+    public ResponseEntity<ApiResponse<String>> sendLoginOtp(@RequestBody Map<String, String> request) {
+        try {
+            String mobileNumber = request.get("mobileNumber");
+            if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.REQUIRED_FIELD_MISSING, "Mobile number is required"));
+            }
+            mobileNumber = com.shopmanagement.util.PhoneNumberUtil.normalize(mobileNumber);
+
+            User user = authService.findUserByMobileNumber(mobileNumber);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(
+                    ApiResponse.error(ResponseConstants.USER_NOT_FOUND,
+                        "No account found for this mobile number. Please register first."));
+            }
+
+            com.shopmanagement.dto.mobile.MobileOtpRequest otpRequest =
+                com.shopmanagement.dto.mobile.MobileOtpRequest.builder()
+                    .mobileNumber(mobileNumber)
+                    .purpose("LOGIN")
+                    .deviceType("MOBILE")
+                    .deviceId("login-" + mobileNumber)
+                    .build();
+            Map<String, Object> result = mobileOtpService.generateAndSendOtp(otpRequest);
+            boolean sent = (Boolean) result.getOrDefault("success", false);
+            if (sent) {
+                return ResponseEntity.ok(ApiResponse.success("OTP sent to your mobile number", "OTP sent successfully"));
+            }
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, String.valueOf(result.get("message"))));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error(ResponseConstants.GENERAL_ERROR, e.getMessage()));
+        }
+    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse authResponse = authService.register(request);

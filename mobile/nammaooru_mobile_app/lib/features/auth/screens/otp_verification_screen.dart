@@ -14,13 +14,19 @@ import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'register_name_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
+  // 'REGISTRATION' — no account exists yet; on success, continue to the
+  //   name/email steps rather than logging in.
+  // 'LOGIN' — an account already exists; on success, log straight in.
+  final String purpose;
 
   const OtpVerificationScreen({
     super.key,
     required this.phoneNumber,
+    this.purpose = 'REGISTRATION',
   });
 
   @override
@@ -117,16 +123,28 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
       return;
     }
 
-    final success = await authProvider.verifyOtp(widget.phoneNumber, otp);
+    final isRegistration = widget.purpose == 'REGISTRATION';
+    final success = isRegistration
+        ? await authProvider.verifyRegistrationOtp(widget.phoneNumber, otp)
+        : await authProvider.verifyOtp(widget.phoneNumber, otp, purpose: widget.purpose);
 
     if (mounted) {
       if (success) {
+        if (isRegistration) {
+          // No account yet — continue to the name step, nothing to route to.
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => RegisterNameScreen(phoneNumber: widget.phoneNumber),
+            ),
+          );
+          return;
+        }
+
         Helpers.showSnackBar(
           context,
-          'Account verified successfully! Welcome to NammaOoru!',
+          'Welcome back!',
         );
         await Future.delayed(const Duration(seconds: 1));
-        // Show privacy policy on first login (registration)
         final prefs = await SharedPreferences.getInstance();
         final hasSeenPolicy = prefs.getBool('privacy_policy_seen') ?? false;
         if (!hasSeenPolicy && mounted) {
@@ -135,6 +153,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
         }
         // User is now authenticated, redirect to appropriate dashboard based on role
         // Use context.go() so the ShellRoute (bottom nav) is included
+        if (!mounted) return;
         if (authProvider.isCustomer || authProvider.isShopOwner) {
           context.go('/customer/dashboard');
         } else if (authProvider.isDeliveryPartner) {
@@ -159,7 +178,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     if (!_canResend) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.resendOtp(widget.phoneNumber);
+    final success = widget.purpose == 'REGISTRATION'
+        ? await authProvider.sendRegistrationOtp(widget.phoneNumber)
+        : await authProvider.resendOtp(widget.phoneNumber, purpose: widget.purpose);
 
     if (mounted) {
       if (success) {

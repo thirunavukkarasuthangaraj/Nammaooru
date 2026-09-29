@@ -113,13 +113,129 @@ class AuthService {
     }
   }
   
-  static Future<AuthResult> verifyOtp(String mobileNumber, String otp) async {
+  // Phone-first registration, step 1: send OTP to a number with no account yet.
+  static Future<AuthResult> sendRegistrationOtp(String mobileNumber) async {
+    try {
+      final response = await ApiClient.post(
+        ApiEndpoints.registerSendOtp,
+        data: {'mobileNumber': mobileNumber},
+      );
+      final data = response.data;
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode == '0000' || statusCode == '200') {
+        return AuthResult.success(message: data['message'] ?? 'OTP sent');
+      }
+      return AuthResult.failure(data['message'] ?? 'Failed to send OTP');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
+    } catch (e) {
+      return AuthResult.failure('Failed to send OTP. Please try again.');
+    }
+  }
+
+  // Phone-first registration, step 2: confirm the OTP before asking for name/email.
+  // Does not create an account or return a token.
+  static Future<AuthResult> verifyRegistrationOtp(String mobileNumber, String otp) async {
+    try {
+      final response = await ApiClient.post(
+        ApiEndpoints.registerVerifyOtp,
+        data: {'mobileNumber': mobileNumber, 'otp': otp},
+      );
+      final data = response.data;
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode == '0000' || statusCode == '200') {
+        return AuthResult.success(message: data['message'] ?? 'OTP verified');
+      }
+      return AuthResult.failure(data['message'] ?? 'Invalid OTP');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
+    } catch (e) {
+      return AuthResult.failure('OTP verification failed. Please try again.');
+    }
+  }
+
+  // Login with OTP, step 1: send OTP to an existing account's mobile number.
+  static Future<AuthResult> sendLoginOtp(String mobileNumber) async {
+    try {
+      final response = await ApiClient.post(
+        ApiEndpoints.loginSendOtp,
+        data: {'mobileNumber': mobileNumber},
+      );
+      final data = response.data;
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode == '0000' || statusCode == '200') {
+        return AuthResult.success(message: data['message'] ?? 'OTP sent');
+      }
+      return AuthResult.failure(data['message'] ?? 'Failed to send OTP');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
+    } catch (e) {
+      return AuthResult.failure('Failed to send OTP. Please try again.');
+    }
+  }
+
+  // Phone-first registration, final step: create the account now that the OTP
+  // for this mobile number is already verified. The backend detects that and
+  // activates + logs in immediately (no further OTP round needed).
+  static Future<AuthResult> completeRegistration({
+    required String name,
+    String? email,
+    required String phoneNumber,
+    required String password,
+    required String username,
+  }) async {
+    try {
+      final requestData = {
+        'username': username,
+        'password': password,
+        'firstName': name.trim(),
+        'mobileNumber': phoneNumber,
+        'role': 'USER',
+      };
+      if (email != null && email.trim().isNotEmpty) {
+        requestData['email'] = email.trim();
+      }
+
+      final response = await ApiClient.post(ApiEndpoints.register, data: requestData);
+      final data = response.data;
+      final statusCode = data['statusCode']?.toString();
+      if (statusCode != null && statusCode != '0000' && statusCode != '200') {
+        return AuthResult.failure(data['message'] ?? 'Registration failed');
+      }
+
+      final authData = statusCode == '0000' ? data['data'] : data;
+      final token = authData['accessToken'];
+      if (token != null) {
+        await SecureStorage.saveAuthToken(token);
+        final userRole = authData['role'] ?? JwtHelper.getUserRole(token);
+        final userId = authData['userId']?.toString() ?? JwtHelper.getUserId(token);
+        if (userRole != null && userId != null) {
+          await SecureStorage.saveUserRole(userRole);
+          await SecureStorage.saveUserId(userId);
+        }
+        return AuthResult.success(
+          token: token,
+          userRole: userRole,
+          userId: userId,
+          message: data['message'] ?? 'Registration successful',
+        );
+      }
+      return AuthResult.success(message: data['message'] ?? 'Registration successful');
+    } on DioException catch (e) {
+      return AuthResult.failure(_extractErrorMessage(e));
+    } catch (e) {
+      return AuthResult.failure('Registration failed. Please try again.');
+    }
+  }
+
+  static Future<AuthResult> verifyOtp(String mobileNumber, String otp, {String purpose = 'REGISTRATION'}) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.verifyOtp,
         data: {
           'mobileNumber': mobileNumber,
           'otp': otp,
+          'purpose': purpose,
         },
       );
       
@@ -168,7 +284,12 @@ class AuthService {
     }
   }
   
-  static Future<AuthResult> resendOtp(String mobileNumber) async {
+  static Future<AuthResult> resendOtp(String mobileNumber, {String purpose = 'REGISTRATION'}) async {
+    // /resend-otp always resends as REGISTRATION purpose server-side, so a
+    // LOGIN-purpose OTP has to go back through /login/send-otp instead.
+    if (purpose == 'LOGIN') {
+      return sendLoginOtp(mobileNumber);
+    }
     try {
       final response = await ApiClient.post(
         ApiEndpoints.resendOtp,

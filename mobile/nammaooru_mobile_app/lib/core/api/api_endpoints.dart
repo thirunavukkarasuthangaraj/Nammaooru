@@ -12,6 +12,9 @@ class ApiEndpoints {
   static const String verifyOtp = '$auth/verify-otp';
   static const String sendOtp = '$auth/send-otp';
   static const String resendOtp = '$auth/resend-otp';
+  static const String registerSendOtp = '$auth/register/send-otp';
+  static const String registerVerifyOtp = '$auth/register/verify-otp';
+  static const String loginSendOtp = '$auth/login/send-otp';
   
   static const String users = '/users';
   static const String profile = '$users/profile';

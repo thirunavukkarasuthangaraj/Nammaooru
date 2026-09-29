@@ -186,6 +186,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       const SizedBox(height: 16),
                                       _buildLoginButton(),
                                       const SizedBox(height: 12),
+                                      _buildOtpLoginLink(),
+                                      const SizedBox(height: 12),
                                       _buildSignUpLink(),
                                     ],
                                   ),
@@ -486,6 +488,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.white,
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildOtpLoginLink() {
+    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
+    return TextButton(
+      onPressed: () => context.go('/login-otp'),
+      child: Text(
+        langProvider.getText(
+            authCopy(context, 'Login with OTP instead'), 'OTP மூலம் உள்நுழையவும்'),
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: VillageTheme.primaryGreen,
+        ),
       ),
     );
   }
