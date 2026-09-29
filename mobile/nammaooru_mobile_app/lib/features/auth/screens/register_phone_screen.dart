@@ -152,6 +152,9 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                                 TextPosition(offset: cleaned.length),
                               );
                             }
+                            if (cleaned.length == 10) {
+                              FocusScope.of(context).unfocus();
+                            }
                           },
                           style: const TextStyle(fontSize: 16, color: Color(0xFF2C3E50)),
                           decoration: InputDecoration(
