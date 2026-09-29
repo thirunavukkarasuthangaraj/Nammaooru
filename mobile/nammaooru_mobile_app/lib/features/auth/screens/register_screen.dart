@@ -3,6 +3,7 @@ import '../../../shared/widgets/customer_auth_header.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import 'dart:ui';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -24,9 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
   bool _acceptTerms = false;
 
   @override
@@ -34,7 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -43,6 +41,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final timestamp =
         DateTime.now().millisecondsSinceEpoch.toString().substring(8);
     return '${cleanName}_$timestamp';
+  }
+
+  // Account is verified and logged into by phone OTP, not a password the
+  // user chose — generate one server never needs to show them.
+  String _generateRandomPassword() {
+    const chars =
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%';
+    final rand = Random.secure();
+    return List.generate(16, (_) => chars[rand.nextInt(chars.length)]).join();
   }
 
   Future<void> _handleRegister() async {
@@ -60,11 +67,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final generatedUsername = _generateUsername(_nameController.text);
+    final email = _emailController.text.trim();
 
     final success = await authProvider.register(
       name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
+      email: email.isEmpty ? null : email,
+      password: _generateRandomPassword(),
       phoneNumber: _phoneController.text.trim(),
       role: 'CUSTOMER',
       username: generatedUsername,
@@ -75,7 +83,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => OtpVerificationScreen(
-              email: _emailController.text.trim(),
               phoneNumber: _phoneController.text.trim(),
             ),
           ),
@@ -143,11 +150,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 children: [
                                   _buildNameField(),
                                   const SizedBox(height: 12),
-                                  _buildEmailField(),
-                                  const SizedBox(height: 12),
                                   _buildPhoneField(),
                                   const SizedBox(height: 12),
-                                  _buildPasswordField(),
+                                  _buildEmailField(),
                                   const SizedBox(height: 16),
                                   _buildTermsRow(),
                                   const SizedBox(height: 20),
@@ -254,15 +259,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildEmailField() {
     return _buildInputField(
       controller: _emailController,
-      hint: authCopy(context, 'Email'),
+      hint: authCopy(context, 'Email (optional)'),
       icon: Icons.email_outlined,
       keyboardType: TextInputType.emailAddress,
       maxLength: 100,
+      textInputAction: TextInputAction.done,
       autofillHints: const [AutofillHints.email],
+      onFieldSubmitted: (_) => _handleRegister(),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return authCopy(context, 'Please enter your email');
-        }
+        if (value == null || value.trim().isEmpty) return null;
         if (!value.contains('@') || !value.contains('.')) {
           return authCopy(context, 'Please enter a valid email');
         }
@@ -298,40 +303,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final digits = value.trim().replaceAll(RegExp(r'[^0-9]'), '');
         if (digits.length != 10) {
           return authCopy(context, 'Enter a valid 10-digit phone number');
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return _buildInputField(
-      controller: _passwordController,
-      hint: authCopy(context, 'Password (min 4 characters)'),
-      icon: Icons.lock_outlined,
-      obscureText: _obscurePassword,
-      maxLength: 50,
-      textInputAction: TextInputAction.done,
-      autofillHints: const [AutofillHints.newPassword],
-      onFieldSubmitted: (_) => _handleRegister(),
-      suffixIcon: IconButton(
-        icon: Icon(
-          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-          color: Colors.black54,
-          size: 20,
-        ),
-        onPressed: () {
-          setState(() {
-            _obscurePassword = !_obscurePassword;
-          });
-        },
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return authCopy(context, 'Please enter a password');
-        }
-        if (value.length < 4) {
-          return authCopy(context, 'Password must be at least 4 characters');
         }
         return null;
       },

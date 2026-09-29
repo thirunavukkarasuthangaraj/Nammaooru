@@ -9,7 +9,7 @@ public class RegisterRequest {
     @NotBlank
     private String username;
 
-    @NotBlank
+    // Optional — customer registration verifies via mobile/SMS OTP, not email.
     @Email
     private String email;
 

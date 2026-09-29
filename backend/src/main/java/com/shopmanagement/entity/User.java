@@ -34,7 +34,9 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false, length = 50)
     private String username;
 
-    @Column(unique = true, nullable = false, length = 100)
+    // Nullable: customer registration verifies via mobile/SMS OTP, not email.
+    // Uniqueness (when set) is enforced by the partial index users_email_unique_idx.
+    @Column(length = 100)
     private String email;
 
     @Column(nullable = false)

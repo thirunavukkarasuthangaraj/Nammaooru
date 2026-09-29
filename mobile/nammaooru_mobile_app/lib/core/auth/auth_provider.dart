@@ -80,7 +80,7 @@ class AuthProvider with ChangeNotifier {
   
   Future<bool> register({
     required String name,
-    required String email,
+    String? email,
     required String password,
     required String phoneNumber,
     required String role,
@@ -112,10 +112,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-  Future<bool> verifyOtp(String email, String otp) async {
+  Future<bool> verifyOtp(String mobileNumber, String otp) async {
     _setLoading();
 
-    final result = await AuthService.verifyOtp(email, otp);
+    final result = await AuthService.verifyOtp(mobileNumber, otp);
 
     if (result.isSuccess) {
       _userRole = result.userRole;
@@ -136,10 +136,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-  Future<bool> resendOtp(String email) async {
+  Future<bool> resendOtp(String mobileNumber) async {
     _setLoading();
-    
-    final result = await AuthService.resendOtp(email);
+
+    final result = await AuthService.resendOtp(mobileNumber);
     
     if (result.isSuccess) {
       _authState = AuthState.unauthenticated;

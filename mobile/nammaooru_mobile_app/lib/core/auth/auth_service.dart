@@ -63,7 +63,7 @@ class AuthService {
   
   static Future<AuthResult> register({
     required String name,
-    required String email,
+    String? email,
     required String password,
     required String phoneNumber,
     required String role,
@@ -76,12 +76,15 @@ class AuthService {
 
       final requestData = {
         'username': username,
-        'email': email,
         'password': password,
         'firstName': fullName,
         'mobileNumber': phoneNumber,
         'role': 'USER', // Force USER role for customer registration
       };
+
+      if (email != null && email.trim().isNotEmpty) {
+        requestData['email'] = email.trim();
+      }
 
       // Add gender if provided
       if (gender != null && gender.isNotEmpty) {
@@ -110,12 +113,12 @@ class AuthService {
     }
   }
   
-  static Future<AuthResult> verifyOtp(String email, String otp) async {
+  static Future<AuthResult> verifyOtp(String mobileNumber, String otp) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.verifyOtp,
         data: {
-          'email': email,
+          'mobileNumber': mobileNumber,
           'otp': otp,
         },
       );
@@ -165,12 +168,12 @@ class AuthService {
     }
   }
   
-  static Future<AuthResult> resendOtp(String email) async {
+  static Future<AuthResult> resendOtp(String mobileNumber) async {
     try {
       final response = await ApiClient.post(
-        ApiEndpoints.sendOtp,
+        ApiEndpoints.resendOtp,
         data: {
-          'email': email,
+          'mobileNumber': mobileNumber,
         },
       );
       

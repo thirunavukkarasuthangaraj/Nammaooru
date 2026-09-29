@@ -87,8 +87,8 @@ class AppRouter {
       GoRoute(
         path: '/otp-verification',
         builder: (context, state) {
-          final email = state.uri.queryParameters['email'] ?? '';
-          return OtpVerificationScreen(email: email);
+          final phoneNumber = state.uri.queryParameters['phoneNumber'] ?? '';
+          return OtpVerificationScreen(phoneNumber: phoneNumber);
         },
       ),
       GoRoute(

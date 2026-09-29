@@ -16,13 +16,11 @@ import '../../../shared/widgets/privacy_policy_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  final String email;
-  final String? phoneNumber;
+  final String phoneNumber;
 
   const OtpVerificationScreen({
     super.key,
-    required this.email,
-    this.phoneNumber,
+    required this.phoneNumber,
   });
 
   @override
@@ -119,7 +117,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
       return;
     }
 
-    final success = await authProvider.verifyOtp(widget.email ?? '', otp);
+    final success = await authProvider.verifyOtp(widget.phoneNumber, otp);
 
     if (mounted) {
       if (success) {
@@ -161,13 +159,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     if (!_canResend) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.resendOtp(widget.email ?? '');
+    final success = await authProvider.resendOtp(widget.phoneNumber);
 
     if (mounted) {
       if (success) {
         Helpers.showSnackBar(
           context,
-          'New OTP sent successfully! Check your email.',
+          'New OTP sent successfully! Check your phone.',
         );
         _clearOtp();
         _startTimer();
@@ -302,9 +300,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
         ),
         const SizedBox(height: 4),
         Text(
-          widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty
-              ? 'We sent a 6-digit code to +91 ${widget.phoneNumber}'
-              : 'We sent a 6-digit code to ${widget.email}',
+          'We sent a 6-digit code to +91 ${widget.phoneNumber}',
           style: const TextStyle(
             fontSize: 14,
             color: Colors.black54,
