@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 /// Shared welcome panel for the customer authentication screens.
 class CustomerAuthHeader extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final String languageLabel;
   final VoidCallback onLanguageChanged;
 
   const CustomerAuthHeader({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.languageLabel,
     required this.onLanguageChanged,
   });
@@ -107,10 +107,12 @@ class CustomerAuthHeader extends StatelessWidget {
                       fontSize: 24,
                       height: 1.3,
                       fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Text(subtitle,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 13, height: 1.4)),
+              if (subtitle != null && subtitle!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(subtitle!,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 13, height: 1.4)),
+              ],
             ],
           ),
         ],

@@ -114,23 +114,18 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
               children: [
                 CustomerAuthHeader(
                   title: authCopy(context, 'Welcome to NammaOoru'),
-                  subtitle: authCopy(context, 'Enter your mobile number to continue'),
                   languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
                   onLanguageChanged: () => lang.toggleLanguage(),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
-                      child: Center(child: _buildIllustration()),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                  child: Column(
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+                      child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Center(child: _buildIllustration()),
+                      const SizedBox(height: 28),
                       Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFFECEFF1),
@@ -201,6 +196,8 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                         ),
                       ),
                     ],
+                      ),
+                    ),
                   ),
                 ),
               ],
