@@ -231,22 +231,39 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
                         onLanguageChanged: () => lang.toggleLanguage(),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Center(child: _buildIcon()),
-                            const SizedBox(height: 28),
-                            _buildOtpFields(),
-                            const SizedBox(height: 20),
-                            Center(child: _buildTimer()),
-                            const SizedBox(height: 28),
-                            _buildVerifyButton(authProvider.authState == AuthState.loading),
-                            const SizedBox(height: 12),
-                            _buildResendButton(),
-                            const SizedBox(height: 16),
-                            _buildChangeNumberButton(),
-                          ],
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildOtpFields(),
+                                  const SizedBox(height: 20),
+                                  Center(child: _buildTimer()),
+                                  const SizedBox(height: 24),
+                                  _buildVerifyButton(authProvider.authState == AuthState.loading),
+                                  const SizedBox(height: 12),
+                                  _buildResendButton(),
+                                  const SizedBox(height: 16),
+                                  _buildChangeNumberButton(),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -255,28 +272,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIcon() {
-    return Container(
-      width: 96,
-      height: 96,
-      decoration: BoxDecoration(
-        color: VillageTheme.primaryGreen.withOpacity(0.08),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            color: VillageTheme.primaryGreen.withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.mark_email_read_rounded, size: 32, color: VillageTheme.primaryGreen),
         ),
       ),
     );
