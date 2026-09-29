@@ -359,8 +359,15 @@ public class AuthController {
                         .build();
                 Map<String, Object> verificationResult = mobileOtpService.verifyOtp(verificationRequest);
                 isOtpValid = (Boolean) verificationResult.getOrDefault("success", false);
-                if (isOtpValid) {
-                    user = authService.findUserByMobileNumber(mobileNumber);
+                // Look up the user regardless of OTP outcome — otherwise a
+                // wrong/expired/max-attempts OTP falls through to the
+                // "user == null" branch below and misreports itself as
+                // "User not found" instead of the actual OTP problem.
+                user = authService.findUserByMobileNumber(mobileNumber);
+                if (!isOtpValid && user != null) {
+                    String otpMessage = String.valueOf(verificationResult.get("message"));
+                    return ResponseEntity.badRequest().body(
+                        ApiResponse.error(ResponseConstants.VALIDATION_ERROR, otpMessage));
                 }
             }
             // Fallback to email verification if mobile not provided or failed
