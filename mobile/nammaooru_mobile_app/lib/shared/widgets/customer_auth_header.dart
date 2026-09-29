@@ -56,12 +56,12 @@ class CustomerAuthHeader extends StatelessWidget {
               Row(children: [
                 GentleEntrance(
                   child: Container(
-                    width: 46,
-                    height: 46,
-                    padding: const EdgeInsets.all(3),
+                    width: 72,
+                    height: 72,
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: const [
                         BoxShadow(
                             color: Color(0x26000000),
@@ -70,7 +70,7 @@ class CustomerAuthHeader extends StatelessWidget {
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       child: Image.asset('assets/icons/logo-new.png',
                           fit: BoxFit.cover),
                     ),
