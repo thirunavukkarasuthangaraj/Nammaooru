@@ -227,6 +227,14 @@
 
       <div class="toggle-cards">
         <mat-card *ngFor="let f of serviceFeatures" class="toggle-card" [class.disabled]="!f.isActive">
+          <div class="card-actions">
+            <button mat-icon-button matTooltip="Edit" (click)="openEditForm(f)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteFeature(f)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
           <mat-card-content class="toggle-card-content">
             <div class="toggle-icon-wrap" [style.background]="f.isActive ? (f.color + '22') : '#F5F5F5'">
               <mat-icon [style.color]="f.isActive ? f.color : '#9E9E9E'">{{ f.icon || 'apps' }}</mat-icon>
@@ -249,14 +257,6 @@
               <span class="status-label" [class.active]="f.isActive">
                 {{ f.isActive ? 'Visible' : 'Hidden' }}
               </span>
-            </div>
-            <div class="card-actions">
-              <button mat-icon-button matTooltip="Edit" (click)="openEditForm(f)">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteFeature(f)">
-                <mat-icon>delete</mat-icon>
-              </button>
             </div>
           </mat-card-content>
         </mat-card>

@@ -72,6 +72,7 @@
 }
 
 .toggle-card {
+  position: relative;
   border-radius: 12px !important;
   border: 2px solid #E0E0E0 !important;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -86,6 +87,7 @@
     align-items: center;
     gap: 14px;
     padding: 16px !important;
+    padding-right: 76px !important; // leave room for the corner actions
   }
 
   .toggle-meta {
@@ -97,8 +99,13 @@
   }
 
   .card-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    gap: 0;
+    z-index: 1;
 
     button {
       width: 32px;
