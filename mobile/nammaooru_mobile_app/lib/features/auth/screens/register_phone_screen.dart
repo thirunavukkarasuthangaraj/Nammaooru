@@ -60,6 +60,45 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
     }
   }
 
+  Widget _buildIllustration() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 128,
+          height: 128,
+          decoration: BoxDecoration(
+            color: VillageTheme.primaryGreen.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.phone_android_rounded, size: 44, color: VillageTheme.primaryGreen),
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text(
+          authCopy(context, 'Sign in with your phone'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Color(0xFF2C3E50)),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          authCopy(context, "No password to remember — we'll text you a code to verify it's you."),
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13.5, height: 1.5, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
@@ -67,9 +106,8 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          child: AutofillGroup(
-            child: Form(
+        child: AutofillGroup(
+          child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,8 +118,16 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                   languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
                   onLanguageChanged: () => lang.toggleLanguage(),
                 ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+                      child: Center(child: _buildIllustration()),
+                    ),
+                  ),
+                ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -130,7 +176,7 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -158,7 +204,6 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                   ),
                 ),
               ],
-            ),
             ),
           ),
         ),

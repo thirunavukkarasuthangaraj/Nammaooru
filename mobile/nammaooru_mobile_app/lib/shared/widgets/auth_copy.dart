@@ -32,6 +32,23 @@ String authCopy(BuildContext context, String english) {
     'Please enter a password': 'கடவுச்சொல்லை உள்ளிடுங்கள்',
     'Please enter your password': 'கடவுச்சொல்லை உள்ளிடுங்கள்',
     'Password must be at least 4 characters': 'கடவுச்சொல்லில் குறைந்தது 4 எழுத்துகள் தேவை',
+
+    // Phone-first auth wizard
+    'Welcome to NammaOoru': 'நம்ம ஊருவிற்கு வரவேற்கிறோம்',
+    'Enter your mobile number to continue': 'தொடர உங்கள் கைபேசி எண்ணை உள்ளிடவும்',
+    'Sign in with your phone': 'உங்கள் கைபேசி மூலம் உள்நுழையவும்',
+    "No password to remember — we'll text you a code to verify it's you.":
+        'கடவுச்சொல் தேவையில்லை — நீங்கள்தான் என உறுதிப்படுத்த ஒரு குறியீட்டை அனுப்புவோம்.',
+    'Send OTP': 'OTP அனுப்பவும்',
+    "What's your name?": 'உங்கள் பெயர் என்ன?',
+    'Mobile number verified': 'கைபேசி எண் சரிபார்க்கப்பட்டது',
+    'Next': 'அடுத்து',
+    'Almost there!': 'கிட்டத்தட்ட முடிந்தது!',
+    "Add your email if you'd like (optional)": 'விரும்பினால் உங்கள் மின்னஞ்சலைச் சேர்க்கவும் (விருப்பம்)',
+    'Email (optional)': 'மின்னஞ்சல் (விருப்பம்)',
+    'Create Account': 'கணக்கை உருவாக்கவும்',
+    'Skip for now': 'இப்போதைக்கு தவிர்க்கவும்',
+    'Continue with phone number instead': 'கைபேசி எண் மூலம் தொடரவும்',
   };
   return Provider.of<LanguageProvider>(context, listen: false)
       .getText(english, tamil[english] ?? english);
