@@ -4,14 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 import 'dart:async';
-import 'dart:ui';
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/constants/colors.dart';
-import '../../../core/utils/validators.dart';
+import '../../../core/theme/village_theme.dart';
+import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
-import '../../../shared/widgets/common_buttons.dart';
-import '../../../shared/widgets/custom_app_bar.dart';
+import '../../../shared/widgets/auth_copy.dart';
+import '../../../shared/widgets/customer_auth_header.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'register_name_screen.dart';
@@ -208,198 +207,127 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/login_background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(
-                  color: Colors.white.withOpacity(0.3),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Consumer<AuthProvider>(
-                builder: (context, authProvider, child) {
-                  return LoadingOverlay(
-                    isLoading: authProvider.authState == AuthState.loading,
-                    loadingMessage: 'Verifying OTP...',
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Form(
-                        key: _formKey,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        top: false,
+        child: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            return LoadingOverlay(
+              isLoading: authProvider.authState == AuthState.loading,
+              loadingMessage: authCopy(context, 'Verifying OTP...'),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CustomerAuthHeader(
+                        title: authCopy(context, 'Verify your number'),
+                        subtitle: authCopy(context, 'We sent a 6-digit code to') +
+                            ' +91 ${widget.phoneNumber}',
+                        languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
+                        onLanguageChanged: () => lang.toggleLanguage(),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 40),
-                            _buildHeader(),
-                            const SizedBox(height: 40),
-                            const Text(
-                              'Enter 6-digit code',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
+                            Center(child: _buildIcon()),
+                            const SizedBox(height: 28),
                             _buildOtpFields(),
-                            const SizedBox(height: 30),
-                            _buildTimer(),
-                            const SizedBox(height: 30),
-                            _buildVerifyButton(authProvider.authState == AuthState.loading),
                             const SizedBox(height: 20),
+                            Center(child: _buildTimer()),
+                            const SizedBox(height: 28),
+                            _buildVerifyButton(authProvider.authState == AuthState.loading),
+                            const SizedBox(height: 12),
                             _buildResendButton(),
-                            const SizedBox(height: 30),
-                            _buildChangeEmailButton(),
+                            const SizedBox(height: 16),
+                            _buildChangeNumberButton(),
                           ],
                         ),
                       ),
-                    ),
-                  );
-                },
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Container(
-          width: 80,
-          height: 80,
+  Widget _buildIcon() {
+    return Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(
+        color: VillageTheme.primaryGreen.withOpacity(0.08),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Container(
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF4CAF50).withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: VillageTheme.primaryGreen.withOpacity(0.12),
+            shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.mark_email_read_rounded,
-            size: 40,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.mark_email_read_rounded, size: 32, color: VillageTheme.primaryGreen),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'Verify Your Account',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2C3E50),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Enter Verification Code',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.black87,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'We sent a 6-digit code to +91 ${widget.phoneNumber}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-            height: 1.4,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildOtpFields() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.primary,
-          width: 2.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFFECEFF1),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: TextFormField(
-          controller: _otpController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          autofillHints: const [AutofillHints.oneTimeCode],
-          style: const TextStyle(
-            fontSize: 24,
-            letterSpacing: 8,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF4CAF50),
-          ),
-          decoration: const InputDecoration(
-            counterText: '',
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            hintText: '• • • • • •',
-            hintStyle: TextStyle(
-              letterSpacing: 8,
-              color: Color(0xFFE0E0E0),
-            ),
-          ),
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter OTP';
-            }
-            if (value.length != 6) {
-              return 'OTP must be 6 digits';
-            }
-            return null;
-          },
-          onChanged: (value) {
-            setState(() {}); // Update UI to show input
-            if (value.length == 6) {
-              // Auto-verify when all 6 digits are entered
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && _otpValue.length == 6) {
-                  _handleVerifyOtp();
-                }
-              });
-            }
-          },
+      child: TextFormField(
+        controller: _otpController,
+        keyboardType: TextInputType.number,
+        maxLength: 6,
+        textAlign: TextAlign.center,
+        autofocus: true,
+        autofillHints: const [AutofillHints.oneTimeCode],
+        style: const TextStyle(
+          fontSize: 22,
+          letterSpacing: 10,
+          fontWeight: FontWeight.bold,
+          color: VillageTheme.primaryGreen,
         ),
+        decoration: InputDecoration(
+          counterText: '',
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          hintText: '• • • • • •',
+          hintStyle: const TextStyle(letterSpacing: 10, color: Color(0xFFB0BEC5)),
+        ),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return authCopy(context, 'Please enter OTP');
+          }
+          if (value.length != 6) {
+            return authCopy(context, 'OTP must be 6 digits');
+          }
+          return null;
+        },
+        onChanged: (value) {
+          setState(() {});
+          if (value.length == 6) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _otpValue.length == 6) {
+                _handleVerifyOtp();
+              }
+            });
+          }
+        },
       ),
     );
   }
@@ -408,17 +336,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     return Column(
       children: [
         Text(
-          'Code expires in',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 14,
-          ),
+          authCopy(context, 'Code expires in'),
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
         const SizedBox(height: 4),
         Text(
           _formattedTime,
           style: TextStyle(
-            color: _remainingTime > 30 ? AppColors.primary : AppColors.error,
+            color: _remainingTime > 30 ? VillageTheme.primaryGreen : VillageTheme.errorRed,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -428,35 +353,65 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
   }
 
   Widget _buildVerifyButton(bool isLoading) {
-    return PrimaryButton(
-      text: isLoading ? 'Verifying...' : 'Verify OTP',
-      onPressed: _handleVerifyOtp,
-      isLoading: isLoading,
-      height: 56,
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _handleVerifyOtp,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4CAF50),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Text(
+                authCopy(context, 'Verify OTP'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+      ),
     );
   }
 
   Widget _buildResendButton() {
-    return SecondaryButton(
-      text: _canResend ? 'Resend Code' : 'Resend in $_formattedTime',
-      onPressed: _canResend ? _handleResendOtp : null,
-      height: 56,
-      textColor: _canResend ? AppColors.primary : AppColors.textHint,
-      borderColor: _canResend ? AppColors.primary : AppColors.textHint,
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: _canResend ? _handleResendOtp : null,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(
+            color: _canResend ? VillageTheme.primaryGreen : Colors.grey[300]!,
+            width: 2,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        child: Text(
+          _canResend
+              ? authCopy(context, 'Resend Code')
+              : '${authCopy(context, 'Resend in')} $_formattedTime',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: _canResend ? VillageTheme.primaryGreen : Colors.grey[400],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildChangeEmailButton() {
-    return TextButton(
-      onPressed: () {
-        context.go('/register');
-      },
-      child: const Text(
-        'Change Mobile number',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 14,
-          decoration: TextDecoration.underline,
+  Widget _buildChangeNumberButton() {
+    return Center(
+      child: TextButton(
+        onPressed: () => context.go('/register'),
+        child: Text(
+          authCopy(context, 'Change Mobile number'),
+          style: TextStyle(color: Colors.grey[700], fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
     );

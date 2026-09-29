@@ -49,6 +49,18 @@ String authCopy(BuildContext context, String english) {
     'Create Account': 'கணக்கை உருவாக்கவும்',
     'Skip for now': 'இப்போதைக்கு தவிர்க்கவும்',
     'Continue with phone number instead': 'கைபேசி எண் மூலம் தொடரவும்',
+
+    // OTP verification screen
+    'Verify your number': 'உங்கள் எண்ணை சரிபார்க்கவும்',
+    'We sent a 6-digit code to': 'ஒரு 6 இலக்க குறியீட்டை அனுப்பியுள்ளோம்',
+    'Verifying OTP...': 'OTP சரிபார்க்கப்படுகிறது...',
+    'Please enter OTP': 'OTP-ஐ உள்ளிடவும்',
+    'OTP must be 6 digits': 'OTP 6 இலக்கங்களாக இருக்க வேண்டும்',
+    'Code expires in': 'குறியீடு காலாவதியாகும் நேரம்',
+    'Verify OTP': 'OTP சரிபார்க்கவும்',
+    'Resend Code': 'மீண்டும் அனுப்பவும்',
+    'Resend in': 'மீண்டும் அனுப்ப',
+    'Change Mobile number': 'கைபேசி எண்ணை மாற்றவும்',
   };
   return Provider.of<LanguageProvider>(context, listen: false)
       .getText(english, tamil[english] ?? english);
