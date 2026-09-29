@@ -143,9 +143,11 @@ public class CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + id));
         
-        // Check email uniqueness if changed
-        if (!customer.getEmail().equals(request.getEmail()) && 
-            customerRepository.existsByEmail(request.getEmail())) {
+        // Check email uniqueness if changed (email is optional — only check when a
+        // non-blank value is actually being set)
+        boolean emailChanged = !java.util.Objects.equals(customer.getEmail(), request.getEmail());
+        if (emailChanged && request.getEmail() != null && !request.getEmail().isBlank()
+                && customerRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email " + request.getEmail() + " is already in use");
         }
         

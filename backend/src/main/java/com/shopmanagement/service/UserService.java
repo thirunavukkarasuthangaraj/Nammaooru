@@ -126,18 +126,19 @@ public class UserService {
             throw new RuntimeException("Username already exists: " + request.getUsername());
         }
         
-        if (!user.getEmail().equals(request.getEmail()) && 
-            userRepository.existsByEmail(request.getEmail())) {
+        if (!java.util.Objects.equals(user.getEmail(), request.getEmail())
+                && request.getEmail() != null && !request.getEmail().isBlank()
+                && userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists: " + request.getEmail());
         }
-        
+
         // Update permissions if specified
         if (request.getPermissionIds() != null) {
             Set<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds())
                     .stream().collect(Collectors.toSet());
             user.setPermissions(permissions);
         }
-        
+
         // Update user fields
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -192,8 +193,9 @@ public class UserService {
             throw new RuntimeException("Username already exists: " + request.getUsername());
         }
         
-        if (request.getEmail() != null && !user.getEmail().equals(request.getEmail()) && 
-            userRepository.existsByEmail(request.getEmail())) {
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && !java.util.Objects.equals(user.getEmail(), request.getEmail())
+                && userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists: " + request.getEmail());
         }
         

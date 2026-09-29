@@ -2134,9 +2134,12 @@ public class OrderService {
             // Generate a proper mobile number if user doesn't have one
             String mobileNumber = user.getMobileNumber();
             if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
-                // Use email username + random digits for mobile number if not available
-                String emailPrefix = user.getEmail().split("@")[0];
-                mobileNumber = "9" + String.format("%09d", Math.abs(emailPrefix.hashCode() % 1000000000));
+                // Prefer the email username for the placeholder digits, but email is
+                // optional now — fall back to the user's own ID when it's absent.
+                String seed = (user.getEmail() != null && user.getEmail().contains("@"))
+                        ? user.getEmail().split("@")[0]
+                        : "user" + user.getId();
+                mobileNumber = "9" + String.format("%09d", Math.abs(seed.hashCode() % 1000000000));
             }
             
             customer = Customer.builder()

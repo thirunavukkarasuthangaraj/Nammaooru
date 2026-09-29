@@ -32,8 +32,10 @@ public class Customer {
     @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
     private String lastName;
     
-    @Column(unique = true, nullable = false, length = 100)
-    @NotBlank(message = "Email is required")
+    // Nullable: a customer created from a phone-first User registration may
+    // have no email. Uniqueness (when set) is enforced by the partial index
+    // customers_email_unique_idx.
+    @Column(length = 100)
     @Email(message = "Please provide a valid email address")
     private String email;
     
