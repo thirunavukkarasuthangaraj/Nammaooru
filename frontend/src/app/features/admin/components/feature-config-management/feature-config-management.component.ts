@@ -20,11 +20,6 @@ export class FeatureConfigManagementComponent implements OnInit {
   editingImageUrl: string | null = null;
   imageDeleted = false;
 
-  displayedColumns: string[] = [
-    'displayOrder', 'image', 'featureName', 'displayName', 'displayNameTamil',
-    'icon', 'color', 'radiusKm', 'maxPostsPerUser', 'maxImagesPerPost', 'active', 'actions'
-  ];
-
   // ── Grouped getters ──────────────────────────────────────────────────────────
   /** Bottom nav items (nav_cart, nav_orders, nav_profile) */
   get navFeatures(): FeatureConfig[] {

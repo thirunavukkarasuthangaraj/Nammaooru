@@ -225,83 +225,44 @@
         </div>
       </div>
 
-      <div class="table-container" *ngIf="serviceFeatures.length > 0">
-        <table mat-table [dataSource]="serviceFeatures" class="features-table">
-          <ng-container matColumnDef="displayOrder">
-            <th mat-header-cell *matHeaderCellDef>Order</th>
-            <td mat-cell *matCellDef="let f">{{ f.displayOrder }}</td>
-          </ng-container>
-          <ng-container matColumnDef="image">
-            <th mat-header-cell *matHeaderCellDef>Image</th>
-            <td mat-cell *matCellDef="let f">
-              <img *ngIf="f.imageUrl" [src]="getImageUrl(f.imageUrl)" class="feature-thumb" alt="">
-              <span *ngIf="!f.imageUrl" class="text-muted">—</span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="featureName">
-            <th mat-header-cell *matHeaderCellDef>Key</th>
-            <td mat-cell *matCellDef="let f"><code>{{ f.featureName }}</code></td>
-          </ng-container>
-          <ng-container matColumnDef="displayName">
-            <th mat-header-cell *matHeaderCellDef>Name</th>
-            <td mat-cell *matCellDef="let f">{{ f.displayName }}</td>
-          </ng-container>
-          <ng-container matColumnDef="displayNameTamil">
-            <th mat-header-cell *matHeaderCellDef>Tamil</th>
-            <td mat-cell *matCellDef="let f">{{ f.displayNameTamil }}</td>
-          </ng-container>
-          <ng-container matColumnDef="icon">
-            <th mat-header-cell *matHeaderCellDef>Icon</th>
-            <td mat-cell *matCellDef="let f"><mat-icon *ngIf="f.icon">{{ f.icon }}</mat-icon></td>
-          </ng-container>
-          <ng-container matColumnDef="color">
-            <th mat-header-cell *matHeaderCellDef>Color</th>
-            <td mat-cell *matCellDef="let f">
-              <span class="color-chip" [style.background]="f.color"></span>
-              <span class="color-text">{{ f.color }}</span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="radiusKm">
-            <th mat-header-cell *matHeaderCellDef>Radius</th>
-            <td mat-cell *matCellDef="let f">
-              <span class="radius-badge">{{ f.radiusKm || 50 }} km</span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="maxPostsPerUser">
-            <th mat-header-cell *matHeaderCellDef>Post Limit</th>
-            <td mat-cell *matCellDef="let f">
-              <span *ngIf="!f.maxPostsPerUser" class="text-muted">Unlimited</span>
-              <span *ngIf="f.maxPostsPerUser">{{ f.maxPostsPerUser }}</span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="maxImagesPerPost">
-            <th mat-header-cell *matHeaderCellDef>Images</th>
-            <td mat-cell *matCellDef="let f">{{ f.maxImagesPerPost || 3 }}</td>
-          </ng-container>
-          <ng-container matColumnDef="active">
-            <th mat-header-cell *matHeaderCellDef>Show in App</th>
-            <td mat-cell *matCellDef="let f">
-              <mat-slide-toggle [checked]="f.isActive" (change)="toggleActive(f)" color="primary">
+      <div class="toggle-cards">
+        <mat-card *ngFor="let f of serviceFeatures" class="toggle-card" [class.disabled]="!f.isActive">
+          <mat-card-content class="toggle-card-content">
+            <div class="toggle-icon-wrap" [style.background]="f.isActive ? (f.color + '22') : '#F5F5F5'">
+              <mat-icon [style.color]="f.isActive ? f.color : '#9E9E9E'">{{ f.icon || 'apps' }}</mat-icon>
+            </div>
+            <div class="toggle-info">
+              <div class="toggle-label">{{ f.displayName }}</div>
+              <div class="toggle-desc">{{ f.displayNameTamil }}</div>
+              <div class="toggle-meta">
+                <code class="feature-key">{{ f.featureName }}</code>
+                <span class="radius-badge">{{ f.radiusKm || 50 }} km</span>
+                <span class="text-muted" *ngIf="!f.maxPostsPerUser">Unlimited posts</span>
+              </div>
+            </div>
+            <div class="toggle-right">
+              <mat-slide-toggle
+                [checked]="f.isActive"
+                (change)="toggleActive(f)"
+                color="primary">
               </mat-slide-toggle>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let f">
+              <span class="status-label" [class.active]="f.isActive">
+                {{ f.isActive ? 'Visible' : 'Hidden' }}
+              </span>
+            </div>
+            <div class="card-actions">
               <button mat-icon-button matTooltip="Edit" (click)="openEditForm(f)">
                 <mat-icon>edit</mat-icon>
               </button>
               <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteFeature(f)">
                 <mat-icon>delete</mat-icon>
               </button>
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-        </table>
-      </div>
-      <div *ngIf="serviceFeatures.length === 0" class="empty-group">
-        No service features configured yet. Click "Add Feature" to add one.
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <div *ngIf="serviceFeatures.length === 0" class="empty-group">
+          No service features configured yet. Click "Add Feature" to add one.
+        </div>
       </div>
     </div>
 
