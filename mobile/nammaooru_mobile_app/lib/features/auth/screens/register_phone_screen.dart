@@ -60,45 +60,6 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
     }
   }
 
-  Widget _buildIllustration() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 128,
-          height: 128,
-          decoration: BoxDecoration(
-            color: VillageTheme.primaryGreen.withOpacity(0.08),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Container(
-              width: 92,
-              height: 92,
-              decoration: BoxDecoration(
-                color: VillageTheme.primaryGreen.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.phone_android_rounded, size: 44, color: VillageTheme.primaryGreen),
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        Text(
-          authCopy(context, 'Sign in with your phone'),
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Color(0xFF2C3E50)),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          authCopy(context, "No password to remember — we'll text you a code to verify it's you."),
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13.5, height: 1.5, color: Colors.grey[600]),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
@@ -120,85 +81,101 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-                      child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(child: _buildIllustration()),
-                      const SizedBox(height: 28),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECEFF1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.done,
-                          maxLength: 10,
-                          autofocus: true,
-                          autofillHints: const [AutofillHints.telephoneNumber],
-                          onFieldSubmitted: (_) => _handleSendOtp(),
-                          onChanged: (value) {
-                            final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
-                            if (cleaned.length > 10) {
-                              _phoneController.text = cleaned.substring(cleaned.length - 10);
-                              _phoneController.selection = TextSelection.fromPosition(
-                                TextPosition(offset: _phoneController.text.length),
-                              );
-                            } else if (cleaned != value) {
-                              _phoneController.text = cleaned;
-                              _phoneController.selection = TextSelection.fromPosition(
-                                TextPosition(offset: cleaned.length),
-                              );
-                            }
-                            if (cleaned.length == 10) {
-                              FocusScope.of(context).unfocus();
-                            }
-                          },
-                          style: const TextStyle(fontSize: 16, color: Color(0xFF2C3E50)),
-                          decoration: InputDecoration(
-                            labelText: authCopy(context, 'Phone Number'),
-                            prefixIcon: const Icon(Icons.phone_outlined, color: Colors.black54, size: 20),
-                            border: InputBorder.none,
-                            counterText: '',
-                            errorMaxLines: 2,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          ),
-                          validator: (value) {
-                            final digits = (value ?? '').trim().replaceAll(RegExp(r'[^0-9]'), '');
-                            if (digits.length != 10) {
-                              return authCopy(context, 'Enter a valid 10-digit phone number');
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : _handleSendOtp,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : Text(
-                                  authCopy(context, 'Send OTP'),
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 8),
                                 ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECEFF1),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: TextFormField(
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    textInputAction: TextInputAction.done,
+                                    maxLength: 10,
+                                    autofocus: true,
+                                    autofillHints: const [AutofillHints.telephoneNumber],
+                                    onFieldSubmitted: (_) => _handleSendOtp(),
+                                    onChanged: (value) {
+                                      final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+                                      if (cleaned.length > 10) {
+                                        _phoneController.text = cleaned.substring(cleaned.length - 10);
+                                        _phoneController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: _phoneController.text.length),
+                                        );
+                                      } else if (cleaned != value) {
+                                        _phoneController.text = cleaned;
+                                        _phoneController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: cleaned.length),
+                                        );
+                                      }
+                                      if (cleaned.length == 10) {
+                                        FocusScope.of(context).unfocus();
+                                      }
+                                    },
+                                    style: const TextStyle(fontSize: 16, color: Color(0xFF2C3E50)),
+                                    decoration: InputDecoration(
+                                      labelText: authCopy(context, 'Phone Number'),
+                                      border: InputBorder.none,
+                                      counterText: '',
+                                      errorMaxLines: 2,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    ),
+                                    validator: (value) {
+                                      final digits = (value ?? '').trim().replaceAll(RegExp(r'[^0-9]'), '');
+                                      if (digits.length != 10) {
+                                        return authCopy(context, 'Enter a valid 10-digit phone number');
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton(
+                                    onPressed: _isSubmitting ? null : _handleSendOtp,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4CAF50),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    ),
+                                    child: _isSubmitting
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                          )
+                                        : Text(
+                                            authCopy(context, 'Send OTP'),
+                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
                       ),
                     ),
                   ),
