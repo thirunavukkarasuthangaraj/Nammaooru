@@ -89,7 +89,10 @@ public class AuthController {
                     .mobileNumber(mobileNumber)
                     .purpose("REGISTRATION")
                     .deviceType("MOBILE")
-                    .deviceId("register-" + mobileNumber)
+                    // No deviceId: it's only used for an optional match check against
+                    // whatever verify-otp sends, and nothing in this flow needs that
+                    // check — setting one here just risks a mismatch with whatever
+                    // string a verify endpoint happens to use.
                     .build();
             Map<String, Object> result = mobileOtpService.generateAndSendOtp(otpRequest);
             boolean sent = (Boolean) result.getOrDefault("success", false);
@@ -129,7 +132,6 @@ public class AuthController {
                     .mobileNumber(mobileNumber)
                     .otp(otp)
                     .purpose("REGISTRATION")
-                    .deviceId("register-" + mobileNumber)
                     .build();
             Map<String, Object> result = mobileOtpService.verifyOtp(verificationRequest);
             boolean valid = (Boolean) result.getOrDefault("success", false);
@@ -171,7 +173,11 @@ public class AuthController {
                     .mobileNumber(mobileNumber)
                     .purpose("LOGIN")
                     .deviceType("MOBILE")
-                    .deviceId("login-" + mobileNumber)
+                    // No deviceId — the shared /verify-otp endpoint that completes this
+                    // flow hardcodes its own "web-otp-verification" deviceId, which
+                    // doesn't match a per-request value set here and would fail the
+                    // OTP's device-match check with a misleading "Security validation
+                    // failed" error. Leaving both sides unset avoids the mismatch.
                     .build();
             Map<String, Object> result = mobileOtpService.generateAndSendOtp(otpRequest);
             boolean sent = (Boolean) result.getOrDefault("success", false);
