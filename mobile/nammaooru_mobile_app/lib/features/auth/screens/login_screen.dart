@@ -495,10 +495,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildOtpLoginLink() {
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     return TextButton(
-      onPressed: () => context.go('/login-otp'),
+      onPressed: () => context.go('/register'),
       child: Text(
         langProvider.getText(
-            authCopy(context, 'Login with OTP instead'), 'OTP மூலம் உள்நுழையவும்'),
+            authCopy(context, 'Continue with phone number instead'), 'மொபைல் எண் மூலம் தொடரவும்'),
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,

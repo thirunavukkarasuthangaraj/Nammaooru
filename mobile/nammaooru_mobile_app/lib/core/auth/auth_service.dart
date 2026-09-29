@@ -155,6 +155,8 @@ class AuthService {
   }
 
   // Login with OTP, step 1: send OTP to an existing account's mobile number.
+  // statusCode '3002' (USER_NOT_FOUND) means no account exists for this
+  // number — surfaced via errorCode so callers can offer registration instead.
   static Future<AuthResult> sendLoginOtp(String mobileNumber) async {
     try {
       final response = await ApiClient.post(
@@ -166,12 +168,39 @@ class AuthService {
       if (statusCode == '0000' || statusCode == '200') {
         return AuthResult.success(message: data['message'] ?? 'OTP sent');
       }
-      return AuthResult.failure(data['message'] ?? 'Failed to send OTP');
+      return AuthResult.failure(
+        data['message'] ?? 'Failed to send OTP',
+        errorCode: statusCode == '3002' ? 'USER_NOT_FOUND' : null,
+      );
     } on DioException catch (e) {
-      return AuthResult.failure(_extractErrorMessage(e));
+      final responseData = e.response?.data;
+      final statusCode = responseData is Map ? responseData['statusCode']?.toString() : null;
+      return AuthResult.failure(
+        _extractErrorMessage(e),
+        errorCode: statusCode == '3002' ? 'USER_NOT_FOUND' : null,
+      );
     } catch (e) {
       return AuthResult.failure('Failed to send OTP. Please try again.');
     }
+  }
+
+  // Unified phone entry: try login first; if no account exists for this
+  // number, fall back to registration. Returns which path was actually
+  // taken via AuthResult.errorCode ('LOGIN' or 'REGISTRATION') so the caller
+  // knows what to do after OTP verification.
+  static Future<AuthResult> sendAuthOtp(String mobileNumber) async {
+    final loginResult = await sendLoginOtp(mobileNumber);
+    if (loginResult.isSuccess) {
+      return AuthResult.success(message: loginResult.message, resolvedPurpose: 'LOGIN');
+    }
+    if (loginResult.errorCode == 'USER_NOT_FOUND') {
+      final registerResult = await sendRegistrationOtp(mobileNumber);
+      if (registerResult.isSuccess) {
+        return AuthResult.success(message: registerResult.message, resolvedPurpose: 'REGISTRATION');
+      }
+      return registerResult;
+    }
+    return loginResult;
   }
 
   // Phone-first registration, final step: create the account now that the OTP
@@ -440,34 +469,43 @@ class AuthResult {
   final String? token;
   final String? userRole;
   final String? userId;
-  
+  final String? errorCode;
+  // Set only by sendAuthOtp(): which path was actually taken — 'LOGIN' or
+  // 'REGISTRATION' — since it tries login first and falls back silently.
+  final String? resolvedPurpose;
+
   AuthResult._({
     required this.isSuccess,
     this.message,
     this.token,
     this.userRole,
     this.userId,
+    this.errorCode,
+    this.resolvedPurpose,
   });
-  
+
   factory AuthResult.success({
     String? message,
     String? token,
     String? userRole,
     String? userId,
+    String? resolvedPurpose,
   }) {
     return AuthResult._(
       isSuccess: true,
+      resolvedPurpose: resolvedPurpose,
       message: message,
       token: token,
       userRole: userRole,
       userId: userId,
     );
   }
-  
-  factory AuthResult.failure(String message) {
+
+  factory AuthResult.failure(String message, {String? errorCode}) {
     return AuthResult._(
       isSuccess: false,
       message: message,
+      errorCode: errorCode,
     );
   }
 }

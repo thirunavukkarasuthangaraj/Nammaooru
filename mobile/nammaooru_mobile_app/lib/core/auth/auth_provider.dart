@@ -14,11 +14,14 @@ class AuthProvider with ChangeNotifier {
   String? _userRole;
   String? _userId;
   String? _errorMessage;
-  
+  String? _lastAuthPurpose;
+
   AuthState get authState => _authState;
   String? get userRole => _userRole;
   String? get userId => _userId;
   String? get errorMessage => _errorMessage;
+  // Set by sendAuthOtp(): 'LOGIN' or 'REGISTRATION' — which path it resolved to.
+  String? get lastAuthPurpose => _lastAuthPurpose;
   
   bool get isAuthenticated => _authState == AuthState.authenticated;
   bool get isCustomer => _userRole == 'CUSTOMER' || _userRole == 'USER';  // USER is customer role from backend
@@ -112,6 +115,19 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
+  // Unified phone entry: tries login, falls back to registration if no
+  // account exists. Check lastAuthPurpose ('LOGIN'/'REGISTRATION') after a
+  // true result to know which screen to continue to.
+  Future<bool> sendAuthOtp(String mobileNumber) async {
+    _setLoading();
+    final result = await AuthService.sendAuthOtp(mobileNumber);
+    _authState = AuthState.unauthenticated;
+    _errorMessage = result.isSuccess ? null : result.message;
+    _lastAuthPurpose = result.resolvedPurpose;
+    notifyListeners();
+    return result.isSuccess;
+  }
+
   // Phone-first registration, step 1: send OTP (no account yet).
   Future<bool> sendRegistrationOtp(String mobileNumber) async {
     _setLoading();

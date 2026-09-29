@@ -7,9 +7,12 @@ import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/language_provider.dart';
 import 'otp_verification_screen.dart';
 
-/// Registration step 1 of 3: just the phone number. Sends an OTP and hands
-/// off to OtpVerificationScreen(purpose: 'REGISTRATION'), which on success
-/// continues to RegisterNameScreen — no account exists yet at this point.
+/// Unified phone entry for both login and registration: sends an OTP and
+/// lets the backend resolve whether this number already has an account
+/// (LOGIN) or not (REGISTRATION) — see AuthProvider.sendAuthOtp(). Hands off
+/// to OtpVerificationScreen with whichever purpose was resolved; on success
+/// that either logs straight in (LOGIN) or continues to RegisterNameScreen
+/// to collect name/email (REGISTRATION, no account exists yet).
 class RegisterPhoneScreen extends StatefulWidget {
   const RegisterPhoneScreen({super.key});
 
@@ -34,7 +37,7 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
     setState(() => _isSubmitting = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final phone = _phoneController.text.trim();
-    final success = await authProvider.sendRegistrationOtp(phone);
+    final success = await authProvider.sendAuthOtp(phone);
     if (mounted) setState(() => _isSubmitting = false);
 
     if (!mounted) return;
@@ -43,7 +46,7 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
         MaterialPageRoute(
           builder: (context) => OtpVerificationScreen(
             phoneNumber: phone,
-            purpose: 'REGISTRATION',
+            purpose: authProvider.lastAuthPurpose ?? 'REGISTRATION',
           ),
         ),
       );
@@ -71,8 +74,8 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 CustomerAuthHeader(
-                  title: authCopy(context, 'Create account'),
-                  subtitle: authCopy(context, "Let's start with your mobile number"),
+                  title: authCopy(context, 'Welcome to NammaOoru'),
+                  subtitle: authCopy(context, 'Enter your mobile number to continue'),
                   languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
                   onLanguageChanged: () => lang.toggleLanguage(),
                 ),

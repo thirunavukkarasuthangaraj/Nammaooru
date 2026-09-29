@@ -5,7 +5,6 @@ import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/language_select_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_phone_screen.dart';
-import '../features/auth/screens/login_otp_screen.dart';
 import '../features/auth/screens/otp_verification_screen.dart';
 import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/customer/dashboard/customer_dashboard.dart';
@@ -84,10 +83,6 @@ class AppRouter {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterPhoneScreen(),
-      ),
-      GoRoute(
-        path: '/login-otp',
-        builder: (context, state) => const LoginOtpScreen(),
       ),
       GoRoute(
         path: '/otp-verification',
