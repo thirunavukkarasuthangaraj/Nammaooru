@@ -1,5 +1,5 @@
 import '../../../shared/widgets/auth_copy.dart';
-import '../../../shared/widgets/customer_auth_header.dart';
+import '../../../shared/widgets/simple_auth_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -66,15 +66,14 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        top: false,
         child: AutofillGroup(
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CustomerAuthHeader(
-                  title: authCopy(context, 'Welcome to NammaOoru'),
+                SimpleAuthHeader(
+                  title: authCopy(context, 'Welcome to Namma Ooru Connect'),
                   languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
                   onLanguageChanged: () => lang.toggleLanguage(),
                 ),

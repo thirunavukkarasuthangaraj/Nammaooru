@@ -35,6 +35,7 @@ String authCopy(BuildContext context, String english) {
 
     // Phone-first auth wizard
     'Welcome to NammaOoru': 'நம்ம ஊருவிற்கு வரவேற்கிறோம்',
+    'Welcome to Namma Ooru Connect': 'நம்ம ஊரு கனெக்ட்-க்கு வரவேற்கிறோம்',
     'Enter your mobile number to continue': 'தொடர உங்கள் கைபேசி எண்ணை உள்ளிடவும்',
     'Sign in with your phone': 'உங்கள் கைபேசி மூலம் உள்நுழையவும்',
     "No password to remember — we'll text you a code to verify it's you.":

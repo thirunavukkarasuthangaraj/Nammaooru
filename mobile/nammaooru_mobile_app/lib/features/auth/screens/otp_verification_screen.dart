@@ -10,7 +10,7 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/auth_copy.dart';
-import '../../../shared/widgets/customer_auth_header.dart';
+import '../../../shared/widgets/simple_auth_header.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'register_name_screen.dart';
@@ -211,7 +211,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        top: false,
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             return LoadingOverlay(
@@ -223,10 +222,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      CustomerAuthHeader(
-                        title: authCopy(context, 'Verify your number'),
-                        subtitle: authCopy(context, 'We sent a 6-digit code to') +
-                            ' +91 ${widget.phoneNumber}',
+                      SimpleAuthHeader(
+                        title: authCopy(context, 'Welcome to Namma Ooru Connect'),
                         languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
                         onLanguageChanged: () => lang.toggleLanguage(),
                       ),
@@ -251,6 +248,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+                                  Text(
+                                    '${authCopy(context, 'We sent a 6-digit code to')} +91 ${widget.phoneNumber}',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                  ),
+                                  const SizedBox(height: 16),
                                   _buildOtpFields(),
                                   const SizedBox(height: 20),
                                   Center(child: _buildTimer()),
