@@ -68,7 +68,8 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          child: Form(
+          child: AutofillGroup(
+            child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -95,6 +96,7 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                           textInputAction: TextInputAction.done,
                           maxLength: 10,
                           autofocus: true,
+                          autofillHints: const [AutofillHints.telephoneNumber],
                           onFieldSubmitted: (_) => _handleSendOtp(),
                           onChanged: (value) {
                             final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
@@ -156,6 +158,7 @@ class _RegisterPhoneScreenState extends State<RegisterPhoneScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ),

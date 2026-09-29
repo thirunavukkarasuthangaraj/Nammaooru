@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import '../core/auth/role_guard.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/language_select_screen.dart';
-import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_phone_screen.dart';
 import '../features/auth/screens/otp_verification_screen.dart';
 import '../features/auth/screens/forgot_password_screen.dart';
@@ -77,8 +76,13 @@ class AppRouter {
         builder: (context, state) => const LanguageSelectScreen(),
       ),
       GoRoute(
+        // Password login is redundant now — OTP login works for every
+        // account (old password-based ones included, since it never checks
+        // the password), so /login and /register both go to the same
+        // phone-entry screen. LoginScreen still exists as a file but is no
+        // longer routed to.
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => const RegisterPhoneScreen(),
       ),
       GoRoute(
         path: '/register',

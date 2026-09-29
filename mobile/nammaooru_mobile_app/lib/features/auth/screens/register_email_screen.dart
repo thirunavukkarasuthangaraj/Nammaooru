@@ -93,7 +93,8 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
         body: SafeArea(
           top: false,
           child: SingleChildScrollView(
-            child: Form(
+            child: AutofillGroup(
+              child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,6 +176,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
                     ),
                   ),
                 ],
+              ),
               ),
             ),
           ),

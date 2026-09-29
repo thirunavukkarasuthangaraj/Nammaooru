@@ -45,7 +45,8 @@ class _RegisterNameScreenState extends State<RegisterNameScreen> {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          child: Form(
+          child: AutofillGroup(
+            child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,6 +115,7 @@ class _RegisterNameScreenState extends State<RegisterNameScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ),
