@@ -20,6 +20,12 @@ export class MarketingMessagesComponent implements OnInit {
     { value: 'ALL_CUSTOMERS', label: 'All Active Customers' }
   ];
 
+  // Image upload (used by marketingmsg and shop_offer templates)
+  selectedFile: File | null = null;
+  imagePreview: string | null = null;
+  uploadedImageUrl: string | null = null;
+  uploading = false;
+
   constructor(
     private fb: FormBuilder,
     private marketingService: MarketingService,
@@ -61,15 +67,80 @@ export class MarketingMessagesComponent implements OnInit {
       // marketingmsg template requires image URL and 2 parameters
       imageUrlControl?.setValidators([Validators.required]);
       messageParam2Control?.setValidators([Validators.required, Validators.maxLength(500)]);
+    } else if (templateName === 'shop_offer') {
+      // shop_offer always needs a shop name; the image is optional — sendShopOffer
+      // picks shop_offer_image automatically when one is uploaded.
+      messageParam2Control?.setValidators([Validators.required, Validators.maxLength(500)]);
     }
 
     // Update validity
     messageParam2Control?.updateValueAndValidity();
     imageUrlControl?.updateValueAndValidity();
+
+    // Clear any image left over from a previous template selection
+    this.removeImage();
   }
 
   isMarketingMsgTemplate(): boolean {
     return this.marketingForm.get('templateName')?.value === 'marketingmsg';
+  }
+
+  isShopOfferTemplate(): boolean {
+    return this.marketingForm.get('templateName')?.value === 'shop_offer';
+  }
+
+  usesImageUpload(): boolean {
+    return this.isMarketingMsgTemplate() || this.isShopOfferTemplate();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (!file.type.startsWith('image/')) {
+      this.swal.toast('Please select an image file', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.swal.toast('Image size must be less than 2MB', 'error');
+      return;
+    }
+
+    this.selectedFile = file;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imagePreview = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+
+    this.uploadImage(file);
+  }
+
+  uploadImage(file: File): void {
+    this.uploading = true;
+    this.marketingService.uploadMarketingImage(file).subscribe({
+      next: (response) => {
+        this.uploading = false;
+        this.uploadedImageUrl = response.url;
+        this.marketingForm.patchValue({ imageUrl: response.url });
+        this.swal.toast('Image uploaded successfully', 'success');
+      },
+      error: (error) => {
+        this.uploading = false;
+        console.error('Image upload failed:', error);
+        this.swal.toast('Failed to upload image', 'error');
+        this.removeImage();
+      }
+    });
+  }
+
+  removeImage(): void {
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.uploadedImageUrl = null;
+    this.marketingForm.patchValue({ imageUrl: '' });
   }
 
   loadTemplates(): void {
@@ -116,6 +187,11 @@ export class MarketingMessagesComponent implements OnInit {
       return;
     }
 
+    if (this.uploading) {
+      this.swal.toast('Please wait for the image upload to complete', 'warning');
+      return;
+    }
+
     const formValue = this.marketingForm.value;
     const eligibleCount = this.stats?.eligibleForMarketing || 0;
 
@@ -144,8 +220,10 @@ export class MarketingMessagesComponent implements OnInit {
 
           // Reset form after successful send
           this.marketingForm.patchValue({
-            messageParam: ''
+            messageParam: '',
+            messageParam2: ''
           });
+          this.removeImage();
 
           // Reload stats
           this.loadStats();
@@ -174,6 +252,7 @@ export class MarketingMessagesComponent implements OnInit {
       templateName: this.templates.length > 0 ? this.templates[0].templateName : '',
       targetAudience: 'ALL_CUSTOMERS'
     });
+    this.removeImage();
     this.lastResult = null;
   }
 }

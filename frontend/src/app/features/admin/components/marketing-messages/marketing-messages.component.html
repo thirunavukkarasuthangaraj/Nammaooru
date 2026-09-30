@@ -70,30 +70,51 @@
           </div>
         </div>
 
-        <!-- Image URL (only for marketingmsg template) -->
-        <mat-form-field appearance="outline" class="full-width" *ngIf="isMarketingMsgTemplate()">
-          <mat-label>Marketing Image URL</mat-label>
-          <input
-            matInput
-            formControlName="imageUrl"
-            placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
-            required>
-          <mat-hint align="start">
-            The image that will appear in the WhatsApp message header
-          </mat-hint>
-          <mat-error *ngIf="marketingForm.get('imageUrl')?.hasError('required')">
-            Image URL is required for marketing messages
+        <!-- Image Upload (marketingmsg and shop_offer templates) -->
+        <div class="form-row" *ngIf="usesImageUpload()">
+          <div class="image-upload-section">
+            <label class="upload-label">
+              Message Image{{ isShopOfferTemplate() ? ' (Optional)' : '' }}
+            </label>
+            <div class="upload-area" *ngIf="!imagePreview">
+              <input type="file" #marketingFileInput accept="image/*" (change)="onFileSelected($event)" hidden>
+              <button mat-stroked-button type="button" (click)="marketingFileInput.click()" [disabled]="uploading">
+                <mat-icon>cloud_upload</mat-icon>
+                {{ uploading ? 'Uploading...' : 'Upload Image' }}
+                <mat-spinner *ngIf="uploading" diameter="18" class="upload-spinner"></mat-spinner>
+              </button>
+              <span class="upload-hint">Max 2MB. JPG, PNG supported. Appears as the message header image.</span>
+            </div>
+            <div class="image-preview" *ngIf="imagePreview">
+              <img [src]="imagePreview" alt="Marketing image preview">
+              <div class="preview-overlay">
+                <button mat-icon-button type="button" (click)="removeImage()" color="warn" matTooltip="Remove image">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="upload-status" *ngIf="uploading">
+                <mat-spinner diameter="24"></mat-spinner>
+                <span>Uploading...</span>
+              </div>
+              <div class="upload-status success" *ngIf="uploadedImageUrl && !uploading">
+                <mat-icon>check_circle</mat-icon>
+                <span>Uploaded</span>
+              </div>
+            </div>
+          </div>
+          <mat-error class="upload-required-error" *ngIf="marketingForm.get('imageUrl')?.hasError('required') && marketingForm.get('imageUrl')?.touched">
+            An image is required for this template
           </mat-error>
-        </mat-form-field>
+        </div>
 
         <!-- Message Parameter 1 -->
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ isMarketingMsgTemplate() ? 'Message Content (Parameter 1)' : 'Message Content' }}</mat-label>
+          <mat-label>{{ isShopOfferTemplate() ? 'Offer Text (Parameter 1)' : (isMarketingMsgTemplate() ? 'Message Content (Parameter 1)' : 'Message Content') }}</mat-label>
           <textarea
             matInput
             formControlName="messageParam"
             rows="4"
-            placeholder="Enter the message content that will replace {{1}} in the template"
+            [placeholder]="isShopOfferTemplate() ? 'e.g. ₹50 off on your first order' : 'Enter the message content that will replace {{1}} in the template'"
             required
             maxlength="500">
           </textarea>
@@ -111,14 +132,14 @@
           </mat-error>
         </mat-form-field>
 
-        <!-- Message Parameter 2 (only for marketingmsg template) -->
-        <mat-form-field appearance="outline" class="full-width" *ngIf="isMarketingMsgTemplate()">
-          <mat-label>Message Content (Parameter 2)</mat-label>
+        <!-- Message Parameter 2 (marketingmsg and shop_offer templates) -->
+        <mat-form-field appearance="outline" class="full-width" *ngIf="isMarketingMsgTemplate() || isShopOfferTemplate()">
+          <mat-label>{{ isShopOfferTemplate() ? 'Shop Name (Parameter 2)' : 'Message Content (Parameter 2)' }}</mat-label>
           <textarea
             matInput
             formControlName="messageParam2"
-            rows="4"
-            placeholder="Enter the second message content that will replace {{2}} in the template"
+            [rows]="isShopOfferTemplate() ? 1 : 4"
+            [placeholder]="isShopOfferTemplate() ? 'e.g. Murugesan Supermarket' : 'Enter the second message content that will replace {{2}} in the template'"
             required
             maxlength="500">
           </textarea>
@@ -129,7 +150,7 @@
             {{ marketingForm.get('messageParam2')?.value?.length || 0 }}/500
           </mat-hint>
           <mat-error *ngIf="marketingForm.get('messageParam2')?.hasError('required')">
-            Second message content is required
+            {{ isShopOfferTemplate() ? 'Shop name is required' : 'Second message content is required' }}
           </mat-error>
           <mat-error *ngIf="marketingForm.get('messageParam2')?.hasError('maxlength')">
             Message must not exceed 500 characters
@@ -158,7 +179,7 @@
             mat-raised-button
             color="primary"
             (click)="onSendMessages()"
-            [disabled]="marketingForm.invalid || isSending || isLoading">
+            [disabled]="marketingForm.invalid || isSending || isLoading || uploading">
             <mat-icon *ngIf="!isSending">send</mat-icon>
             <mat-spinner *ngIf="isSending" diameter="20"></mat-spinner>
             <span *ngIf="!isSending">Send Messages</span>

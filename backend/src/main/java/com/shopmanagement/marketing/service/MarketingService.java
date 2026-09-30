@@ -60,38 +60,52 @@ public class MarketingService {
                         continue;
                     }
 
-                    // Prepare template data
-                    Map<String, Object> templateData = new HashMap<>();
+                    boolean sent;
 
-                    // For marketingmsg template, we need image header + 2 text parameters
-                    if ("marketingmsg".equals(request.getTemplateName())) {
-                        // Add image header from request
-                        if (request.getImageUrl() != null && !request.getImageUrl().trim().isEmpty()) {
-                            templateData.put("header_image", request.getImageUrl());
-                        } else {
-                            log.warn("marketingmsg template requires image URL, using default");
-                            templateData.put("header_image", "https://picsum.photos/600/400");
-                        }
-
-                        // Add both message parameters
-                        templateData.put("param1", request.getMessageParam());
-
-                        if (request.getMessageParam2() != null && !request.getMessageParam2().trim().isEmpty()) {
-                            templateData.put("param2", request.getMessageParam2());
-                        } else {
-                            log.warn("marketingmsg template requires 2 parameters, second parameter is missing");
-                        }
+                    if ("shop_offer".equals(request.getTemplateName())) {
+                        // Routes through sendShopOffer, which itself picks the shop_offer_image
+                        // template when an image URL is present and shop_offer otherwise.
+                        sent = whatsAppNotificationService.sendShopOffer(
+                                customer.getMobileNumber(),
+                                customer.getFullName(),
+                                request.getMessageParam2(),
+                                request.getMessageParam(),
+                                request.getImageUrl()
+                        );
                     } else {
-                        // For other templates (like test), just send the message param
-                        templateData.put("param1", request.getMessageParam());
-                    }
+                        // Prepare template data
+                        Map<String, Object> templateData = new HashMap<>();
 
-                    // Send WhatsApp message
-                    boolean sent = sendMarketingMessage(
-                            customer.getMobileNumber(),
-                            request.getTemplateName(),
-                            templateData
-                    );
+                        // For marketingmsg template, we need image header + 2 text parameters
+                        if ("marketingmsg".equals(request.getTemplateName())) {
+                            // Add image header from request
+                            if (request.getImageUrl() != null && !request.getImageUrl().trim().isEmpty()) {
+                                templateData.put("header_image", request.getImageUrl());
+                            } else {
+                                log.warn("marketingmsg template requires image URL, using default");
+                                templateData.put("header_image", "https://picsum.photos/600/400");
+                            }
+
+                            // Add both message parameters
+                            templateData.put("param1", request.getMessageParam());
+
+                            if (request.getMessageParam2() != null && !request.getMessageParam2().trim().isEmpty()) {
+                                templateData.put("param2", request.getMessageParam2());
+                            } else {
+                                log.warn("marketingmsg template requires 2 parameters, second parameter is missing");
+                            }
+                        } else {
+                            // For other templates (like test), just send the message param
+                            templateData.put("param1", request.getMessageParam());
+                        }
+
+                        // Send WhatsApp message
+                        sent = sendMarketingMessage(
+                                customer.getMobileNumber(),
+                                request.getTemplateName(),
+                                templateData
+                        );
+                    }
 
                     if (sent) {
                         successCount++;
@@ -198,17 +212,10 @@ public class MarketingService {
         List<TemplateInfo> templates = new ArrayList<>();
 
         templates.add(TemplateInfo.builder()
-                .templateName("test")
-                .displayName("Test Template")
-                .description("Test marketing message template")
-                .parameterDescription("Message content for {{1}} placeholder")
-                .build());
-
-        templates.add(TemplateInfo.builder()
-                .templateName("marketingmsg")
-                .displayName("Marketing Message")
-                .description("Main marketing message template")
-                .parameterDescription("Marketing message content for {{1}} placeholder")
+                .templateName("shop_offer")
+                .displayName("Shop Offer")
+                .description("Shop offer message. Uploading an image sends it with a picture header (shop_offer_image); without one it sends as text-only (shop_offer).")
+                .parameterDescription("Parameter 1: Offer text (e.g. ₹50 off on your first order). Parameter 2: Shop name.")
                 .build());
 
         return templates;

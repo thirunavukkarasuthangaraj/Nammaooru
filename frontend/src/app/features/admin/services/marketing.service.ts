@@ -64,4 +64,14 @@ export class MarketingService {
   getMarketingStats(): Observable<MarketingStats> {
     return this.http.get<MarketingStats>(`${this.apiUrl}/stats`);
   }
+
+  /**
+   * Upload an image to attach to a marketing/shop-offer message.
+   * Reuses the existing promotion-image upload endpoint.
+   */
+  uploadMarketingImage(file: File): Observable<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ url: string }>(`${environment.apiUrl}/uploads/promotion`, formData);
+  }
 }

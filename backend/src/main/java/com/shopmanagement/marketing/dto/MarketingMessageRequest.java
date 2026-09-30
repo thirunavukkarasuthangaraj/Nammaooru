@@ -18,20 +18,22 @@ public class MarketingMessageRequest {
 
     /**
      * Template name - must be one of the approved templates in MSG91
-     * Valid values: "test", "marketingmsg"
+     * Valid values: "test", "marketingmsg", "shop_offer"
      */
     @NotBlank(message = "Template name is required")
-    @Pattern(regexp = "^(test|marketingmsg)$", message = "Template must be 'test' or 'marketingmsg'")
+    @Pattern(regexp = "^(test|marketingmsg|shop_offer)$", message = "Template must be 'test', 'marketingmsg' or 'shop_offer'")
     private String templateName;
 
     /**
-     * Message parameter to replace {{1}} placeholder in the template
+     * Message parameter to replace {{1}} placeholder in the template.
+     * For "shop_offer" this is the offer text.
      */
     @NotBlank(message = "Message parameter is required")
     private String messageParam;
 
     /**
-     * Second message parameter to replace {{2}} placeholder (optional, used by some templates)
+     * Second message parameter to replace {{2}} placeholder (optional, used by some templates).
+     * For "shop_offer" this is the shop name.
      */
     private String messageParam2;
 
