@@ -6,7 +6,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -40,7 +44,14 @@ public class FileUploadService {
         validateFile(file);
         contentModerationService.validateImageContent(file);
 
-        String fileName = generateFileName(file);
+        // Push notification images are fetched on-device (often over mobile data) in the
+        // brief window before Android gives up and falls back to a text-only notification —
+        // re-encode them small so that fetch reliably finishes in time.
+        boolean compressForNotification = "notifications".equals(category);
+
+        String fileName = compressForNotification
+                ? UUID.randomUUID().toString() + ".jpg"
+                : generateFileName(file);
         String categoryPath = category != null ? category + "/" : "";
         Path uploadDir = Paths.get(uploadPath, categoryPath);
 
@@ -48,13 +59,53 @@ public class FileUploadService {
         Files.createDirectories(uploadDir);
 
         Path filePath = uploadDir.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        if (compressForNotification) {
+            writeCompressedNotificationImage(file, filePath);
+        } else {
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        }
 
         // Include /uploads prefix for proper serving
         String fileUrl = "/uploads/" + categoryPath + fileName;
         log.info("File uploaded successfully: {}", fileUrl);
 
         return fileUrl;
+    }
+
+    /**
+     * Resize + re-encode as JPEG at moderate quality so notification images stay well
+     * under the size that would risk a slow/incomplete fetch on the recipient's device.
+     * Falls back to a raw copy if ImageIO can't decode the upload (rare format).
+     */
+    private void writeCompressedNotificationImage(MultipartFile file, Path filePath) throws IOException {
+        BufferedImage original = ImageIO.read(file.getInputStream());
+        if (original == null) {
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            return;
+        }
+
+        BufferedImage forJpeg = original;
+        if (original.getColorModel().hasAlpha()) {
+            forJpeg = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2d = forJpeg.createGraphics();
+            g2d.drawImage(original, 0, 0, Color.WHITE, null);
+            g2d.dispose();
+        }
+
+        BufferedImage resized = resizeImage(forJpeg, 1024, 1024);
+
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(0.75f);
+
+        try (ImageOutputStream ios = ImageIO.createImageOutputStream(filePath.toFile())) {
+            writer.setOutput(ios);
+            writer.write(null, new IIOImage(resized, null, null), param);
+        } finally {
+            writer.dispose();
+        }
     }
 
     /**
