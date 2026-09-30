@@ -8,6 +8,7 @@ import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.service.WhatsAppNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -23,6 +24,20 @@ public class MarketingService {
 
     private final CustomerRepository customerRepository;
     private final WhatsAppNotificationService whatsAppNotificationService;
+
+    @Value("${app.api.base-url:https://api.nammaoorudelivary.in}")
+    private String apiBaseUrl;
+
+    /**
+     * Uploaded images come back from the frontend as a relative path
+     * (e.g. "/uploads/promotions/xxx.jpg"). Meta's WhatsApp API rejects
+     * anything that isn't an absolute URI, so prepend the API host.
+     */
+    private String resolveImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) return null;
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) return imageUrl;
+        return apiBaseUrl + imageUrl;
+    }
 
     /**
      * Send bulk marketing messages to customers
@@ -50,6 +65,7 @@ public class MarketingService {
             // Send messages to each customer
             int successCount = 0;
             int failureCount = 0;
+            String resolvedImageUrl = resolveImageUrl(request.getImageUrl());
 
             for (Customer customer : targetCustomers) {
                 try {
@@ -70,7 +86,7 @@ public class MarketingService {
                                 customer.getFullName(),
                                 request.getMessageParam2(),
                                 request.getMessageParam(),
-                                request.getImageUrl()
+                                resolvedImageUrl
                         );
                     } else {
                         // Prepare template data
@@ -79,8 +95,8 @@ public class MarketingService {
                         // For marketingmsg template, we need image header + 2 text parameters
                         if ("marketingmsg".equals(request.getTemplateName())) {
                             // Add image header from request
-                            if (request.getImageUrl() != null && !request.getImageUrl().trim().isEmpty()) {
-                                templateData.put("header_image", request.getImageUrl());
+                            if (resolvedImageUrl != null) {
+                                templateData.put("header_image", resolvedImageUrl);
                             } else {
                                 log.warn("marketingmsg template requires image URL, using default");
                                 templateData.put("header_image", "https://picsum.photos/600/400");
