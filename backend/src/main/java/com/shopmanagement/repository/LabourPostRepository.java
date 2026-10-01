@@ -37,6 +37,33 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
 
     Page<LabourPost> findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(List<PostStatus> statuses, LabourCategory category, LocalDateTime after, Pageable pageable);
 
+    // Public listings: featured (banner) posts always come first, then newest.
+    // CASE handles legacy rows where featured is NULL (treated as not featured).
+    @Query("SELECT p FROM LabourPost p WHERE p.status IN :statuses " +
+           "ORDER BY CASE WHEN p.featured = true THEN 0 ELSE 1 END, p.createdAt DESC")
+    Page<LabourPost> findVisibleFeaturedFirst(@Param("statuses") List<PostStatus> statuses, Pageable pageable);
+
+    @Query("SELECT p FROM LabourPost p WHERE p.status IN :statuses AND p.createdAt > :after " +
+           "ORDER BY CASE WHEN p.featured = true THEN 0 ELSE 1 END, p.createdAt DESC")
+    Page<LabourPost> findVisibleAfterFeaturedFirst(@Param("statuses") List<PostStatus> statuses,
+                                                   @Param("after") LocalDateTime after, Pageable pageable);
+
+    @Query("SELECT p FROM LabourPost p WHERE p.status IN :statuses AND p.category = :category " +
+           "ORDER BY CASE WHEN p.featured = true THEN 0 ELSE 1 END, p.createdAt DESC")
+    Page<LabourPost> findVisibleByCategoryFeaturedFirst(@Param("statuses") List<PostStatus> statuses,
+                                                        @Param("category") LabourCategory category, Pageable pageable);
+
+    @Query("SELECT p FROM LabourPost p WHERE p.status IN :statuses AND p.category = :category AND p.createdAt > :after " +
+           "ORDER BY CASE WHEN p.featured = true THEN 0 ELSE 1 END, p.createdAt DESC")
+    Page<LabourPost> findVisibleByCategoryAfterFeaturedFirst(@Param("statuses") List<PostStatus> statuses,
+                                                             @Param("category") LabourCategory category,
+                                                             @Param("after") LocalDateTime after, Pageable pageable);
+
+    @Query("SELECT p FROM LabourPost p WHERE p.status IN :statuses AND LOWER(p.location) LIKE LOWER(CONCAT('%', :location, '%')) " +
+           "ORDER BY CASE WHEN p.featured = true THEN 0 ELSE 1 END, p.createdAt DESC")
+    Page<LabourPost> findVisibleByLocationFeaturedFirst(@Param("statuses") List<PostStatus> statuses,
+                                                        @Param("location") String location, Pageable pageable);
+
     long countByStatus(PostStatus status);
 
     long countByReportCountGreaterThan(int count);
@@ -52,7 +79,7 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
     // coordinates (can't compute a distance) sort after all of those instead
     // of being excluded like the radius-bounded queries below.
     @Query(value = "SELECT * FROM labour_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) " +
-           "ORDER BY (CASE WHEN lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL THEN " +
+           "ORDER BY COALESCE(lp.featured, false) DESC, (CASE WHEN lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL THEN " +
            "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
            "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
            "sin(radians(CAST(lp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
@@ -66,7 +93,7 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
 
     @Query(value = "SELECT * FROM labour_posts lp WHERE lp.status = ANY(CAST(:statuses AS text[])) AND " +
            "lp.category = CAST(:category AS text) " +
-           "ORDER BY (CASE WHEN lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL THEN " +
+           "ORDER BY COALESCE(lp.featured, false) DESC, (CASE WHEN lp.latitude IS NOT NULL AND lp.longitude IS NOT NULL THEN " +
            "6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
            "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
            "sin(radians(CAST(lp.latitude AS double precision)))))) ELSE NULL END) ASC NULLS LAST, " +
@@ -87,7 +114,7 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
            "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
            "sin(radians(CAST(lp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
-           "ORDER BY lp.created_at DESC LIMIT :limit OFFSET :offset",
+           "ORDER BY COALESCE(lp.featured, false) DESC, lp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<LabourPost> findNearbyPosts(@Param("statuses") String[] statuses,
                                      @Param("lat") double lat,
@@ -117,7 +144,7 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
            "(6371 * acos(LEAST(1.0, cos(radians(CAST(:lat AS double precision))) * cos(radians(CAST(lp.latitude AS double precision))) * " +
            "cos(radians(CAST(lp.longitude AS double precision)) - radians(CAST(:lng AS double precision))) + sin(radians(CAST(:lat AS double precision))) * " +
            "sin(radians(CAST(lp.latitude AS double precision)))))) <= CAST(:radiusKm AS double precision) " +
-           "ORDER BY lp.created_at DESC LIMIT :limit OFFSET :offset",
+           "ORDER BY COALESCE(lp.featured, false) DESC, lp.created_at DESC LIMIT :limit OFFSET :offset",
            nativeQuery = true)
     List<LabourPost> findNearbyPostsByCategory(@Param("statuses") String[] statuses,
                                                @Param("category") String category,

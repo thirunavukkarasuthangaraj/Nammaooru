@@ -48,6 +48,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     section_featured_shops: { label: 'Featured Shops',  icon: 'store',        desc: 'Featured shops section on home screen' },
     section_recent_orders:  { label: 'Recent Orders',   icon: 'receipt_long', desc: 'Recent orders section on home screen' },
     section_special_offers: { label: 'Special Offers Banner', icon: 'local_offer', desc: 'Promo codes & combo offers carousel on home screen' },
+    section_profile_my_posts: { label: 'Profile: My Posts', icon: 'article', desc: 'My Posts stats, pricing & per-type counts on the Profile screen' },
   };
 
   getNavMeta(f: FeatureConfig) {

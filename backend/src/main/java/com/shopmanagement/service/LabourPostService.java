@@ -163,8 +163,7 @@ public class LabourPostService {
     @Transactional(readOnly = true)
     public Page<LabourPost> searchByLocation(String search, Pageable pageable) {
         List<PostStatus> visibleStatuses = getVisibleStatuses();
-        return labourPostRepository.findByStatusInAndLocationContainingIgnoreCaseOrderByCreatedAtDesc(
-                visibleStatuses, search, pageable);
+        return labourPostRepository.findVisibleByLocationFeaturedFirst(visibleStatuses, search, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -191,9 +190,9 @@ public class LabourPostService {
 
         LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
-            return labourPostRepository.findByStatusInAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, cutoffDate, pageable);
+            return labourPostRepository.findVisibleAfterFeaturedFirst(visibleStatuses, cutoffDate, pageable);
         }
-        return labourPostRepository.findByStatusInOrderByCreatedAtDesc(visibleStatuses, pageable);
+        return labourPostRepository.findVisibleFeaturedFirst(visibleStatuses, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -227,9 +226,9 @@ public class LabourPostService {
 
         LocalDateTime cutoffDate = getCutoffDate();
         if (cutoffDate != null) {
-            return labourPostRepository.findByStatusInAndCategoryAndCreatedAtAfterOrderByCreatedAtDesc(visibleStatuses, category, cutoffDate, pageable);
+            return labourPostRepository.findVisibleByCategoryAfterFeaturedFirst(visibleStatuses, category, cutoffDate, pageable);
         }
-        return labourPostRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(visibleStatuses, category, pageable);
+        return labourPostRepository.findVisibleByCategoryFeaturedFirst(visibleStatuses, category, pageable);
     }
 
     @Transactional(readOnly = true)

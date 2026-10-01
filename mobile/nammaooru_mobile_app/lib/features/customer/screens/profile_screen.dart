@@ -18,6 +18,7 @@ import 'contact_requests_screen.dart';
 import 'help_support_screen.dart';
 import '../../../core/services/contact_request_service.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
+import '../../../shared/providers/feature_config_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -533,8 +534,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildUserDetailsCard(),
                               const SizedBox(height: 24),
                               _buildAccountActionsCard(),
-                              const SizedBox(height: 24),
-                              _buildPostStatsCard(),
+                              // Admin can hide the whole "My Posts" block
+                              // (stats + pricing + per-type counts) from
+                              // App Visibility Control.
+                              if (context
+                                  .watch<FeatureConfigProvider>()
+                                  .isVisible('section_profile_my_posts')) ...[
+                                const SizedBox(height: 24),
+                                _buildPostStatsCard(),
+                              ],
                               const SizedBox(height: 32),
                               _buildLogoutButton(),
                             ],
