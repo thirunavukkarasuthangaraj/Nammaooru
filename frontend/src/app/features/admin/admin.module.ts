@@ -42,6 +42,7 @@ import { MenuPermissionsComponent } from './components/menu-permissions/menu-per
 import { MarketplaceManagementComponent } from './components/marketplace-management/marketplace-management.component';
 import { RealEstateManagementComponent } from './components/real-estate-management/real-estate-management.component';
 import { BusTimingManagementComponent } from './components/bus-timing-management/bus-timing-management.component';
+import { TransportManagementComponent } from './components/transport-management/transport-management.component';
 import { ReportedPostsComponent } from './components/reported-posts/reported-posts.component';
 import { MarketplaceConfigComponent } from './components/marketplace-config/marketplace-config.component';
 import { FarmerProductsManagementComponent } from './components/farmer-products-management/farmer-products-management.component';
@@ -90,6 +91,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     MarketplaceManagementComponent,
     RealEstateManagementComponent,
     BusTimingManagementComponent,
+    TransportManagementComponent,
     ReportedPostsComponent,
     MarketplaceConfigComponent,
     FarmerProductsManagementComponent,
@@ -211,6 +213,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'bus-timing',
         component: BusTimingManagementComponent
+      },
+      {
+        path: 'transport',
+        component: TransportManagementComponent
       },
       {
         path: 'reported-posts',

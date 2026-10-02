@@ -10,7 +10,6 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/auth_copy.dart';
-import '../../../shared/widgets/customer_auth_header.dart';
 import '../../../shared/widgets/privacy_policy_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'register_name_screen.dart';
@@ -205,71 +204,100 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     _otpController.clear();
   }
 
-  Widget _buildIcon() {
-    return Container(
-      width: 128,
-      height: 128,
-      decoration: BoxDecoration(
-        color: VillageTheme.primaryGreen.withOpacity(0.08),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Container(
-          width: 92,
-          height: 92,
-          decoration: BoxDecoration(
-            color: VillageTheme.primaryGreen.withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.mark_email_read_rounded, size: 40, color: VillageTheme.primaryGreen),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        top: false,
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             return LoadingOverlay(
               isLoading: authProvider.authState == AuthState.loading,
               loadingMessage: authCopy(context, 'Verifying OTP...'),
               child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      CustomerAuthHeader(
-                        title: authCopy(context, 'Verify your number'),
-                        subtitle: '${authCopy(context, 'We sent a 6-digit code to')} +91 ${widget.phoneNumber}',
-                        languageLabel: lang.showTamil ? 'English' : 'தமிழ்',
-                        onLanguageChanged: () => lang.toggleLanguage(),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Center(child: _buildIcon()),
-                            const SizedBox(height: 28),
-                            _buildOtpFields(),
-                            const SizedBox(height: 20),
-                            Center(child: _buildTimer()),
-                            const SizedBox(height: 24),
-                            _buildVerifyButton(authProvider.authState == AuthState.loading),
-                            const SizedBox(height: 12),
-                            _buildResendButton(),
-                            const SizedBox(height: 16),
-                            _buildChangeNumberButton(),
-                          ],
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: TextButton(
+                          onPressed: () => lang.toggleLanguage(),
+                          style: TextButton.styleFrom(
+                            foregroundColor: VillageTheme.primaryGreen,
+                            backgroundColor: VillageTheme.primaryGreen.withOpacity(0.08),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          child: Text(lang.showTamil ? 'English' : 'தமிழ்'),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: ClipRect(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            heightFactor: 0.63,
+                            child: Image.asset('assets/icons/logo-new.png', width: 150),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: lang.showTamil ? 'நம்ம ஊரு' : 'Namma Ooru',
+                              style: const TextStyle(color: Color(0xFF4CAF50)),
+                            ),
+                            const TextSpan(text: ' '),
+                            TextSpan(
+                              text: lang.showTamil ? 'கனெக்ட்' : 'Connect',
+                              style: const TextStyle(color: Color(0xFF2196F3)),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: VillageTheme.primaryGreen,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        authCopy(context, 'Verify your number'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF2C3E50)),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${authCopy(context, 'We sent a 6-digit code to')} +91 ${widget.phoneNumber}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13.5, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 28),
+                      _buildOtpFields(),
+                      const SizedBox(height: 20),
+                      Center(child: _buildTimer()),
+                      const SizedBox(height: 24),
+                      // OTP auto-verifies as soon as 6 digits are entered
+                      // (typed or SMS-filled), so there is no Verify button.
+                      // Only a progress hint while the request is in flight.
+                      _buildVerifyingIndicator(authProvider.authState == AuthState.loading),
+                      const SizedBox(height: 12),
+                      _buildResendButton(),
+                      const SizedBox(height: 16),
+                      _buildChangeNumberButton(),
                     ],
                   ),
                 ),
@@ -352,49 +380,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
     );
   }
 
-  Widget _buildVerifyButton(bool isLoading) {
+  Widget _buildVerifyingIndicator(bool isLoading) {
     return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : _handleVerifyOtp,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4CAF50),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : Text(
-                authCopy(context, 'Verify OTP'),
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
-              ),
-      ),
+      height: 24,
+      child: isLoading
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: VillageTheme.primaryGreen),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  authCopy(context, 'Verifying...'),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
   Widget _buildResendButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton(
+    return Center(
+      child: TextButton(
         onPressed: _canResend ? _handleResendOtp : null,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(
-            color: _canResend ? VillageTheme.primaryGreen : Colors.grey[300]!,
-            width: 2,
-          ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        ),
         child: Text(
-          _canResend
-              ? authCopy(context, 'Resend Code')
-              : '${authCopy(context, 'Resend in')} $_formattedTime',
+          authCopy(context, 'Resend Code'),
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -411,7 +425,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
         onPressed: () => context.go('/register'),
         child: Text(
           authCopy(context, 'Change Mobile number'),
-          style: TextStyle(color: Colors.grey[700], fontSize: 14, fontWeight: FontWeight.w600),
+          style: const TextStyle(color: VillageTheme.primaryGreen, fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
     );

@@ -90,6 +90,7 @@ public class SecurityConfig {
                                 "/api/delivery-fees/**",
                                 "/api/bus-timings",  // Public: View active bus timings
                                 "/api/bus-timings/*",  // Public: View single bus timing by ID
+                                "/api/transport/public/**",  // Public: Where-is-Bus live tracking feed
                                 "/api/marketplace",  // Public: View approved marketplace posts
                                 "/api/marketplace/*",  // Public: View single marketplace post by ID
                                 "/api/farmer-products",  // Public: View approved farmer products

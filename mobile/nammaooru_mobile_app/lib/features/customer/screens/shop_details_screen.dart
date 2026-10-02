@@ -68,6 +68,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   // switches to the product listing for it (screen 2), like a real navigation
   // even though it's implemented as one continuous screen.
   bool _showCategoryDetail = false;
+  // Customer's chosen density for the category grid: 3 photos per row,
+  // 2 (bigger photos), or a compact list. Kept in memory only - resets to
+  // the 2-column default each time the shop screen is reopened.
+  int _categoryColumns = 2; // 3, 2, or 0 for list view
   bool _isLoadingShop = false;
   // Starts true so the spinner shows from the first frame until the (slow)
   // products query returns — never a flash of "No Products Found"
@@ -1127,7 +1131,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         SliverToBoxAdapter(child: _buildUnifiedOffersCarousel()),
         SliverToBoxAdapter(child: _buildCategoryGridHeader()),
         _buildCategoryGridSliver(),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        // Extra clearance so the last grid row can scroll clear of the
+        // floating "View Cart" pill instead of sitting permanently under it.
+        const SliverToBoxAdapter(child: SizedBox(height: 90)),
       ],
     );
   }
@@ -1327,7 +1333,19 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   // Section header above the category photo grid: title, live aisle count,
   // and a short explainer line - mirrors the shop's grocery-aisle framing.
   Widget _buildCategoryGridHeader() {
-    if (_isLoadingCategories || _categories.isEmpty) {
+    // Previously this returned nothing at all while loading, so on a slow
+    // connection the screen showed just the banner with a big blank gap
+    // below it for as long as the categories call took - looking frozen
+    // instead of working. A spinner at least proves something is happening.
+    if (_isLoadingCategories) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: Color(0xFF2E7D32))),
+      );
+    }
+    if (_categories.isEmpty) {
       return const SizedBox.shrink();
     }
     final lang = Provider.of<LanguageProvider>(context);
@@ -1335,41 +1353,82 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runSpacing: 6,
-            children: [
-              Text(
-                lang.getText('Shop by Category', 'பொருட்களின் வகைகள்'),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF212121),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: VillageTheme.primaryGreen.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$aisleCount ${lang.getText('Aisles', 'வகைகள்')}',
-                  style: TextStyle(
-                    fontSize: 11,
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 6,
+              children: [
+                Text(
+                  lang.getText('Shop by Category', 'பொருட்களின் வகைகள்'),
+                  style: const TextStyle(
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: VillageTheme.primaryGreen,
+                    color: Color(0xFF212121),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: VillageTheme.primaryGreen.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$aisleCount ${lang.getText('Aisles', 'வகைகள்')}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: VillageTheme.primaryGreen,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+          _buildCategoryViewToggle(),
         ],
       ),
+    );
+  }
+
+  // Lets the customer pick how the category grid is shown: 3-per-row photos,
+  // 2-per-row (bigger photos), or a compact list.
+  Widget _buildCategoryViewToggle() {
+    Widget button(IconData icon, int value) {
+      final selected = _categoryColumns == value;
+      return InkWell(
+        onTap: () => setState(() => _categoryColumns = value),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: selected ? VillageTheme.primaryGreen : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon,
+              size: 18,
+              color: selected ? Colors.white : Colors.grey.shade600),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F8F1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5EBE4)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        button(Icons.grid_on_rounded, 4),
+        button(Icons.grid_view_rounded, 3),
+        button(Icons.apps_rounded, 2),
+        button(Icons.view_list_rounded, 0),
+      ]),
     );
   }
 
@@ -1400,21 +1459,126 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
+    // Keying each layout by its column mode forces Flutter to build a fresh
+    // sliver subtree on every toggle tap instead of trying to reuse/diff the
+    // previous grid's RenderObject against a different crossAxisCount - that
+    // mismatch was why switching views sometimes needed a second or third
+    // tap before it actually rendered.
+    if (_categoryColumns == 0) {
+      return SliverPadding(
+        key: const ValueKey('category-view-list'),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildCategoryListTile(categories[index]),
+            ),
+            childCount: categories.length,
+          ),
+        ),
+      );
+    }
+
+    final columns = _categoryColumns;
+    final imageHeight = switch (columns) { 4 => 56.0, 3 => 78.0, _ => 118.0 };
+    final fontSize = switch (columns) { 4 => 10.0, 3 => 12.0, _ => 14.0 };
+    final baseExtent = switch (columns) { 4 => 84.0, 3 => 108.0, _ => 150.0 };
+
     return SliverPadding(
+      key: ValueKey('category-view-grid-$columns'),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       sliver: SliverGrid(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: MediaQuery.sizeOf(context).width < 350 ||
-                  MediaQuery.textScalerOf(context).scale(12) > 16
-              ? 2
-              : 3,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          mainAxisExtent: 108 + MediaQuery.textScalerOf(context).scale(12) * 2.6,
+          crossAxisCount: columns,
+          mainAxisSpacing: columns == 4 ? 8 : 12,
+          crossAxisSpacing: columns == 4 ? 8 : 12,
+          mainAxisExtent: baseExtent +
+              MediaQuery.textScalerOf(context).scale(fontSize) * 2.6,
         ),
         delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildCategoryGridCard(categories[index]),
+          (context, index) => _buildCategoryGridCard(
+            categories[index],
+            imageHeight: imageHeight,
+            fontSize: fontSize,
+          ),
           childCount: categories.length,
+        ),
+      ),
+    );
+  }
+
+  // Compact horizontal row used by the list-view toggle: small square
+  // thumbnail, name, chevron - one category per line instead of a grid tile.
+  Widget _buildCategoryListTile(Map<String, dynamic> category) {
+    final lang = Provider.of<LanguageProvider>(context);
+    final categoryName = category['name']?.toString() ?? '';
+    final tamilName = (category['displayNameTamil'] ?? category['nameTamil'])
+        ?.toString()
+        .trim();
+    final englishName =
+        _titleCaseLabel(category['displayName']?.toString() ?? categoryName);
+    final name = lang.currentLanguage == 'ta' &&
+            tamilName != null &&
+            tamilName.isNotEmpty
+        ? tamilName
+        : englishName;
+    final imageUrl = category['imageUrl']?.toString();
+    final categoryId = category['id']?.toString();
+    final selected = _selectedCategory == categoryId;
+    final icon = _categoryIcon('$categoryName $englishName');
+    final fallback = Icon(icon, color: VillageTheme.primaryGreen, size: 24);
+
+    return Material(
+      color: selected ? const Color(0xFFEAF6E9) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+            color:
+                selected ? VillageTheme.primaryGreen : const Color(0xFFE5EBE4)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          _selectCategory(categoryId, categoryName);
+          setState(() => _showCategoryDetail = true);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(children: [
+            Container(
+              height: 48,
+              width: 48,
+              decoration: BoxDecoration(
+                  color: const Color(0xFFF3F8F1),
+                  borderRadius: BorderRadius.circular(10)),
+              clipBehavior: Clip.antiAlias,
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                      width: double.infinity,
+                      height: double.infinity,
+                      // contain, not cover - these photos have labels baked
+                      // in at unpredictable positions that cover would crop.
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
+                      placeholder: (_, __) => const SizedBox.shrink(),
+                      errorWidget: (_, __, ___) => fallback,
+                    )
+                  : fallback,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121))),
+            ),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400),
+          ]),
         ),
       ),
     );
@@ -1461,7 +1625,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     return Icons.shopping_basket_outlined;
   }
 
-  Widget _buildCategoryGridCard(Map<String, dynamic> category) {
+  Widget _buildCategoryGridCard(
+    Map<String, dynamic> category, {
+    required double imageHeight,
+    required double fontSize,
+  }) {
     final lang = Provider.of<LanguageProvider>(context);
     final categoryName = category['name']?.toString() ?? '';
     final tamilName = (category['displayNameTamil'] ?? category['nameTamil'])
@@ -1478,7 +1646,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     final categoryId = category['id']?.toString();
     final selected = _selectedCategory == categoryId;
     final icon = _categoryIcon('$categoryName $englishName');
-    final fallback = Icon(icon, color: VillageTheme.primaryGreen, size: 30);
+    final fallback = Icon(icon,
+        color: VillageTheme.primaryGreen,
+        size: switch (imageHeight) { 56.0 => 20.0, 78.0 => 28.0, _ => 44.0 });
     return Material(
       color: selected ? const Color(0xFFEAF6E9) : Colors.white,
       shape: RoundedRectangleBorder(
@@ -1494,35 +1664,47 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
           setState(() => _showCategoryDetail = true);
         },
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(imageHeight == 56 ? 6 : 10),
           child: Column(children: [
             Container(
-              height: 72,
+              height: imageHeight,
               width: double.infinity,
               decoration: BoxDecoration(
                   color: const Color(0xFFF3F8F1),
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(14)),
               clipBehavior: Clip.antiAlias,
               child: imageUrl != null && imageUrl.isNotEmpty
-                  ? Image.network(
-                      ImageUrlHelper.getFullImageUrl(imageUrl),
+                  ? CachedNetworkImage(
+                      imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
                       width: double.infinity,
                       height: double.infinity,
+                      // Many category photos have their label baked into the
+                      // image itself, at unpredictable positions - cover
+                      // crops some of them (e.g. "Dry Fruits", "Dairy &
+                      // Eggs") regardless of tile size. contain is the only
+                      // fit that never cuts that text off.
                       fit: BoxFit.contain,
                       filterQuality: FilterQuality.medium,
-                      errorBuilder: (_, __, ___) => fallback,
+                      // The backend takes ~0.5s just to start streaming each
+                      // category photo (server-side, not a bandwidth issue -
+                      // confirmed by curl showing the same latency for
+                      // repeated direct requests). Caching to disk means that
+                      // cost is only ever paid once per image per device,
+                      // not on every visit to this shop.
+                      placeholder: (_, __) => const SizedBox.shrink(),
+                      errorWidget: (_, __, ___) => fallback,
                     )
                   : fallback,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Expanded(
                 child: Center(
                     child: Text(name,
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 12,
+                        style: TextStyle(
+                            fontSize: fontSize,
                             height: 1.3,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF212121))))),
@@ -2336,9 +2518,13 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       print('📦 Item: ${item.productName}');
       print('📦 Item Tamil: ${item.productNameTamil}');
 
-      // Create a ProductModel for each combo item
+      // Create a ProductModel for each combo item. The id is made
+      // combo-specific so this cart row never merges with a standalone add
+      // of the same product at full price (which would silently overwrite
+      // one price with the other for the whole merged quantity).
       final product = ProductModel(
-        id: item.shopProductId.toString(),
+        id: 'combo_${combo.id}_${item.shopProductId}',
+        realProductId: item.shopProductId.toString(),
         name: item.productName,
         nameTamil: item.productNameTamil,
         description: item.productName,
@@ -2793,34 +2979,39 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: VillageTheme.primaryGreen,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (hasDiscount) ...[
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                  // Scale the whole price line down on narrow cards instead
+                  // of splitting the width between the two prices, which
+                  // truncated "₹450" to "₹4...".
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
                             style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey,
-                              decoration: TextDecoration.lineThrough,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: VillageTheme.primaryGreen,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ],
+                          if (hasDiscount) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -4256,28 +4447,38 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                       // Price Row
                       Row(
                         children: [
+                          // Shrink the pair to fit rather than truncating
+                          // the sale price to "₹4...".
                           Flexible(
-                            child: Text(
-                              '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: VillageTheme.primaryGreen,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: VillageTheme.primaryGreen,
+                                    ),
+                                  ),
+                                  if (hasDiscount) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (hasDiscount) ...[
-                            const SizedBox(width: 4),
-                            Text(
-                              '₹${originalPrice.toStringAsFixed(originalPrice == originalPrice.roundToDouble() ? 0 : 2)}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey,
-                                decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                       // Stock warning
@@ -4880,6 +5081,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         raw?['masterProduct']?['category']?['name']?.toString();
     if (categoryName == null || categoryName.isEmpty) return;
 
+    // The whole point of this sheet is to surface similar products the
+    // customer isn't already looking at. If they're browsing this exact
+    // category right now, every candidate below is already visible in the
+    // grid behind the sheet - showing it again here is just noise.
+    if (_showCategoryDetail &&
+        _selectedCategoryName != null &&
+        _selectedCategoryName!.toLowerCase() == categoryName.toLowerCase()) {
+      return;
+    }
+
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final languageProvider =
         Provider.of<LanguageProvider>(context, listen: false);
@@ -4901,6 +5112,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     // Categories can be broad ("Grocery"), so rank inside the category:
     // shared name words (English + Tamil) rank highest, plus a small bonus
     // for a similar price range. Ties keep the original catalog order.
+    //
+    // Pack-size/unit words ("1kg", "500g", "2pack") are excluded from the
+    // token set - two unrelated products that just happen to come in the
+    // same size were matching each other on that alone, producing
+    // suggestions with nothing actually in common with the added item.
+    final unitPattern = RegExp(r'^\d*(kg|g|gm|ml|ltr|litre|l|pc|pcs|piece|pieces|pack|packs|packet|combo|box)$');
     Set<String> tokensOf(dynamic p) => [
           p?['customName']?.toString(),
           p?['masterProduct']?['name']?.toString(),
@@ -4910,7 +5127,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
             .join(' ')
             .toLowerCase()
             .split(RegExp(r'[^a-z0-9஀-௿]+'))
-            .where((t) => t.length >= 3)
+            .where((t) =>
+                t.length >= 3 &&
+                !unitPattern.hasMatch(t) &&
+                !RegExp(r'^\d+$').hasMatch(t))
             .toSet();
 
     final addedTokens = tokensOf(raw)
@@ -4936,10 +5156,11 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       ..sort((a, b) => b.value != a.value ? b.value - a.value : a.key - b.key);
     // A name-word match scores >= 3. Show ONLY name-matched products —
     // padding with random same-category items reads as "completely wrong",
-    // so with no real match the sheet is skipped entirely.
+    // so with no real match the sheet is skipped entirely. No cap on count:
+    // a whole brand line (e.g. every "Gold Winner" variant) should all show
+    // up, not just the first 8 - the row scrolls horizontally either way.
     final related = ranked
         .where((e) => e.value >= 3)
-        .take(8)
         .map((e) => candidates[e.key])
         .toList();
     if (related.isEmpty) return;

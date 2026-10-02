@@ -59,6 +59,7 @@ String authCopy(BuildContext context, String english) {
     'OTP must be 6 digits': 'OTP 6 இலக்கங்களாக இருக்க வேண்டும்',
     'Code expires in': 'குறியீடு காலாவதியாகும் நேரம்',
     'Verify OTP': 'OTP சரிபார்க்கவும்',
+    'Verifying...': 'சரிபார்க்கிறது...',
     'Resend Code': 'மீண்டும் அனுப்பவும்',
     'Resend in': 'மீண்டும் அனுப்ப',
     'Change Mobile number': 'கைபேசி எண்ணை மாற்றவும்',

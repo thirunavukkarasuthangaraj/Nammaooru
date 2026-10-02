@@ -1,3 +1,4 @@
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +21,8 @@ import 'shared/providers/feature_config_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Transport driver mode: lets the GPS foreground isolate talk to the UI.
+  FlutterForegroundTask.initCommunicationPort();
 
   // Initialize Firebase only on mobile platforms for now
   if (!kIsWeb) {

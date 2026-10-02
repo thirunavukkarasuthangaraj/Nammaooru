@@ -162,7 +162,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Bus Timing',
       items: [
-        { title: 'Bus Timing Master', icon: 'directions_bus', route: '/admin/bus-timing', badge: null }
+        { title: 'Bus Timing Master', icon: 'directions_bus', route: '/admin/bus-timing', badge: null },
+        { title: 'Transport & Live Tracking', icon: 'gps_fixed', route: '/admin/transport', badge: null }
       ]
     },
     {
@@ -259,7 +260,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     {
       category: 'Bus Timing',
       items: [
-        { title: 'Bus Timing Master', icon: 'directions_bus', route: '/admin/bus-timing', badge: null }
+        { title: 'Bus Timing Master', icon: 'directions_bus', route: '/admin/bus-timing', badge: null },
+        { title: 'Transport & Live Tracking', icon: 'gps_fixed', route: '/admin/transport', badge: null }
       ]
     },
     {

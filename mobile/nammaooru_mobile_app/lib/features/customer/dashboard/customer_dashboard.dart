@@ -1,3 +1,4 @@
+import '../screens/transport/where_is_bus_screen.dart';
 import '../../../shared/widgets/gentle_motion.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -2289,6 +2290,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RealEstateScreen()));
     } else if (route.contains('rentals')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const RentalScreen()));
+    } else if (route.contains('transport')) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const WhereIsBusScreen()));
     } else if (route.contains('bus-timing')) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelScreen()));
     } else if (route.contains('womens-corner')) {

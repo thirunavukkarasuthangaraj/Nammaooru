@@ -1,3 +1,6 @@
+import '../features/customer/screens/transport/where_is_bus_screen.dart';
+import '../features/customer/screens/transport/transport_driver_screen.dart';
+import '../features/customer/screens/transport/transport_owner_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/role_guard.dart';
@@ -115,6 +118,18 @@ class AppRouter {
           GoRoute(
             path: '/customer/dashboard',
             builder: (context, state) => const CustomerDashboard(),
+          ),
+          GoRoute(
+            path: '/customer/transport',
+            builder: (context, state) => const WhereIsBusScreen(),
+          ),
+          GoRoute(
+            path: '/customer/transport/driver',
+            builder: (context, state) => const TransportDriverScreen(),
+          ),
+          GoRoute(
+            path: '/customer/transport/owner',
+            builder: (context, state) => const TransportOwnerScreen(),
           ),
           GoRoute(
             path: '/customer/cart',

@@ -11,6 +11,14 @@
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+<!-- Transport driver mode: foreground service keeps GPS alive with the screen locked.
+     (Started while the app is in the foreground, so no ACCESS_BACKGROUND_LOCATION needed.) -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
 <!-- Camera permission -->
 <uses-permission android:name="android.permission.CAMERA" />
 
@@ -156,6 +164,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-    </application>
+            <!-- flutter_foreground_task service (transport driver GPS) -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="location"
+            android:exported="false"
+            android:stopWithTask="true" />
+</application>
     
 </manifest>
