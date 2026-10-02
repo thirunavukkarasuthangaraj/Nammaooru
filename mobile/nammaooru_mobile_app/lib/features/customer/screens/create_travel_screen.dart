@@ -135,18 +135,9 @@ class _CreateTravelScreenState extends State<CreateTravelScreen> {
           position.latitude!,
           position.longitude!,
         );
-        final nearbyPlaceFuture = LocationService.instance.getNearestPlaceName(
-          position.latitude!,
-          position.longitude!,
-        );
         final address = await addressFuture;
-        final nearbyPlaceName = await nearbyPlaceFuture;
         if (address != null && mounted) {
-          // A shop/business right at this pin (from Places Nearby Search) is
-          // a more recognisable label than the bare village name.
-          final village = nearbyPlaceName?.isNotEmpty == true
-              ? nearbyPlaceName!
-              : (address['subLocality'] ?? '');
+          final village = address['subLocality'] ?? '';
           final city = address['locality'] ?? '';
           setState(() {
             if (village.isNotEmpty && city.isNotEmpty) {

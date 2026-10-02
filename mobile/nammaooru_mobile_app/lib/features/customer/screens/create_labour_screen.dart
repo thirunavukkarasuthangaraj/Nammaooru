@@ -174,18 +174,11 @@ class _CreateLabourScreenState extends State<CreateLabourScreen> {
           position.latitude!,
           position.longitude!,
         );
-        final nearbyPlaceFuture = LocationService.instance.getNearestPlaceName(
-          position.latitude!,
-          position.longitude!,
-        );
         final address = await addressFuture;
-        final nearbyPlaceName = await nearbyPlaceFuture;
         if (address != null && mounted) {
           final name = address['name'] ?? address['subLocality'] ?? '';
           final city = address['locality'] ?? '';
-          // A shop/business right at this pin (from Places Nearby Search) is
-          // a more recognisable label than the bare village name.
-          final label = nearbyPlaceName?.isNotEmpty == true ? nearbyPlaceName! : name;
+          final label = name;
           setState(() {
             if (label.isNotEmpty && city.isNotEmpty && label != city) {
               _locationController.text = '$label, $city';

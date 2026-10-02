@@ -1,5 +1,10 @@
 class ProductModel {
   final String id;
+  // Set only when `id` has been made combo-specific (e.g. "combo_12_45") so
+  // this product's cart row never merges with a standalone add of the same
+  // underlying product at a different price. Backend calls that need the
+  // real shopProductId must use `backendProductId`, not `id`.
+  final String? realProductId;
   final String name;
   final String? nameTamil;
   final String description;
@@ -23,6 +28,7 @@ class ProductModel {
 
   ProductModel({
     required this.id,
+    this.realProductId,
     required this.name,
     this.nameTamil,
     required this.description,
@@ -141,6 +147,8 @@ class ProductModel {
   }
   
   double get effectivePrice => discountPrice ?? price;
+
+  String get backendProductId => realProductId ?? id;
   
   bool get hasDiscount => discountPrice != null && discountPrice! < price;
   

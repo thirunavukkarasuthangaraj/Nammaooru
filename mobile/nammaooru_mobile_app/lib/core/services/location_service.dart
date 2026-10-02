@@ -349,6 +349,10 @@ class LocationService {
         final name = place['name'] as String?;
         final loc = place['geometry']?['location'];
         if (name == null || loc == null) continue;
+        // Skip obvious test/placeholder listings (e.g. "test_business") so a
+        // stray dev/test Google Business Profile near the user never leaks
+        // into a real customer's auto-filled location.
+        if (_looksLikePlaceholderName(name)) continue;
         final distance = _distanceMeters(
           latitude,
           longitude,
@@ -366,6 +370,16 @@ class LocationService {
       print('❌ Nearby place lookup failed: $e');
       return null;
     }
+  }
+
+  static final RegExp _placeholderNamePattern = RegExp(
+    r'\b(test|demo|sample|dummy|placeholder)\b',
+    caseSensitive: false,
+  );
+
+  bool _looksLikePlaceholderName(String name) {
+    final normalized = name.replaceAll(RegExp(r'[_\-]'), ' ');
+    return _placeholderNamePattern.hasMatch(normalized);
   }
 
   double _distanceMeters(double lat1, double lon1, double lat2, double lon2) {

@@ -402,23 +402,76 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // Set flag to prevent field reload from overwriting user data
     _preventFieldReload = true;
 
-    final success = await AddressService.instance.saveAddress(address);
-    if (success) {
-      print('✅ Address saved successfully');
+    // Local cache first, so the address survives even if the network call
+    // below fails outright.
+    await AddressService.instance.saveAddress(address);
 
-      // Update the selected address reference
-      _selectedSavedAddress = address;
+    // This used to be the only save - local storage only, never sent to the
+    // server. _loadSavedAddresses() always asks the server first and only
+    // falls back to local storage when that call errors outright, so a
+    // server call that succeeds with an empty list (any first-time
+    // customer) permanently hid whatever was saved here. Persisting to the
+    // real address book is what makes it show up again next time, on this
+    // device or any other.
+    final fullAddress = [
+      _addressLine1Controller.text.trim(),
+      _addressLine2Controller.text.trim(),
+    ].where((s) => s.isNotEmpty).join(', ');
+    final lat = _selectedSavedAddress?.latitude ?? LocationService.cachedLatitude ?? 0.0;
+    final lng = _selectedSavedAddress?.longitude ?? LocationService.cachedLongitude ?? 0.0;
+    final existingId = int.tryParse(_selectedSavedAddress?.id ?? '');
 
-      // Reload the addresses list in the background for the address selection UI
-      // The flag will prevent it from overwriting the form fields
-      await _loadSavedAddresses();
-
-      // Reset the flag after reload completes
-      _preventFieldReload = false;
+    Map<String, dynamic> apiResult;
+    if (existingId != null) {
+      apiResult = await AddressApiService.updateAddress(
+        addressId: existingId,
+        label: _selectedAddressType,
+        fullAddress: fullAddress,
+        details: _landmarkController.text.trim(),
+        latitude: lat,
+        longitude: lng,
+        isDefault: isDefault,
+        city: _selectedCity,
+        state: _selectedState,
+        pincode: _pincodeController.text.trim(),
+        street: _addressLine1Controller.text.trim(),
+        area: _addressLine2Controller.text.trim(),
+        contactPersonName: '${address.name} ${address.lastName}'.trim(),
+        contactMobileNumber: address.phone,
+      );
     } else {
-      print('❌ Failed to save address');
-      _preventFieldReload = false;
+      apiResult = await AddressApiService.addAddress(
+        label: _selectedAddressType,
+        fullAddress: fullAddress,
+        details: _landmarkController.text.trim(),
+        latitude: lat,
+        longitude: lng,
+        isDefault: isDefault,
+        city: _selectedCity,
+        state: _selectedState,
+        pincode: _pincodeController.text.trim(),
+        street: _addressLine1Controller.text.trim(),
+        area: _addressLine2Controller.text.trim(),
+        contactPersonName: '${address.name} ${address.lastName}'.trim(),
+        contactMobileNumber: address.phone,
+      );
     }
+
+    if (apiResult['success'] == true) {
+      print('✅ Address saved to server successfully');
+    } else {
+      print('❌ Failed to save address to server: ${apiResult['message']}');
+    }
+
+    // Update the selected address reference
+    _selectedSavedAddress = address;
+
+    // Reload the addresses list in the background for the address selection UI
+    // The flag will prevent it from overwriting the form fields
+    await _loadSavedAddresses();
+
+    // Reset the flag after reload completes
+    _preventFieldReload = false;
   }
 
   @override
@@ -2328,7 +2381,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'shopId': shopId,  // Dynamic shop ID from cart
         'deliveryType': _selectedDeliveryType,
         'items': cartProvider.items.map((item) => {
-          'productId': int.tryParse(item.product.id.toString()) ?? item.product.id,
+          'productId': int.tryParse(item.product.backendProductId) ?? item.product.backendProductId,
           'productName': item.product.name,
           'productNameTamil': item.product.nameTamil,
           'price': item.product.effectivePrice,

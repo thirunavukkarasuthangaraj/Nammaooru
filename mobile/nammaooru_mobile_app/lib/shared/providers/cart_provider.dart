@@ -215,7 +215,7 @@ class CartProvider with ChangeNotifier {
       // cart, so the UI (add button, related-products sheet) must not wait on
       // the network round-trip; the result was only ever logged anyway.
       final request = CoreCart.AddToCartRequest(
-        shopProductId: product.id,
+        shopProductId: product.backendProductId,
         quantity: quantity,
       );
       _cartService.addToCart(request).then((response) {

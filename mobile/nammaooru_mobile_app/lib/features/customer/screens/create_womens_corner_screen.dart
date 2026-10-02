@@ -80,10 +80,6 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
     if (phone != null && phone.isNotEmpty) {
       _phoneController.text = FormValidators.normalizeIndianMobile(phone);
     }
-    final location = LocalStorage.getString('lastLocation');
-    if (location != null && location.isNotEmpty) {
-      _locationController.text = location;
-    }
     _fetchLocation();
   }
 
@@ -95,6 +91,23 @@ class _CreateWomensCornerScreenState extends State<CreateWomensCornerScreen> {
           position.longitude != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
+        final address = await LocationService.instance.getAddressFromCoordinates(
+          position.latitude!,
+          position.longitude!,
+        );
+        if (address != null && mounted && _locationController.text.trim().isEmpty) {
+          final name = address['name'] ?? address['subLocality'] ?? '';
+          final city = address['locality'] ?? '';
+          setState(() {
+            if (name.isNotEmpty && city.isNotEmpty && name != city) {
+              _locationController.text = '$name, $city';
+            } else if (name.isNotEmpty) {
+              _locationController.text = name;
+            } else if (city.isNotEmpty) {
+              _locationController.text = city;
+            }
+          });
+        }
       }
     } catch (_) {}
   }

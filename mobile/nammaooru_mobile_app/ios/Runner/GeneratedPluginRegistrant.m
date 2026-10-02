@@ -30,6 +30,12 @@
 @import firebase_messaging;
 #endif
 
+#if __has_include(<flutter_foreground_task/FlutterForegroundTaskPlugin.h>)
+#import <flutter_foreground_task/FlutterForegroundTaskPlugin.h>
+#else
+@import flutter_foreground_task;
+#endif
+
 #if __has_include(<flutter_image_compress_common/ImageCompressPlugin.h>)
 #import <flutter_image_compress_common/ImageCompressPlugin.h>
 #else
@@ -157,6 +163,7 @@
   [FilePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FilePickerPlugin"]];
   [FLTFirebaseCorePlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseCorePlugin"]];
   [FLTFirebaseMessagingPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseMessagingPlugin"]];
+  [FlutterForegroundTaskPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterForegroundTaskPlugin"]];
   [ImageCompressPlugin registerWithRegistrar:[registry registrarForPlugin:@"ImageCompressPlugin"]];
   [FlutterLocalNotificationsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterLocalNotificationsPlugin"]];
   [FlutterTtsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterTtsPlugin"]];
