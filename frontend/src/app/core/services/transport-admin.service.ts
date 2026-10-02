@@ -27,6 +27,10 @@ export class TransportAdminService {
     return this.http.get(`${this.adminUrl}/transporters`, { params });
   }
 
+  createTransporter(phone: string, companyName: string, ownerName: string): Observable<any> {
+    return this.http.post(`${this.adminUrl}/transporters`, { phone, companyName, ownerName });
+  }
+
   setStatus(id: number, status: string): Observable<any> {
     return this.http.put(`${this.adminUrl}/transporters/${id}/status`, { status });
   }

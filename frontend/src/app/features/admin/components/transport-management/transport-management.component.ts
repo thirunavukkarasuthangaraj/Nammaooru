@@ -14,6 +14,9 @@ export class TransportManagementComponent implements OnInit {
   filterStatus = 'PENDING';
   pendingCount = 0;
   liveBuses: any[] = [];
+  showAdd = false;
+  saving = false;
+  newT = { phone: '', companyName: '', ownerName: '' };
   livePositions: any[] = [];
 
   displayedColumns = ['company', 'owner', 'phone', 'vehicles', 'status', 'createdAt', 'actions'];
@@ -61,6 +64,24 @@ export class TransportManagementComponent implements OnInit {
 
   positionFor(busId: number): any {
     return this.livePositions.find(p => p.vehicleId === busId);
+  }
+
+  createTransporter(): void {
+    const phone = (this.newT.phone || '').replace(/\D/g, '');
+    if (phone.length !== 10) { this.swal.error('Enter a 10-digit mobile number'); return; }
+    if (!this.newT.companyName.trim()) { this.swal.error('Company / fleet name is required'); return; }
+    this.saving = true;
+    this.service.createTransporter(phone, this.newT.companyName.trim(), this.newT.ownerName.trim()).subscribe({
+      next: (res) => {
+        this.saving = false;
+        this.showAdd = false;
+        this.newT = { phone: '', companyName: '', ownerName: '' };
+        this.swal.success('Transporter ready', res?.message || '');
+        this.filterStatus = 'ACTIVE';
+        this.load();
+      },
+      error: (err) => { this.saving = false; this.swal.error('Could not create', err?.error?.message || ''); }
+    });
   }
 
   setStatus(row: TransporterRow, status: 'ACTIVE' | 'BLOCKED' | 'PENDING'): void {

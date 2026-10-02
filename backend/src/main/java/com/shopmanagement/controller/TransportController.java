@@ -203,6 +203,18 @@ public class TransportController {
         catch (Exception e) { return ResponseUtil.error(e.getMessage()); }
     }
 
+    /** Body: { phone, companyName, ownerName } */
+    @PostMapping("/admin/transporters")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> adminCreate(@RequestBody Map<String, Object> body) {
+        try {
+            Map<String, Object> r = transportService.adminCreateTransporter(s(body.get("phone")), s(body.get("companyName")), s(body.get("ownerName")));
+            return ResponseUtil.created(r, Boolean.TRUE.equals(r.get("createdUser"))
+                    ? "Transporter created. A new app account was made for this number; they can log in with OTP."
+                    : "Transporter approved on the existing account for this number.");
+        } catch (Exception e) { return ResponseUtil.badRequest(e.getMessage()); }
+    }
+
     @PutMapping("/admin/transporters/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Transporter>> adminSetStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {

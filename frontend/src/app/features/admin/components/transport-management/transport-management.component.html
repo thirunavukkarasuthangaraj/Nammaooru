@@ -4,7 +4,35 @@
       <h1>Transport &amp; Live Tracking</h1>
       <p class="sub">Approve fleet owners (transporters). Only approved owners can add vehicles and go live on "Where is Bus".</p>
     </div>
-    <span class="pending-chip" *ngIf="pendingCount > 0">{{ pendingCount }} waiting for approval</span>
+    <div class="header-right">
+      <span class="pending-chip" *ngIf="pendingCount > 0">{{ pendingCount }} waiting for approval</span>
+      <button mat-raised-button color="primary" (click)="showAdd = !showAdd"><mat-icon>person_add</mat-icon> Add transporter</button>
+    </div>
+  </div>
+
+  <div class="add-form" *ngIf="showAdd">
+    <h3>Create &amp; approve a transporter</h3>
+    <p class="sub">Enter the owner's mobile number. If an app account exists for it, it is approved as a transporter. If not, an account is created and the owner logs into the app with OTP on that number.</p>
+    <div class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Mobile number (10 digits) *</mat-label>
+        <input matInput [(ngModel)]="newT.phone" maxlength="13" placeholder="9876543210">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Company / fleet name *</mat-label>
+        <input matInput [(ngModel)]="newT.companyName" placeholder="e.g. Thiru Travels">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Owner name</mat-label>
+        <input matInput [(ngModel)]="newT.ownerName">
+      </mat-form-field>
+    </div>
+    <div class="form-actions">
+      <button mat-raised-button color="primary" [disabled]="saving" (click)="createTransporter()">
+        <mat-icon>check</mat-icon> {{ saving ? 'Saving...' : 'Create & approve' }}
+      </button>
+      <button mat-button (click)="showAdd = false">Cancel</button>
+    </div>
   </div>
 
   <div class="filters-section">

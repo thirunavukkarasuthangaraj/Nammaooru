@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class TransportService {
     private final SettingService settingService;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<SimpMessagingTemplate> messagingTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     /* ===================== settings ===================== */
 
@@ -569,6 +571,53 @@ public class TransportService {
         out.put("totalPages", page.getTotalPages());
         out.put("page", page.getNumber());
         out.put("pendingCount", transporterRepository.countByStatus(Transporter.Status.PENDING));
+        return out;
+    }
+
+    /**
+     * Admin creates an approved transporter from the website. Finds the customer
+     * account by mobile number, or creates one so the owner can log into the app
+     * with OTP on that number straight away.
+     */
+    @Transactional
+    public Map<String, Object> adminCreateTransporter(String phone, String companyName, String ownerName) {
+        String ph = normPhone(phone);
+        if (ph.length() != 10) throw new RuntimeException("Enter a 10-digit mobile number");
+        if (companyName == null || companyName.isBlank()) throw new RuntimeException("Company / fleet name is required");
+        boolean createdUser = false;
+        User u = userRepository.findByMobileNumber(ph).orElse(null);
+        if (u == null) u = userRepository.findByMobileNumber("+91" + ph).orElse(null);
+        if (u == null) {
+            String base = "transporter_" + ph.substring(6);
+            String username = base;
+            int n = 1;
+            while (userRepository.existsByUsername(username)) username = base + "_" + (n++);
+            String name = (ownerName == null || ownerName.isBlank()) ? companyName.trim() : ownerName.trim();
+            u = userRepository.save(User.builder()
+                    .username(username)
+                    .email(null)
+                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .firstName(name).lastName(name)
+                    .mobileNumber(ph)
+                    .role(User.UserRole.USER)
+                    .status(User.UserStatus.ACTIVE)
+                    .emailVerified(false)
+                    .mobileVerified(true)
+                    .build());
+            createdUser = true;
+        }
+        Transporter t = transporterRepository.findByUserId(u.getId()).orElse(Transporter.builder().userId(u.getId()).build());
+        t.setCompanyName(companyName.trim());
+        t.setOwnerName((ownerName == null || ownerName.isBlank()) ? companyName.trim() : ownerName.trim());
+        t.setPhone(ph);
+        t.setStatus(Transporter.Status.ACTIVE);
+        Transporter saved = transporterRepository.save(t);
+        log.info("Admin created/approved transporter {} for user {} (newUser={})", saved.getId(), u.getId(), createdUser);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("transporter", saved);
+        out.put("userId", u.getId());
+        out.put("username", u.getUsername());
+        out.put("createdUser", createdUser);
         return out;
     }
 

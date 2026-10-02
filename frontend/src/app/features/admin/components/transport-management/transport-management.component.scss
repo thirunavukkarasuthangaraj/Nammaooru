@@ -16,6 +16,13 @@
   }
 
   .sub { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
+  .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .add-form {
+    background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px;
+    h3 { margin: 0 0 4px; font-size: 18px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+    .form-actions { display: flex; gap: 8px; }
+  }
 
   .pending-chip {
     background: #fff3e0;
