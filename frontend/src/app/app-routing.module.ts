@@ -23,6 +23,11 @@ const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
+    // Transporter / fleet owner portal: own OTP login + own layout (not the admin shell)
+    path: 'transport',
+    loadChildren: () => import('./features/transport-portal/transport-portal.module').then(m => m.TransportPortalModule)
+  },
+  {
     path: 'privacy-policy',
     component: PrivacyPolicyComponent
   },

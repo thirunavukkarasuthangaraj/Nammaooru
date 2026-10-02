@@ -93,6 +93,21 @@ export class AuthService {
       );
   }
 
+  /** Website OTP login for app accounts (transporters / fleet owners). purpose=LOGIN matches /auth/login/send-otp. */
+  verifyLoginOtp(mobileNumber: string, otp: string): Observable<AuthResponse> {
+    this.clearStoredAuth();
+    return this.http.post<ApiResponse<AuthResponse>>(`${this.API_URL}/verify-otp`, { mobileNumber, otp, purpose: 'LOGIN' }, { withCredentials: true })
+      .pipe(
+        map(response => {
+          if (ApiResponseHelper.isError(response)) {
+            throw new Error(ApiResponseHelper.getErrorMessage(response));
+          }
+          return response.data;
+        }),
+        tap(authData => this.setSession(authData))
+      );
+  }
+
   resendOtp(resendData: { email: string; mobileNumber: string }): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.API_URL}/resend-otp`, resendData, { withCredentials: true })
       .pipe(
