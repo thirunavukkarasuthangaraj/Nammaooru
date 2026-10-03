@@ -66,10 +66,41 @@ export class PwaInstallService {
     PwaInstallService.reloadBlocks = Math.max(0, PwaInstallService.reloadBlocks - 1);
   }
 
+  // Last user interaction (touch/key/pointer). A new version must never reload
+  // the page while someone is actively working — shop owners saw POS refresh
+  // mid-billing after every deploy. Reload only when the tab is hidden or idle.
+  private static lastActivity = Date.now();
+  private static activityHooked = false;
+  private static readonly IDLE_BEFORE_RELOAD_MS = 3 * 60 * 1000;
+  private static hookActivity(): void {
+    if (PwaInstallService.activityHooked || typeof document === 'undefined') return;
+    PwaInstallService.activityHooked = true;
+    const mark = () => { PwaInstallService.lastActivity = Date.now(); };
+    ['keydown', 'pointerdown', 'touchstart', 'wheel'].forEach(ev => document.addEventListener(ev, mark, { passive: true, capture: true }));
+  }
+
+  /** True while the in-progress POS bill has items (persisted by the POS page). */
+  private static posBillInProgress(): boolean {
+    try {
+      if (!location.pathname.includes('pos')) return false;
+      const raw = localStorage.getItem('pos_cart_backup');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      const items = Array.isArray(parsed) ? parsed : (parsed?.cart || parsed?.items || []);
+      return Array.isArray(items) && items.length > 0;
+    } catch { return false; }
+  }
+
   private static reloadBlocked(): boolean {
+    PwaInstallService.hookActivity();
     // The DOM check is a safety net for any checkout path that forgot to register
-    return PwaInstallService.reloadBlocks > 0
-      || !!document.querySelector('.razorpay-container, .razorpay-checkout-frame');
+    if (PwaInstallService.reloadBlocks > 0
+      || !!document.querySelector('.razorpay-container, .razorpay-checkout-frame')) return true;
+    if (PwaInstallService.posBillInProgress()) return true;
+    // Visible and recently used: wait. Hidden tab or idle for a while: ok to reload.
+    const visible = typeof document !== 'undefined' && document.visibilityState === 'visible';
+    const idleMs = Date.now() - PwaInstallService.lastActivity;
+    return visible && idleMs < PwaInstallService.IDLE_BEFORE_RELOAD_MS;
   }
 
   private scheduleActivate(): void {
@@ -77,13 +108,16 @@ export class PwaInstallService {
       this.activateUpdate();
       return;
     }
-    console.log('Update ready but a payment is in progress — deferring reload');
+    console.log('Update ready but the user is busy (payment, open bill, or active) — deferring reload until idle/hidden');
     const timer = setInterval(() => {
       if (!PwaInstallService.reloadBlocked()) {
         clearInterval(timer);
         this.activateUpdate();
       }
-    }, 5000);
+    }, 15000);
+    // Also take the first chance when the tab goes to the background
+    const onHide = () => { if (document.visibilityState !== 'visible' && !PwaInstallService.reloadBlocked()) { document.removeEventListener('visibilitychange', onHide); clearInterval(timer); this.activateUpdate(); } };
+    document.addEventListener('visibilitychange', onHide);
   }
 
   /**
