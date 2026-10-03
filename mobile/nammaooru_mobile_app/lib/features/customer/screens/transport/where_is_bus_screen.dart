@@ -162,9 +162,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (!mounted || r['success'] != true) return;
     _applyPositions(r['data']);
     setState(() {});
-    if (_follow && _selected != null && _pos[_selected] != null) {
-      final p = _pos[_selected]!;
-      _map?.animateCamera(CameraUpdate.newLatLng(LatLng(_d(p['lat']), _d(p['lng']))));
+    if (_follow && _selected != null && _map != null) {
+      final p = _pos[_selected];
+      if (p != null && p['lat'] != null && _state(_selected!) != 'OFFLINE') {
+        _map!.animateCamera(CameraUpdate.newLatLng(LatLng(_d(p['lat']), _d(p['lng']))));
+      }
     }
   }
 
@@ -202,10 +204,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
 
   void _select(int id) {
     setState(() { _selected = id; _stopIndex = null; _follow = true; _tripPick = null; });
-    if (_map != null) {
-      final p = _pos[id];
-      if (p != null && p['lat'] != null && _state(id) != 'OFFLINE') _centerOnSelected(); else _fitRoute();
-    }
+    if (_map != null) _centerOnSelected();
   }
 
   Map<String, dynamic>? _bus(int id) => _buses.cast<Map<String, dynamic>?>().firstWhere((b) => b!['id'] == id, orElse: () => null);
@@ -712,12 +711,12 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
             ),
           ]),
         ),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.40,
+        if (_selected != null) SizedBox(
+          height: MediaQuery.of(context).size.height * 0.42,
           child: Stack(children: [
             GoogleMap(
-              initialCameraPosition: CameraPosition(target: _initialTarget(), zoom: 12),
-              onMapCreated: (c) { _map = c; _fitRoute(); },
+              initialCameraPosition: CameraPosition(target: _initialTarget(), zoom: 13),
+              onMapCreated: (c) { _map = c; _centerOnSelected(); },
               markers: _markers(),
               polylines: _polylines(),
               myLocationEnabled: true,
@@ -737,6 +736,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
               Positioned(left: 10, right: 10, top: 10, child: _banner(_t('Your transporter registration is waiting for approval.', '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b92\u0baa\u0bcd\u0baa\u0bc1\u0ba4\u0bb2\u0bc1\u0b95\u0bcd\u0b95\u0bbe\u0b95 \u0b95\u0bbe\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.'), Colors.orange.shade800)),
           ]),
         ),
+        if (_selected == null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Align(alignment: Alignment.centerLeft, child: Text(_t('Tap a bus to see where it is', 'பஸ் எங்கே என பார்க்க தட்டவும்'), style: TextStyle(color: Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w600))),
+          ),
         Expanded(
           child: list.isEmpty
               ? Center(child: Text(_t('No buses on this route yet', '\u0b87\u0ba8\u0bcd\u0ba4 \u0bb5\u0bb4\u0bbf\u0baf\u0bbf\u0bb2\u0bcd \u0baa\u0bb8\u0bcd \u0b87\u0bb2\u0bcd\u0bb2\u0bc8'), style: const TextStyle(color: Colors.grey)))
@@ -776,7 +780,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
             decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(20)),
             child: Text('${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${TransportTimetable.h12(nx['departTime'])}', style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
           ),
-          IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; })),
+          IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; _map = null; })),
         ]),
         const SizedBox(height: 4),
         if (liveThisWay)
@@ -960,6 +964,12 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   }
 
   LatLng _initialTarget() {
+    if (_selected != null) {
+      final p = _pos[_selected];
+      if (p != null && p['lat'] != null && _state(_selected!) != 'OFFLINE') return LatLng(_d(p['lat']), _d(p['lng']));
+      final g = _scheduledPos(_selected!);
+      if (g != null) return g;
+    }
     final rp = _routePathR(_routeSel);
     if (rp.isNotEmpty) return LatLng(_d(rp.first['lat']), _d(rp.first['lng']));
     if (_selected != null) {
@@ -974,11 +984,13 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   void _centerOnSelected() {
     if (_selected == null || _map == null) return;
     final p = _pos[_selected];
-    if (p != null && p['lat'] != null) {
+    if (p != null && p['lat'] != null && _state(_selected!) != 'OFFLINE') {
       _map!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_d(p['lat']), _d(p['lng'])), 15));
-    } else {
-      _fitSelected();
+      return;
     }
+    final g = _scheduledPos(_selected!);
+    if (g != null) { _map!.animateCamera(CameraUpdate.newLatLngZoom(g, 14)); return; }
+    _fitRoute();
   }
 
   /// Fit the bus position plus all its route stops.
