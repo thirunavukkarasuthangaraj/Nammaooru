@@ -248,7 +248,7 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       const path = routePath(r).map(p => ({ lat: p.lat, lng: p.lng }));
       if (path.length < 2) continue;
       let line = this.allRouteLines.get(r.id);
-      if (!line) { line = new google.maps.Polyline({ path, strokeColor: routeColor(r.id), strokeOpacity: .85, strokeWeight: 4, map: this.map }); this.allRouteLines.set(r.id, line); }
+      if (!line) { line = new google.maps.Polyline({ path, strokeColor: routeColor(r.id), strokeOpacity: 1, strokeWeight: 5, map: this.map }); this.allRouteLines.set(r.id, line); }
       else line.setPath(path);
     }
   }

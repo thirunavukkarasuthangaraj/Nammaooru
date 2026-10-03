@@ -197,7 +197,7 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
       if (path.length < 2) continue;
       let line = this.allRouteLines.get(id);
       if (!line) {
-        line = new google.maps.Polyline({ path, strokeColor: routeColor(id), strokeOpacity: .85, strokeWeight: 4, map: this.map });
+        line = new google.maps.Polyline({ path, strokeColor: routeColor(id), strokeOpacity: 1, strokeWeight: 5, map: this.map });
         this.allRouteLines.set(id, line);
       } else line.setPath(path);
     }
