@@ -123,7 +123,7 @@ export class TransportLayoutComponent implements OnInit, OnDestroy {
   logout(): void {
     this.store.clear();
     this.auth.logout();
-    this.router.navigate(['/transport/login']);
+    this.router.navigate(['/transport']);
   }
 
   ngOnDestroy(): void { this.subs.forEach(s => s.unsubscribe()); }

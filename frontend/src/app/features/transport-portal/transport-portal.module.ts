@@ -14,6 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { TransporterGuard } from '../../core/guards/transporter.guard';
 import { TransportLoginComponent } from './components/transport-login.component';
+import { TransportHomeComponent } from './components/transport-home.component';
 import { TransportLayoutComponent } from './components/transport-layout.component';
 import { TransportLiveComponent } from './components/transport-live.component';
 import { TransportVehiclesComponent } from './components/transport-vehicles.component';
@@ -22,11 +23,13 @@ import { TransportRoutesComponent } from './components/transport-routes.componen
 import { TransportTripsComponent } from './components/transport-trips.component';
 
 /**
- * Fleet owner (transporter) portal: /transport/login + /transport/{live,vehicles,drivers,routes,trips}.
+ * /transport = public home (live public buses), /transport/login, and the owner portal
+ * /transport/{live,vehicles,drivers,routes,trips}.
  * Own layout and OTP login; not part of the admin shell.
  */
 @NgModule({
   declarations: [
+    TransportHomeComponent,
     TransportLoginComponent,
     TransportLayoutComponent,
     TransportLiveComponent,
@@ -48,13 +51,14 @@ import { TransportTripsComponent } from './components/transport-trips.component'
     MatSlideToggleModule,
     MatTooltipModule,
     RouterModule.forChild([
+      // Public home: what the service is + live public buses. No login.
+      { path: '', component: TransportHomeComponent, pathMatch: 'full' },
       { path: 'login', component: TransportLoginComponent },
       {
         path: '',
         component: TransportLayoutComponent,
         canActivate: [TransporterGuard],
         children: [
-          { path: '', redirectTo: 'live', pathMatch: 'full' },
           { path: 'live', component: TransportLiveComponent },
           { path: 'vehicles', component: TransportVehiclesComponent },
           { path: 'drivers', component: TransportDriversComponent },
@@ -62,7 +66,7 @@ import { TransportTripsComponent } from './components/transport-trips.component'
           { path: 'trips', component: TransportTripsComponent },
         ]
       },
-      { path: '**', redirectTo: 'live' }
+      { path: '**', redirectTo: '' }
     ])
   ]
 })
