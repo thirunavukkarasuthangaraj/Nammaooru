@@ -30,6 +30,8 @@ class WhereIsBusScreen extends StatefulWidget {
 
 class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   static const _accent = Color(0xFF1565C0);
+  /// Passenger tracking notification (Track this bus). Off for now at the owner's request.
+  static const bool _enableTracking = false;
   static const _defaultCenter = LatLng(12.4966, 78.5729);
 
   final _svc = TransportService.instance;
@@ -642,7 +644,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         foregroundColor: Colors.white,
         title: Text(_t('Where is Bus', 'பஸ் எங்கே')),
         actions: [
-          if (_trackingBus != null)
+          if (_enableTracking && _trackingBus != null)
             IconButton(
               tooltip: _t('Stop tracking', '\u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf\u0baa\u0bcd\u0baa\u0bc8 \u0ba8\u0bbf\u0bb1\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1'),
               icon: const Icon(Icons.notifications_active, color: Colors.amber),
@@ -783,6 +785,22 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; _map = null; })),
         ]),
         const SizedBox(height: 4),
+        Builder(builder: (_) {
+          final p = _pos[id];
+          final live = p != null && p['lat'] != null && st != 'OFFLINE';
+          final g = live ? LatLng(_d(p['lat']), _d(p['lng'])) : _scheduledPos(id);
+          if (g == null) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: [
+              Icon(live ? Icons.gps_fixed : Icons.schedule, size: 14, color: live ? const Color(0xFF2E7D32) : Colors.orange[800]),
+              const SizedBox(width: 4),
+              Expanded(child: Text(
+                '${live ? _t('Live position', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8 \u0b87\u0b9f\u0bae\u0bcd') : _t('Timetable position', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8 \u0b87\u0b9f\u0bae\u0bcd')}: ${g.latitude.toStringAsFixed(5)}, ${g.longitude.toStringAsFixed(5)}',
+                style: const TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w600))),
+            ]),
+          );
+        }),
         if (liveThisWay)
           Text('${_t('Live', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8')} \u00b7 ${_d(_pos[id]?['speedKmh']).round()} km/h \u00b7 ${_ago(id)}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5))
         else if (nx != null)
@@ -801,6 +819,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           if (eta != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('\u{1F552} $eta', style: const TextStyle(fontWeight: FontWeight.w700, color: _accent))),
           if (_stopIndex != null && !liveThisWay && nx != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_t('By timetable: departs', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf: \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${TransportTimetable.h12(nx['departTime'])}', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
         ],
+        if (_enableTracking) ...[
         const SizedBox(height: 10),
         Row(children: [
           Expanded(
@@ -827,6 +846,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
             ),
           ),
+        ],
       ]),
     );
   }
