@@ -40,6 +40,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   Map<String, dynamic>? _me;
   bool _follow = true;
   bool _showMap = false; // details first; map only after 'Show on map'
+  int? _routeSel;        // passenger picks a route first
+  String _dirSel = 'AB';  // then a direction (A->B or B->A)
 
   String _t(String en, String ta) => Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
 
@@ -137,7 +139,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final p = _pos[id];
     if (p != null && p['direction'] != null && _state(id) != 'OFFLINE') return p['direction'].toString();
     final leg = TransportTimetable.currentLeg(_schedules(id));
-    return leg?['direction']?.toString() ?? 'AB';
+    if (leg != null) return leg['direction']?.toString() ?? 'AB';
+    return _routeSel != null ? _dirSel : 'AB';
   }
 
   List _schedules(int id) {
@@ -196,6 +199,47 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       out.add({'name': r['destination'], 'lat': r['destLat'], 'lng': r['destLng'], 'kind': 'to'});
     }
     return out;
+  }
+
+  /// Distinct routes among public buses: {id, name, source, destination, buses}.
+  List<Map<String, dynamic>> _routes() {
+    final out = <int, Map<String, dynamic>>{};
+    for (final b in _buses) {
+      final r = b['route'];
+      if (r is! Map || r['id'] == null) continue;
+      final id = (r['id'] as num).toInt();
+      out.putIfAbsent(id, () => {'id': id, 'name': r['name'], 'source': r['source'], 'destination': r['destination'], 'buses': 0});
+      out[id]!['buses'] = (out[id]!['buses'] as int) + 1;
+    }
+    final list = out.values.toList();
+    list.sort((x, y) => '${x['source']}'.compareTo('${y['source']}'));
+    return list;
+  }
+
+  /// Next departure of this bus in the chosen direction (today), or null.
+  Map<String, dynamic>? _nextInDir(int id, String dir) {
+    final rows = TransportTimetable.todays(_schedules(id)).where((r) => r['direction'] == dir).toList();
+    if (rows.isEmpty) return null;
+    final n = TransportTimetable.nowMin();
+    for (final r in rows) {
+      if (TransportTimetable.minOf(r['departTime']) >= n) return r;
+    }
+    return rows.first;
+  }
+
+  /// Buses on the selected route, soonest departure first; live ones on top.
+  List<Map<String, dynamic>> _busesOnRoute() {
+    final list = _buses.where((b) => b['route'] is Map && (b['route']['id'] as num?)?.toInt() == _routeSel).toList();
+    int key(Map<String, dynamic> b) {
+      final id = (b['id'] as num).toInt();
+      final live = _state(id) != 'OFFLINE' && _dirOf(id) == _dirSel;
+      final nx = _nextInDir(id, _dirSel);
+      final n = TransportTimetable.nowMin();
+      final mins = nx == null ? 100000 : ((TransportTimetable.minOf(nx['departTime']) - n + 1440) % 1440).round();
+      return (live ? 0 : 100000) + mins;
+    }
+    list.sort((x, y) => key(x).compareTo(key(y)));
+    return list;
   }
 
   /// Rough ETA: straight line × 1.3 road factor at max(current speed, 20 km/h).
@@ -555,49 +599,107 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       );
 
   Widget _panel() {
-    final list = _filtered();
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(_t('Select a bus to see it on the map', 'வரைபடத்தில் பார்க்க பஸ்ஸை தேர்ந்தெடுக்கவும்'),
-                style: TextStyle(color: Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w600)),
+    if (_buses.isEmpty) {
+      return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(
+          _t('No buses are being tracked yet. Bus owners can register from the menu above.', '\u0b87\u0ba9\u0bcd\u0ba9\u0bc1\u0bae\u0bcd \u0baa\u0bb8\u0bcd\u0b95\u0bb3\u0bcd \u0b87\u0bb2\u0bcd\u0bb2\u0bc8.'),
+          textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey))));
+    }
+    return _routeSel == null ? _routesPanel() : _busesPanel();
+  }
+
+  /// Step 1: where do you want to go?
+  Widget _routesPanel() {
+    final q = _search.trim().toLowerCase();
+    final routes = _routes().where((r) => q.isEmpty || '${r['name']} ${r['source']} ${r['destination']}'.toLowerCase().contains(q)).toList();
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: Align(alignment: Alignment.centerLeft, child: Text(_t('Where do you want to go?', '\u0b8e\u0b99\u0bcd\u0b95\u0bc7 \u0baa\u0bcb\u0b95 \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bc1\u0bae\u0bcd?'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        child: TextField(
+          onChanged: (v) => setState(() => _search = v),
+          decoration: InputDecoration(
+            hintText: _t('Town or route\u2026', '\u0b8a\u0bb0\u0bcd \u0b85\u0bb2\u0bcd\u0bb2\u0ba4\u0bc1 \u0bb5\u0bb4\u0bbf\u2026'),
+            prefixIcon: const Icon(Icons.search), isDense: true, filled: true, fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: TextField(
-            onChanged: (v) => setState(() => _search = v),
-            decoration: InputDecoration(
-              hintText: _t('Bus number, name or route…', 'பஸ் எண், பெயர் அல்லது வழி…'),
-              prefixIcon: const Icon(Icons.search),
-              isDense: true,
-              filled: true, fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            ),
+      ),
+      Expanded(
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+          itemCount: routes.length,
+          itemBuilder: (_, i) {
+            final r = routes[i];
+            return Card(
+              elevation: 0, margin: const EdgeInsets.only(bottom: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.grey.shade200)),
+              child: ListTile(
+                onTap: () => setState(() { _routeSel = r['id'] as int; _dirSel = 'AB'; _search = ''; }),
+                leading: const CircleAvatar(backgroundColor: Color(0xFFE3F2FD), child: Icon(Icons.alt_route, color: _accent)),
+                title: Text('${r['source']} \u2194 ${r['destination']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('${r['buses']} ${_t('buses', '\u0baa\u0bb8\u0bcd\u0b95\u0bb3\u0bcd')}'),
+                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              ),
+            );
+          },
+        ),
+      ),
+    ]);
+  }
+
+  /// Step 2: buses on this route in the chosen direction.
+  Widget _busesPanel() {
+    final route = _routes().cast<Map<String, dynamic>?>().firstWhere((r) => r!['id'] == _routeSel, orElse: () => null);
+    final src = route == null ? '' : '${route['source']}';
+    final dst = route == null ? '' : '${route['destination']}';
+    final from = _dirSel == 'AB' ? src : dst;
+    final to = _dirSel == 'AB' ? dst : src;
+    final list = _busesOnRoute();
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+        child: Row(children: [
+          IconButton(icon: const Icon(Icons.arrow_back, color: _accent), onPressed: () => setState(() { _routeSel = null; _selected = null; })),
+          Expanded(child: Text('$from \u2192 $to', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+          TextButton.icon(
+            onPressed: () => setState(() => _dirSel = _dirSel == 'AB' ? 'BA' : 'AB'),
+            icon: const Icon(Icons.swap_horiz, size: 18), label: Text(_t('Swap', '\u0bae\u0bbe\u0bb1\u0bcd\u0bb1\u0bc1')),
           ),
-        ),
-        Expanded(
-          child: _buses.isEmpty
-              ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(
-                  _t('No buses are being tracked yet. Bus owners can register from the menu above.', 'இன்னும் பஸ்கள் இல்லை. உரிமையாளர்கள் மேலே உள்ள மெனுவில் பதிவு செய்யலாம்.'),
-                  textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey))))
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-                  itemCount: list.length,
-                  itemBuilder: (_, i) => _busTile(list[i]),
-                ),
-        ),
-      ],
-    );
+        ]),
+      ),
+      Expanded(
+        child: list.isEmpty
+            ? Center(child: Text(_t('No buses on this route yet', '\u0b87\u0ba8\u0bcd\u0ba4 \u0bb5\u0bb4\u0bbf\u0baf\u0bbf\u0bb2\u0bcd \u0baa\u0bb8\u0bcd \u0b87\u0bb2\u0bcd\u0bb2\u0bc8'), style: const TextStyle(color: Colors.grey)))
+            : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                itemCount: list.length,
+                itemBuilder: (_, i) => _busTile(list[i]),
+              ),
+      ),
+    ]);
   }
 
   Widget _busTile(Map<String, dynamic> b) {
     final id = (b['id'] as num).toInt();
     final st = _state(id);
-    final r = b['route'] is Map ? b['route'] as Map : null;
+    final liveThisWay = st != 'OFFLINE' && _dirOf(id) == _dirSel;
+    final nx = _nextInDir(id, _dirSel);
+    final leg = TransportTimetable.currentLeg(_schedules(id));
+    final onLegThisWay = leg != null && leg['direction'] == _dirSel;
+    String line;
+    if (liveThisWay) {
+      line = '${_t('Live now', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8')} \u00b7 ${_d(_pos[id]?['speedKmh']).round()} km/h \u00b7 ${_ago(id)}';
+    } else if (onLegThisWay) {
+      line = '${_t('On the way by timetable', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf \u0bb5\u0bb0\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1')} ${leg['departTime']}-${leg['arriveTime']}';
+    } else if (nx != null) {
+      line = '${_t('Next departure', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4 \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0bbe\u0b9f\u0bc1')} ${nx['departTime']} \u00b7 ${_t('arrives', '\u0bb5\u0bb0\u0bc1\u0b95\u0bc8')} ${nx['arriveTime']}';
+    } else {
+      line = _t('No timetable', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8 \u0b87\u0bb2\u0bcd\u0bb2\u0bc8');
+    }
     final sel = _selected == id;
     return Card(
       elevation: 0,
@@ -606,13 +708,17 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         onTap: () => _select(id),
-        leading: CircleAvatar(backgroundColor: _stateColor(st).withOpacity(0.15), child: Icon(Icons.directions_bus, color: _stateColor(st))),
+        leading: CircleAvatar(backgroundColor: _stateColor(liveThisWay ? st : 'OFFLINE').withOpacity(0.15), child: Icon(Icons.directions_bus, color: _stateColor(liveThisWay ? st : 'OFFLINE'))),
         title: Text(b['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text([
-          r != null ? '${r['source']} \u2192 ${r['destination']}' : (b['regNo']?.toString() ?? ''),
-          if (_ttText(id) != null) _ttText(id)!,
-        ].join('\n'), maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: Row(mainAxisSize: MainAxisSize.min, children: [_chip(st), const SizedBox(width: 4), const Icon(Icons.chevron_right, color: Colors.grey)]),
+        subtitle: Text(line, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (liveThisWay) _chip(st) else if (nx != null) Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(20)),
+            child: Text(nx['departTime'].toString(), style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 4), const Icon(Icons.chevron_right, color: Colors.grey),
+        ]),
       ),
     );
   }
@@ -654,14 +760,13 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Expanded(child: Text('${b['name']}${b['regNo'] != null && b['regNo'] != b['name'] ? ' · ${b['regNo']}' : ''}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+            Expanded(child: Text('${b['name']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
             _chip(st),
             IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; _map = null; _showMap = false; })),
           ]),
-          if (b['operator'] != null) Text('${_t('by', 'மூலம்')} ${b['operator']}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
           const SizedBox(height: 6),
           Wrap(spacing: 14, runSpacing: 4, children: [
-            _kv(Icons.route, r != null ? '${r['source']} → ${r['destination']}' : '—'),
+            _kv(Icons.route, r != null ? (_dirOf(id) == 'BA' ? '${r['destination']} \u2192 ${r['source']}' : '${r['source']} \u2192 ${r['destination']}') : '\u2014'),
             _kv(Icons.speed, st == 'OFFLINE' ? '—' : '${_d(p?['speedKmh']).round()} km/h'),
             _kv(Icons.schedule, _ago(id)),
           ]),
