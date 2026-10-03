@@ -166,9 +166,31 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
     );
   }
 
+  List<LatLng> _routePathFor(Map<String, dynamic>? route) {
+    if (route == null) return [];
+    final pts = <LatLng>[];
+    if (route['sourceLat'] != null && route['sourceLng'] != null) pts.add(LatLng(_d(route['sourceLat']), _d(route['sourceLng'])));
+    for (final st in _list(route['stops'])) {
+      if (st['lat'] != null && st['lng'] != null) pts.add(LatLng(_d(st['lat']), _d(st['lng'])));
+    }
+    if (route['destLat'] != null && route['destLng'] != null) pts.add(LatLng(_d(route['destLat']), _d(route['destLng'])));
+    return pts;
+  }
+
   // ---------------- LIVE ----------------
   Widget _liveTab() {
     final markers = <Marker>{};
+    final polylines = <Polyline>{};
+    if (_selectedVehicle != null) {
+      final v = _vehicles.cast<Map<String, dynamic>?>().firstWhere((x) => _i(x!['id']) == _selectedVehicle, orElse: () => null);
+      final route = v == null || v['routeId'] == null ? null : _routes.cast<Map<String, dynamic>?>().firstWhere((r) => _i(r!['id']) == _i(v['routeId']), orElse: () => null);
+      final pts = _routePathFor(route);
+      if (pts.length > 1) {
+        polylines.add(Polyline(polylineId: const PolylineId('route'), points: pts, color: _accent.withOpacity(0.6), width: 4, patterns: [PatternItem.dash(20), PatternItem.gap(12)]));
+        markers.add(Marker(markerId: const MarkerId('route_from'), position: pts.first, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen), infoWindow: InfoWindow(title: 'A: ${route?['source']}')));
+        markers.add(Marker(markerId: const MarkerId('route_to'), position: pts.last, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), infoWindow: InfoWindow(title: 'B: ${route?['destination']}')));
+      }
+    }
     for (final v in _vehicles) {
       final id = _i(v['id']);
       final p = _pos[id];
@@ -193,7 +215,7 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
           GoogleMap(
             initialCameraPosition: const CameraPosition(target: LatLng(12.4966, 78.5729), zoom: 11),
             onMapCreated: (c) { _map = c; _fitAll(); },
-            markers: markers, myLocationButtonEnabled: false, zoomControlsEnabled: false, mapToolbarEnabled: false,
+            markers: markers, polylines: polylines, myLocationButtonEnabled: false, zoomControlsEnabled: false, mapToolbarEnabled: false,
           ),
           Positioned(right: 10, bottom: 10, child: FloatingActionButton.small(heroTag: 'fit', backgroundColor: Colors.white, foregroundColor: _accent, onPressed: _fitAll, child: const Icon(Icons.fit_screen))),
         ]),
@@ -424,6 +446,29 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
     final name = TextEditingController(text: r?['name']?.toString() ?? '');
     final src = TextEditingController(text: r?['source']?.toString() ?? '');
     final dst = TextEditingController(text: r?['destination']?.toString() ?? '');
+    final srcLat = TextEditingController(text: r?['sourceLat']?.toString() ?? '');
+    final srcLng = TextEditingController(text: r?['sourceLng']?.toString() ?? '');
+    final dstLat = TextEditingController(text: r?['destLat']?.toString() ?? '');
+    final dstLng = TextEditingController(text: r?['destLng']?.toString() ?? '');
+    Future<void> fillHere(TextEditingController la, TextEditingController ln, void Function(void Function()) setS) async {
+      try {
+        final p = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)));
+        setS(() { la.text = p.latitude.toStringAsFixed(6); ln.text = p.longitude.toStringAsFixed(6); });
+      } catch (_) {}
+    }
+    Widget pointRow(String tag, Color c, TextEditingController nameC, String label, TextEditingController la, TextEditingController ln, void Function(void Function()) setS) => Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        CircleAvatar(radius: 11, backgroundColor: c, child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))),
+        const SizedBox(width: 6),
+        Expanded(flex: 3, child: TextField(controller: nameC, decoration: InputDecoration(labelText: label, isDense: true, border: const OutlineInputBorder()))),
+        const SizedBox(width: 6),
+        Expanded(flex: 2, child: TextField(controller: la, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), decoration: const InputDecoration(labelText: 'Lat', isDense: true, border: OutlineInputBorder()))),
+        const SizedBox(width: 6),
+        Expanded(flex: 2, child: TextField(controller: ln, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), decoration: const InputDecoration(labelText: 'Lng', isDense: true, border: OutlineInputBorder()))),
+        IconButton(visualDensity: VisualDensity.compact, tooltip: _t('Use my location', '\u0b8e\u0ba9\u0bcd \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bbf\u0b9f\u0bae\u0bcd'), icon: const Icon(Icons.my_location, size: 20, color: _accent), onPressed: () => fillHere(la, ln, setS)),
+      ]),
+    );
     final stops = _list(r?['stops']).map((s) => {
       'name': TextEditingController(text: s['name']?.toString() ?? ''),
       'lat': TextEditingController(text: s['lat']?.toString() ?? ''),
@@ -435,11 +480,8 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
       builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => _sheet(ctx, r == null ? _t('Add route', 'வழி சேர்') : _t('Edit route', 'வழி திருத்து'), [
         TextField(controller: name, decoration: InputDecoration(labelText: _t('Route name', 'வழி பெயர்'), hintText: _t('e.g. Route 7', 'எ.கா. வழி 7'), border: const OutlineInputBorder())),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: TextField(controller: src, decoration: InputDecoration(labelText: _t('From *', 'இருந்து *'), border: const OutlineInputBorder()))),
-          const SizedBox(width: 8),
-          Expanded(child: TextField(controller: dst, decoration: InputDecoration(labelText: _t('To *', 'வரை *'), border: const OutlineInputBorder()))),
-        ]),
+        pointRow('A', const Color(0xFF2E7D32), src, _t('From *', '\u0b87\u0bb0\u0bc1\u0ba8\u0bcd\u0ba4\u0bc1 *'), srcLat, srcLng, setS),
+        pointRow('B', const Color(0xFFC62828), dst, _t('To *', '\u0bb5\u0bb0\u0bc8 *'), dstLat, dstLng, setS),
         const SizedBox(height: 14),
         Row(children: [
           Text(_t('Stops (in order)', 'நிறுத்தங்கள் (வரிசையில்)'), style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -471,6 +513,8 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
         _saveBtn(ctx, () async {
           final r2 = await _svc.saveRoute({
             'id': r?['id'], 'name': name.text, 'source': src.text, 'destination': dst.text,
+            'sourceLat': double.tryParse(srcLat.text), 'sourceLng': double.tryParse(srcLng.text),
+            'destLat': double.tryParse(dstLat.text), 'destLng': double.tryParse(dstLng.text),
             'stops': stops.map((s) => {'name': s['name']!.text, 'lat': double.tryParse(s['lat']!.text), 'lng': double.tryParse(s['lng']!.text)}).toList(),
           });
           _snack(r2); return r2['success'] == true;

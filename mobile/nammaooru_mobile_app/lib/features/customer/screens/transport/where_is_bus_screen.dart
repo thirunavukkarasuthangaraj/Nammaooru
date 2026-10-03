@@ -38,6 +38,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   String _search = '';
   Map<String, dynamic>? _me;
   bool _follow = true;
+  bool _showMap = false; // details first; map only after 'Show on map'
 
   String _t(String en, String ta) => Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
 
@@ -124,8 +125,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   }
 
   void _select(int id) {
-    setState(() { _selected = id; _stopIndex = null; _follow = true; });
-    // Map is built only in the detail view; it centres itself in onMapCreated.
+    setState(() { _selected = id; _stopIndex = null; _follow = true; _showMap = false; });
+    // Map is built only after 'Show on map'; it centres itself in onMapCreated.
     if (_map != null) _centerOnSelected();
   }
 
@@ -136,6 +137,23 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (r is! Map || r['stops'] is! List) return [];
     return List<Map<String, dynamic>>.from((r['stops'] as List).map((e) => Map<String, dynamic>.from(e)))
         .where((s) => s['lat'] != null && s['lng'] != null).toList();
+  }
+
+  /// Route path as drawn on the map: From (A), stops, To (B). Only points with coordinates.
+  List<Map<String, dynamic>> _routePath(int id) {
+    final r = _bus(id)?['route'];
+    if (r is! Map) return [];
+    final out = <Map<String, dynamic>>[];
+    if (r['sourceLat'] != null && r['sourceLng'] != null) {
+      out.add({'name': r['source'], 'lat': r['sourceLat'], 'lng': r['sourceLng'], 'kind': 'from'});
+    }
+    for (final st in _stops(id)) {
+      out.add({'name': st['name'], 'lat': st['lat'], 'lng': st['lng'], 'kind': 'stop'});
+    }
+    if (r['destLat'] != null && r['destLng'] != null) {
+      out.add({'name': r['destination'], 'lat': r['destLat'], 'lng': r['destLng'], 'kind': 'to'});
+    }
+    return out;
   }
 
   /// Rough ETA: straight line × 1.3 road factor at max(current speed, 20 km/h).
@@ -187,6 +205,16 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       ));
     }
     if (_selected != null) {
+      for (final pt in _routePath(_selected!).where((q) => q['kind'] != 'stop')) {
+        final isFrom = pt['kind'] == 'from';
+        out.add(Marker(
+          markerId: MarkerId(isFrom ? 'route_from' : 'route_to'),
+          position: LatLng(_d(pt['lat']), _d(pt['lng'])),
+          icon: BitmapDescriptor.defaultMarkerWithHue(isFrom ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed),
+          infoWindow: InfoWindow(title: '${isFrom ? 'A' : 'B'}: ${pt['name']}'),
+          zIndex: 3,
+        ));
+      }
       final stops = _stops(_selected!);
       for (var i = 0; i < stops.length; i++) {
         out.add(Marker(
@@ -204,12 +232,12 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
 
   Set<Polyline> _polylines() {
     if (_selected == null) return {};
-    final stops = _stops(_selected!);
-    if (stops.length < 2) return {};
+    final path = _routePath(_selected!);
+    if (path.length < 2) return {};
     return {
       Polyline(
         polylineId: const PolylineId('route'),
-        points: stops.map((s) => LatLng(_d(s['lat']), _d(s['lng']))).toList(),
+        points: path.map((s) => LatLng(_d(s['lat']), _d(s['lng']))).toList(),
         color: _accent.withOpacity(0.6),
         width: 4,
         patterns: [PatternItem.dash(20), PatternItem.gap(12)],
@@ -293,11 +321,65 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
               ? _errorView()
               : _selected == null
                   ? _panel()
-                  : _mapView(pendingOwner),
+                  : _showMap
+                      ? _mapView(pendingOwner)
+                      : _detailsView(pendingOwner),
     );
   }
 
-  /// Shown after a bus is picked: big map on top, details below, back to list.
+  /// Shown right after a bus is tapped: details only, with a "Show on map" button.
+  Widget _detailsView(bool pendingOwner) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() { _selected = null; _stopIndex = null; _map = null; _showMap = false; }),
+              icon: const Icon(Icons.arrow_back, size: 18),
+              label: Text(_t('All buses', '\u0b8e\u0bb2\u0bcd\u0bb2\u0bbe \u0baa\u0bb8\u0bcd\u0b95\u0bb3\u0bcd')),
+              style: TextButton.styleFrom(foregroundColor: _accent),
+            ),
+          ),
+        ),
+        if (pendingOwner)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+            child: _banner(_t('Your transporter registration is waiting for approval.', '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b92\u0baa\u0bcd\u0baa\u0bc1\u0ba4\u0bb2\u0bc1\u0b95\u0bcd\u0b95\u0bbe\u0b95 \u0b95\u0bbe\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.'), Colors.orange.shade800),
+          ),
+        _selectedCard(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+          child: SizedBox(
+            height: 54,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent, foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () => setState(() { _showMap = true; _follow = true; }),
+              icon: const Icon(Icons.map_outlined, size: 24),
+              label: Text(_t('Show on map', '\u0bb5\u0bb0\u0bc8\u0baa\u0b9f\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd \u0b95\u0bbe\u0b9f\u0bcd\u0b9f\u0bc1'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Text(
+            _state(_selected!) == 'OFFLINE'
+                ? _t('This bus is not sharing its location right now. The map will show its route stops.', '\u0b87\u0ba8\u0bcd\u0ba4 \u0baa\u0bb8\u0bcd \u0b87\u0baa\u0bcd\u0baa\u0bcb\u0ba4\u0bc1 \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bbf\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8 \u0baa\u0b95\u0bbf\u0bb0\u0bb5\u0bbf\u0bb2\u0bcd\u0bb2\u0bc8.')
+                : _t('Live position updates every few seconds.', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8 \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bbf\u0b9f\u0bae\u0bcd \u0b9a\u0bbf\u0bb2 \u0bb5\u0bbf\u0ba8\u0bbe\u0b9f\u0bbf\u0b95\u0bb3\u0bc1\u0b95\u0bcd\u0b95\u0bc1 \u0b92\u0bb0\u0bc1\u0bae\u0bc1\u0bb1\u0bc8 \u0baa\u0bc1\u0ba4\u0bc1\u0baa\u0bcd\u0baa\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd.'),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Map view: big map on top, details below, back to details.
   Widget _mapView(bool pendingOwner) {
     return Column(
       children: [
@@ -322,13 +404,13 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
                   color: Colors.white, elevation: 2, borderRadius: BorderRadius.circular(10),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(10),
-                    onTap: () => setState(() { _selected = null; _stopIndex = null; _map = null; }),
+                    onTap: () => setState(() { _showMap = false; _map = null; }),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.arrow_back, size: 18, color: _accent),
                         const SizedBox(width: 6),
-                        Text(_t('All buses', 'எல்லா பஸ்கள்'), style: const TextStyle(color: _accent, fontWeight: FontWeight.w700)),
+                        Text(_t('Details', 'விவரங்கள்'), style: const TextStyle(color: _accent, fontWeight: FontWeight.w700)),
                       ]),
                     ),
                   ),
@@ -364,8 +446,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (_selected != null) {
       final p = _pos[_selected];
       if (p != null && p['lat'] != null) return LatLng(_d(p['lat']), _d(p['lng']));
-      final stops = _stops(_selected!);
-      if (stops.isNotEmpty) return LatLng(_d(stops.first['lat']), _d(stops.first['lng']));
+      final path = _routePath(_selected!);
+      if (path.isNotEmpty) return LatLng(_d(path.first['lat']), _d(path.first['lng']));
     }
     return _defaultCenter;
   }
@@ -386,7 +468,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final pts = <LatLng>[];
     final p = _pos[_selected];
     if (p != null && p['lat'] != null) pts.add(LatLng(_d(p['lat']), _d(p['lng'])));
-    for (final s in _stops(_selected!)) pts.add(LatLng(_d(s['lat']), _d(s['lng'])));
+    for (final s in _routePath(_selected!)) pts.add(LatLng(_d(s['lat']), _d(s['lng'])));
     if (pts.isEmpty) return;
     if (pts.length == 1) { _map!.animateCamera(CameraUpdate.newLatLngZoom(pts.first, 14)); return; }
     double minLat = pts.first.latitude, maxLat = minLat, minLng = pts.first.longitude, maxLng = minLng;
@@ -505,7 +587,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           Row(children: [
             Expanded(child: Text('${b['name']}${b['regNo'] != null && b['regNo'] != b['name'] ? ' · ${b['regNo']}' : ''}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
             _chip(st),
-            IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; _map = null; })),
+            IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; _map = null; _showMap = false; })),
           ]),
           if (b['operator'] != null) Text('${_t('by', 'மூலம்')} ${b['operator']}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
           const SizedBox(height: 6),
