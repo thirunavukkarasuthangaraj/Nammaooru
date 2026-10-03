@@ -21,6 +21,7 @@ import { TransportVehiclesComponent } from './components/transport-vehicles.comp
 import { TransportDriversComponent } from './components/transport-drivers.component';
 import { TransportRoutesComponent } from './components/transport-routes.component';
 import { TransportTripsComponent } from './components/transport-trips.component';
+import { TransportTimetableComponent } from './components/transport-timetable.component';
 
 /**
  * /transport = public home (live public buses), /transport/login, and the owner portal
@@ -37,6 +38,7 @@ import { TransportTripsComponent } from './components/transport-trips.component'
     TransportDriversComponent,
     TransportRoutesComponent,
     TransportTripsComponent,
+    TransportTimetableComponent,
   ],
   imports: [
     CommonModule,
@@ -63,6 +65,7 @@ import { TransportTripsComponent } from './components/transport-trips.component'
           { path: 'vehicles', component: TransportVehiclesComponent },
           { path: 'drivers', component: TransportDriversComponent },
           { path: 'routes', component: TransportRoutesComponent },
+          { path: 'timetable', component: TransportTimetableComponent },
           { path: 'trips', component: TransportTripsComponent },
         ]
       },

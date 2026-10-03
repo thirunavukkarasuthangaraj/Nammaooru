@@ -6,12 +6,12 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { MapsLoaderService } from '../../../core/services/maps-loader.service';
 import { TransportOwnerService, routePath, routeColor } from '../../../core/services/transport-owner.service';
-import { roadPath, drawRouteLine, busIcon, animateMarker, stateColor } from '../map-utils';
+import { roadPath, drawRouteLine, busIcon, ghostBusIcon, animateMarker, stateColor, currentLeg, nextDeparture, legProgress, pointAlong, dirLabel, LL } from '../map-utils';
 
 declare var google: any;
 
-interface PublicBus { id: number; name: string; regNo: string; operator: string; route: any; }
-interface Pos { vehicleId: number; lat: number; lng: number; speedKmh?: number; heading?: number; ageSec: number; state: string; }
+interface PublicBus { id: number; name: string; regNo: string; operator: string; route: any; schedules?: any[]; }
+interface Pos { vehicleId: number; lat: number; lng: number; speedKmh?: number; heading?: number; ageSec: number; state: string; direction?: string; }
 
 /**
  * Public transport home: what the service is, live public buses on a map,
@@ -63,6 +63,7 @@ interface Pos { vehicleId: number; lat: number; lng: number; speedKmh?: number; 
             <strong>{{ b.name }}</strong>
             <small>{{ b.route ? (b.route.source + ' → ' + b.route.destination) : b.regNo }} · {{ b.operator }}</small>
             <small *ngIf="pos(b.id) as p">{{ (p.speedKmh || 0) | number:'1.0-0' }} km/h · {{ ago(p) }}</small>
+            <small class="tt" *ngIf="ttText(b) as t">{{ t }}</small>
           </div>
           <span [class]="'chip ' + stateOf(b.id).toLowerCase()">{{ stateOf(b.id) }}</span>
         </div>
@@ -108,6 +109,7 @@ interface Pos { vehicleId: number; lat: number; lng: number; speedKmh?: number; 
     .row:hover { background: #f5f8fc; } .row.sel { border-color: #1565c0; background: #e8f0fe; }
     .ico { font-size: 28px; width: 28px; height: 28px; &.moving { color: #2e7d32; } &.stopped { color: #1565c0; } &.offline { color: #90a4ae; } }
     .info { flex: 1; min-width: 0; display: flex; flex-direction: column; small { color: #6b7280; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+    .tt { color: #1565c0 !important; font-weight: 600; }
     .chip { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; &.moving { background: #e8f5e9; color: #2e7d32; } &.stopped { background: #e3f2fd; color: #1565c0; } &.offline { background: #eceff1; color: #546e7a; } }
     .empty { padding: 24px; text-align: center; color: #9ca3af; }
     .detail { margin-top: 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; .stop { width: 260px; margin-bottom: -1.25em; } .eta { font-weight: 700; color: #1565c0; } }
@@ -136,6 +138,9 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
   private routeToken = 0;
   private routeMarkers: any[] = [];
   private allRouteLines = new Map<number, any[]>();
+  private ghosts = new Map<number, any>();
+  private roadPaths = new Map<number, LL[]>();
+  private clock: any;
   private subs: Subscription[] = [];
 
   constructor(private http: HttpClient, private mapsLoader: MapsLoaderService, private router: Router,
@@ -144,6 +149,7 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
   ngOnInit(): void {
     this.load();
     this.subs.push(interval(5000).subscribe(() => this.refresh()));
+    this.clock = setInterval(() => this.renderGhosts(), 15000);
   }
 
   ngAfterViewInit(): void {
@@ -155,7 +161,7 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
     });
   }
 
-  ngOnDestroy(): void { this.subs.forEach(s => s.unsubscribe()); }
+  ngOnDestroy(): void { this.subs.forEach(s => s.unsubscribe()); clearInterval(this.clock); }
 
   private load(): void {
     this.http.get<any>(`${environment.apiUrl}/transport/public/buses`, { params: { silentError: '1' } }).subscribe({
@@ -194,8 +200,41 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!p || (p.ageSec ?? 9999) > this.staleAfter) return 'OFFLINE';
     return p.state || 'STOPPED';
   }
+  ttText(b: PublicBus): string | null {
+    const rows = b.schedules || []; if (!rows.length) return null;
+    const leg = currentLeg(rows);
+    if (leg) return `Scheduled ${leg.departTime}-${leg.arriveTime} ${dirLabel(b.route, leg.direction)}`;
+    const nx = nextDeparture(rows); return nx ? `Next ${nx.departTime} ${dirLabel(b.route, nx.direction)}` : null;
+  }
+  private renderGhosts(): void {
+    if (!this.map) return;
+    const seen = new Set<number>();
+    for (const b of this.buses) {
+      const path = b.route?.id != null ? this.roadPaths.get(b.route.id) : null;
+      const leg = currentLeg(b.schedules || []);
+      const live = this.positions.get(b.id) && this.stateOf(b.id) !== 'OFFLINE';
+      if (!path || !leg || live) continue;
+      const dirPath = leg.direction === 'BA' ? [...path].reverse() : path;
+      const at = pointAlong(dirPath, legProgress(leg)); if (!at) continue;
+      seen.add(b.id);
+      const icon = ghostBusIcon('#546e7a', at.heading);
+      let g = this.ghosts.get(b.id);
+      if (!g) {
+        g = new google.maps.Marker({ position: at.pos, map: this.map, icon, title: `${b.name} (timetable)`, zIndex: 8, label: { text: `${b.name} (timetable)`, color: '#546e7a', fontSize: '11px', fontWeight: '700' } });
+        g.addListener('click', () => this.zone.run(() => this.select(b)));
+        this.ghosts.set(b.id, g);
+      } else { animateMarker(g, at.pos, 1500); g.setIcon(icon); }
+    }
+    for (const [id, g] of this.ghosts) if (!seen.has(id)) { g.setMap(null); this.ghosts.delete(id); }
+  }
   ago(p: Pos): string { const s = p.ageSec ?? 0; return s < 5 ? 'just now' : s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`; }
-  stops(): any[] { return (this.selBus?.route?.stops || []).filter((s: any) => s.lat != null && s.lng != null); }
+  stops(): any[] {
+    const list = (this.selBus?.route?.stops || []).filter((s: any) => s.lat != null && s.lng != null);
+    const p = this.selected ? this.positions.get(this.selected) : null;
+    const leg = currentLeg(this.selBus?.schedules || []);
+    const dir = (p && p.direction) || (leg && leg.direction) || 'AB';
+    return dir === 'BA' ? [...list].reverse() : list;
+  }
   eta(): string | null {
     const p = this.selected ? this.positions.get(this.selected) : null;
     const st = this.stopIdx != null ? this.stops()[this.stopIdx] : null;
@@ -251,7 +290,9 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       this.allRouteLines.set(r.id, []);
       roadPath(r).then(path => {
         if (!this.map) return;
+        this.roadPaths.set(r.id, path);
         this.allRouteLines.set(r.id, drawRouteLine(this.map, path, routeColor(r.id), false));
+        this.renderGhosts();
         if (this.markers.size === 0) this.render(true);
       });
     }
@@ -277,10 +318,12 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       if (this.selected === b.id) this.map.panTo(ll);
     }
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.setMap(null); this.markers.delete(id); }
+    this.renderGhosts();
     if (fit) {
       const bb = new google.maps.LatLngBounds();
       this.markers.forEach(m => bb.extend(m.getPosition()));
-      if (this.markers.size === 0) this.allRouteLines.forEach(ls => ls.forEach(l => l.getPath().forEach((p: any) => bb.extend(p))));
+      this.ghosts.forEach(m => bb.extend(m.getPosition()));
+      if (this.markers.size === 0 && this.ghosts.size === 0) this.allRouteLines.forEach(ls => ls.forEach(l => l.getPath().forEach((p: any) => bb.extend(p))));
       if (bb.isEmpty()) return;
       this.markers.size === 1 ? (this.map.setCenter(bb.getCenter()), this.map.setZoom(13)) : this.map.fitBounds(bb, 60);
     }

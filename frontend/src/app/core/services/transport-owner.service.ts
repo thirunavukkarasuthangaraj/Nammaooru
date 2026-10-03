@@ -29,13 +29,17 @@ export interface TransportVehicle {
   routeId?: number | null; driverId?: number | null; isPublic: boolean; status?: string;
   driverName?: string | null; routeName?: string | null;
 }
+export interface TransportSchedule {
+  id?: number; vehicleId: number; routeId?: number | null; direction: 'AB' | 'BA';
+  departTime: string; arriveTime: string; days: string; isActive?: boolean;
+}
 export interface TransportPosition {
   vehicleId: number; tripId?: number; lat: number; lng: number; speedKmh?: number; heading?: number;
-  accuracyM?: number; recordedAt?: string; ageSec: number; state: 'MOVING' | 'STOPPED' | 'OFFLINE';
+  accuracyM?: number; recordedAt?: string; ageSec: number; state: 'MOVING' | 'STOPPED' | 'OFFLINE'; direction?: 'AB' | 'BA';
 }
 export interface OwnerBootstrap {
   transporter: any; vehicles: TransportVehicle[]; drivers: TransportDriver[]; routes: TransportRoute[];
-  positions: TransportPosition[]; settings: { staleAfterSec: number };
+  schedules: TransportSchedule[]; positions: TransportPosition[]; settings: { staleAfterSec: number };
 }
 
 export const VEHICLE_TYPES = ['BUS', 'LORRY', 'VAN', 'AUTO', 'CAR', 'BIKE', 'TRACTOR', 'OTHER'];
@@ -67,6 +71,9 @@ export class TransportOwnerService {
 
   saveRoute(r: Partial<TransportRoute>): Observable<any> { return this.http.post(`${this.base}/owner/routes`, r); }
   deleteRoute(id: number): Observable<any> { return this.http.delete(`${this.base}/owner/routes/${id}`); }
+
+  saveSchedule(sc: Partial<TransportSchedule>): Observable<any> { return this.http.post(`${this.base}/owner/schedules`, sc); }
+  deleteSchedule(id: number): Observable<any> { return this.http.delete(`${this.base}/owner/schedules/${id}`); }
 
   trips(vehicleId?: number, page = 0, size = 50): Observable<any> {
     const params: any = { page, size };

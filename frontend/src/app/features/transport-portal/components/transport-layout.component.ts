@@ -84,6 +84,7 @@ export class TransportLayoutComponent implements OnInit, OnDestroy {
     { title: 'Vehicles', icon: 'directions_bus', route: '/transport/vehicles', badge: '' },
     { title: 'Drivers', icon: 'badge', route: '/transport/drivers', badge: '' },
     { title: 'Routes', icon: 'alt_route', route: '/transport/routes', badge: '' },
+    { title: 'Timetable', icon: 'schedule', route: '/transport/timetable', badge: '' },
     { title: 'Trips', icon: 'history', route: '/transport/trips', badge: '' },
   ];
 
