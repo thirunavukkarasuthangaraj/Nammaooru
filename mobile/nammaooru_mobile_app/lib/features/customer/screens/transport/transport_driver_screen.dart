@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
@@ -43,13 +44,13 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
   void initState() {
     super.initState();
     TransportGpsService.init();
-    FlutterForegroundTask.addTaskDataCallback(_onTaskData);
+    if (kIsWeb) { TransportGpsService.webListener = _onTaskData; } else { FlutterForegroundTask.addTaskDataCallback(_onTaskData); }
     _load();
   }
 
   @override
   void dispose() {
-    FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
+    if (kIsWeb) { TransportGpsService.webListener = null; } else { FlutterForegroundTask.removeTaskDataCallback(_onTaskData); }
     super.dispose();
   }
 
@@ -106,6 +107,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     // Notification (Android 13+) so the foreground service can show its notice
     try { await Permission.notification.request(); } catch (_) {}
     // Battery optimisation: ask once so the service isn't killed on cheap phones
+    if (kIsWeb) return true;
     try {
       if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
         await FlutterForegroundTask.requestIgnoreBatteryOptimization();
@@ -178,8 +180,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WithForegroundTask(
-      child: Scaffold(
+    final scaffold = Scaffold(
         backgroundColor: const Color(0xFFF5F7FA),
         appBar: AppBar(backgroundColor: _accent, foregroundColor: Colors.white, title: Text(_t('Driver mode', 'ஓட்டுநர் முறை')), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)]),
         body: _loading
@@ -191,8 +192,8 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
                     Text(_t('Ask the bus owner to add your mobile number as a driver.', 'உங்கள் எண்ணை ஓட்டுநராக சேர்க்க உரிமையாளரிடம் கேளுங்கள்.'), textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 12.5)),
                     TextButton(onPressed: _load, child: Text(_t('Retry', 'மீண்டும்')))])))
                 : _openTrip != null ? _runningView() : _idleView(),
-      ),
     );
+    return kIsWeb ? scaffold : WithForegroundTask(child: scaffold);
   }
 
   Widget _idleView() {

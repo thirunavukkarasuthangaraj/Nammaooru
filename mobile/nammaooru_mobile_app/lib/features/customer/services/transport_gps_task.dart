@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../core/config/env_config.dart';
+import 'transport_service.dart';
 
 /// Keys used to hand trip details to the foreground isolate.
 class TransportGpsKeys {
@@ -162,10 +164,24 @@ class TransportGpsTaskHandler extends TaskHandler {
 }
 
 /// Helper used by the driver screen to control the service.
+///
+/// On Android this drives the foreground service. On the web (Chrome) there is
+/// no background service, so a plain timer in the page reads the browser's
+/// geolocation and posts it while the tab stays open. Good for testing.
 class TransportGpsService {
   static bool _inited = false;
 
+  // ---- web fallback state ----
+  static Timer? _webTimer;
+  static int? _webTripId;
+  static double _webKm = 0;
+  static int _webSent = 0;
+  static Position? _webLast;
+  /// Driver screen registers this to receive the same status maps as the service sends.
+  static void Function(Map<String, dynamic>)? webListener;
+
   static void init() {
+    if (kIsWeb) return;
     if (_inited) return;
     _inited = true;
     FlutterForegroundTask.init(
@@ -195,6 +211,7 @@ class TransportGpsService {
     required String vehicleName,
     required int intervalSec,
   }) async {
+    if (kIsWeb) return _startWeb(tripId: tripId, vehicleId: vehicleId, vehicleName: vehicleName, intervalSec: intervalSec);
     init();
     await FlutterForegroundTask.saveData(key: TransportGpsKeys.token, value: token);
     await FlutterForegroundTask.saveData(key: TransportGpsKeys.tripId, value: tripId);
@@ -233,6 +250,7 @@ class TransportGpsService {
   }
 
   static Future<void> stop() async {
+    if (kIsWeb) { _webTimer?.cancel(); _webTimer = null; _webTripId = null; return; }
     try {
       FlutterForegroundTask.sendDataToTask({'cmd': 'end'});
     } catch (_) {}
@@ -241,5 +259,42 @@ class TransportGpsService {
     }
   }
 
-  static Future<bool> get isRunning => FlutterForegroundTask.isRunningService;
+  static Future<bool> get isRunning async => kIsWeb ? _webTimer != null : await FlutterForegroundTask.isRunningService;
+
+  static Future<bool> _startWeb({required int tripId, required int vehicleId, required String vehicleName, required int intervalSec}) async {
+    _webTimer?.cancel();
+    _webTripId = tripId; _webKm = 0; _webSent = 0; _webLast = null;
+    Future<void> tick() async {
+      if (_webTripId != tripId) return;
+      Position? p;
+      try {
+        p = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 8)));
+      } catch (_) { p = null; }
+      if (p == null) { webListener?.call({'status': 'Waiting for browser location...', 'tripId': tripId, 'vehicleId': vehicleId, 'distanceKm': _webKm, 'sent': _webSent, 'buffered': 0, 'fails': 0, 'tripEnded': false}); return; }
+      if (_webLast != null) {
+        final d = Geolocator.distanceBetween(_webLast!.latitude, _webLast!.longitude, p.latitude, p.longitude);
+        if (d > 5) _webKm += d / 1000.0;
+      }
+      _webLast = p;
+      final r = await TransportService.instance.sendPositions(tripId, [{
+        'lat': p.latitude, 'lng': p.longitude,
+        'speedKmh': (p.speed.isFinite && p.speed >= 0) ? p.speed * 3.6 : 0,
+        'heading': p.heading.isFinite ? p.heading : null,
+        'accuracyM': p.accuracy.isFinite ? p.accuracy : null,
+        'ts': DateTime.now().millisecondsSinceEpoch,
+      }]);
+      final ok = r['success'] == true;
+      if (ok) _webSent++;
+      final ended = r['data'] is Map && r['data']['tripEnded'] == true;
+      webListener?.call({
+        'status': ended ? 'Trip ended from server' : (ok ? 'Live' : 'No network, retrying'),
+        'lat': p.latitude, 'lng': p.longitude, 'speedKmh': p.speed * 3.6, 'distanceKm': _webKm,
+        'sent': _webSent, 'buffered': 0, 'fails': ok ? 0 : 1, 'tripEnded': ended, 'tripId': tripId, 'vehicleId': vehicleId,
+      });
+      if (ended) { _webTimer?.cancel(); _webTimer = null; _webTripId = null; }
+    }
+    _webTimer = Timer.periodic(Duration(seconds: intervalSec.clamp(2, 120)), (_) => tick());
+    tick();
+    return true;
+  }
 }
