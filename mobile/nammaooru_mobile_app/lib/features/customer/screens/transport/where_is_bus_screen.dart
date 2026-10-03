@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/localization/language_provider.dart';
 import '../../../../core/theme/village_theme.dart';
 import '../../services/transport_service.dart';
+import '../../services/transport_timetable.dart';
 import 'transport_driver_screen.dart';
 import 'transport_owner_screen.dart';
 import 'transport_register_sheet.dart';
@@ -132,11 +133,49 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
 
   Map<String, dynamic>? _bus(int id) => _buses.cast<Map<String, dynamic>?>().firstWhere((b) => b!['id'] == id, orElse: () => null);
 
+  String _dirOf(int id) {
+    final p = _pos[id];
+    if (p != null && p['direction'] != null && _state(id) != 'OFFLINE') return p['direction'].toString();
+    final leg = TransportTimetable.currentLeg(_schedules(id));
+    return leg?['direction']?.toString() ?? 'AB';
+  }
+
+  List _schedules(int id) {
+    final b = _bus(id);
+    return b?['schedules'] is List ? b!['schedules'] as List : const [];
+  }
+
   List<Map<String, dynamic>> _stops(int id) {
     final r = _bus(id)?['route'];
     if (r is! Map || r['stops'] is! List) return [];
-    return List<Map<String, dynamic>>.from((r['stops'] as List).map((e) => Map<String, dynamic>.from(e)))
+    final list = List<Map<String, dynamic>>.from((r['stops'] as List).map((e) => Map<String, dynamic>.from(e)))
         .where((s) => s['lat'] != null && s['lng'] != null).toList();
+    return _dirOf(id) == 'BA' ? list.reversed.toList() : list;
+  }
+
+  /// Scheduled ("should be here") position along the straight route path for a bus with no live GPS.
+  LatLng? _scheduledPos(int id) {
+    final leg = TransportTimetable.currentLeg(_schedules(id));
+    if (leg == null) return null;
+    var path = _routePath(id).map((q) => LatLng(_d(q['lat']), _d(q['lng']))).toList();
+    if (path.length < 2) return null;
+    if (leg['direction'] == 'BA') path = path.reversed.toList();
+    final t = TransportTimetable.legProgress(leg);
+    final segs = <double>[]; var total = 0.0;
+    for (var i = 1; i < path.length; i++) {
+      final d = _haversine(path[i - 1].latitude, path[i - 1].longitude, path[i].latitude, path[i].longitude);
+      segs.add(d); total += d;
+    }
+    var target = total * t, acc = 0.0;
+    for (var i = 0; i < segs.length; i++) {
+      if (acc + segs[i] >= target || i == segs.length - 1) {
+        final f = segs[i] == 0 ? 0.0 : (target - acc) / segs[i];
+        final a = path[i], b = path[i + 1];
+        return LatLng(a.latitude + (b.latitude - a.latitude) * f, a.longitude + (b.longitude - a.longitude) * f);
+      }
+      acc += segs[i];
+    }
+    return path.last;
   }
 
   /// Route path as drawn on the map: From (A), stops, To (B). Only points with coordinates.
@@ -147,8 +186,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (r['sourceLat'] != null && r['sourceLng'] != null) {
       out.add({'name': r['source'], 'lat': r['sourceLat'], 'lng': r['sourceLng'], 'kind': 'from'});
     }
-    for (final st in _stops(id)) {
-      out.add({'name': st['name'], 'lat': st['lat'], 'lng': st['lng'], 'kind': 'stop'});
+    if (r['stops'] is List) {
+      for (final e in r['stops'] as List) {
+        final st = Map<String, dynamic>.from(e);
+        if (st['lat'] != null && st['lng'] != null) out.add({'name': st['name'], 'lat': st['lat'], 'lng': st['lng'], 'kind': 'stop'});
+      }
     }
     if (r['destLat'] != null && r['destLng'] != null) {
       out.add({'name': r['destination'], 'lat': r['destLat'], 'lng': r['destLng'], 'kind': 'to'});
@@ -203,6 +245,19 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         onTap: () => _select(id),
         zIndex: _selected == id ? 2 : 1,
       ));
+    }
+    if (_selected != null && _state(_selected!) == 'OFFLINE') {
+      final g = _scheduledPos(_selected!);
+      if (g != null) {
+        out.add(Marker(
+          markerId: const MarkerId('scheduled'),
+          position: g,
+          alpha: 0.55,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
+          infoWindow: InfoWindow(title: _t('Scheduled position', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8 \u0b87\u0b9f\u0bae\u0bcd'), snippet: _t('By timetable, GPS off', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf, GPS \u0b87\u0bb2\u0bcd\u0bb2\u0bc8')),
+          zIndex: 2,
+        ));
+      }
     }
     if (_selected != null) {
       for (final pt in _routePath(_selected!).where((q) => q['kind'] != 'stop')) {
@@ -553,10 +608,24 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         onTap: () => _select(id),
         leading: CircleAvatar(backgroundColor: _stateColor(st).withOpacity(0.15), child: Icon(Icons.directions_bus, color: _stateColor(st))),
         title: Text(b['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(r != null ? '${r['source']} → ${r['destination']}' : (b['regNo']?.toString() ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text([
+          r != null ? '${r['source']} \u2192 ${r['destination']}' : (b['regNo']?.toString() ?? ''),
+          if (_ttText(id) != null) _ttText(id)!,
+        ].join('\n'), maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [_chip(st), const SizedBox(width: 4), const Icon(Icons.chevron_right, color: Colors.grey)]),
       ),
     );
+  }
+
+  /// "Scheduled 10:00-11:00 Tirupattur -> Alangayam" or "Next 11:20 ...".
+  String? _ttText(int id) {
+    final rows = _schedules(id);
+    if (rows.isEmpty) return null;
+    final route = _bus(id)?['route'] is Map ? _bus(id)!['route'] as Map : null;
+    final leg = TransportTimetable.currentLeg(rows);
+    if (leg != null) return '${_t('Scheduled', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8')} ${leg['departTime']}-${leg['arriveTime']} ${TransportTimetable.dirLabel(route, leg['direction']?.toString())}';
+    final nx = TransportTimetable.nextDeparture(rows);
+    return nx == null ? null : '${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${nx['departTime']} ${TransportTimetable.dirLabel(route, nx['direction']?.toString())}';
   }
 
   Widget _chip(String st) {
@@ -596,6 +665,21 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
             _kv(Icons.speed, st == 'OFFLINE' ? '—' : '${_d(p?['speedKmh']).round()} km/h'),
             _kv(Icons.schedule, _ago(id)),
           ]),
+          if (_ttText(id) != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_ttText(id)!, style: const TextStyle(color: _accent, fontWeight: FontWeight.w700, fontSize: 12.5))),
+          if (_schedules(id).isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final sc in TransportTimetable.todays(_schedules(id)))
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: TransportTimetable.currentLeg([sc]) != null ? const Color(0xFFE8F5E9) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('${sc['departTime']} ${sc['direction'] == 'BA' ? 'B\u2192A' : 'A\u2192B'} ${sc['arriveTime']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                ),
+            ]),
+          ],
           if (stops.isNotEmpty) ...[
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(

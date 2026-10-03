@@ -98,7 +98,8 @@ class TransportService {
 
   // ---------- driver ----------
   Future<Map<String, dynamic>> driverContext() => _get('/transport/driver/context');
-  Future<Map<String, dynamic>> startTrip(int vehicleId) => _post('/transport/driver/trips/start', data: {'vehicleId': vehicleId});
+  Future<Map<String, dynamic>> startTrip(int vehicleId, {String? direction, int? scheduleId}) =>
+      _post('/transport/driver/trips/start', data: {'vehicleId': vehicleId, 'direction': direction, 'scheduleId': scheduleId});
   Future<Map<String, dynamic>> endTrip(int tripId, {double? distanceKm}) =>
       _post('/transport/driver/trips/$tripId/end', data: {'distanceKm': distanceKm});
 

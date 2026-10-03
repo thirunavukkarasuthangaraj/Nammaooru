@@ -10,6 +10,7 @@ import '../../../../core/localization/language_provider.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../services/transport_gps_task.dart';
 import '../../services/transport_service.dart';
+import '../../services/transport_timetable.dart';
 
 /// Driver mode: pick the assigned vehicle, start a trip, and the phone shares
 /// GPS through an Android foreground service until the trip is ended.
@@ -29,6 +30,8 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
   List<Map<String, dynamic>> _vehicles = [];
   Map<String, dynamic>? _openTrip;
   int? _selectedVehicle;
+  String _direction = 'AB';
+  int? _scheduleId;
   bool _busy = false;
   Map<String, dynamic> _live = {};
   bool _serviceRunning = false;
@@ -73,9 +76,18 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     _openTrip = d['openTrip'] is Map ? Map<String, dynamic>.from(d['openTrip']) : null;
     if (_openTrip != null) _selectedVehicle = _i(_openTrip!['vehicleId']);
     _selectedVehicle ??= _vehicles.isNotEmpty ? _i(_vehicles.first['id']) : null;
+    _pickDefaultDeparture();
     setState(() => _loading = false);
     // A trip is open on the server but the service died (phone restart etc.) → restart it.
     if (_openTrip != null && !_serviceRunning) _startService(_openTrip!);
+  }
+
+  void _pickDefaultDeparture() {
+    final v = _vehicle(_selectedVehicle);
+    final rows = (v?['schedules'] is List) ? v!['schedules'] as List : const [];
+    final near = TransportTimetable.nearest(rows);
+    _scheduleId = near == null ? null : _i(near['id']);
+    _direction = near?['direction']?.toString() ?? _direction;
   }
 
   Future<bool> _ensurePermissions() async {
@@ -108,7 +120,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     if (_selectedVehicle == null) return;
     if (!await _ensurePermissions()) return;
     setState(() => _busy = true);
-    final r = await _svc.startTrip(_selectedVehicle!);
+    final r = await _svc.startTrip(_selectedVehicle!, direction: _direction, scheduleId: _scheduleId);
     if (!mounted) return;
     if (r['success'] != true) { setState(() => _busy = false); _msg(r['message']?.toString() ?? ''); return; }
     final d = Map<String, dynamic>.from(r['data'] ?? {});
@@ -203,7 +215,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
               color: sel ? _accent.withOpacity(0.08) : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: sel ? _accent : Colors.grey.shade200, width: sel ? 1.5 : 1)),
               child: ListTile(
-                onTap: () => setState(() => _selectedVehicle = id),
+                onTap: () => setState(() { _selectedVehicle = id; _pickDefaultDeparture(); }),
                 leading: Icon(Icons.directions_bus, color: sel ? _accent : Colors.grey, size: 30),
                 title: Text('${v['name']}', style: const TextStyle(fontWeight: FontWeight.w800)),
                 subtitle: Text('${v['regNo']} · ${v['vehicleType']}${v['ownerName'] != null ? ' · ${v['ownerName']}' : ''}${route != null ? '\n${route['source']} → ${route['destination']}' : ''}', style: const TextStyle(fontSize: 12)),
@@ -212,6 +224,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
               ),
             );
           }),
+        if (_selectedVehicle != null) _directionPicker(),
         const SizedBox(height: 16),
         SizedBox(
           height: 58,
@@ -223,6 +236,46 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _directionPicker() {
+    final v = _vehicle(_selectedVehicle);
+    final route = v?['route'] is Map ? v!['route'] as Map : null;
+    final rows = (v?['schedules'] is List) ? TransportTimetable.todays(v!['schedules'] as List) : <Map<String, dynamic>>[];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(_t('Which way?', '\u0b8e\u0ba8\u0bcd\u0ba4 \u0ba4\u0bbf\u0b9a\u0bc8?'), style: const TextStyle(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Row(children: [
+          for (final d in ['AB', 'BA'])
+            Expanded(child: Padding(
+              padding: EdgeInsets.only(right: d == 'AB' ? 6 : 0),
+              child: ChoiceChip(
+                label: Text(TransportTimetable.dirLabel(route, d), overflow: TextOverflow.ellipsis),
+                selected: _direction == d,
+                selectedColor: _accent.withOpacity(0.15),
+                onSelected: (_) => setState(() { _direction = d; _scheduleId = null; }),
+              ),
+            )),
+        ]),
+        if (rows.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(_t("Today's departures", '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0bbe\u0b9f\u0bc1\u0b95\u0bb3\u0bcd'), style: TextStyle(fontSize: 12.5, color: Colors.grey[700], fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final r in rows)
+              ChoiceChip(
+                label: Text('${r['departTime']} ${r['direction'] == 'BA' ? 'B\u2192A' : 'A\u2192B'}'),
+                selected: _scheduleId == _i(r['id']),
+                selectedColor: const Color(0xFFE8F5E9),
+                onSelected: (_) => setState(() { _scheduleId = _i(r['id']); _direction = r['direction']?.toString() ?? 'AB'; }),
+              ),
+          ]),
+        ],
+      ]),
     );
   }
 
