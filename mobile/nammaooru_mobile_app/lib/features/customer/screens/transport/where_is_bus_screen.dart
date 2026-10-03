@@ -43,7 +43,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   bool _showMap = false; // details first; map only after 'Show on map'
   final Map<String, BitmapDescriptor> _labelIcons = {};
   final Set<String> _labelPending = {};
-  int? _routeSel;        // passenger picks a route first
+  String? _routeSel;     // passenger picks a corridor (From|To) first; buses of every company on it are shown together
   String _dirSel = 'AB';  // then a direction (A->B or B->A)
   int? _tripPick;         // a departure chosen from 'All timings' (schedule id)
   bool _timesExpanded = false;
@@ -147,7 +147,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (p != null && p['direction'] != null && _state(id) != 'OFFLINE') return p['direction'].toString();
     final leg = TransportTimetable.currentLeg(_schedules(id));
     if (leg != null) return leg['direction']?.toString() ?? 'AB';
-    return _routeSel != null ? _dirSel : 'AB';
+    return _routeSel != null ? _busDir(id) : 'AB';
   }
 
   List _schedules(int id) {
@@ -160,7 +160,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (r is! Map || r['stops'] is! List) return [];
     final list = List<Map<String, dynamic>>.from((r['stops'] as List).map((e) => Map<String, dynamic>.from(e)))
         .where((s) => s['lat'] != null && s['lng'] != null).toList();
-    final dir = _routeSel != null ? _dirSel : _dirOf(id);
+    final dir = _routeSel != null ? _busDir(id) : _dirOf(id);
     return dir == 'BA' ? list.reversed.toList() : list;
   }
 
@@ -241,8 +241,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       if (b == null) continue;
       final id = (b['id'] as num).toInt();
       final cur = TransportTimetable.currentLeg(_schedules(id));
-      if (cur != null && cur['direction'] == _dirSel) { leg = cur; break; }
-      leg ??= _nextInDir(id, _dirSel);
+      if (cur != null && cur['direction'] == _busDir(id)) { leg = cur; break; }
+      leg ??= _nextInDir(id, _busDir(id));
     }
     if (leg == null) return List.filled(path.length, null);
     final dep = TransportTimetable.minOf(leg['departTime']), arr = TransportTimetable.minOf(leg['arriveTime']);
@@ -263,8 +263,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     for (final b in _busesOnRoute()) {
       final id = (b['id'] as num).toInt();
       for (final r in TransportTimetable.todays(_schedules(id))) {
-        if (r['direction'] != _dirSel) continue;
-        out.add({'id': (r['id'] as num?)?.toInt(), 'busId': id, 'busName': b['name'], 'row': r});
+        if (r['direction'] != _busDir(id)) continue;
+        out.add({'id': (r['id'] as num?)?.toInt(), 'busId': id, 'busName': b['name'], 'operator': b['operator'], 'row': r});
       }
     }
     out.sort((x, y) => TransportTimetable.minOf(x['row']['departTime']).compareTo(TransportTimetable.minOf(y['row']['departTime'])));
@@ -303,7 +303,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
                   leading: Icon(now ? Icons.directions_bus : Icons.access_time, size: 20, color: now ? const Color(0xFF2E7D32) : past ? Colors.grey : _accent),
                   title: Text('${TransportTimetable.h12(r['departTime'])}  \u2192  ${TransportTimetable.h12(r['arriveTime'])}',
                       style: TextStyle(fontWeight: FontWeight.w700, color: past ? Colors.grey : Colors.black87, decoration: past ? TextDecoration.lineThrough : null)),
-                  subtitle: Text('${t['busName']}${now ? ' \u00b7 ${_t('running now', '\u0b87\u0baa\u0bcd\u0baa\u0bcb\u0ba4\u0bc1 \u0b93\u0b9f\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1')}' : ''}', style: const TextStyle(fontSize: 12)),
+                  subtitle: Text('${t['busName']}${t['operator'] != null ? ' \u00b7 ${t['operator']}' : ''}${now ? ' \u00b7 ${_t('running now', '\u0b87\u0baa\u0bcd\u0baa\u0bcb\u0ba4\u0bc1 \u0b93\u0b9f\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1')}' : ''}', style: const TextStyle(fontSize: 12)),
                   trailing: picked ? const Icon(Icons.check_circle, color: _accent) : null,
                 );
               }),
@@ -314,18 +314,23 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     );
   }
 
-  Map? _routeById(int? routeId) {
-    if (routeId == null) return null;
+  /// Route (with that company's stops) used to draw the corridor: the selected bus's, else the first bus's.
+  Map? _routeForCorridor(String? key) {
+    if (key == null) return null;
+    if (_selected != null) {
+      final r = _bus(_selected!)?['route'];
+      if (r is Map && _corridorKey(r) == key) return r;
+    }
     for (final b in _buses) {
       final r = b['route'];
-      if (r is Map && (r['id'] as num?)?.toInt() == routeId) return r;
+      if (r is Map && _corridorKey(r) == key) return r;
     }
     return null;
   }
 
-  /// A, stops, B for a route id, in the direction the passenger chose.
-  List<Map<String, dynamic>> _routePathR(int? routeId) {
-    final r = _routeById(routeId);
+  /// A, stops, B along the corridor in the direction the passenger chose.
+  List<Map<String, dynamic>> _routePathR(String? key) {
+    final r = _routeForCorridor(key);
     if (r == null) return [];
     final out = <Map<String, dynamic>>[];
     if (r['sourceLat'] != null && r['sourceLng'] != null) out.add({'name': r['source'], 'lat': r['sourceLat'], 'lng': r['sourceLng'], 'kind': 'from'});
@@ -336,7 +341,10 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       }
     }
     if (r['destLat'] != null && r['destLng'] != null) out.add({'name': r['destination'], 'lat': r['destLat'], 'lng': r['destLng'], 'kind': 'to'});
-    return _dirSel == 'BA' ? out.reversed.toList() : out;
+    final c = _corridor(key);
+    final sameWay = c == null || _norm(r['source']) == _norm(c['from']);
+    final reverse = sameWay ? _dirSel == 'BA' : _dirSel == 'AB';
+    return reverse ? out.reversed.toList() : out;
   }
 
   /// Route path as drawn on the map: From (A), stops, To (B). Only points with coordinates.
@@ -359,19 +367,45 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     return out;
   }
 
-  /// Distinct routes among public buses: {id, name, source, destination, buses}.
+  static String _norm(dynamic v) => (v ?? '').toString().trim().toLowerCase();
+
+  /// Corridor key for a route: same for "Tirupattur -> Alangayam" and "Alangayam -> Tirupattur",
+  /// so every company's buses between the two towns are listed together.
+  String? _corridorKey(Map? r) {
+    if (r == null) return null;
+    final a = _norm(r['source']), b = _norm(r['destination']);
+    if (a.isEmpty || b.isEmpty) return null;
+    return a.compareTo(b) <= 0 ? '$a|$b' : '$b|$a';
+  }
+
+  /// Distinct corridors among public buses: {key, from, to, buses, operators}.
   List<Map<String, dynamic>> _routes() {
-    final out = <int, Map<String, dynamic>>{};
+    final out = <String, Map<String, dynamic>>{};
     for (final b in _buses) {
       final r = b['route'];
-      if (r is! Map || r['id'] == null) continue;
-      final id = (r['id'] as num).toInt();
-      out.putIfAbsent(id, () => {'id': id, 'name': r['name'], 'source': r['source'], 'destination': r['destination'], 'buses': 0});
-      out[id]!['buses'] = (out[id]!['buses'] as int) + 1;
+      if (r is! Map) continue;
+      final key = _corridorKey(r);
+      if (key == null) continue;
+      out.putIfAbsent(key, () => {'key': key, 'from': r['source'], 'to': r['destination'], 'buses': 0, 'operators': <String>{}});
+      out[key]!['buses'] = (out[key]!['buses'] as int) + 1;
+      (out[key]!['operators'] as Set<String>).add((b['operator'] ?? '').toString());
     }
     final list = out.values.toList();
-    list.sort((x, y) => '${x['source']}'.compareTo('${y['source']}'));
+    list.sort((x, y) => '${x['from']}'.compareTo('${y['from']}'));
     return list;
+  }
+
+  Map<String, dynamic>? _corridor(String? key) =>
+      key == null ? null : _routes().cast<Map<String, dynamic>?>().firstWhere((r) => r!['key'] == key, orElse: () => null);
+
+  /// This bus's own direction code for the corridor direction the passenger chose.
+  /// (A company may have entered its route the other way round.)
+  String _busDir(int id) {
+    final r = _bus(id)?['route'];
+    final c = _corridor(_routeSel);
+    if (r is! Map || c == null) return _dirSel;
+    final sameWay = _norm(r['source']) == _norm(c['from']);
+    return sameWay ? _dirSel : (_dirSel == 'AB' ? 'BA' : 'AB');
   }
 
   /// Next departure of this bus in the chosen direction (today), or null.
@@ -387,11 +421,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
 
   /// Buses on the selected route, soonest departure first; live ones on top.
   List<Map<String, dynamic>> _busesOnRoute() {
-    final list = _buses.where((b) => b['route'] is Map && (b['route']['id'] as num?)?.toInt() == _routeSel).toList();
+    final list = _buses.where((b) => b['route'] is Map && _corridorKey(b['route'] as Map) == _routeSel).toList();
     int key(Map<String, dynamic> b) {
       final id = (b['id'] as num).toInt();
-      final live = _state(id) != 'OFFLINE' && _dirOf(id) == _dirSel;
-      final nx = _nextInDir(id, _dirSel);
+      final live = _state(id) != 'OFFLINE' && _dirOf(id) == _busDir(id);
+      final nx = _nextInDir(id, _busDir(id));
       final n = TransportTimetable.nowMin();
       final mins = nx == null ? 100000 : ((TransportTimetable.minOf(nx['departTime']) - n + 1440) % 1440).round();
       return (live ? 0 : 100000) + mins;
@@ -434,7 +468,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final out = <Marker>{};
     for (final b in _buses) {
       final id = (b['id'] as num).toInt();
-      if (_routeSel != null && (b['route'] is! Map || (b['route']['id'] as num?)?.toInt() != _routeSel)) continue;
+      if (_routeSel != null && (b['route'] is! Map || _corridorKey(b['route'] as Map) != _routeSel)) continue;
       final p = _pos[id];
       if (p == null || p['lat'] == null) continue;
       final st = _state(id);
@@ -584,9 +618,9 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
 
   /// Route screen: header, map with every bus on this route, bus list / compact card below.
   Widget _routeView(bool pendingOwner) {
-    final route = _routeById(_routeSel);
-    final src = route == null ? '' : '${route['source']}';
-    final dst = route == null ? '' : '${route['destination']}';
+    final c = _corridor(_routeSel);
+    final src = c == null ? '' : '${c['from']}';
+    final dst = c == null ? '' : '${c['to']}';
     final from = _dirSel == 'AB' ? src : dst;
     final to = _dirSel == 'AB' ? dst : src;
     final list = _busesOnRoute();
@@ -651,8 +685,9 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final b = _bus(id);
     if (b == null) return const SizedBox.shrink();
     final st = _state(id);
-    final liveThisWay = st != 'OFFLINE' && _dirOf(id) == _dirSel;
-    final nx = _nextInDir(id, _dirSel);
+    final myDir = _busDir(id);
+    final liveThisWay = st != 'OFFLINE' && _dirOf(id) == myDir;
+    final nx = _nextInDir(id, myDir);
     final stops = _stops(id);
     final eta = _eta(id);
     return Container(
@@ -661,7 +696,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _accent, width: 1.5)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('${b['name']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+          Expanded(child: Text('${b['name']}${b['operator'] != null ? '  \u00b7  ${b['operator']}' : ''}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
           if (liveThisWay) _chip(st) else if (nx != null) Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(20)),
@@ -895,7 +930,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   /// Step 1: where do you want to go?
   Widget _routesPanel() {
     final q = _search.trim().toLowerCase();
-    final routes = _routes().where((r) => q.isEmpty || '${r['name']} ${r['source']} ${r['destination']}'.toLowerCase().contains(q)).toList();
+    final routes = _routes().where((r) => q.isEmpty || '${r['from']} ${r['to']} ${(r['operators'] as Set<String>).join(' ')}'.toLowerCase().contains(q)).toList();
     return Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -923,10 +958,10 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
               elevation: 0, margin: const EdgeInsets.only(bottom: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.grey.shade200)),
               child: ListTile(
-                onTap: () => setState(() { _routeSel = r['id'] as int; _dirSel = 'AB'; _search = ''; }),
+                onTap: () => setState(() { _routeSel = r['key'] as String; _dirSel = 'AB'; _search = ''; _tripPick = null; }),
                 leading: const CircleAvatar(backgroundColor: Color(0xFFE3F2FD), child: Icon(Icons.alt_route, color: _accent)),
-                title: Text('${r['source']} \u2194 ${r['destination']}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                subtitle: Text('${r['buses']} ${_t('buses', '\u0baa\u0bb8\u0bcd\u0b95\u0bb3\u0bcd')}'),
+                title: Text('${r['from']} \u2194 ${r['to']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('${r['buses']} ${_t('buses', '\u0baa\u0bb8\u0bcd\u0b95\u0bb3\u0bcd')} \u00b7 ${(r['operators'] as Set<String>).where((o) => o.isNotEmpty).join(', ')}', maxLines: 2, overflow: TextOverflow.ellipsis),
                 trailing: const Icon(Icons.chevron_right, color: Colors.grey),
               ),
             );
@@ -971,10 +1006,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   Widget _busTile(Map<String, dynamic> b) {
     final id = (b['id'] as num).toInt();
     final st = _state(id);
-    final liveThisWay = st != 'OFFLINE' && _dirOf(id) == _dirSel;
-    final nx = _nextInDir(id, _dirSel);
+    final myDir = _busDir(id);
+    final liveThisWay = st != 'OFFLINE' && _dirOf(id) == myDir;
+    final nx = _nextInDir(id, myDir);
     final leg = TransportTimetable.currentLeg(_schedules(id));
-    final onLegThisWay = leg != null && leg['direction'] == _dirSel;
+    final onLegThisWay = leg != null && leg['direction'] == myDir;
     String line;
     if (liveThisWay) {
       line = '${_t('Live now', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8')} \u00b7 ${_d(_pos[id]?['speedKmh']).round()} km/h \u00b7 ${_ago(id)}';
@@ -995,7 +1031,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         onTap: () => _select(id),
         leading: CircleAvatar(backgroundColor: _stateColor(liveThisWay ? st : 'OFFLINE').withOpacity(0.15), child: Icon(Icons.directions_bus, color: _stateColor(liveThisWay ? st : 'OFFLINE'))),
         title: Text(b['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(line, maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: Text('${b['operator'] != null ? '${b['operator']} \u00b7 ' : ''}$line', maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           if (liveThisWay) _chip(st) else if (nx != null) Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
