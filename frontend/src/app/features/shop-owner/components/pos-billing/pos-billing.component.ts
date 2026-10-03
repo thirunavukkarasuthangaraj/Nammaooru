@@ -903,9 +903,11 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       .subscribe(term => {
         this.filterProducts(term);
         // Local search (incl. the offline Tamil dictionary) found nothing — try
-        // the Gemini fallback to resolve an unknown Tamil/voice word to English.
-        if (this.filteredProducts.length === 0) {
-          this.aiResolveKeyword(term);
+        // the AI fallback, but only for a real word (3+ chars) and only once the
+        // owner has paused on it; partial words like "eg" must never call the server.
+        if (this.filteredProducts.length === 0 && (term || '').trim().length >= 3) {
+          const t = term;
+          setTimeout(() => { if (this.searchTerm === t && this.filteredProducts.length === 0) this.aiResolveKeyword(t); }, 600);
         }
       });
   }
@@ -1398,9 +1400,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
           byId.delete(p.id);
         }
       }
-      this.products = Array.from(byId.values());
-      this.filterProducts(this.searchTerm);
-      if (this.shopId) this.posProductCache.set(this.shopId, this.products);
+      this.applyProductsWhenIdle(Array.from(byId.values()));
 
       console.log(`Delta sync: merged ${changed.length} changed product(s)`);
     } catch (error) {
@@ -1455,10 +1455,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Update UI with only active products
       if (activeProducts.length !== this.products.length) {
-        this.products = activeProducts;
-        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+        this.applyProductsWhenIdle(activeProducts);
+      } else if (this.shopId) {
+        this.posProductCache.set(this.shopId, this.products);
       }
-      if (this.shopId) this.posProductCache.set(this.shopId, this.products);
 
       console.log(`Background sync complete: ${activeProducts.length} active products (${allProducts.length} total) across ${page} page(s)`);
     } catch (error) {
@@ -1472,6 +1472,27 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
    * The "last cached" stamp is written when the run actually starts, so closing
    * POS before the delay simply retries on the next open.
    */
+  /**
+   * Background syncs (delta/full) must never swap the product list while the
+   * owner is typing: the search results would change under their thumb
+   * (3 results -> 4 -> 1) and the re-filter + redraw freezes low-end phones.
+   * Wait until the search box has been idle for 3 s, then apply.
+   */
+  private readonly maxSearchResults = (typeof window !== 'undefined' && window.innerWidth < 700) ? 30 : 50;
+  private pendingProductsApply: CachedProduct[] | null = null;
+  private applyProductsWhenIdle(products: CachedProduct[]): void {
+    this.pendingProductsApply = products;
+    const tryApply = () => {
+      if (this.pendingProductsApply !== products) return; // superseded by a newer list
+      if (Date.now() - this.lastTypingAt < 3000) { setTimeout(tryApply, 1000); return; }
+      this.pendingProductsApply = null;
+      this.products = products;
+      this.filterProducts(this.searchTerm);
+      if (this.shopId) this.posProductCache.set(this.shopId, this.products);
+    };
+    tryApply();
+  }
+
   private scheduleImageCaching(): void {
     this.ngZone.runOutsideAngular(() => {
       this.imageCacheTimer = setTimeout(() => {
@@ -1949,7 +1970,7 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Regular search with limit for performance
     const filtered: CachedProduct[] = [];
     for (const p of this.products) {
-      if (filtered.length >= 50) break; // Limit results for performance
+      if (filtered.length >= this.maxSearchResults) break; // Limit results for performance (30 on phones, 50 on desktop)
 
       const name = p.name.toLowerCase();
       const nameTa = p.nameTamil ? p.nameTamil.toLowerCase() : '';
