@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { TransportPosition, TransportVehicle, routePath } from '../../../core/services/transport-owner.service';
+import { TransportPosition, TransportVehicle, routePath, routeColor } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
 
 declare var google: any;
@@ -72,6 +72,7 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
   private markers = new Map<number, any>();
   private routeLine: any;
   private routeMarkers: any[] = [];
+  private allRouteLines = new Map<number, any>();
   private trails = new Map<number, { lat: number; lng: number }[]>();
   private trailLines = new Map<number, any>();
   showTrails = true;
@@ -139,10 +140,12 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
     this.routeMarkers.forEach(m => m.setMap(null)); this.routeMarkers = [];
     const r = this.store.snapshot?.routes?.find(x => x.id === v.routeId);
     const path = routePath(r);
+    const color = routeColor(r?.id);
     if (path.length > 1) {
-      this.routeLine = new google.maps.Polyline({
-        path: path.map(p => ({ lat: p.lat, lng: p.lng })), strokeColor: '#1565c0', strokeOpacity: .55, strokeWeight: 4, map: this.map,
-      });
+      const pts = path.map(p => ({ lat: p.lat, lng: p.lng }));
+      // white outline underneath + bold colour on top so the selected route stands out
+      this.routeMarkers.push(new google.maps.Polyline({ path: pts, strokeColor: '#ffffff', strokeOpacity: 1, strokeWeight: 10, map: this.map, zIndex: 1 }));
+      this.routeLine = new google.maps.Polyline({ path: pts, strokeColor: color, strokeOpacity: 1, strokeWeight: 6, map: this.map, zIndex: 2 });
     }
     path.forEach((p, i) => {
       const isEnd = p.kind !== 'stop';
@@ -151,8 +154,8 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
         label: isEnd ? { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '700' } : { text: String(i), color: '#1a237e', fontSize: '10px', fontWeight: '700' },
         icon: isEnd
           ? undefined
-          : { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#fff', fillOpacity: 1, strokeColor: '#1565c0', strokeWeight: 2 },
-        zIndex: isEnd ? 3 : 1,
+          : { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#fff', fillOpacity: 1, strokeColor: color, strokeWeight: 3 },
+        zIndex: isEnd ? 4 : 3,
       }));
     });
   }
@@ -182,8 +185,27 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
+  /** Faint line for every route assigned to a vehicle, so the owner sees the network even before buses move. */
+  private drawAllRoutes(): void {
+    if (!this.map) return;
+    const routes = this.store.snapshot?.routes || [];
+    const used = new Set<number>(this.vehicles.map(v => v.routeId!).filter(id => id != null));
+    for (const [id, line] of this.allRouteLines) { if (!used.has(id)) { line.setMap(null); this.allRouteLines.delete(id); } }
+    for (const id of used) {
+      const r = routes.find(x => x.id === id);
+      const path = routePath(r).map(p => ({ lat: p.lat, lng: p.lng }));
+      if (path.length < 2) continue;
+      let line = this.allRouteLines.get(id);
+      if (!line) {
+        line = new google.maps.Polyline({ path, strokeColor: routeColor(id), strokeOpacity: .85, strokeWeight: 4, map: this.map });
+        this.allRouteLines.set(id, line);
+      } else line.setPath(path);
+    }
+  }
+
   private render(): void {
     if (!this.map) return;
+    this.drawAllRoutes();
     const seen = new Set<number>();
     for (const v of this.vehicles) {
       const p = this.pos(v);
@@ -209,9 +231,10 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   fitAll(): void {
-    if (!this.map || this.markers.size === 0) return;
+    if (!this.map) return;
     const b = new google.maps.LatLngBounds();
     this.markers.forEach(m => b.extend(m.getPosition()));
+    if (this.markers.size === 0) { this.allRouteLines.forEach(l => l.getPath().forEach((p: any) => b.extend(p))); if (b.isEmpty()) return; this.map.fitBounds(b, 60); return; }
     if (this.markers.size === 1) { this.map.setCenter(b.getCenter()); this.map.setZoom(14); }
     else this.map.fitBounds(b, 60);
   }

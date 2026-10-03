@@ -10,6 +10,9 @@ export interface TransportRoute {
   sourceLat?: number | null; sourceLng?: number | null; destLat?: number | null; destLng?: number | null;
 }
 
+const ROUTE_COLORS = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#00acc1', '#6d4c41', '#c0ca33'];
+export function routeColor(routeId: number | null | undefined): string { const id = routeId == null ? 0 : Math.abs(+routeId); return ROUTE_COLORS[id % ROUTE_COLORS.length]; }
+
 /** From -> stops -> To as map points (only the ones that have coordinates). */
 export function routePath(r?: TransportRoute | null): { lat: number; lng: number; label: string; kind: 'from' | 'stop' | 'to' }[] {
   if (!r) return [];

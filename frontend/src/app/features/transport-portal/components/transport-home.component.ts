@@ -5,7 +5,7 @@ import { Subscription, interval } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { MapsLoaderService } from '../../../core/services/maps-loader.service';
-import { TransportOwnerService, routePath } from '../../../core/services/transport-owner.service';
+import { TransportOwnerService, routePath, routeColor } from '../../../core/services/transport-owner.service';
 
 declare var google: any;
 
@@ -133,6 +133,7 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
   private markers = new Map<number, any>();
   private routeLine: any;
   private routeMarkers: any[] = [];
+  private allRouteLines = new Map<number, any>();
   private subs: Subscription[] = [];
 
   constructor(private http: HttpClient, private mapsLoader: MapsLoaderService, private router: Router,
@@ -223,11 +224,16 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.routeLine) { this.routeLine.setMap(null); this.routeLine = null; }
     this.routeMarkers.forEach(m => m.setMap(null)); this.routeMarkers = [];
     const path = routePath(b.route);
-    if (path.length > 1) this.routeLine = new google.maps.Polyline({ path, strokeColor: '#1565c0', strokeOpacity: .55, strokeWeight: 4, map: this.map });
+    const color = routeColor(b.route?.id);
+    if (path.length > 1) {
+      this.routeMarkers.push(new google.maps.Polyline({ path, strokeColor: '#ffffff', strokeOpacity: 1, strokeWeight: 10, map: this.map, zIndex: 1 }));
+      this.routeLine = new google.maps.Polyline({ path, strokeColor: color, strokeOpacity: 1, strokeWeight: 6, map: this.map, zIndex: 2 });
+    }
     path.forEach((p, i) => this.routeMarkers.push(new google.maps.Marker({
       position: { lat: p.lat, lng: p.lng }, map: this.map, title: p.label,
       label: p.kind === 'stop' ? { text: String(i), color: '#1a237e', fontSize: '10px', fontWeight: '700' } : { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '700' },
-      icon: p.kind === 'stop' ? { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#fff', fillOpacity: 1, strokeColor: '#1565c0', strokeWeight: 2 } : undefined,
+      icon: p.kind === 'stop' ? { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#fff', fillOpacity: 1, strokeColor: color, strokeWeight: 3 } : undefined,
+      zIndex: 3,
     })));
   }
   private fitRoute(): void {
@@ -235,8 +241,21 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
     const b = new google.maps.LatLngBounds(); this.routeLine.getPath().forEach((p: any) => b.extend(p)); this.map.fitBounds(b, 40);
   }
 
+  private drawAllRoutes(): void {
+    if (!this.map) return;
+    for (const b of this.buses) {
+      const r = b.route; if (!r || r.id == null) continue;
+      const path = routePath(r).map(p => ({ lat: p.lat, lng: p.lng }));
+      if (path.length < 2) continue;
+      let line = this.allRouteLines.get(r.id);
+      if (!line) { line = new google.maps.Polyline({ path, strokeColor: routeColor(r.id), strokeOpacity: .85, strokeWeight: 4, map: this.map }); this.allRouteLines.set(r.id, line); }
+      else line.setPath(path);
+    }
+  }
+
   private render(fit: boolean): void {
     if (!this.map) return;
+    this.drawAllRoutes();
     const seen = new Set<number>();
     for (const b of this.buses) {
       const p = this.positions.get(b.id);
@@ -255,8 +274,11 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       if (this.selected === b.id) this.map.panTo(ll);
     }
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.setMap(null); this.markers.delete(id); }
-    if (fit && this.markers.size > 0) {
-      const bb = new google.maps.LatLngBounds(); this.markers.forEach(m => bb.extend(m.getPosition()));
+    if (fit) {
+      const bb = new google.maps.LatLngBounds();
+      this.markers.forEach(m => bb.extend(m.getPosition()));
+      if (this.markers.size === 0) this.allRouteLines.forEach(l => l.getPath().forEach((p: any) => bb.extend(p)));
+      if (bb.isEmpty()) return;
       this.markers.size === 1 ? (this.map.setCenter(bb.getCenter()), this.map.setZoom(13)) : this.map.fitBounds(bb, 60);
     }
   }
