@@ -45,6 +45,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   final Set<String> _labelPending = {};
   int? _routeSel;        // passenger picks a route first
   String _dirSel = 'AB';  // then a direction (A->B or B->A)
+  int? _tripPick;         // a departure chosen from 'All timings' (schedule id)
+  bool _timesExpanded = false;
 
   String _t(String en, String ta) => Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
 
@@ -131,7 +133,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   }
 
   void _select(int id) {
-    setState(() { _selected = id; _stopIndex = null; _follow = true; });
+    setState(() { _selected = id; _stopIndex = null; _follow = true; _tripPick = null; });
     if (_map != null) {
       final p = _pos[id];
       if (p != null && p['lat'] != null && _state(id) != 'OFFLINE') _centerOnSelected(); else _fitRoute();
@@ -230,8 +232,12 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   List<String?> _timesAlongRoute(List<Map<String, dynamic>> path) {
     if (path.length < 2) return List.filled(path.length, null);
     Map<String, dynamic>? leg;
+    if (_tripPick != null) {
+      for (final t in _allTimings()) { if (t['id'] == _tripPick) { leg = t['row'] as Map<String, dynamic>; break; } }
+    }
     final candidates = _selected != null ? [_bus(_selected!)] : _busesOnRoute();
     for (final b in candidates) {
+      if (leg != null) break;
       if (b == null) continue;
       final id = (b['id'] as num).toInt();
       final cur = TransportTimetable.currentLeg(_schedules(id));
@@ -248,6 +254,64 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final total = cum.last == 0 ? 1 : cum.last;
     String fmt(double m) { final mm = m.round() % 1440; return TransportTimetable.h12('${mm ~/ 60}:${(mm % 60).toString().padLeft(2, '0')}'); }
     return [for (var i = 0; i < path.length; i++) fmt(dep + (arr - dep) * (cum[i] / total))];
+  }
+
+  /// Every departure today on this route in the chosen direction, across all buses.
+  /// Items: {id, busId, busName, row}.
+  List<Map<String, dynamic>> _allTimings() {
+    final out = <Map<String, dynamic>>[];
+    for (final b in _busesOnRoute()) {
+      final id = (b['id'] as num).toInt();
+      for (final r in TransportTimetable.todays(_schedules(id))) {
+        if (r['direction'] != _dirSel) continue;
+        out.add({'id': (r['id'] as num?)?.toInt(), 'busId': id, 'busName': b['name'], 'row': r});
+      }
+    }
+    out.sort((x, y) => TransportTimetable.minOf(x['row']['departTime']).compareTo(TransportTimetable.minOf(y['row']['departTime'])));
+    return out;
+  }
+
+  /// Bottom expandable list of all departures; tapping one shows its times on the map.
+  Widget _allTimingsTile() {
+    final items = _allTimings();
+    if (items.isEmpty) return const SizedBox.shrink();
+    final n = TransportTimetable.nowMin();
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.shade200)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: _timesExpanded,
+          onExpansionChanged: (v) => _timesExpanded = v,
+          leading: const Icon(Icons.schedule, color: _accent),
+          title: Text('${_t('All timings today', '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b85\u0ba9\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1 \u0ba8\u0bc7\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bcd')} (${items.length})', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+          subtitle: Text(_t('Tap a time to see it on the map', '\u0bb5\u0bb0\u0bc8\u0baa\u0b9f\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95 \u0ba8\u0bc7\u0bb0\u0ba4\u0bcd\u0ba4\u0bc8 \u0ba4\u0b9f\u0bcd\u0b9f\u0bb5\u0bc1\u0bae\u0bcd'), style: TextStyle(fontSize: 11.5, color: Colors.grey[600])),
+          children: [
+            for (final t in items)
+              Builder(builder: (_) {
+                final r = t['row'] as Map<String, dynamic>;
+                final dep = TransportTimetable.minOf(r['departTime']), arr = TransportTimetable.minOf(r['arriveTime']);
+                final past = arr < n;
+                final now = dep <= n && n <= arr;
+                final picked = _tripPick != null && _tripPick == t['id'];
+                return ListTile(
+                  dense: true,
+                  selected: picked,
+                  selectedTileColor: _accent.withOpacity(0.08),
+                  onTap: () => setState(() { _tripPick = t['id'] as int?; _selected = t['busId'] as int; _stopIndex = null; }),
+                  leading: Icon(now ? Icons.directions_bus : Icons.access_time, size: 20, color: now ? const Color(0xFF2E7D32) : past ? Colors.grey : _accent),
+                  title: Text('${TransportTimetable.h12(r['departTime'])}  \u2192  ${TransportTimetable.h12(r['arriveTime'])}',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: past ? Colors.grey : Colors.black87, decoration: past ? TextDecoration.lineThrough : null)),
+                  subtitle: Text('${t['busName']}${now ? ' \u00b7 ${_t('running now', '\u0b87\u0baa\u0bcd\u0baa\u0bcb\u0ba4\u0bc1 \u0b93\u0b9f\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1')}' : ''}', style: const TextStyle(fontSize: 12)),
+                  trailing: picked ? const Icon(Icons.check_circle, color: _accent) : null,
+                );
+              }),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
   }
 
   Map? _routeById(int? routeId) {
@@ -532,10 +596,10 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
           child: Row(children: [
-            IconButton(icon: const Icon(Icons.arrow_back, color: _accent), onPressed: () => setState(() { _routeSel = null; _selected = null; _stopIndex = null; _map = null; })),
+            IconButton(icon: const Icon(Icons.arrow_back, color: _accent), onPressed: () => setState(() { _routeSel = null; _selected = null; _stopIndex = null; _map = null; _tripPick = null; })),
             Expanded(child: Text('$from \u2192 $to', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
             TextButton.icon(
-              onPressed: () => setState(() { _dirSel = _dirSel == 'AB' ? 'BA' : 'AB'; _stopIndex = null; _fitRoute(); }),
+              onPressed: () => setState(() { _dirSel = _dirSel == 'AB' ? 'BA' : 'AB'; _stopIndex = null; _tripPick = null; _fitRoute(); }),
               icon: const Icon(Icons.swap_horiz, size: 18), label: Text(_t('Swap', '\u0bae\u0bbe\u0bb1\u0bcd\u0bb1\u0bc1')),
             ),
           ]),
@@ -573,6 +637,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
                   children: [
                     if (_selected != null) _compactCard(),
                     for (final b in list) if (_selected == null || _selected != (b['id'] as num).toInt()) _busTile(b),
+                    _allTimingsTile(),
                   ],
                 ),
         ),
