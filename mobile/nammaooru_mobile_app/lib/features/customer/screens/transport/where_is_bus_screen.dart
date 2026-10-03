@@ -151,10 +151,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final data = Map<String, dynamic>.from(r['data'] ?? {});
     _buses = List<Map<String, dynamic>>.from((data['buses'] ?? []).map((e) => Map<String, dynamic>.from(e)));
     _staleAfter = (data['settings']?['staleAfterSec'] as num?)?.toInt() ?? 120;
+    final pollSec = ((data['settings']?['pollIntervalSec'] as num?)?.toInt() ?? 5).clamp(2, 60);
     _applyPositions(data['positions']);
     setState(() => _loading = false);
     _poll?.cancel();
-    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _refreshPositions());
+    _poll = Timer.periodic(Duration(seconds: pollSec), (_) => _refreshPositions());
     _fitAll();
   }
 

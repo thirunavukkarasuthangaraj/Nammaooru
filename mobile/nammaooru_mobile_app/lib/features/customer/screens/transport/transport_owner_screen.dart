@@ -69,7 +69,8 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
     _applyPositions(d['positions']);
     setState(() => _loading = false);
     _poll?.cancel();
-    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _refreshLive());
+    final pollSec = (_i(d['settings']?['pollIntervalSec']) == 0 ? 5 : _i(d['settings']?['pollIntervalSec'])).clamp(2, 60);
+    _poll = Timer.periodic(Duration(seconds: pollSec), (_) => _refreshLive());
     _loadTrips();
   }
 

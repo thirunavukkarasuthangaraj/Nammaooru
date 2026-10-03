@@ -78,6 +78,7 @@ export class TransportLayoutComponent implements OnInit, OnDestroy {
   liveOk = false;
   moving = 0; stopped = 0; offline = 0;
   private subs: Subscription[] = [];
+  private pollTick = 0;
 
   menu = [
     { title: 'Dashboard', icon: 'space_dashboard', route: '/transport/dashboard', badge: '' },
@@ -112,9 +113,11 @@ export class TransportLayoutComponent implements OnInit, OnDestroy {
       });
       this.moving = mv; this.stopped = st; this.offline = off;
     }));
-    // Poll live positions every 5 s for every page in the portal
-    this.subs.push(interval(5000).subscribe(() => {
-      if (!this.store.snapshot) return;
+    // Poll live positions for every page in the portal; interval comes from Admin > Settings (transport.poll_interval_sec)
+    this.subs.push(interval(1000).subscribe(() => {
+      const d = this.store.snapshot; if (!d) return;
+      const every = Math.max(2, +((d.settings as any)?.pollIntervalSec || 5));
+      this.pollTick = (this.pollTick + 1) % every; if (this.pollTick !== 0) return;
       this.svc.live().subscribe({
         next: p => { this.liveOk = true; this.store.applyPositions(p); },
         error: () => { this.liveOk = false; }

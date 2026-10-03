@@ -57,6 +57,8 @@ public class TransportService {
         s.put("staleAfterSec", intSetting("transport.stale_after_sec", 120));
         s.put("gpsIntervalBusSec", intSetting("transport.gps_interval_bus_sec", 5));
         s.put("gpsIntervalDefaultSec", intSetting("transport.gps_interval_default_sec", 10));
+        s.put("gpsIdleIntervalSec", intSetting("transport.gps_idle_interval_sec", 30));
+        s.put("pollIntervalSec", intSetting("transport.poll_interval_sec", 5));
         s.put("publicTracking", !"false".equalsIgnoreCase(settingService.getSettingValue("transport.public_tracking", "true")));
         return s;
     }
@@ -498,6 +500,7 @@ public class TransportService {
             TransportRoute r = routes.get(v.getRouteId());
             m.put("route", r == null ? null : routeView(r));
             m.put("gpsIntervalSec", gpsIntervalFor(v.getVehicleType()));
+            m.put("gpsIdleIntervalSec", intSetting("transport.gps_idle_interval_sec", 30));
             m.put("schedules", scheduleRepository.findByVehicleIdInAndIsActiveTrueOrderByDepartTimeAsc(List.of(v.getId())).stream().map(this::scheduleView).collect(Collectors.toList()));
             return m;
         }).collect(Collectors.toList()));
@@ -529,6 +532,7 @@ public class TransportService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("trip", trip);
         out.put("gpsIntervalSec", gpsIntervalFor(v.getVehicleType()));
+        out.put("gpsIdleIntervalSec", intSetting("transport.gps_idle_interval_sec", 30));
         log.info("Transport trip started: trip={}, vehicle={}, driver={}", trip.getId(), vehicleId, me.getId());
         return out;
     }

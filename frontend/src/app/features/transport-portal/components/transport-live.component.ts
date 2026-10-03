@@ -167,10 +167,10 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
       const dirPath = leg.direction === 'BA' ? [...path].reverse() : path;
       const at = pointAlong(dirPath, legProgress(leg)); if (!at) continue;
       seen.add(v.id!);
-      const icon = ghostBusIcon('#546e7a', at.heading);
+      const icon = ghostBusIcon('#546e7a', at.heading, `${v.name} (timetable)`);
       let g = this.ghosts.get(v.id!);
       if (!g) {
-        g = new google.maps.Marker({ position: at.pos, map: this.map, icon, title: `${v.name} (scheduled)`, zIndex: 8, label: { text: `${v.name} (timetable)`, color: '#546e7a', fontSize: '11px', fontWeight: '700' } as any });
+        g = new google.maps.Marker({ position: at.pos, map: this.map, icon, title: `${v.name} (scheduled)`, zIndex: 8 });
         g.addListener('click', () => this.zone.run(() => this.select(v)));
         this.ghosts.set(v.id!, g);
       } else { animateMarker(g, at.pos, 1500); g.setIcon(icon); }
@@ -270,13 +270,12 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
       if (!p || p.lat == null) continue;
       seen.add(v.id!);
       const st = this.stateOf(v);
-      const icon = busIcon(stateColor(st), +(p.heading || 0));
+      const icon = busIcon(stateColor(st), +(p.heading || 0), v.name);
       const ll = { lat: +p.lat, lng: +p.lng };
       this.pushTrail(v.id!, ll.lat, ll.lng, st === 'MOVING');
       let m = this.markers.get(v.id!);
       if (!m) {
-        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: v.name, zIndex: 10,
-          label: { text: v.name, color: '#1a237e', fontSize: '12px', fontWeight: '800', className: 'bus-label' } as any });
+        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: v.name, zIndex: 10 });
         m.addListener('click', () => this.zone.run(() => this.select(v)));
         this.markers.set(v.id!, m);
       } else {

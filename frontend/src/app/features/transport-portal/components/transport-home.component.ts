@@ -122,6 +122,8 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
   buses: PublicBus[] = [];
   positions = new Map<number, Pos>();
   staleAfter = 120;
+  pollEvery = 5;
+  private pollTick = 0;
   loaded = false;
   feedOk = false;
   mapsReady = false;
@@ -148,7 +150,7 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnInit(): void {
     this.load();
-    this.subs.push(interval(5000).subscribe(() => this.refresh()));
+    this.subs.push(interval(1000).subscribe(() => { const every = Math.max(2, this.pollEvery); this.pollTick = (this.pollTick + 1) % every; if (this.pollTick === 0) this.refresh(); }));
     this.clock = setInterval(() => this.renderGhosts(), 15000);
   }
 
@@ -169,6 +171,7 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
         const d = r?.data || {};
         this.buses = d.buses || [];
         this.staleAfter = d.settings?.staleAfterSec || 120;
+        this.pollEvery = d.settings?.pollIntervalSec || 5;
         (d.positions || []).forEach((p: Pos) => this.positions.set(p.vehicleId, p));
         this.operators = new Set(this.buses.map(b => b.operator)).size;
         this.loaded = true; this.feedOk = true;
@@ -217,10 +220,10 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       const dirPath = leg.direction === 'BA' ? [...path].reverse() : path;
       const at = pointAlong(dirPath, legProgress(leg)); if (!at) continue;
       seen.add(b.id);
-      const icon = ghostBusIcon('#546e7a', at.heading);
+      const icon = ghostBusIcon('#546e7a', at.heading, `${b.name} (timetable)`);
       let g = this.ghosts.get(b.id);
       if (!g) {
-        g = new google.maps.Marker({ position: at.pos, map: this.map, icon, title: `${b.name} (timetable)`, zIndex: 8, label: { text: `${b.name} (timetable)`, color: '#546e7a', fontSize: '11px', fontWeight: '700' } });
+        g = new google.maps.Marker({ position: at.pos, map: this.map, icon, title: `${b.name} (timetable)`, zIndex: 8 });
         g.addListener('click', () => this.zone.run(() => this.select(b)));
         this.ghosts.set(b.id, g);
       } else { animateMarker(g, at.pos, 1500); g.setIcon(icon); }
@@ -307,11 +310,11 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       if (!p) continue;
       seen.add(b.id);
       const st = this.stateOf(b.id);
-      const icon = busIcon(stateColor(st), +(p.heading || 0));
+      const icon = busIcon(stateColor(st), +(p.heading || 0), b.name);
       const ll = { lat: +p.lat, lng: +p.lng };
       let m = this.markers.get(b.id);
       if (!m) {
-        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: b.name, zIndex: 10, label: { text: b.name, color: '#1a237e', fontSize: '12px', fontWeight: '800' } });
+        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: b.name, zIndex: 10 });
         m.addListener('click', () => this.zone.run(() => this.select(b)));
         this.markers.set(b.id, m);
       } else { animateMarker(m, ll); m.setIcon(icon); }

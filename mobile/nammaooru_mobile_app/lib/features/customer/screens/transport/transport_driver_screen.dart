@@ -79,8 +79,8 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     _selectedVehicle ??= _vehicles.isNotEmpty ? _i(_vehicles.first['id']) : null;
     _pickDefaultDeparture();
     setState(() => _loading = false);
-    // A trip is open on the server but the service died (phone restart etc.) → restart it.
-    if (_openTrip != null && !_serviceRunning) _startService(_openTrip!);
+    // A trip is open on the server but the service died (phone restart etc.): restart it.
+    if (_openTrip != null && !_serviceRunning && !_busy) _startService(_openTrip!);
   }
 
   void _pickDefaultDeparture() {
@@ -130,6 +130,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     final interval = _i(d['gpsIntervalSec']) == 0 ? 5 : _i(d['gpsIntervalSec']);
     if (_openTrip != null) {
       _openTrip!['gpsIntervalSec'] = interval;
+      _openTrip!['gpsIdleIntervalSec'] = _i(d['gpsIdleIntervalSec']) == 0 ? 30 : _i(d['gpsIdleIntervalSec']);
       await _startService(_openTrip!);
     }
     setState(() => _busy = false);
@@ -139,9 +140,10 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     final token = await SecureStorage.getAuthToken() ?? '';
     final v = _vehicle(_i(trip['vehicleId']));
     final interval = _i(trip['gpsIntervalSec']) != 0 ? _i(trip['gpsIntervalSec']) : (_i(v?['gpsIntervalSec']) != 0 ? _i(v?['gpsIntervalSec']) : 5);
+    final idle = _i(trip['gpsIdleIntervalSec']) != 0 ? _i(trip['gpsIdleIntervalSec']) : (_i(v?['gpsIdleIntervalSec']) != 0 ? _i(v?['gpsIdleIntervalSec']) : 30);
     final ok = await TransportGpsService.start(
       token: token, tripId: _i(trip['id']), vehicleId: _i(trip['vehicleId']),
-      vehicleName: v?['name']?.toString() ?? 'Vehicle', intervalSec: interval,
+      vehicleName: v?['name']?.toString() ?? 'Vehicle', intervalSec: interval, idleIntervalSec: idle,
     );
     _serviceRunning = ok;
     if (!ok) _msg(_t('Could not start location sharing. Check notification permission.', 'இருப்பிட பகிர்வை தொடங்க முடியவில்லை.'));
@@ -163,13 +165,23 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     );
     if (sure != true) return;
     setState(() => _busy = true);
-    await TransportGpsService.stop();
     final km = (_live['distanceKm'] as num?)?.toDouble();
+    // 1. Close the trip on the server first, so no further points are accepted
+    //    even if the phone service lingers for a moment.
     final r = await _svc.endTrip(_i(_openTrip!['id']), distanceKm: km);
     if (!mounted) return;
+    if (r['success'] != true) {
+      // Keep the trip open: ending failed (no network?). Try again.
+      setState(() => _busy = false);
+      _msg(r['message']?.toString() ?? _t('Could not end the trip. Check network and try again.', 'Could not end the trip. Check network and try again.'));
+      return;
+    }
+    // 2. Now stop location sharing on the phone.
+    await TransportGpsService.stop();
     _msg(r['message']?.toString() ?? '');
     _openTrip = null;
     _live = {};
+    _serviceRunning = false;
     setState(() => _busy = false);
     _load();
   }

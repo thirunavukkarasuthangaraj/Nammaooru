@@ -46,16 +46,22 @@ export function drawRouteLine(map: any, path: LL[], color: string, bold = false)
   return [outline, line];
 }
 
-/** Bus icon as an SVG data URL, tinted with the state colour and rotated to the heading. */
-export function busIcon(color: string, heading: number): any {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-    <g transform="rotate(${Math.round(heading)} 22 22)">
-      <path d="M22 4 L30 16 L26 16 L26 20 L18 20 L18 16 L14 16 Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+/** Bus icon as an SVG data URL: big coloured disc with a bus, a direction arrow, and the name on a badge. */
+export function busIcon(color: string, heading: number, name = ''): any {
+  const label = (name || '').replace(/[<>&"]/g, '').slice(0, 18);
+  const w = 160, h = 92;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <g transform="translate(80 36) rotate(${Math.round(heading)})">
+      <path d="M0 -34 L12 -16 L5 -16 L5 -8 L-5 -8 L-5 -16 L-12 -16 Z" fill="${color}" stroke="#fff" stroke-width="2"/>
     </g>
-    <circle cx="22" cy="26" r="11" fill="${color}" stroke="#fff" stroke-width="3"/>
-    <path d="M16 21h12a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-1a1.5 1.5 0 0 1-3 0h-6a1.5 1.5 0 0 1-3 0h-1a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2zm0 3v3h12v-3z" fill="#fff"/>
+    <circle cx="80" cy="36" r="20" fill="${color}" stroke="#fff" stroke-width="4"/>
+    <g transform="translate(68 24) scale(1.0)">
+      <path d="M6 1h12a4 4 0 0 1 4 4v12a2 2 0 0 1-2 2h-1a2.5 2.5 0 0 1-5 0H10a2.5 2.5 0 0 1-5 0H4a2 2 0 0 1-2-2V5a4 4 0 0 1 4-4zm0 4v6h12V5z" fill="#fff"/>
+    </g>
+    ${label ? `<rect x="${80 - (label.length * 7 + 16) / 2}" y="62" width="${label.length * 7 + 16}" height="24" rx="12" fill="#1a237e" stroke="#fff" stroke-width="2"/>
+    <text x="80" y="79" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#fff">${label}</text>` : ''}
   </svg>`;
-  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), scaledSize: new google.maps.Size(44, 44), anchor: new google.maps.Point(22, 26) };
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), scaledSize: new google.maps.Size(w, h), anchor: new google.maps.Point(80, 36) };
 }
 
 const anims = new WeakMap<any, number>();
@@ -158,8 +164,8 @@ export function bearing(a: LL, b: LL): number {
 }
 
 /** Faded bus icon for the timetable ("should be here") position. */
-export function ghostBusIcon(color: string, heading: number): any {
-  const base = busIcon(color, heading);
+export function ghostBusIcon(color: string, heading: number, name = ''): any {
+  const base = busIcon(color, heading, name);
   const svg = decodeURIComponent(base.url.split(',')[1]).replace('<svg ', '<svg opacity="0.45" ');
   return { ...base, url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg) };
 }

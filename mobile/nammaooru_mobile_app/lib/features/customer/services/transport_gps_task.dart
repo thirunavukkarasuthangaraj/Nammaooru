@@ -15,6 +15,7 @@ class TransportGpsKeys {
   static const vehicleId = 'tr_gps_vehicle_id';
   static const vehicleName = 'tr_gps_vehicle_name';
   static const intervalSec = 'tr_gps_interval_sec';
+  static const idleIntervalSec = 'tr_gps_idle_interval_sec';
   static const serviceId = 7331;
 }
 
@@ -41,6 +42,9 @@ class TransportGpsTaskHandler extends TaskHandler {
   int _sent = 0;
   int _fails = 0;
   bool _tripEnded = false;
+  int _intervalSec = 5;
+  int _idleIntervalSec = 30;
+  DateTime? _lastSentAt;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -48,6 +52,8 @@ class TransportGpsTaskHandler extends TaskHandler {
     _tripId = await FlutterForegroundTask.getData<int>(key: TransportGpsKeys.tripId);
     _vehicleId = await FlutterForegroundTask.getData<int>(key: TransportGpsKeys.vehicleId);
     _vehicleName = await FlutterForegroundTask.getData<String>(key: TransportGpsKeys.vehicleName) ?? '';
+    _intervalSec = await FlutterForegroundTask.getData<int>(key: TransportGpsKeys.intervalSec) ?? 5;
+    _idleIntervalSec = await FlutterForegroundTask.getData<int>(key: TransportGpsKeys.idleIntervalSec) ?? 30;
     _dio = Dio(BaseOptions(
       baseUrl: EnvConfig.fullApiUrl,
       connectTimeout: const Duration(seconds: 12),
@@ -93,7 +99,15 @@ class TransportGpsTaskHandler extends TaskHandler {
       if (_buffer.length > 600) _buffer.removeRange(0, _buffer.length - 600);
     }
     if (_buffer.isEmpty) {
-      _notifyUi(status: p == null ? 'Waiting for GPS…' : 'Buffered');
+      _notifyUi(status: p == null ? 'Waiting for GPS' : 'Buffered');
+      return;
+    }
+    // Battery: when stationary (speed < 1 km/h and barely moved) send only every
+    // idle interval (default 30 s) instead of every tick. Moving buses keep full rate.
+    final stationary = p != null && (p.speed.isFinite ? p.speed * 3.6 : 0) < 1.0 && _buffer.length == 1;
+    if (stationary && _lastSentAt != null && DateTime.now().difference(_lastSentAt!).inSeconds < _idleIntervalSec) {
+      _buffer.clear(); // drop the duplicate point; the live row already shows this spot
+      _notifyUi(status: 'Live (parked, saving battery)');
       return;
     }
     try {
@@ -103,10 +117,13 @@ class TransportGpsTaskHandler extends TaskHandler {
       _buffer.clear();
       _sent += batch.length;
       _fails = 0;
+      _lastSentAt = DateTime.now();
       if (data is Map && data['tripEnded'] == true) {
         _tripEnded = true;
         _notifyUi(status: 'Trip ended from server');
         FlutterForegroundTask.updateService(notificationTitle: 'Trip ended', notificationText: 'Location sharing stopped');
+        // The trip is closed on the server: shut this service down so nothing more is sent.
+        try { await FlutterForegroundTask.stopService(); } catch (_) {}
         return;
       }
       _notifyUi(status: 'Live');
@@ -148,7 +165,11 @@ class TransportGpsTaskHandler extends TaskHandler {
 
   @override
   void onReceiveData(Object data) {
-    if (data is Map && data['cmd'] == 'end') _tripEnded = true;
+    if (data is Map && data['cmd'] == 'end') {
+      _tripEnded = true;
+      _buffer.clear();
+      try { FlutterForegroundTask.stopService(); } catch (_) {}
+    }
   }
 
   @override
@@ -210,6 +231,7 @@ class TransportGpsService {
     required int vehicleId,
     required String vehicleName,
     required int intervalSec,
+    int idleIntervalSec = 30,
   }) async {
     if (kIsWeb) return _startWeb(tripId: tripId, vehicleId: vehicleId, vehicleName: vehicleName, intervalSec: intervalSec);
     init();
@@ -218,6 +240,7 @@ class TransportGpsService {
     await FlutterForegroundTask.saveData(key: TransportGpsKeys.vehicleId, value: vehicleId);
     await FlutterForegroundTask.saveData(key: TransportGpsKeys.vehicleName, value: vehicleName);
     await FlutterForegroundTask.saveData(key: TransportGpsKeys.intervalSec, value: intervalSec);
+    await FlutterForegroundTask.saveData(key: TransportGpsKeys.idleIntervalSec, value: idleIntervalSec);
     // Re-init with the requested interval (repeat events are configured here).
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
@@ -254,9 +277,9 @@ class TransportGpsService {
     try {
       FlutterForegroundTask.sendDataToTask({'cmd': 'end'});
     } catch (_) {}
-    if (await FlutterForegroundTask.isRunningService) {
-      await FlutterForegroundTask.stopService();
-    }
+    // Stop unconditionally: isRunningService can report false while the service is still alive.
+    try { await FlutterForegroundTask.stopService(); } catch (_) {}
+    try { if (await FlutterForegroundTask.isRunningService) await FlutterForegroundTask.stopService(); } catch (_) {}
   }
 
   static Future<bool> get isRunning async => kIsWeb ? _webTimer != null : await FlutterForegroundTask.isRunningService;
