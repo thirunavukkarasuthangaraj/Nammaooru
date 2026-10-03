@@ -269,7 +269,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final r in rows)
               ChoiceChip(
-                label: Text('${r['departTime']} ${r['direction'] == 'BA' ? 'B\u2192A' : 'A\u2192B'}'),
+                label: Text('${TransportTimetable.h12(r['departTime'])} ${r['direction'] == 'BA' ? 'B\u2192A' : 'A\u2192B'}'),
                 selected: _scheduleId == _i(r['id']),
                 selectedColor: const Color(0xFFE8F5E9),
                 onSelected: (_) => setState(() { _scheduleId = _i(r['id']); _direction = r['direction']?.toString() ?? 'AB'; }),

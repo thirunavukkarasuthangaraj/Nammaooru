@@ -246,7 +246,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       cum.add(cum.last + _haversine(_d(path[i - 1]['lat']), _d(path[i - 1]['lng']), _d(path[i]['lat']), _d(path[i]['lng'])));
     }
     final total = cum.last == 0 ? 1 : cum.last;
-    String fmt(double m) { final mm = m.round() % 1440; return '${(mm ~/ 60).toString().padLeft(2, '0')}:${(mm % 60).toString().padLeft(2, '0')}'; }
+    String fmt(double m) { final mm = m.round() % 1440; return TransportTimetable.h12('${mm ~/ 60}:${(mm % 60).toString().padLeft(2, '0')}'); }
     return [for (var i = 0; i < path.length; i++) fmt(dep + (arr - dep) * (cum[i] / total))];
   }
 
@@ -600,7 +600,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           if (liveThisWay) _chip(st) else if (nx != null) Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(20)),
-            child: Text('${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${nx['departTime']}', style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
+            child: Text('${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${TransportTimetable.h12(nx['departTime'])}', style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
           ),
           IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; })),
         ]),
@@ -608,7 +608,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         if (liveThisWay)
           Text('${_t('Live', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8')} \u00b7 ${_d(_pos[id]?['speedKmh']).round()} km/h \u00b7 ${_ago(id)}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5))
         else if (nx != null)
-          Text('${_t('Departs', '\u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${nx['departTime']} \u00b7 ${_t('arrives', '\u0bb5\u0bb0\u0bc1\u0b95\u0bc8')} ${nx['arriveTime']} \u00b7 ${_t('GPS off, showing timetable', 'GPS \u0b87\u0bb2\u0bcd\u0bb2\u0bc8, \u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8')}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5))
+          Text('${_t('Departs', '\u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${TransportTimetable.h12(nx['departTime'])} \u00b7 ${_t('arrives', '\u0bb5\u0bb0\u0bc1\u0b95\u0bc8')} ${TransportTimetable.h12(nx['arriveTime'])} \u00b7 ${_t('GPS off, showing timetable', 'GPS \u0b87\u0bb2\u0bcd\u0bb2\u0bc8, \u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8')}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5))
         else
           Text(_t('No timetable for this direction', '\u0b87\u0ba8\u0bcd\u0ba4 \u0ba4\u0bbf\u0b9a\u0bc8\u0b95\u0bcd\u0b95\u0bc1 \u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8 \u0b87\u0bb2\u0bcd\u0bb2\u0bc8'), style: TextStyle(color: Colors.grey[700], fontSize: 12.5)),
         if (stops.isNotEmpty) ...[
@@ -621,7 +621,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
             onChanged: (v) => setState(() => _stopIndex = v),
           ),
           if (eta != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('\u{1F552} $eta', style: const TextStyle(fontWeight: FontWeight.w700, color: _accent))),
-          if (_stopIndex != null && !liveThisWay && nx != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_t('By timetable: departs', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf: \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${nx['departTime']}', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
+          if (_stopIndex != null && !liveThisWay && nx != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_t('By timetable: departs', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf: \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${TransportTimetable.h12(nx['departTime'])}', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
         ],
       ]),
     );
@@ -914,9 +914,9 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (liveThisWay) {
       line = '${_t('Live now', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8')} \u00b7 ${_d(_pos[id]?['speedKmh']).round()} km/h \u00b7 ${_ago(id)}';
     } else if (onLegThisWay) {
-      line = '${_t('On the way by timetable', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf \u0bb5\u0bb0\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1')} ${leg['departTime']}-${leg['arriveTime']}';
+      line = '${_t('On the way by timetable', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf \u0bb5\u0bb0\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1')} ${TransportTimetable.h12(leg['departTime'])}-${TransportTimetable.h12(leg['arriveTime'])}';
     } else if (nx != null) {
-      line = '${_t('Next departure', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4 \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0bbe\u0b9f\u0bc1')} ${nx['departTime']} \u00b7 ${_t('arrives', '\u0bb5\u0bb0\u0bc1\u0b95\u0bc8')} ${nx['arriveTime']}';
+      line = '${_t('Next departure', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4 \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0bbe\u0b9f\u0bc1')} ${TransportTimetable.h12(nx['departTime'])} \u00b7 ${_t('arrives', '\u0bb5\u0bb0\u0bc1\u0b95\u0bc8')} ${TransportTimetable.h12(nx['arriveTime'])}';
     } else {
       line = _t('No timetable', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8 \u0b87\u0bb2\u0bcd\u0bb2\u0bc8');
     }
@@ -935,7 +935,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           if (liveThisWay) _chip(st) else if (nx != null) Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(20)),
-            child: Text(nx['departTime'].toString(), style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
+            child: Text(TransportTimetable.h12(nx['departTime']), style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 4), const Icon(Icons.chevron_right, color: Colors.grey),
         ]),
@@ -949,9 +949,9 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (rows.isEmpty) return null;
     final route = _bus(id)?['route'] is Map ? _bus(id)!['route'] as Map : null;
     final leg = TransportTimetable.currentLeg(rows);
-    if (leg != null) return '${_t('Scheduled', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8')} ${leg['departTime']}-${leg['arriveTime']} ${TransportTimetable.dirLabel(route, leg['direction']?.toString())}';
+    if (leg != null) return '${_t('Scheduled', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8')} ${TransportTimetable.h12(leg['departTime'])}-${TransportTimetable.h12(leg['arriveTime'])} ${TransportTimetable.dirLabel(route, leg['direction']?.toString())}';
     final nx = TransportTimetable.nextDeparture(rows);
-    return nx == null ? null : '${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${nx['departTime']} ${TransportTimetable.dirLabel(route, nx['direction']?.toString())}';
+    return nx == null ? null : '${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${TransportTimetable.h12(nx['departTime'])} ${TransportTimetable.dirLabel(route, nx['direction']?.toString())}';
   }
 
   Widget _chip(String st) {
@@ -1001,7 +1001,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
                     color: TransportTimetable.currentLeg([sc]) != null ? const Color(0xFFE8F5E9) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('${sc['departTime']} ${sc['direction'] == 'BA' ? 'B\u2192A' : 'A\u2192B'} ${sc['arriveTime']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  child: Text('${TransportTimetable.h12(sc['departTime'])} ${sc['direction'] == 'BA' ? 'B\u2192A' : 'A\u2192B'} ${TransportTimetable.h12(sc['arriveTime'])}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
                 ),
             ]),
           ],

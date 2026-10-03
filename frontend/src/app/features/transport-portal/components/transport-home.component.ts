@@ -6,7 +6,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { MapsLoaderService } from '../../../core/services/maps-loader.service';
 import { TransportOwnerService, routePath, routeColor } from '../../../core/services/transport-owner.service';
-import { roadPath, drawRouteLine, busIcon, ghostBusIcon, animateMarker, stateColor, currentLeg, nextDeparture, legProgress, pointAlong, dirLabel, LL } from '../map-utils';
+import { roadPath, drawRouteLine, busIcon, ghostBusIcon, animateMarker, stateColor, currentLeg, nextDeparture, legProgress, pointAlong, dirLabel, LL, h12 } from '../map-utils';
 
 declare var google: any;
 
@@ -203,8 +203,8 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
   ttText(b: PublicBus): string | null {
     const rows = b.schedules || []; if (!rows.length) return null;
     const leg = currentLeg(rows);
-    if (leg) return `Scheduled ${leg.departTime}-${leg.arriveTime} ${dirLabel(b.route, leg.direction)}`;
-    const nx = nextDeparture(rows); return nx ? `Next ${nx.departTime} ${dirLabel(b.route, nx.direction)}` : null;
+    if (leg) return `Scheduled ${h12(leg.departTime)}-${h12(leg.arriveTime)} ${dirLabel(b.route, leg.direction)}`;
+    const nx = nextDeparture(rows); return nx ? `Next ${h12(nx.departTime)} ${dirLabel(b.route, nx.direction)}` : null;
   }
   private renderGhosts(): void {
     if (!this.map) return;

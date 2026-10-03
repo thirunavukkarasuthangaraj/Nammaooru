@@ -3,6 +3,17 @@
 class TransportTimetable {
   static const _days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
+  /// "18:20" -> "6:20 PM" for display. Storage stays 24h.
+  static String h12(dynamic hhmm) {
+    final v = (hhmm ?? '').toString();
+    final p = v.split(':');
+    if (p.length < 2) return v;
+    final h = int.tryParse(p[0]) ?? 0, m = int.tryParse(p[1]) ?? 0;
+    final ap = h >= 12 ? 'PM' : 'AM';
+    final hh = h % 12 == 0 ? 12 : h % 12;
+    return '$hh:${m.toString().padLeft(2, '0')} $ap';
+  }
+
   static int minOf(String? hhmm) {
     final p = (hhmm ?? '0:0').split(':');
     return (int.tryParse(p[0]) ?? 0) * 60 + (p.length > 1 ? int.tryParse(p[1]) ?? 0 : 0);

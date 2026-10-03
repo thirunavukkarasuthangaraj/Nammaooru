@@ -169,3 +169,13 @@ export function dirLabel(route: TransportRoute | null | undefined, dir: string |
   if (!route) return dir === 'BA' ? 'B → A' : 'A → B';
   return dir === 'BA' ? `${route.destination} → ${route.source}` : `${route.source} → ${route.destination}`;
 }
+
+/** "18:20" -> "6:20 PM" for display; storage stays 24h. */
+export function h12(hhmm: string | null | undefined): string {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return hhmm;
+  const ap = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}:${String(m).padStart(2, '0')} ${ap}`;
+}

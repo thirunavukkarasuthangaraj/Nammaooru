@@ -2,7 +2,7 @@ import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewCh
 import { Subscription } from 'rxjs';
 import { TransportPosition, TransportVehicle, routePath, routeColor } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
-import { roadPath, drawRouteLine, busIcon, ghostBusIcon, animateMarker, stateColor, currentLeg, nextDeparture, legProgress, pointAlong, progressAlong, dirLabel, LL } from '../map-utils';
+import { roadPath, drawRouteLine, busIcon, ghostBusIcon, animateMarker, stateColor, currentLeg, nextDeparture, legProgress, pointAlong, progressAlong, dirLabel, LL, h12 } from '../map-utils';
 
 declare var google: any;
 
@@ -139,8 +139,8 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
   ttText(v: TransportVehicle): string | null {
     const rows = this.schedulesOf(v); if (!rows.length) return null;
     const leg = currentLeg(rows);
-    if (leg) return `Scheduled ${leg.departTime}-${leg.arriveTime} ${dirLabel(this.routeOf(v), leg.direction)}`;
-    const nx = nextDeparture(rows); return nx ? `Next ${nx.departTime} ${dirLabel(this.routeOf(v), nx.direction)}` : null;
+    if (leg) return `Scheduled ${h12(leg.departTime)}-${h12(leg.arriveTime)} ${dirLabel(this.routeOf(v), leg.direction)}`;
+    const nx = nextDeparture(rows); return nx ? `Next ${h12(nx.departTime)} ${dirLabel(this.routeOf(v), nx.direction)}` : null;
   }
   /** Live bus vs timetable: minutes late/early along the road path. */
   lateText(v: TransportVehicle): string | null {

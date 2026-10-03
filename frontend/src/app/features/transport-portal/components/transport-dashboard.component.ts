@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { TransportOwnerService, TransportVehicle } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
-import { currentLeg, nextDeparture, dirLabel } from '../map-utils';
+import { currentLeg, nextDeparture, dirLabel, h12 } from '../map-utils';
 
 /** Owner home: today at a glance plus one-click access to every activity. */
 @Component({
@@ -69,7 +69,7 @@ import { currentLeg, nextDeparture, dirLabel } from '../map-utils';
       <h3><mat-icon>event</mat-icon> Next departures</h3>
       <div class="row" *ngFor="let n of upcoming">
         <mat-icon class="ico">departure_board</mat-icon>
-        <div class="info"><strong>{{ n.time }}</strong><small>{{ n.vehicle }} · {{ n.dir }}</small></div>
+        <div class="info"><strong>{{ h12(n.time) }}</strong><small>{{ n.vehicle }} · {{ n.dir }}</small></div>
       </div>
       <div class="empty" *ngIf="upcoming.length === 0">No timetable yet. <a routerLink="/transport/timetable">Add departures</a>.</div>
     </section>
@@ -90,6 +90,7 @@ import { currentLeg, nextDeparture, dirLabel } from '../map-utils';
   `]
 })
 export class TransportDashboardComponent implements OnInit, OnDestroy {
+  h12 = h12;
   company = 'My Fleet';
   vehicles: TransportVehicle[] = [];
   drivers = 0; routesCount = 0; schedulesCount = 0; publicCount = 0;
@@ -144,8 +145,8 @@ export class TransportDashboardComponent implements OnInit, OnDestroy {
     const parts: string[] = [];
     if (v.driverName) parts.push(v.driverName);
     const leg = currentLeg(rows);
-    if (leg) parts.push(`${leg.departTime}-${leg.arriveTime} ${dirLabel(r, leg.direction)}`);
-    else { const n = nextDeparture(rows); if (n) parts.push(`next ${n.departTime} ${dirLabel(r, n.direction)}`); }
+    if (leg) parts.push(`${h12(leg.departTime)}-${h12(leg.arriveTime)} ${dirLabel(r, leg.direction)}`);
+    else { const n = nextDeparture(rows); if (n) parts.push(`next ${h12(n.departTime)} ${dirLabel(r, n.direction)}`); }
     if (p && this.state(v) !== 'OFFLINE') parts.push(`${Math.round(+(p.speedKmh || 0))} km/h`);
     return parts.join(' · ') || 'No route / timetable yet';
   }

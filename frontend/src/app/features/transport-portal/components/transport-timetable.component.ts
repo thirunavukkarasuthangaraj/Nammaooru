@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { SwalService } from '../../../core/services/swal.service';
 import { TransportOwnerService, TransportRoute, TransportSchedule, TransportVehicle } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
+import { h12 } from '../map-utils';
 
 @Component({
   selector: 'app-transport-timetable',
@@ -41,14 +42,14 @@ import { TransportStore } from '../transport-store.service';
     <div class="v-head">
       <mat-icon>directions_bus</mat-icon>
       <div><strong>{{ v.name }}</strong><small>{{ v.regNo }} · {{ v.routeName || 'no route' }}</small></div>
-      <span class="next" *ngIf="nextOf(v) as n">Next: {{ n.departTime }} {{ dirLabel(n.direction, v) }}</span>
+      <span class="next" *ngIf="nextOf(v) as n">Next: {{ h12(n.departTime) }} {{ dirLabel(n.direction, v) }}</span>
     </div>
     <table>
       <tr><th>Departs</th><th>Direction</th><th>Arrives</th><th>Days</th><th></th></tr>
       <tr *ngFor="let s of rowsOf(v.id!)" [class.now]="isNow(s)">
-        <td><strong>{{ s.departTime }}</strong></td>
+        <td><strong>{{ h12(s.departTime) }}</strong></td>
         <td>{{ dirLabel(s.direction, v) }}</td>
-        <td>{{ s.arriveTime }}</td>
+        <td>{{ h12(s.arriveTime) }}</td>
         <td>{{ s.days === 'DAILY' ? 'Daily' : s.days }}</td>
         <td><button mat-icon-button color="warn" (click)="remove(s)" title="Remove"><mat-icon>delete</mat-icon></button></td>
       </tr>
@@ -69,6 +70,7 @@ import { TransportStore } from '../transport-store.service';
   `]
 })
 export class TransportTimetableComponent implements OnInit, OnDestroy {
+  h12 = h12;
   vehicles: TransportVehicle[] = [];
   routes: TransportRoute[] = [];
   schedules: TransportSchedule[] = [];
@@ -131,7 +133,7 @@ export class TransportTimetableComponent implements OnInit, OnDestroy {
   }
 
   remove(s: TransportSchedule): void {
-    if (!confirm(`Remove ${s.departTime} departure?`)) return;
+    if (!confirm(`Remove ${h12(s.departTime)} departure?`)) return;
     this.svc.deleteSchedule(s.id!).subscribe({ next: () => this.store.refresh(), error: (e) => this.swal.error('Could not remove', e?.error?.message || '') });
   }
 }
