@@ -32,14 +32,15 @@ export class TransportOwnerService {
 
   private data<T>() { return map((r: any) => (r && r.data !== undefined ? r.data : r) as T); }
 
-  me(): Observable<any> { return this.http.get(`${this.base}/me`).pipe(this.data<any>()); }
+  me(): Observable<any> { return this.http.get(`${this.base}/me`, { params: { silentError: '1' } }).pipe(this.data<any>()); }
 
   register(companyName: string, ownerName: string, phone: string): Observable<any> {
     return this.http.post(`${this.base}/register`, { companyName, ownerName, phone });
   }
 
   bootstrap(): Observable<OwnerBootstrap> { return this.http.get(`${this.base}/owner/bootstrap`).pipe(this.data<OwnerBootstrap>()); }
-  live(): Observable<TransportPosition[]> { return this.http.get(`${this.base}/owner/live`).pipe(this.data<TransportPosition[]>()); }
+  // silentError: background poll, never pop a toast (the layout shows a feed-health dot instead)
+  live(): Observable<TransportPosition[]> { return this.http.get(`${this.base}/owner/live`, { params: { silentError: '1' } }).pipe(this.data<TransportPosition[]>()); }
 
   saveVehicle(v: Partial<TransportVehicle>): Observable<any> { return this.http.post(`${this.base}/owner/vehicles`, v); }
   deleteVehicle(id: number): Observable<any> { return this.http.delete(`${this.base}/owner/vehicles/${id}`); }
