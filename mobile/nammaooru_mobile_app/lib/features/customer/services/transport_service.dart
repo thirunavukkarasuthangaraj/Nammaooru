@@ -11,9 +11,14 @@ class TransportService {
   TransportService._();
   static final TransportService instance = TransportService._();
 
+  /// Backend envelope is { statusCode: "0000" | error code, message, data }.
+  /// Normalise to a boolean `success` so callers can check one field.
   Map<String, dynamic> _unwrap(Response r) {
     final body = r.data;
-    if (body is Map<String, dynamic>) return body;
+    if (body is Map<String, dynamic>) {
+      final ok = body['success'] == true || body['statusCode']?.toString() == '0000';
+      return {...body, 'success': ok};
+    }
     return {'success': false, 'message': 'Unexpected response'};
   }
 
