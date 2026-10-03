@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -40,6 +41,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   Map<String, dynamic>? _me;
   bool _follow = true;
   bool _showMap = false; // details first; map only after 'Show on map'
+  final Map<String, BitmapDescriptor> _labelIcons = {};
+  final Set<String> _labelPending = {};
   int? _routeSel;        // passenger picks a route first
   String _dirSel = 'AB';  // then a direction (A->B or B->A)
 
@@ -128,9 +131,11 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   }
 
   void _select(int id) {
-    setState(() { _selected = id; _stopIndex = null; _follow = true; _showMap = false; });
-    // Map is built only after 'Show on map'; it centres itself in onMapCreated.
-    if (_map != null) _centerOnSelected();
+    setState(() { _selected = id; _stopIndex = null; _follow = true; });
+    if (_map != null) {
+      final p = _pos[id];
+      if (p != null && p['lat'] != null && _state(id) != 'OFFLINE') _centerOnSelected(); else _fitRoute();
+    }
   }
 
   Map<String, dynamic>? _bus(int id) => _buses.cast<Map<String, dynamic>?>().firstWhere((b) => b!['id'] == id, orElse: () => null);
@@ -153,7 +158,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     if (r is! Map || r['stops'] is! List) return [];
     final list = List<Map<String, dynamic>>.from((r['stops'] as List).map((e) => Map<String, dynamic>.from(e)))
         .where((s) => s['lat'] != null && s['lng'] != null).toList();
-    return _dirOf(id) == 'BA' ? list.reversed.toList() : list;
+    final dir = _routeSel != null ? _dirSel : _dirOf(id);
+    return dir == 'BA' ? list.reversed.toList() : list;
   }
 
   /// Scheduled ("should be here") position along the straight route path for a bus with no live GPS.
@@ -179,6 +185,94 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
       acc += segs[i];
     }
     return path.last;
+  }
+
+  /// Marker drawn as a small pill with text, e.g. "18:20  Madavalam". Cached per text+colour.
+  BitmapDescriptor? _labelIcon(String text, Color bg) {
+    final key = '$text|${bg.value}';
+    final cached = _labelIcons[key];
+    if (cached != null) return cached;
+    if (_labelPending.add(key)) _buildLabelIcon(key, text, bg);
+    return null;
+  }
+
+  Future<void> _buildLabelIcon(String key, String text, Color bg) async {
+    try {
+      const scale = 2.5;
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: const TextStyle(color: Colors.white, fontSize: 13 * scale, fontWeight: FontWeight.w800)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final w = tp.width + 20 * scale, h = tp.height + 10 * scale, tail = 8 * scale;
+      final rec = ui.PictureRecorder();
+      final c = Canvas(rec);
+      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, w, h), Radius.circular(h / 2));
+      c.drawShadow(Path()..addRRect(rect), Colors.black54, 3 * scale, false);
+      c.drawRRect(rect, Paint()..color = bg);
+      c.drawRRect(rect, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2 * scale);
+      // small pointer under the pill
+      final tri = Path()..moveTo(w / 2 - tail, h)..lineTo(w / 2, h + tail)..lineTo(w / 2 + tail, h)..close();
+      c.drawPath(tri, Paint()..color = bg);
+      tp.paint(c, Offset(10 * scale, 5 * scale));
+      final img = await rec.endRecording().toImage(w.ceil(), (h + tail).ceil());
+      final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) return;
+      final icon = BitmapDescriptor.bytes(bytes.buffer.asUint8List(), imagePixelRatio: scale);
+      if (!mounted) return;
+      setState(() => _labelIcons[key] = icon);
+    } catch (_) {
+      _labelPending.remove(key);
+    }
+  }
+
+  /// Scheduled clock time at every point of the chosen route for the selected (or first) bus:
+  /// depart at A, arrive at B, stops interpolated by distance along the path.
+  List<String?> _timesAlongRoute(List<Map<String, dynamic>> path) {
+    if (path.length < 2) return List.filled(path.length, null);
+    Map<String, dynamic>? leg;
+    final candidates = _selected != null ? [_bus(_selected!)] : _busesOnRoute();
+    for (final b in candidates) {
+      if (b == null) continue;
+      final id = (b['id'] as num).toInt();
+      final cur = TransportTimetable.currentLeg(_schedules(id));
+      if (cur != null && cur['direction'] == _dirSel) { leg = cur; break; }
+      leg ??= _nextInDir(id, _dirSel);
+    }
+    if (leg == null) return List.filled(path.length, null);
+    final dep = TransportTimetable.minOf(leg['departTime']), arr = TransportTimetable.minOf(leg['arriveTime']);
+    if (arr <= dep) return List.filled(path.length, null);
+    final cum = <double>[0];
+    for (var i = 1; i < path.length; i++) {
+      cum.add(cum.last + _haversine(_d(path[i - 1]['lat']), _d(path[i - 1]['lng']), _d(path[i]['lat']), _d(path[i]['lng'])));
+    }
+    final total = cum.last == 0 ? 1 : cum.last;
+    String fmt(double m) { final mm = m.round() % 1440; return '${(mm ~/ 60).toString().padLeft(2, '0')}:${(mm % 60).toString().padLeft(2, '0')}'; }
+    return [for (var i = 0; i < path.length; i++) fmt(dep + (arr - dep) * (cum[i] / total))];
+  }
+
+  Map? _routeById(int? routeId) {
+    if (routeId == null) return null;
+    for (final b in _buses) {
+      final r = b['route'];
+      if (r is Map && (r['id'] as num?)?.toInt() == routeId) return r;
+    }
+    return null;
+  }
+
+  /// A, stops, B for a route id, in the direction the passenger chose.
+  List<Map<String, dynamic>> _routePathR(int? routeId) {
+    final r = _routeById(routeId);
+    if (r == null) return [];
+    final out = <Map<String, dynamic>>[];
+    if (r['sourceLat'] != null && r['sourceLng'] != null) out.add({'name': r['source'], 'lat': r['sourceLat'], 'lng': r['sourceLng'], 'kind': 'from'});
+    if (r['stops'] is List) {
+      for (final e in r['stops'] as List) {
+        final st = Map<String, dynamic>.from(e);
+        if (st['lat'] != null && st['lng'] != null) out.add({'name': st['name'], 'lat': st['lat'], 'lng': st['lng'], 'kind': 'stop'});
+      }
+    }
+    if (r['destLat'] != null && r['destLng'] != null) out.add({'name': r['destination'], 'lat': r['destLat'], 'lng': r['destLng'], 'kind': 'to'});
+    return _dirSel == 'BA' ? out.reversed.toList() : out;
   }
 
   /// Route path as drawn on the map: From (A), stops, To (B). Only points with coordinates.
@@ -276,6 +370,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final out = <Marker>{};
     for (final b in _buses) {
       final id = (b['id'] as num).toInt();
+      if (_routeSel != null && (b['route'] is! Map || (b['route']['id'] as num?)?.toInt() != _routeSel)) continue;
       final p = _pos[id];
       if (p == null || p['lat'] == null) continue;
       final st = _state(id);
@@ -285,7 +380,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         rotation: _d(p['heading']),
         flat: true,
         icon: BitmapDescriptor.defaultMarkerWithHue(st == 'MOVING' ? BitmapDescriptor.hueGreen : st == 'STOPPED' ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueViolet),
-        infoWindow: InfoWindow(title: b['name']?.toString(), snippet: '${b['operator'] ?? ''} · $st'),
+        infoWindow: InfoWindow(title: b['name']?.toString(), snippet: st),
         onTap: () => _select(id),
         zIndex: _selected == id ? 2 : 1,
       ));
@@ -303,43 +398,42 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         ));
       }
     }
-    if (_selected != null) {
-      for (final pt in _routePath(_selected!).where((q) => q['kind'] != 'stop')) {
-        final isFrom = pt['kind'] == 'from';
-        out.add(Marker(
-          markerId: MarkerId(isFrom ? 'route_from' : 'route_to'),
-          position: LatLng(_d(pt['lat']), _d(pt['lng'])),
-          icon: BitmapDescriptor.defaultMarkerWithHue(isFrom ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed),
-          infoWindow: InfoWindow(title: '${isFrom ? 'A' : 'B'}: ${pt['name']}'),
-          zIndex: 3,
-        ));
-      }
-      final stops = _stops(_selected!);
-      for (var i = 0; i < stops.length; i++) {
-        out.add(Marker(
-          markerId: MarkerId('stop_$i'),
-          position: LatLng(_d(stops[i]['lat']), _d(stops[i]['lng'])),
-          icon: BitmapDescriptor.defaultMarkerWithHue(_stopIndex == i ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRose),
-          infoWindow: InfoWindow(title: '${i + 1}. ${stops[i]['name']}'),
-          alpha: 0.85,
-          onTap: () => setState(() => _stopIndex = i),
-        ));
-      }
+    final path = _routePathR(_routeSel);
+    final times = _timesAlongRoute(path);
+    var n = 0;
+    for (var i = 0; i < path.length; i++) {
+      final pt = path[i];
+      final isEnd = pt['kind'] != 'stop';
+      if (!isEnd) n++;
+      final stopIdx = n - 1;
+      final isFirst = i == 0, isLast = i == path.length - 1;
+      final selectedStop = !isEnd && _stopIndex != null && _stopIndex == stopIdx;
+      final bg = isFirst ? const Color(0xFF2E7D32) : isLast ? const Color(0xFFC62828) : selectedStop ? const Color(0xFFEF6C00) : const Color(0xFF1565C0);
+      final t = times[i];
+      final text = t == null ? '${pt['name']}' : '$t  ${pt['name']}';
+      final icon = _labelIcon(text, bg) ?? BitmapDescriptor.defaultMarkerWithHue(isFirst ? BitmapDescriptor.hueGreen : isLast ? BitmapDescriptor.hueRed : BitmapDescriptor.hueAzure);
+      out.add(Marker(
+        markerId: MarkerId(isEnd ? 'route_${pt['kind']}' : 'stop_$n'),
+        position: LatLng(_d(pt['lat']), _d(pt['lng'])),
+        icon: icon,
+        anchor: const Offset(0.5, 1.0),
+        infoWindow: InfoWindow(title: text),
+        onTap: isEnd ? null : () => setState(() => _stopIndex = stopIdx),
+        zIndex: isEnd ? 3 : 1,
+      ));
     }
     return out;
   }
 
   Set<Polyline> _polylines() {
-    if (_selected == null) return {};
-    final path = _routePath(_selected!);
+    final path = _routePathR(_routeSel);
     if (path.length < 2) return {};
     return {
       Polyline(
         polylineId: const PolylineId('route'),
-        points: path.map((s) => LatLng(_d(s['lat']), _d(s['lng']))).toList(),
-        color: _accent.withOpacity(0.6),
-        width: 4,
-        patterns: [PatternItem.dash(20), PatternItem.gap(12)],
+        points: path.map((q) => LatLng(_d(q['lat']), _d(q['lng']))).toList(),
+        color: const Color(0xFF0D47A1),
+        width: 5,
       ),
     };
   }
@@ -418,12 +512,136 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _errorView()
-              : _selected == null
+              : _routeSel == null
                   ? _panel()
-                  : _showMap
-                      ? _mapView(pendingOwner)
-                      : _detailsView(pendingOwner),
+                  : _routeView(pendingOwner),
     );
+  }
+
+  /// Route screen: header, map with every bus on this route, bus list / compact card below.
+  Widget _routeView(bool pendingOwner) {
+    final route = _routeById(_routeSel);
+    final src = route == null ? '' : '${route['source']}';
+    final dst = route == null ? '' : '${route['destination']}';
+    final from = _dirSel == 'AB' ? src : dst;
+    final to = _dirSel == 'AB' ? dst : src;
+    final list = _busesOnRoute();
+    return Column(
+      children: [
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+          child: Row(children: [
+            IconButton(icon: const Icon(Icons.arrow_back, color: _accent), onPressed: () => setState(() { _routeSel = null; _selected = null; _stopIndex = null; _map = null; })),
+            Expanded(child: Text('$from \u2192 $to', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+            TextButton.icon(
+              onPressed: () => setState(() { _dirSel = _dirSel == 'AB' ? 'BA' : 'AB'; _stopIndex = null; _fitRoute(); }),
+              icon: const Icon(Icons.swap_horiz, size: 18), label: Text(_t('Swap', '\u0bae\u0bbe\u0bb1\u0bcd\u0bb1\u0bc1')),
+            ),
+          ]),
+        ),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.40,
+          child: Stack(children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(target: _initialTarget(), zoom: 12),
+              onMapCreated: (c) { _map = c; _fitRoute(); },
+              markers: _markers(),
+              polylines: _polylines(),
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              onCameraMoveStarted: () { if (_follow) setState(() => _follow = false); },
+            ),
+            Positioned(
+              right: 10, bottom: 10,
+              child: Column(children: [
+                _mapBtn(Icons.fit_screen, _fitRoute),
+                if (_selected != null) ...[const SizedBox(height: 6), _mapBtn(_follow ? Icons.gps_fixed : Icons.gps_not_fixed, () { setState(() => _follow = true); _centerOnSelected(); })],
+              ]),
+            ),
+            if (pendingOwner)
+              Positioned(left: 10, right: 10, top: 10, child: _banner(_t('Your transporter registration is waiting for approval.', '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b92\u0baa\u0bcd\u0baa\u0bc1\u0ba4\u0bb2\u0bc1\u0b95\u0bcd\u0b95\u0bbe\u0b95 \u0b95\u0bbe\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.'), Colors.orange.shade800)),
+          ]),
+        ),
+        Expanded(
+          child: list.isEmpty
+              ? Center(child: Text(_t('No buses on this route yet', '\u0b87\u0ba8\u0bcd\u0ba4 \u0bb5\u0bb4\u0bbf\u0baf\u0bbf\u0bb2\u0bcd \u0baa\u0bb8\u0bcd \u0b87\u0bb2\u0bcd\u0bb2\u0bc8'), style: const TextStyle(color: Colors.grey)))
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
+                  children: [
+                    if (_selected != null) _compactCard(),
+                    for (final b in list) if (_selected == null || _selected != (b['id'] as num).toInt()) _busTile(b),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact card for the selected bus: status, next departure, my stop, ETA.
+  Widget _compactCard() {
+    final id = _selected!;
+    final b = _bus(id);
+    if (b == null) return const SizedBox.shrink();
+    final st = _state(id);
+    final liveThisWay = st != 'OFFLINE' && _dirOf(id) == _dirSel;
+    final nx = _nextInDir(id, _dirSel);
+    final stops = _stops(id);
+    final eta = _eta(id);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _accent, width: 1.5)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text('${b['name']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+          if (liveThisWay) _chip(st) else if (nx != null) Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(20)),
+            child: Text('${_t('Next', '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1')} ${nx['departTime']}', style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w800)),
+          ),
+          IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() { _selected = null; _stopIndex = null; })),
+        ]),
+        const SizedBox(height: 4),
+        if (liveThisWay)
+          Text('${_t('Live', '\u0ba8\u0bc7\u0bb0\u0bb2\u0bc8')} \u00b7 ${_d(_pos[id]?['speedKmh']).round()} km/h \u00b7 ${_ago(id)}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5))
+        else if (nx != null)
+          Text('${_t('Departs', '\u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${nx['departTime']} \u00b7 ${_t('arrives', '\u0bb5\u0bb0\u0bc1\u0b95\u0bc8')} ${nx['arriveTime']} \u00b7 ${_t('GPS off, showing timetable', 'GPS \u0b87\u0bb2\u0bcd\u0bb2\u0bc8, \u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8')}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5))
+        else
+          Text(_t('No timetable for this direction', '\u0b87\u0ba8\u0bcd\u0ba4 \u0ba4\u0bbf\u0b9a\u0bc8\u0b95\u0bcd\u0b95\u0bc1 \u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8 \u0b87\u0bb2\u0bcd\u0bb2\u0bc8'), style: TextStyle(color: Colors.grey[700], fontSize: 12.5)),
+        if (stops.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _stopIndex,
+            isDense: true,
+            decoration: InputDecoration(labelText: _t('My stop', '\u0b8e\u0ba9\u0bcd \u0ba8\u0bbf\u0bb1\u0bc1\u0ba4\u0bcd\u0ba4\u0bae\u0bcd'), isDense: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+            items: [for (var i = 0; i < stops.length; i++) DropdownMenuItem(value: i, child: Text('${i + 1}. ${stops[i]['name']}', overflow: TextOverflow.ellipsis))],
+            onChanged: (v) => setState(() => _stopIndex = v),
+          ),
+          if (eta != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('\u{1F552} $eta', style: const TextStyle(fontWeight: FontWeight.w700, color: _accent))),
+          if (_stopIndex != null && !liveThisWay && nx != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_t('By timetable: departs', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf: \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${nx['departTime']}', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
+        ],
+      ]),
+    );
+  }
+
+  void _fitRoute() {
+    if (_map == null) return;
+    final pts = _routePathR(_routeSel).map((q) => LatLng(_d(q['lat']), _d(q['lng']))).toList();
+    for (final b in _busesOnRoute()) {
+      final p = _pos[(b['id'] as num).toInt()];
+      if (p != null && p['lat'] != null) pts.add(LatLng(_d(p['lat']), _d(p['lng'])));
+    }
+    if (pts.isEmpty) return;
+    if (pts.length == 1) { _map!.animateCamera(CameraUpdate.newLatLngZoom(pts.first, 13)); return; }
+    double minLat = pts.first.latitude, maxLat = minLat, minLng = pts.first.longitude, maxLng = minLng;
+    for (final q in pts) {
+      minLat = math.min(minLat, q.latitude); maxLat = math.max(maxLat, q.latitude);
+      minLng = math.min(minLng, q.longitude); maxLng = math.max(maxLng, q.longitude);
+    }
+    _map!.animateCamera(CameraUpdate.newLatLngBounds(LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)), 50));
   }
 
   /// Shown right after a bus is tapped: details only, with a "Show on map" button.
@@ -542,6 +760,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   }
 
   LatLng _initialTarget() {
+    final rp = _routePathR(_routeSel);
+    if (rp.isNotEmpty) return LatLng(_d(rp.first['lat']), _d(rp.first['lng']));
     if (_selected != null) {
       final p = _pos[_selected];
       if (p != null && p['lat'] != null) return LatLng(_d(p['lat']), _d(p['lng']));
