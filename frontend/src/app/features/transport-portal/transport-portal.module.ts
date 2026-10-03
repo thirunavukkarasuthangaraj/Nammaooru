@@ -22,6 +22,9 @@ import { TransportDriversComponent } from './components/transport-drivers.compon
 import { TransportRoutesComponent } from './components/transport-routes.component';
 import { TransportTripsComponent } from './components/transport-trips.component';
 import { TransportTimetableComponent } from './components/transport-timetable.component';
+import { TransportDashboardComponent } from './components/transport-dashboard.component';
+import { TransportReportsComponent } from './components/transport-reports.component';
+import { TransportProfileComponent } from './components/transport-profile.component';
 
 /**
  * /transport = public home (live public buses), /transport/login, and the owner portal
@@ -39,6 +42,9 @@ import { TransportTimetableComponent } from './components/transport-timetable.co
     TransportRoutesComponent,
     TransportTripsComponent,
     TransportTimetableComponent,
+    TransportDashboardComponent,
+    TransportReportsComponent,
+    TransportProfileComponent,
   ],
   imports: [
     CommonModule,
@@ -61,12 +67,15 @@ import { TransportTimetableComponent } from './components/transport-timetable.co
         component: TransportLayoutComponent,
         canActivate: [TransporterGuard],
         children: [
+          { path: 'dashboard', component: TransportDashboardComponent },
           { path: 'live', component: TransportLiveComponent },
           { path: 'vehicles', component: TransportVehiclesComponent },
           { path: 'drivers', component: TransportDriversComponent },
           { path: 'routes', component: TransportRoutesComponent },
           { path: 'timetable', component: TransportTimetableComponent },
           { path: 'trips', component: TransportTripsComponent },
+          { path: 'reports', component: TransportReportsComponent },
+          { path: 'profile', component: TransportProfileComponent },
         ]
       },
       { path: '**', redirectTo: '' }

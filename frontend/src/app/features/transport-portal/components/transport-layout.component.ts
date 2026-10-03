@@ -80,12 +80,15 @@ export class TransportLayoutComponent implements OnInit, OnDestroy {
   private subs: Subscription[] = [];
 
   menu = [
+    { title: 'Dashboard', icon: 'space_dashboard', route: '/transport/dashboard', badge: '' },
     { title: 'Live map', icon: 'my_location', route: '/transport/live', badge: '' },
     { title: 'Vehicles', icon: 'directions_bus', route: '/transport/vehicles', badge: '' },
     { title: 'Drivers', icon: 'badge', route: '/transport/drivers', badge: '' },
     { title: 'Routes', icon: 'alt_route', route: '/transport/routes', badge: '' },
     { title: 'Timetable', icon: 'schedule', route: '/transport/timetable', badge: '' },
     { title: 'Trips', icon: 'history', route: '/transport/trips', badge: '' },
+    { title: 'Reports', icon: 'bar_chart', route: '/transport/reports', badge: '' },
+    { title: 'Profile', icon: 'business', route: '/transport/profile', badge: '' },
   ];
 
   constructor(private store: TransportStore, private svc: TransportOwnerService, private auth: AuthService, private router: Router) {}
@@ -100,8 +103,8 @@ export class TransportLayoutComponent implements OnInit, OnDestroy {
     this.subs.push(this.store.data$.subscribe(d => {
       if (!d) return;
       this.company = d.transporter?.companyName || 'My Fleet';
-      this.menu[1].badge = d.vehicles?.length ? String(d.vehicles.length) : '';
-      this.menu[2].badge = d.drivers?.length ? String(d.drivers.length) : '';
+      const set = (t: string, n: number) => { const m = this.menu.find(x => x.title === t); if (m) m.badge = n ? String(n) : ''; };
+      set('Vehicles', d.vehicles?.length || 0); set('Drivers', d.drivers?.length || 0); set('Timetable', d.schedules?.length || 0);
       let mv = 0, st = 0, off = 0;
       (d.vehicles || []).forEach(v => {
         const s = this.store.stateOf(v.id!);

@@ -79,7 +79,7 @@ export class TransportLoginComponent implements OnInit {
     else if (st === 'none') this.notice = 'This number is not registered as a transporter yet.';
     // Already logged in as an owner? Go straight in.
     if (this.auth.isAuthenticated()) {
-      this.svc.me().subscribe({ next: me => { if (me?.isOwner) this.router.navigate(['/transport/live']); }, error: () => {} });
+      this.svc.me().subscribe({ next: me => { if (me?.isOwner) this.router.navigate(['/transport/dashboard']); }, error: () => {} });
     }
   }
 
@@ -106,7 +106,7 @@ export class TransportLoginComponent implements OnInit {
         this.svc.me().subscribe({
           next: me => {
             this.busy = false;
-            if (me?.isOwner) { this.router.navigate(['/transport/live']); return; }
+            if (me?.isOwner) { this.router.navigate(['/transport/dashboard']); return; }
             const s = me?.transporter?.status;
             this.notice = s === 'PENDING' ? 'Logged in, but your transporter registration is still waiting for approval.'
               : s === 'BLOCKED' ? 'This transporter account is blocked.'
