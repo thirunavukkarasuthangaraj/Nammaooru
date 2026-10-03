@@ -97,10 +97,21 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     final b = _bus(_selected!);
     final stops = _stops(_selected!);
     final st = _stopIndex != null && _stopIndex! < stops.length ? stops[_stopIndex!] : null;
+    final path = _routePathR(_routeSel);
+    final myDir = _busDir(_selected!);
+    final leg = TransportTimetable.currentLeg(_schedules(_selected!).where((r) => r is Map && r['direction'] == myDir).toList()) ?? _nextInDir(_selected!, myDir);
+    final c = _corridor(_routeSel);
+    final from = c == null ? '' : (_dirSel == 'AB' ? '${c['from']}' : '${c['to']}');
+    final to = c == null ? '' : (_dirSel == 'AB' ? '${c['to']}' : '${c['from']}');
+    var stopIdx = -1;
+    if (st != null) {
+      for (var i = 0; i < path.length; i++) { if (path[i]['kind'] == 'stop' && path[i]['name'] == st['name']) { stopIdx = i; break; } }
+    }
     final ok = await TransportTrackService.start(
       busId: _selected!, busName: b?['name']?.toString() ?? 'Bus', operator: b?['operator']?.toString(),
       stopName: st?['name']?.toString(), stopLat: st == null ? null : _d(st['lat']), stopLng: st == null ? null : _d(st['lng']),
       staleAfter: _staleAfter,
+      path: path, legDep: leg?['departTime']?.toString(), legArr: leg?['arriveTime']?.toString(), from: from, to: to, stopIdx: stopIdx,
     );
     if (!mounted) return;
     if (ok) {
@@ -804,7 +815,9 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              _trackInfo['min'] != null
+              _trackInfo['text'] != null
+                  ? '\u{1F514} ${_trackInfo['text']}'
+                  : _trackInfo['min'] != null
                   ? '\u{1F514} ${_t('Notification on', '\u0b85\u0bb1\u0bbf\u0bb5\u0bbf\u0baa\u0bcd\u0baa\u0bc1 \u0b87\u0baf\u0b95\u0bcd\u0b95\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd')} \u00b7 ${_t('about', '\u0b9a\u0bc1\u0bae\u0bbe\u0bb0\u0bcd')} ${_trackInfo['min']} ${_t('min to your stop', '\u0ba8\u0bbf\u0bae\u0bbf\u0b9f\u0bae\u0bcd')}'
                   : '\u{1F514} ${_t('Notification on. You will be alerted when the bus is near your stop.', '\u0b85\u0bb1\u0bbf\u0bb5\u0bbf\u0baa\u0bcd\u0baa\u0bc1 \u0b87\u0baf\u0b95\u0bcd\u0b95\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd.')}',
               style: TextStyle(fontSize: 12, color: Colors.grey[700]),

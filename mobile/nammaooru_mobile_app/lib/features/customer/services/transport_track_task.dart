@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
@@ -22,6 +23,12 @@ class TransportTrackKeys {
   static const stopLat = 'tr_track_stop_lat';
   static const stopLng = 'tr_track_stop_lng';
   static const staleAfter = 'tr_track_stale_after';
+  static const pathJson = 'tr_track_path';      // [{name,lat,lng}] in travel order (A .. B)
+  static const legDep = 'tr_track_leg_dep';      // HH:mm
+  static const legArr = 'tr_track_leg_arr';      // HH:mm
+  static const fromName = 'tr_track_from';
+  static const toName = 'tr_track_to';
+  static const stopIdx = 'tr_track_stop_idx';    // index into path of my stop (-1 none)
   static const serviceId = 7332;
 }
 
@@ -37,6 +44,11 @@ class TransportTrackTaskHandler extends TaskHandler {
   String? _stopName;
   double? _stopLat, _stopLng;
   int _staleAfter = 120;
+  List<Map<String, dynamic>> _path = [];
+  List<double> _cum = [];
+  String? _legDep, _legArr;
+  String _from = '', _to = '';
+  int _stopIdx = -1;
   Dio? _dio;
   bool _alerted = false;
   int _fails = 0;
@@ -52,6 +64,19 @@ class TransportTrackTaskHandler extends TaskHandler {
     _stopLat = await FlutterForegroundTask.getData<double>(key: TransportTrackKeys.stopLat);
     _stopLng = await FlutterForegroundTask.getData<double>(key: TransportTrackKeys.stopLng);
     _staleAfter = await FlutterForegroundTask.getData<int>(key: TransportTrackKeys.staleAfter) ?? 120;
+    try {
+      final raw = await FlutterForegroundTask.getData<String>(key: TransportTrackKeys.pathJson);
+      if (raw != null && raw.isNotEmpty) _path = List<Map<String, dynamic>>.from((jsonDecode(raw) as List).map((e) => Map<String, dynamic>.from(e)));
+    } catch (_) { _path = []; }
+    _cum = [0];
+    for (var i = 1; i < _path.length; i++) {
+      _cum.add(_cum.last + _haversine(_d(_path[i - 1]['lat']), _d(_path[i - 1]['lng']), _d(_path[i]['lat']), _d(_path[i]['lng'])));
+    }
+    _legDep = await FlutterForegroundTask.getData<String>(key: TransportTrackKeys.legDep);
+    _legArr = await FlutterForegroundTask.getData<String>(key: TransportTrackKeys.legArr);
+    _from = await FlutterForegroundTask.getData<String>(key: TransportTrackKeys.fromName) ?? '';
+    _to = await FlutterForegroundTask.getData<String>(key: TransportTrackKeys.toName) ?? '';
+    _stopIdx = await FlutterForegroundTask.getData<int>(key: TransportTrackKeys.stopIdx) ?? -1;
     _dio = Dio(BaseOptions(baseUrl: EnvConfig.fullApiUrl, connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
     try {
       await _notif.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
@@ -61,7 +86,53 @@ class TransportTrackTaskHandler extends TaskHandler {
     _tick();
   }
 
-  String _title(String st) => '$_busName${_operator.isNotEmpty ? ' ($_operator)' : ''} - $st';
+  String _title(String st) {
+    final route = (_from.isNotEmpty && _to.isNotEmpty) ? ' \u00b7 $_from \u2192 $_to' : '';
+    return '$_busName$route';
+  }
+
+  double _d(dynamic v) => (v as num?)?.toDouble() ?? 0;
+  static String _h12(String? hhmm) {
+    if (hhmm == null) return '';
+    final p = hhmm.split(':'); if (p.length < 2) return hhmm;
+    final h = int.tryParse(p[0]) ?? 0, m = int.tryParse(p[1]) ?? 0;
+    return '${h % 12 == 0 ? 12 : h % 12}:${m.toString().padLeft(2, '0')} ${h >= 12 ? 'PM' : 'AM'}';
+  }
+  static int _min(String? hhmm) { if (hhmm == null) return 0; final p = hhmm.split(':'); return (int.tryParse(p[0]) ?? 0) * 60 + (p.length > 1 ? int.tryParse(p[1]) ?? 0 : 0); }
+  static String _fmtMin(double m) { final mm = m.round() % 1440; return _h12('${mm ~/ 60}:${(mm % 60).toString().padLeft(2, '0')}'); }
+  double get _nowMin { final n = DateTime.now(); return n.hour * 60 + n.minute + n.second / 60.0; }
+
+  /// Fraction 0..1 of the path covered by the nearest point on the path to (lat,lng).
+  double _progress(double lat, double lng) {
+    if (_path.length < 2) return 0;
+    var best = double.infinity, bestAcc = 0.0;
+    for (var i = 1; i < _path.length; i++) {
+      final ax = _d(_path[i - 1]['lat']), ay = _d(_path[i - 1]['lng']), bx = _d(_path[i]['lat']), by = _d(_path[i]['lng']);
+      final seg = _cum[i] - _cum[i - 1];
+      final den = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+      final t = den == 0 ? 0.0 : (((lat - ax) * (bx - ax) + (lng - ay) * (by - ay)) / den).clamp(0.0, 1.0);
+      final qx = ax + (bx - ax) * t, qy = ay + (by - ay) * t;
+      final dq = _haversine(lat, lng, qx, qy);
+      if (dq < best) { best = dq; bestAcc = _cum[i - 1] + seg * t; }
+    }
+    return _cum.last == 0 ? 0 : bestAcc / _cum.last;
+  }
+
+  /// Name of the path point just behind / nearest to a progress fraction.
+  String _nearName(double frac) {
+    if (_path.isEmpty) return '';
+    final target = frac * _cum.last;
+    var bestI = 0, bestD = double.infinity;
+    for (var i = 0; i < _path.length; i++) { final d = (_cum[i] - target).abs(); if (d < bestD) { bestD = d; bestI = i; } }
+    return '${_path[bestI]['name']}';
+  }
+
+  /// Scheduled clock time at path index i for the current leg.
+  String _timeAt(int i) {
+    if (_legDep == null || _legArr == null || _cum.isEmpty || _cum.last == 0) return '';
+    final dep = _min(_legDep), arr = _min(_legArr);
+    return _fmtMin(dep + (arr - dep) * (_cum[i] / _cum.last));
+  }
 
   @override
   void onRepeatEvent(DateTime timestamp) { _tick(); }
@@ -72,33 +143,53 @@ class TransportTrackTaskHandler extends TaskHandler {
       final r = await _dio!.get('/transport/public/positions', queryParameters: {'ids': _busId});
       final list = (r.data is Map && r.data['data'] is List) ? r.data['data'] as List : const [];
       _fails = 0;
-      if (list.isEmpty) {
-        FlutterForegroundTask.updateService(notificationTitle: _title('Offline'), notificationText: 'The bus is not sharing its location right now');
-        _send({'state': 'OFFLINE'});
-        return;
-      }
-      final p = Map<String, dynamic>.from(list.first);
-      final age = (p['ageSec'] as num?)?.toInt() ?? 9999;
-      final state = age > _staleAfter ? 'OFFLINE' : (p['state'] ?? 'STOPPED').toString();
-      final speed = ((p['speedKmh'] as num?)?.toDouble() ?? 0).round();
-      String text;
+      final p = list.isEmpty ? null : Map<String, dynamic>.from(list.first);
+      final age = p == null ? 9999 : (p['ageSec'] as num?)?.toInt() ?? 9999;
+      final live = p != null && p['lat'] != null && age <= _staleAfter;
+      final state = !live ? 'OFFLINE' : (p['state'] ?? 'STOPPED').toString();
+      final speed = p == null ? 0 : ((p['speedKmh'] as num?)?.toDouble() ?? 0).round();
+      final myStop = _stopIdx >= 0 && _stopIdx < _path.length ? '${_path[_stopIdx]['name']}' : null;
+      final parts = <String>[];
       double? km; int? min;
-      if (_stopLat != null && _stopLng != null && p['lat'] != null && state != 'OFFLINE') {
-        km = _haversine((p['lat'] as num).toDouble(), (p['lng'] as num).toDouble(), _stopLat!, _stopLng!) * 1.3;
-        min = math.max(1, (km / math.max(20, speed) * 60).round());
-        text = '$_stopName in ~$min min (${km.toStringAsFixed(1)} km) - $speed km/h - updated ${age}s ago';
-        if (!_alerted && (min <= 2 || km <= 0.5)) {
-          _alerted = true;
-          await _alert('$_busName is arriving at $_stopName', 'About $min min away. Get ready!');
+
+      if (live) {
+        final frac = _path.length >= 2 ? _progress(_d(p['lat']), _d(p['lng'])) : 0.0;
+        if (_path.length >= 2) parts.add('Near ${_nearName(frac)} \u00b7 $speed km/h');
+        else parts.add('${state == 'MOVING' ? 'Moving' : 'Stopped'} \u00b7 $speed km/h');
+        if (myStop != null) {
+          final stopFrac = _cum.last == 0 ? 0.0 : _cum[_stopIdx] / _cum.last;
+          if (stopFrac < frac - 0.01) {
+            parts.add('Bus has passed $myStop');
+          } else {
+            km = (stopFrac - frac) * _cum.last;
+            min = math.max(1, (km / math.max(20, speed) * 60).round());
+            parts.add('$myStop in ~$min min (${km.toStringAsFixed(1)} km)');
+            if (!_alerted && (min <= 2 || km <= 0.5)) { _alerted = true; await _alert('$_busName is arriving at $myStop', 'About $min min away. Get ready!'); }
+            if (_alerted && km > 2.0) _alerted = false;
+          }
         }
-        if (_alerted && km > 2.0) _alerted = false; // bus passed and went away: allow a new alert next lap
-      } else if (state == 'OFFLINE') {
-        text = 'Not sharing location right now (last seen ${age}s ago)';
+        if (_to.isNotEmpty && _legArr != null) parts.add('$_to ${_h12(_legArr)}');
       } else {
-        text = '${state == 'MOVING' ? 'Moving' : 'Stopped'} - $speed km/h - updated ${age}s ago';
+        // GPS off: fall back to the timetable position
+        final dep = _min(_legDep), arr = _min(_legArr), now = _nowMin;
+        if (_legDep != null && _legArr != null && arr > dep && now >= dep && now <= arr && _path.length >= 2) {
+          final frac = (now - dep) / (arr - dep);
+          parts.add('GPS off \u00b7 by timetable near ${_nearName(frac)}');
+          if (myStop != null) parts.add('$myStop ~${_timeAt(_stopIdx)}');
+          if (_to.isNotEmpty) parts.add('$_to ${_h12(_legArr)}');
+        } else if (_legDep != null && now < dep) {
+          parts.add('Departs $_from at ${_h12(_legDep)}');
+          if (myStop != null) parts.add('$myStop ~${_timeAt(_stopIdx)}');
+          if (_to.isNotEmpty) parts.add('$_to ${_h12(_legArr)}');
+        } else if (_legArr != null && now > arr) {
+          parts.add('Trip reached $_to at ${_h12(_legArr)}');
+        } else {
+          parts.add('Not sharing location right now${p != null ? ' (last seen ${age}s ago)' : ''}');
+        }
       }
-      FlutterForegroundTask.updateService(notificationTitle: _title(state == 'MOVING' ? 'Moving' : state == 'STOPPED' ? 'Stopped' : 'Offline'), notificationText: text);
-      _send({'state': state, 'speedKmh': speed, 'ageSec': age, 'km': km, 'min': min, 'lat': p['lat'], 'lng': p['lng']});
+      final text = parts.join(' \u00b7 ');
+      FlutterForegroundTask.updateService(notificationTitle: _title(state), notificationText: text);
+      _send({'state': state, 'speedKmh': speed, 'ageSec': age, 'km': km, 'min': min, 'lat': p?['lat'], 'lng': p?['lng'], 'text': text});
     } catch (_) {
       _fails++;
       if (_fails >= 3) FlutterForegroundTask.updateService(notificationTitle: _title('No network'), notificationText: 'Retrying...');
@@ -152,6 +243,7 @@ class TransportTrackService {
   static Future<bool> start({
     required int busId, required String busName, String? operator,
     String? stopName, double? stopLat, double? stopLng, int staleAfter = 120,
+    List<Map<String, dynamic>> path = const [], String? legDep, String? legArr, String from = '', String to = '', int stopIdx = -1,
   }) async {
     _activeBusId = busId;
     if (kIsWeb) { _webTimer?.cancel(); _webTimer = Timer.periodic(const Duration(seconds: 10), (_) => listener?.call({'track': true, 'busId': busId, 'web': true})); return true; }
@@ -162,6 +254,12 @@ class TransportTrackService {
     if (stopLat != null) await FlutterForegroundTask.saveData(key: TransportTrackKeys.stopLat, value: stopLat); else await FlutterForegroundTask.removeData(key: TransportTrackKeys.stopLat);
     if (stopLng != null) await FlutterForegroundTask.saveData(key: TransportTrackKeys.stopLng, value: stopLng); else await FlutterForegroundTask.removeData(key: TransportTrackKeys.stopLng);
     await FlutterForegroundTask.saveData(key: TransportTrackKeys.staleAfter, value: staleAfter);
+    await FlutterForegroundTask.saveData(key: TransportTrackKeys.pathJson, value: jsonEncode(path.map((q) => {'name': q['name'], 'lat': q['lat'], 'lng': q['lng']}).toList()));
+    if (legDep != null) await FlutterForegroundTask.saveData(key: TransportTrackKeys.legDep, value: legDep); else await FlutterForegroundTask.removeData(key: TransportTrackKeys.legDep);
+    if (legArr != null) await FlutterForegroundTask.saveData(key: TransportTrackKeys.legArr, value: legArr); else await FlutterForegroundTask.removeData(key: TransportTrackKeys.legArr);
+    await FlutterForegroundTask.saveData(key: TransportTrackKeys.fromName, value: from);
+    await FlutterForegroundTask.saveData(key: TransportTrackKeys.toName, value: to);
+    await FlutterForegroundTask.saveData(key: TransportTrackKeys.stopIdx, value: stopIdx);
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'transport_track',
@@ -180,8 +278,8 @@ class TransportTrackService {
     if (await FlutterForegroundTask.isRunningService) await FlutterForegroundTask.stopService();
     final result = await FlutterForegroundTask.startService(
       serviceId: TransportTrackKeys.serviceId,
-      notificationTitle: '$busName - Tracking',
-      notificationText: 'Waiting for the bus position...',
+      notificationTitle: '$busName${from.isNotEmpty ? ' \u00b7 $from \u2192 $to' : ''}',
+      notificationText: 'Starting tracking...',
       notificationButtons: [const NotificationButton(id: 'stop', text: 'Stop tracking')],
       callback: transportTrackCallback,
     );
