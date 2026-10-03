@@ -2,7 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +14,7 @@ import '../../../../core/localization/language_provider.dart';
 import '../../../../core/theme/village_theme.dart';
 import '../../services/transport_service.dart';
 import '../../services/transport_timetable.dart';
+import '../../services/transport_track_task.dart';
 import 'transport_driver_screen.dart';
 import 'transport_owner_screen.dart';
 import 'transport_register_sheet.dart';
@@ -46,6 +51,8 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
   String? _routeSel;     // passenger picks a corridor (From|To) first; buses of every company on it are shown together
   String _dirSel = 'AB';  // then a direction (A->B or B->A)
   int? _tripPick;         // a departure chosen from 'All timings' (schedule id)
+  int? _trackingBus;      // bus followed in the notification
+  Map<String, dynamic> _trackInfo = {};
   bool _timesExpanded = false;
 
   String _t(String en, String ta) => Provider.of<LanguageProvider>(context, listen: false).getText(en, ta);
@@ -55,12 +62,62 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
     super.initState();
     _load();
     _loadMe();
+    if (kIsWeb) {
+      TransportTrackService.listener = _onTrack;
+    } else {
+      FlutterForegroundTask.addTaskDataCallback(_onTrack);
+    }
+    _trackingBus = TransportTrackService.activeBusId;
+  }
+
+  void _onTrack(Object data) {
+    if (data is Map && data['track'] == true && mounted) {
+      setState(() { _trackInfo = Map<String, dynamic>.from(data); _trackingBus = (data['busId'] as num?)?.toInt(); });
+    }
+  }
+
+  Future<void> _toggleTrack() async {
+    if (_selected == null) return;
+    if (_trackingBus == _selected) {
+      await TransportTrackService.stop();
+      if (mounted) setState(() { _trackingBus = null; _trackInfo = {}; });
+      return;
+    }
+    if (!kIsWeb) {
+      try { await Permission.notification.request(); } catch (_) {}
+      // The tracking service is a location-type foreground service on Android,
+      // so it can only start once location permission is granted.
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t('Allow location to track the bus in the notification bar.', 'Allow location to track the bus.'))));
+        return;
+      }
+    }
+    final b = _bus(_selected!);
+    final stops = _stops(_selected!);
+    final st = _stopIndex != null && _stopIndex! < stops.length ? stops[_stopIndex!] : null;
+    final ok = await TransportTrackService.start(
+      busId: _selected!, busName: b?['name']?.toString() ?? 'Bus', operator: b?['operator']?.toString(),
+      stopName: st?['name']?.toString(), stopLat: st == null ? null : _d(st['lat']), stopLng: st == null ? null : _d(st['lng']),
+      staleAfter: _staleAfter,
+    );
+    if (!mounted) return;
+    if (ok) {
+      setState(() { _trackingBus = _selected; _trackInfo = {}; });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(st == null
+          ? _t('Tracking started. Pick "My stop" to get an arrival alert.', '\u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf\u0baa\u0bcd\u0baa\u0bc1 \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bbf\u0baf\u0ba4\u0bc1. \u0bb5\u0bb0\u0bc1\u0b95\u0bc8 \u0b8e\u0b9a\u0bcd\u0b9a\u0bb0\u0bbf\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bcd\u0b95\u0bc1 "\u0b8e\u0ba9\u0bcd \u0ba8\u0bbf\u0bb1\u0bc1\u0ba4\u0bcd\u0ba4\u0bae\u0bcd" \u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd.')
+          : _t('Tracking in the notification bar. You will be alerted near your stop.', '\u0b85\u0bb1\u0bbf\u0bb5\u0bbf\u0baa\u0bcd\u0baa\u0bc1 \u0baa\u0b9f\u0bcd\u0b9f\u0bbf\u0baf\u0bbf\u0bb2\u0bcd \u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.'))));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t('Could not start tracking. Allow notifications and try again.', '\u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf\u0baa\u0bcd\u0baa\u0bc8 \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95 \u0bae\u0bc1\u0b9f\u0bbf\u0baf\u0bb5\u0bbf\u0bb2\u0bcd\u0bb2\u0bc8.'))));
+    }
   }
 
   @override
   void dispose() {
     _poll?.cancel();
     _map?.dispose();
+    if (kIsWeb) { TransportTrackService.listener = null; } else { FlutterForegroundTask.removeTaskDataCallback(_onTrack); }
     super.dispose();
   }
 
@@ -575,6 +632,12 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         foregroundColor: Colors.white,
         title: Text(_t('Where is Bus', 'பஸ் எங்கே')),
         actions: [
+          if (_trackingBus != null)
+            IconButton(
+              tooltip: _t('Stop tracking', '\u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf\u0baa\u0bcd\u0baa\u0bc8 \u0ba8\u0bbf\u0bb1\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1'),
+              icon: const Icon(Icons.notifications_active, color: Colors.amber),
+              onPressed: () async { await TransportTrackService.stop(); if (mounted) setState(() { _trackingBus = null; _trackInfo = {}; }); },
+            ),
           if (isDriver)
             IconButton(
               tooltip: _t('Driver mode', 'ஓட்டுநர்'),
@@ -723,6 +786,30 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
           if (eta != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('\u{1F552} $eta', style: const TextStyle(fontWeight: FontWeight.w700, color: _accent))),
           if (_stopIndex != null && !liveThisWay && nx != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_t('By timetable: departs', '\u0b85\u0b9f\u0bcd\u0b9f\u0bb5\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bbf: \u0baa\u0bc1\u0bb1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd')} ${TransportTimetable.h12(nx['departTime'])}', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
         ],
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _trackingBus == id ? Colors.red.shade700 : _accent, foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _toggleTrack,
+              icon: Icon(_trackingBus == id ? Icons.notifications_off : Icons.notifications_active),
+              label: Text(_trackingBus == id ? _t('Stop tracking', '\u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf\u0baa\u0bcd\u0baa\u0bc8 \u0ba8\u0bbf\u0bb1\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1') : _t('Track this bus', '\u0b87\u0ba8\u0bcd\u0ba4 \u0baa\u0bb8\u0bcd\u0bb8\u0bc8 \u0b95\u0ba3\u0bcd\u0b95\u0bbe\u0ba3\u0bbf'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ]),
+        if (_trackingBus == id)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _trackInfo['min'] != null
+                  ? '\u{1F514} ${_t('Notification on', '\u0b85\u0bb1\u0bbf\u0bb5\u0bbf\u0baa\u0bcd\u0baa\u0bc1 \u0b87\u0baf\u0b95\u0bcd\u0b95\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd')} \u00b7 ${_t('about', '\u0b9a\u0bc1\u0bae\u0bbe\u0bb0\u0bcd')} ${_trackInfo['min']} ${_t('min to your stop', '\u0ba8\u0bbf\u0bae\u0bbf\u0b9f\u0bae\u0bcd')}'
+                  : '\u{1F514} ${_t('Notification on. You will be alerted when the bus is near your stop.', '\u0b85\u0bb1\u0bbf\u0bb5\u0bbf\u0baa\u0bcd\u0baa\u0bc1 \u0b87\u0baf\u0b95\u0bcd\u0b95\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd.')}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            ),
+          ),
       ]),
     );
   }
