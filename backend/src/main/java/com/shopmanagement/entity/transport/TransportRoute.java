@@ -28,6 +28,18 @@ public class TransportRoute {
     @Column(nullable = false, length = 200)
     private String destination;
 
+    @Column(name = "source_lat", precision = 10, scale = 7)
+    private java.math.BigDecimal sourceLat;
+
+    @Column(name = "source_lng", precision = 10, scale = 7)
+    private java.math.BigDecimal sourceLng;
+
+    @Column(name = "dest_lat", precision = 10, scale = 7)
+    private java.math.BigDecimal destLat;
+
+    @Column(name = "dest_lng", precision = 10, scale = 7)
+    private java.math.BigDecimal destLng;
+
     /** JSON array: [{"name":"Stop","lat":12.5,"lng":78.5}] */
     @Column(name = "stops_json", columnDefinition = "TEXT")
     private String stopsJson;

@@ -53,6 +53,26 @@ public class TransportController {
         catch (Exception e) { return ResponseUtil.error(e.getMessage()); }
     }
 
+    /**
+     * Maps key for the website. Only answered for requests whose Origin/Referer
+     * is this site (or localhost for development); other callers get an empty key.
+     */
+    @GetMapping("/public/maps-key")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> mapsKey(
+            @RequestHeader(value = "Origin", required = false) String origin,
+            @RequestHeader(value = "Referer", required = false) String referer) {
+        try {
+            String src = (origin != null && !origin.isBlank()) ? origin : (referer == null ? "" : referer);
+            boolean allowed = src.contains("nammaoorudelivary.in") || src.contains("localhost") || src.contains("127.0.0.1");
+            if (!allowed) {
+                Map<String, Object> empty = new java.util.LinkedHashMap<>();
+                empty.put("key", ""); empty.put("libraries", "places,geometry");
+                return ResponseUtil.success(empty);
+            }
+            return ResponseUtil.success(transportService.mapsBrowserKey());
+        } catch (Exception e) { return ResponseUtil.error(e.getMessage()); }
+    }
+
     /* ---------------- identity ---------------- */
 
     @GetMapping("/me")

@@ -72,6 +72,20 @@ public class TransportService {
         return intSetting("transport.gps_interval_default_sec", 10);
     }
 
+    /**
+     * Google Maps browser key for the website. Comes from settings
+     * (google.maps.browser_key, editable in Admin > Settings) with an env fallback,
+     * so it never has to live in the website source.
+     */
+    public Map<String, Object> mapsBrowserKey() {
+        String key = settingService.getSettingValue("google.maps.browser_key", "");
+        if (key == null || key.isBlank()) key = System.getenv("GOOGLE_MAPS_BROWSER_KEY");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("key", key == null ? "" : key.trim());
+        out.put("libraries", "places,geometry");
+        return out;
+    }
+
     /* ===================== identity ===================== */
 
     private User user(String username) {
@@ -200,6 +214,10 @@ public class TransportService {
         m.put("name", r.getName());
         m.put("source", r.getSource());
         m.put("destination", r.getDestination());
+        m.put("sourceLat", r.getSourceLat());
+        m.put("sourceLng", r.getSourceLng());
+        m.put("destLat", r.getDestLat());
+        m.put("destLng", r.getDestLng());
         m.put("stops", parseStops(r.getStopsJson()));
         return m;
     }
@@ -305,6 +323,10 @@ public class TransportService {
         r.setName(name.isEmpty() ? source + " - " + destination : name);
         r.setSource(source);
         r.setDestination(destination);
+        r.setSourceLat(dec(asDouble(body.get("sourceLat")), 7));
+        r.setSourceLng(dec(asDouble(body.get("sourceLng")), 7));
+        r.setDestLat(dec(asDouble(body.get("destLat")), 7));
+        r.setDestLng(dec(asDouble(body.get("destLng")), 7));
         List<Map<String, Object>> stops = new ArrayList<>();
         Object raw = body.get("stops");
         if (raw instanceof List<?> list) {

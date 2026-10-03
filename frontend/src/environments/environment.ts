@@ -9,7 +9,7 @@ export const environment = {
   // appUrl: 'https://nammaoorudelivary.in',
   appUrl: 'http://localhost:4200',
 
-  googleMapsApiKey: 'AIzaSyAr_uGbaOnhebjRyz7ohU6N-hWZJVV_R3U',
+  googleMapsApiKey: '' /* served by backend: Admin > Settings > google.maps.browser_key */,
   websocketUrl: 'wss://api.nammaoorudelivary.in/ws',
   // websocketUrl: 'ws://localhost:8080/ws',
   version: packageInfo.version,

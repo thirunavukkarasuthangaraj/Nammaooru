@@ -1,7 +1,8 @@
-import { NgModule, isDevMode } from '@angular/core';
+import { NgModule, isDevMode, APP_INITIALIZER } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { MapsLoaderService, startMapsLoader } from './core/services/maps-loader.service';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { ServiceWorkerModule } from '@angular/service-worker';
 
@@ -149,6 +150,7 @@ import { ShopModule } from './features/shop/shop.module';
     })
   ],
   providers: [
+    { provide: APP_INITIALIZER, useFactory: startMapsLoader, deps: [MapsLoaderService], multi: true },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: CredentialsInterceptor,

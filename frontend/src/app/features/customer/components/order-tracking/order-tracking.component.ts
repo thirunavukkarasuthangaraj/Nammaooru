@@ -3,8 +3,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil, interval } from 'rxjs';
 import { OrderService, OrderTrackingInfo } from '../../services/order.service';
 import { FirebaseService } from '../../../../core/services/firebase.service';
-import { environment } from '../../../../../environments/environment';
 import { SwalService } from '../../../../core/services/swal.service';
+import { MapsLoaderService } from '../../../../core/services/maps-loader.service';
 
 declare var google: any;
 
@@ -29,7 +29,8 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
     private router: Router,
     private orderService: OrderService,
     private firebaseService: FirebaseService,
-    private swal: SwalService
+    private swal: SwalService,
+    private mapsLoader: MapsLoaderService
   ) {}
 
   ngOnInit(): void {
@@ -117,21 +118,11 @@ export class OrderTrackingComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   private loadGoogleMaps(): void {
-    if (typeof google !== 'undefined') {
-      this.initializeMap();
-    } else {
-      // Load Google Maps script
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${environment.googleMapsApiKey}&libraries=geometry`;
-      script.onload = () => {
-        this.initializeMap();
-      };
-      script.onerror = () => {
-        console.error('Failed to load Google Maps');
-        this.mapLoaded = false;
-      };
-      document.head.appendChild(script);
-    }
+    // Key is served by the backend and injected once by MapsLoaderService
+    this.mapsLoader.load().then(ok => {
+      if (ok) this.initializeMap();
+      else { console.error('Failed to load Google Maps'); this.mapLoaded = false; }
+    });
   }
 
   private initializeMap(): void {
