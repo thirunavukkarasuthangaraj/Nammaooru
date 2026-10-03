@@ -6,6 +6,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { MapsLoaderService } from '../../../core/services/maps-loader.service';
 import { TransportOwnerService, routePath, routeColor } from '../../../core/services/transport-owner.service';
+import { roadPath, drawRouteLine, busIcon, animateMarker, stateColor } from '../map-utils';
 
 declare var google: any;
 
@@ -131,9 +132,10 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
   operators = 0;
   private map: any;
   private markers = new Map<number, any>();
-  private routeLine: any;
+  private routeLine: any[] | null = null;
+  private routeToken = 0;
   private routeMarkers: any[] = [];
-  private allRouteLines = new Map<number, any>();
+  private allRouteLines = new Map<number, any[]>();
   private subs: Subscription[] = [];
 
   constructor(private http: HttpClient, private mapsLoader: MapsLoaderService, private router: Router,
@@ -214,42 +216,44 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
     const p = this.positions.get(b.id);
     if (this.map && p) { this.map.panTo({ lat: +p.lat, lng: +p.lng }); if (this.map.getZoom() < 14) this.map.setZoom(14); }
     this.drawRoute(b);
-    if (!p) this.fitRoute();
   }
 
   scrollTo(id: string): void { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
 
   private drawRoute(b: PublicBus): void {
     if (!this.map) return;
-    if (this.routeLine) { this.routeLine.setMap(null); this.routeLine = null; }
+    if (this.routeLine) { this.routeLine.forEach((l: any) => l.setMap(null)); this.routeLine = null; }
     this.routeMarkers.forEach(m => m.setMap(null)); this.routeMarkers = [];
-    const path = routePath(b.route);
-    const color = routeColor(b.route?.id);
-    if (path.length > 1) {
-      this.routeMarkers.push(new google.maps.Polyline({ path, strokeColor: '#ffffff', strokeOpacity: 1, strokeWeight: 10, map: this.map, zIndex: 1 }));
-      this.routeLine = new google.maps.Polyline({ path, strokeColor: color, strokeOpacity: 1, strokeWeight: 6, map: this.map, zIndex: 2 });
-    }
-    path.forEach((p, i) => this.routeMarkers.push(new google.maps.Marker({
+    if (!b.route) return;
+    const color = routeColor(b.route.id);
+    const token = (this.routeToken = this.routeToken + 1);
+    roadPath(b.route).then(path => {
+      if (token !== this.routeToken || !this.map) return;
+      this.routeLine = drawRouteLine(this.map, path, color, true);
+      if (!this.positions.get(b.id)) this.fitRoute();
+    });
+    routePath(b.route).forEach((p, i) => this.routeMarkers.push(new google.maps.Marker({
       position: { lat: p.lat, lng: p.lng }, map: this.map, title: p.label,
-      label: p.kind === 'stop' ? { text: String(i), color: '#1a237e', fontSize: '10px', fontWeight: '700' } : { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '700' },
-      icon: p.kind === 'stop' ? { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#fff', fillOpacity: 1, strokeColor: color, strokeWeight: 3 } : undefined,
-      zIndex: 3,
+      label: p.kind === 'stop' ? { text: String(i), color: color, fontSize: '11px', fontWeight: '800' } : { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '800' },
+      icon: p.kind === 'stop' ? { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#fff', fillOpacity: 1, strokeColor: color, strokeWeight: 3 } : undefined,
+      zIndex: p.kind === 'stop' ? 5 : 6,
     })));
   }
   private fitRoute(): void {
-    if (!this.map || !this.routeLine) return;
-    const b = new google.maps.LatLngBounds(); this.routeLine.getPath().forEach((p: any) => b.extend(p)); this.map.fitBounds(b, 40);
+    if (!this.map || !this.routeLine || !this.routeLine.length) return;
+    const b = new google.maps.LatLngBounds(); this.routeLine[1].getPath().forEach((p: any) => b.extend(p)); this.map.fitBounds(b, 40);
   }
 
   private drawAllRoutes(): void {
     if (!this.map) return;
     for (const b of this.buses) {
-      const r = b.route; if (!r || r.id == null) continue;
-      const path = routePath(r).map(p => ({ lat: p.lat, lng: p.lng }));
-      if (path.length < 2) continue;
-      let line = this.allRouteLines.get(r.id);
-      if (!line) { line = new google.maps.Polyline({ path, strokeColor: routeColor(r.id), strokeOpacity: 1, strokeWeight: 5, map: this.map }); this.allRouteLines.set(r.id, line); }
-      else line.setPath(path);
+      const r = b.route; if (!r || r.id == null || this.allRouteLines.has(r.id)) continue;
+      this.allRouteLines.set(r.id, []);
+      roadPath(r).then(path => {
+        if (!this.map) return;
+        this.allRouteLines.set(r.id, drawRouteLine(this.map, path, routeColor(r.id), false));
+        if (this.markers.size === 0) this.render(true);
+      });
     }
   }
 
@@ -262,22 +266,21 @@ export class TransportHomeComponent implements OnInit, AfterViewInit, OnDestroy 
       if (!p) continue;
       seen.add(b.id);
       const st = this.stateOf(b.id);
-      const color = st === 'MOVING' ? '#2e7d32' : st === 'STOPPED' ? '#1565c0' : '#78909c';
-      const icon = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, rotation: +(p.heading || 0) };
+      const icon = busIcon(stateColor(st), +(p.heading || 0));
       const ll = { lat: +p.lat, lng: +p.lng };
       let m = this.markers.get(b.id);
       if (!m) {
-        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: b.name, label: { text: b.name, color: '#1a237e', fontSize: '11px', fontWeight: '700' } });
+        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: b.name, zIndex: 10, label: { text: b.name, color: '#1a237e', fontSize: '12px', fontWeight: '800' } });
         m.addListener('click', () => this.zone.run(() => this.select(b)));
         this.markers.set(b.id, m);
-      } else { m.setPosition(ll); m.setIcon(icon); }
+      } else { animateMarker(m, ll); m.setIcon(icon); }
       if (this.selected === b.id) this.map.panTo(ll);
     }
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.setMap(null); this.markers.delete(id); }
     if (fit) {
       const bb = new google.maps.LatLngBounds();
       this.markers.forEach(m => bb.extend(m.getPosition()));
-      if (this.markers.size === 0) this.allRouteLines.forEach(l => l.getPath().forEach((p: any) => bb.extend(p)));
+      if (this.markers.size === 0) this.allRouteLines.forEach(ls => ls.forEach(l => l.getPath().forEach((p: any) => bb.extend(p))));
       if (bb.isEmpty()) return;
       this.markers.size === 1 ? (this.map.setCenter(bb.getCenter()), this.map.setZoom(13)) : this.map.fitBounds(bb, 60);
     }

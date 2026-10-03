@@ -2,6 +2,7 @@ import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewCh
 import { Subscription } from 'rxjs';
 import { TransportPosition, TransportVehicle, routePath, routeColor } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
+import { roadPath, drawRouteLine, busIcon, animateMarker, stateColor } from '../map-utils';
 
 declare var google: any;
 
@@ -70,9 +71,10 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
   mapsReady = false;
   private map: any;
   private markers = new Map<number, any>();
-  private routeLine: any;
+  private routeLine: any[] | null = null;
+  private routeToken = 0;
   private routeMarkers: any[] = [];
-  private allRouteLines = new Map<number, any>();
+  private allRouteLines = new Map<number, any[]>();
   private trails = new Map<number, { lat: number; lng: number }[]>();
   private trailLines = new Map<number, any>();
   showTrails = true;
@@ -136,26 +138,23 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private drawRoute(v: TransportVehicle): void {
     if (!this.map) return;
-    if (this.routeLine) { this.routeLine.setMap(null); this.routeLine = null; }
+    if (this.routeLine) { this.routeLine.forEach((l: any) => l.setMap(null)); this.routeLine = null; }
     this.routeMarkers.forEach(m => m.setMap(null)); this.routeMarkers = [];
     const r = this.store.snapshot?.routes?.find(x => x.id === v.routeId);
-    const path = routePath(r);
-    const color = routeColor(r?.id);
-    if (path.length > 1) {
-      const pts = path.map(p => ({ lat: p.lat, lng: p.lng }));
-      // white outline underneath + bold colour on top so the selected route stands out
-      this.routeMarkers.push(new google.maps.Polyline({ path: pts, strokeColor: '#ffffff', strokeOpacity: 1, strokeWeight: 10, map: this.map, zIndex: 1 }));
-      this.routeLine = new google.maps.Polyline({ path: pts, strokeColor: color, strokeOpacity: 1, strokeWeight: 6, map: this.map, zIndex: 2 });
-    }
-    path.forEach((p, i) => {
+    if (!r) return;
+    const color = routeColor(r.id);
+    const token = (this.routeToken = (this.routeToken || 0) + 1);
+    roadPath(r).then(path => {
+      if (token !== this.routeToken || !this.map) return;
+      this.routeLine = drawRouteLine(this.map, path, color, true);
+    });
+    routePath(r).forEach((p, i) => {
       const isEnd = p.kind !== 'stop';
       this.routeMarkers.push(new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng }, map: this.map, title: p.label,
-        label: isEnd ? { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '700' } : { text: String(i), color: '#1a237e', fontSize: '10px', fontWeight: '700' },
-        icon: isEnd
-          ? undefined
-          : { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#fff', fillOpacity: 1, strokeColor: color, strokeWeight: 3 },
-        zIndex: isEnd ? 4 : 3,
+        label: isEnd ? { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '800' } : { text: String(i), color: color, fontSize: '11px', fontWeight: '800' },
+        icon: isEnd ? undefined : { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#fff', fillOpacity: 1, strokeColor: color, strokeWeight: 3 },
+        zIndex: isEnd ? 6 : 5,
       }));
     });
   }
@@ -185,21 +184,22 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
-  /** Faint line for every route assigned to a vehicle, so the owner sees the network even before buses move. */
+  /** Every route assigned to a vehicle, drawn along the roads with a white outline so it stands out. */
   private drawAllRoutes(): void {
     if (!this.map) return;
     const routes = this.store.snapshot?.routes || [];
     const used = new Set<number>(this.vehicles.map(v => v.routeId!).filter(id => id != null));
-    for (const [id, line] of this.allRouteLines) { if (!used.has(id)) { line.setMap(null); this.allRouteLines.delete(id); } }
+    for (const [id, lines] of this.allRouteLines) { if (!used.has(id)) { lines.forEach(l => l.setMap(null)); this.allRouteLines.delete(id); } }
     for (const id of used) {
+      if (this.allRouteLines.has(id)) continue;
       const r = routes.find(x => x.id === id);
-      const path = routePath(r).map(p => ({ lat: p.lat, lng: p.lng }));
-      if (path.length < 2) continue;
-      let line = this.allRouteLines.get(id);
-      if (!line) {
-        line = new google.maps.Polyline({ path, strokeColor: routeColor(id), strokeOpacity: 1, strokeWeight: 5, map: this.map });
-        this.allRouteLines.set(id, line);
-      } else line.setPath(path);
+      if (!r) continue;
+      this.allRouteLines.set(id, []); // placeholder so we request once
+      roadPath(r).then(path => {
+        if (!this.map || !this.allRouteLines.has(id)) return;
+        this.allRouteLines.set(id, drawRouteLine(this.map, path, routeColor(id), false));
+        if (this.markers.size === 0) this.fitAll();
+      });
     }
   }
 
@@ -212,17 +212,17 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
       if (!p || p.lat == null) continue;
       seen.add(v.id!);
       const st = this.stateOf(v);
-      const color = st === 'MOVING' ? '#2e7d32' : st === 'STOPPED' ? '#1565c0' : '#78909c';
-      const icon = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, rotation: +(p.heading || 0) };
+      const icon = busIcon(stateColor(st), +(p.heading || 0));
       const ll = { lat: +p.lat, lng: +p.lng };
       this.pushTrail(v.id!, ll.lat, ll.lng, st === 'MOVING');
       let m = this.markers.get(v.id!);
       if (!m) {
-        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: v.name, label: { text: v.name, color: '#1a237e', fontSize: '11px', fontWeight: '700' } as any });
+        m = new google.maps.Marker({ position: ll, map: this.map, icon, title: v.name, zIndex: 10,
+          label: { text: v.name, color: '#1a237e', fontSize: '12px', fontWeight: '800', className: 'bus-label' } as any });
         m.addListener('click', () => this.zone.run(() => this.select(v)));
         this.markers.set(v.id!, m);
       } else {
-        m.setPosition(ll); m.setIcon(icon);
+        animateMarker(m, ll); m.setIcon(icon);
       }
       if (this.follow && this.selected === v.id) this.map.panTo(ll);
     }
@@ -234,7 +234,7 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!this.map) return;
     const b = new google.maps.LatLngBounds();
     this.markers.forEach(m => b.extend(m.getPosition()));
-    if (this.markers.size === 0) { this.allRouteLines.forEach(l => l.getPath().forEach((p: any) => b.extend(p))); if (b.isEmpty()) return; this.map.fitBounds(b, 60); return; }
+    if (this.markers.size === 0) { this.allRouteLines.forEach(ls => ls.forEach(l => l.getPath().forEach((p: any) => b.extend(p)))); if (b.isEmpty()) return; this.map.fitBounds(b, 60); return; }
     if (this.markers.size === 1) { this.map.setCenter(b.getCenter()); this.map.setZoom(14); }
     else this.map.fitBounds(b, 60);
   }
