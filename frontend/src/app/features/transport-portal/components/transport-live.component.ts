@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { TransportPosition, TransportVehicle } from '../../../core/services/transport-owner.service';
+import { TransportPosition, TransportVehicle, routePath } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
 
 declare var google: any;
@@ -14,6 +14,7 @@ declare var google: any;
     <div class="map-tools">
       <button mat-mini-fab color="primary" (click)="fitAll()" title="Fit all vehicles"><mat-icon>fit_screen</mat-icon></button>
       <button mat-mini-fab [color]="follow ? 'accent' : undefined" (click)="follow = !follow" title="Follow selected"><mat-icon>gps_fixed</mat-icon></button>
+      <button mat-mini-fab [color]="showTrails ? 'accent' : undefined" (click)="toggleTrails()" title="Show movement trails"><mat-icon>timeline</mat-icon></button>
     </div>
     <div class="no-maps" *ngIf="!mapsReady">Loading Google Maps...</div>
   </div>
@@ -70,6 +71,10 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
   private map: any;
   private markers = new Map<number, any>();
   private routeLine: any;
+  private routeMarkers: any[] = [];
+  private trails = new Map<number, { lat: number; lng: number }[]>();
+  private trailLines = new Map<number, any>();
+  showTrails = true;
   private sub?: Subscription;
   private mapsTimer: any;
 
@@ -131,11 +136,49 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
   private drawRoute(v: TransportVehicle): void {
     if (!this.map) return;
     if (this.routeLine) { this.routeLine.setMap(null); this.routeLine = null; }
+    this.routeMarkers.forEach(m => m.setMap(null)); this.routeMarkers = [];
     const r = this.store.snapshot?.routes?.find(x => x.id === v.routeId);
-    const pts = (r?.stops || []).filter(s => s.lat != null && s.lng != null).map(s => ({ lat: +s.lat!, lng: +s.lng! }));
-    if (pts.length > 1) {
-      this.routeLine = new google.maps.Polyline({ path: pts, strokeColor: '#1565c0', strokeOpacity: .5, strokeWeight: 3, map: this.map,
-        icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '16px' }] } as any);
+    const path = routePath(r);
+    if (path.length > 1) {
+      this.routeLine = new google.maps.Polyline({
+        path: path.map(p => ({ lat: p.lat, lng: p.lng })), strokeColor: '#1565c0', strokeOpacity: .55, strokeWeight: 4, map: this.map,
+      });
+    }
+    path.forEach((p, i) => {
+      const isEnd = p.kind !== 'stop';
+      this.routeMarkers.push(new google.maps.Marker({
+        position: { lat: p.lat, lng: p.lng }, map: this.map, title: p.label,
+        label: isEnd ? { text: p.kind === 'from' ? 'A' : 'B', color: '#fff', fontWeight: '700' } : { text: String(i), color: '#1a237e', fontSize: '10px', fontWeight: '700' },
+        icon: isEnd
+          ? undefined
+          : { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#fff', fillOpacity: 1, strokeColor: '#1565c0', strokeWeight: 2 },
+        zIndex: isEnd ? 3 : 1,
+      }));
+    });
+  }
+
+  toggleTrails(): void {
+    this.showTrails = !this.showTrails;
+    this.trailLines.forEach(l => l.setMap(this.showTrails ? this.map : null));
+  }
+
+  /** Keep the last ~200 distinct points per vehicle and draw them as its movement trail. */
+  private pushTrail(id: number, lat: number, lng: number, moving: boolean): void {
+    const t = this.trails.get(id) || [];
+    const last = t[t.length - 1];
+    if (!last || Math.abs(last.lat - lat) > 0.00002 || Math.abs(last.lng - lng) > 0.00002) {
+      t.push({ lat, lng });
+      if (t.length > 200) t.splice(0, t.length - 200);
+      this.trails.set(id, t);
+    }
+    if (!this.map || t.length < 2) return;
+    let line = this.trailLines.get(id);
+    if (!line) {
+      line = new google.maps.Polyline({ path: t, strokeColor: moving ? '#2e7d32' : '#78909c', strokeOpacity: .8, strokeWeight: 3, map: this.showTrails ? this.map : null });
+      this.trailLines.set(id, line);
+    } else {
+      line.setPath(t);
+      line.setOptions({ strokeColor: moving ? '#2e7d32' : '#78909c' });
     }
   }
 
@@ -150,6 +193,7 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
       const color = st === 'MOVING' ? '#2e7d32' : st === 'STOPPED' ? '#1565c0' : '#78909c';
       const icon = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, rotation: +(p.heading || 0) };
       const ll = { lat: +p.lat, lng: +p.lng };
+      this.pushTrail(v.id!, ll.lat, ll.lng, st === 'MOVING');
       let m = this.markers.get(v.id!);
       if (!m) {
         m = new google.maps.Marker({ position: ll, map: this.map, icon, title: v.name, label: { text: v.name, color: '#1a237e', fontSize: '11px', fontWeight: '700' } as any });
@@ -161,6 +205,7 @@ export class TransportLiveComponent implements OnInit, AfterViewInit, OnDestroy 
       if (this.follow && this.selected === v.id) this.map.panTo(ll);
     }
     for (const [id, m] of this.markers) { if (!seen.has(id)) { m.setMap(null); this.markers.delete(id); } }
+    for (const [id, l] of this.trailLines) { if (!seen.has(id)) { l.setMap(null); this.trailLines.delete(id); this.trails.delete(id); } }
   }
 
   fitAll(): void {

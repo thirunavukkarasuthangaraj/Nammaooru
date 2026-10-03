@@ -5,7 +5,20 @@ import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface TransportStop { name: string; lat: number | null; lng: number | null; }
-export interface TransportRoute { id?: number; name: string; source: string; destination: string; stops: TransportStop[]; }
+export interface TransportRoute {
+  id?: number; name: string; source: string; destination: string; stops: TransportStop[];
+  sourceLat?: number | null; sourceLng?: number | null; destLat?: number | null; destLng?: number | null;
+}
+
+/** From -> stops -> To as map points (only the ones that have coordinates). */
+export function routePath(r?: TransportRoute | null): { lat: number; lng: number; label: string; kind: 'from' | 'stop' | 'to' }[] {
+  if (!r) return [];
+  const out: { lat: number; lng: number; label: string; kind: 'from' | 'stop' | 'to' }[] = [];
+  if (r.sourceLat != null && r.sourceLng != null) out.push({ lat: +r.sourceLat, lng: +r.sourceLng, label: r.source, kind: 'from' });
+  (r.stops || []).forEach(st => { if (st.lat != null && st.lng != null) out.push({ lat: +st.lat, lng: +st.lng, label: st.name, kind: 'stop' }); });
+  if (r.destLat != null && r.destLng != null) out.push({ lat: +r.destLat, lng: +r.destLng, label: r.destination, kind: 'to' });
+  return out;
+}
 export interface TransportDriver { id?: number; name: string; phone: string; status?: string; }
 export interface TransportVehicle {
   id?: number; vehicleType: string; regNo: string; name: string;

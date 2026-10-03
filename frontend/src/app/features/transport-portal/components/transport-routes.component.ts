@@ -1,7 +1,7 @@
 import { AfterViewChecked, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { SwalService } from '../../../core/services/swal.service';
-import { TransportOwnerService, TransportRoute, TransportStop } from '../../../core/services/transport-owner.service';
+import { TransportOwnerService, TransportRoute, TransportStop, routePath } from '../../../core/services/transport-owner.service';
 import { TransportStore } from '../transport-store.service';
 
 declare var google: any;
@@ -18,14 +18,26 @@ declare var google: any;
   <div class="form" *ngIf="editing">
     <h3>{{ editing.id ? 'Edit route' : 'Add route' }}</h3>
     <div class="grid3">
-      <mat-form-field appearance="outline"><mat-label>Route name</mat-label><input matInput [(ngModel)]="editing.name" placeholder="e.g. Route 7"></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>From *</mat-label><input matInput [(ngModel)]="editing.source"></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>To *</mat-label><input matInput [(ngModel)]="editing.destination"></mat-form-field>
+      <mat-form-field appearance="outline" class="span3"><mat-label>Route name</mat-label><input matInput [(ngModel)]="editing.name" placeholder="e.g. Route 7"></mat-form-field>
+    </div>
+    <div class="endpoint" [class.sel]="target === 'from'" (click)="target = 'from'">
+      <span class="tag a">A</span>
+      <mat-form-field appearance="outline" class="name"><mat-label>From *</mat-label><input matInput [(ngModel)]="editing.source"></mat-form-field>
+      <mat-form-field appearance="outline" class="coord"><mat-label>Lat</mat-label><input matInput type="number" step="any" [(ngModel)]="editing.sourceLat" (ngModelChange)="drawStops()"></mat-form-field>
+      <mat-form-field appearance="outline" class="coord"><mat-label>Lng</mat-label><input matInput type="number" step="any" [(ngModel)]="editing.sourceLng" (ngModelChange)="drawStops()"></mat-form-field>
+      <span class="hintsel">{{ target === 'from' ? 'click map to place' : '' }}</span>
+    </div>
+    <div class="endpoint" [class.sel]="target === 'to'" (click)="target = 'to'">
+      <span class="tag b">B</span>
+      <mat-form-field appearance="outline" class="name"><mat-label>To *</mat-label><input matInput [(ngModel)]="editing.destination"></mat-form-field>
+      <mat-form-field appearance="outline" class="coord"><mat-label>Lat</mat-label><input matInput type="number" step="any" [(ngModel)]="editing.destLat" (ngModelChange)="drawStops()"></mat-form-field>
+      <mat-form-field appearance="outline" class="coord"><mat-label>Lng</mat-label><input matInput type="number" step="any" [(ngModel)]="editing.destLng" (ngModelChange)="drawStops()"></mat-form-field>
+      <span class="hintsel">{{ target === 'to' ? 'click map to place' : '' }}</span>
     </div>
     <div class="editor">
       <div class="stops">
         <div class="stops-head"><strong>Stops (in order)</strong><button mat-button color="primary" (click)="addStop()"><mat-icon>add</mat-icon> Add stop</button></div>
-        <div class="stop" *ngFor="let s of editing.stops; let i = index" [class.sel]="selStop === i" (click)="selStop = i">
+        <div class="stop" *ngFor="let s of editing.stops; let i = index" [class.sel]="target === 'stop' && selStop === i" (click)="target = 'stop'; selStop = i">
           <span class="n">{{ i + 1 }}</span>
           <mat-form-field appearance="outline" class="name"><mat-label>Stop name</mat-label><input matInput [(ngModel)]="s.name"></mat-form-field>
           <mat-form-field appearance="outline" class="coord"><mat-label>Lat</mat-label><input matInput type="number" step="any" [(ngModel)]="s.lat" (ngModelChange)="drawStops()"></mat-form-field>
@@ -34,7 +46,7 @@ declare var google: any;
           <button mat-icon-button (click)="moveStop(i, 1); $event.stopPropagation()" [disabled]="i === editing.stops.length - 1" title="Move down"><mat-icon>arrow_downward</mat-icon></button>
           <button mat-icon-button color="warn" (click)="removeStop(i); $event.stopPropagation()" title="Remove"><mat-icon>close</mat-icon></button>
         </div>
-        <p class="tip">Tip: select a stop row, then click its location on the map. Drag a marker to adjust.</p>
+        <p class="tip">Tip: select A (From), B (To) or a stop row, then click its location on the map. Drag any marker to adjust. The line is drawn A &rarr; stops &rarr; B.</p>
       </div>
       <div class="map-wrap"><div #map class="map"></div></div>
     </div>
@@ -48,7 +60,11 @@ declare var google: any;
     <div class="empty" *ngIf="routes.length === 0 && !editing">No routes yet.</div>
     <div class="card" *ngFor="let r of routes">
       <div class="card-top"><mat-icon class="ico">alt_route</mat-icon><div class="t"><strong>{{ r.name }}</strong><small>{{ r.source }} &rarr; {{ r.destination }}</small></div></div>
-      <div class="stoplist"><span *ngFor="let s of r.stops; let i = index">{{ i + 1 }}. {{ s.name }}</span><span *ngIf="!r.stops?.length" class="muted">No stops</span></div>
+      <div class="stoplist">
+        <span [class.muted]="r.sourceLat == null">A: {{ r.source }}{{ r.sourceLat == null ? ' (no point)' : '' }}</span>
+        <span *ngFor="let s of r.stops; let i = index" [class.muted]="s.lat == null">{{ i + 1 }}. {{ s.name }}{{ s.lat == null ? ' (no point)' : '' }}</span>
+        <span [class.muted]="r.destLat == null">B: {{ r.destination }}{{ r.destLat == null ? ' (no point)' : '' }}</span>
+      </div>
       <div class="card-actions">
         <button mat-button color="primary" (click)="edit(r)"><mat-icon>edit</mat-icon> Edit</button>
         <button mat-button color="warn" (click)="remove(r)"><mat-icon>delete</mat-icon> Remove</button>
@@ -60,6 +76,11 @@ declare var google: any;
     .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; h2 { margin: 0; } .sub { margin: 4px 0 0; color: #6b7280; font-size: 13px; max-width: 720px; } }
     .form { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin-bottom: 16px; h3 { margin: 0 0 10px; } }
     .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .span3 { grid-column: 1 / -1; }
+    .endpoint { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; margin-bottom: 2px; .name { flex: 2; } .coord { flex: 1; } mat-form-field { margin-bottom: -1.25em; } }
+    .endpoint.sel { border-color: #1565c0; background: #e8f0fe; }
+    .tag { width: 24px; height: 24px; border-radius: 50%; color: #fff; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; &.a { background: #2e7d32; } &.b { background: #c62828; } }
+    .hintsel { font-size: 11px; color: #1565c0; min-width: 90px; }
     .editor { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .stops-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .stop { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; .n { width: 22px; font-weight: 700; color: #1565c0; } .name { flex: 2; } .coord { flex: 1; } }
@@ -83,6 +104,7 @@ export class TransportRoutesComponent implements OnInit, AfterViewChecked, OnDes
   routes: TransportRoute[] = [];
   editing: TransportRoute | null = null;
   selStop: number | null = null;
+  target: 'from' | 'to' | 'stop' = 'stop';
   saving = false;
   private map: any;
   private markers: any[] = [];
@@ -104,11 +126,11 @@ export class TransportRoutesComponent implements OnInit, AfterViewChecked, OnDes
     }
   }
 
-  startAdd(): void { this.editing = { name: '', source: '', destination: '', stops: [] }; this.selStop = null; this.mapInitFor = null; window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  edit(r: TransportRoute): void { this.editing = { ...r, stops: (r.stops || []).map(s => ({ ...s })) }; this.selStop = null; this.mapInitFor = null; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  startAdd(): void { this.editing = { name: '', source: '', destination: '', stops: [], sourceLat: null, sourceLng: null, destLat: null, destLng: null }; this.selStop = null; this.target = 'from'; this.mapInitFor = null; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  edit(r: TransportRoute): void { this.editing = { ...r, stops: (r.stops || []).map(s => ({ ...s })) }; this.selStop = null; this.target = 'stop'; this.mapInitFor = null; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   cancel(): void { this.editing = null; this.mapInitFor = null; this.clearMap(); }
 
-  addStop(): void { if (!this.editing) return; this.editing.stops.push({ name: '', lat: null, lng: null }); this.selStop = this.editing.stops.length - 1; }
+  addStop(): void { if (!this.editing) return; this.editing.stops.push({ name: '', lat: null, lng: null }); this.selStop = this.editing.stops.length - 1; this.target = 'stop'; }
   removeStop(i: number): void { if (!this.editing) return; this.editing.stops.splice(i, 1); this.selStop = null; this.drawStops(); }
   moveStop(i: number, dir: number): void {
     if (!this.editing) return;
@@ -118,7 +140,9 @@ export class TransportRoutesComponent implements OnInit, AfterViewChecked, OnDes
 
   private onMapClick(lat: number, lng: number): void {
     if (!this.editing) return;
-    if (this.selStop == null) { this.editing.stops.push({ name: `Stop ${this.editing.stops.length + 1}`, lat, lng }); this.selStop = this.editing.stops.length - 1; }
+    if (this.target === 'from') { this.editing.sourceLat = lat; this.editing.sourceLng = lng; this.target = 'to'; }
+    else if (this.target === 'to') { this.editing.destLat = lat; this.editing.destLng = lng; this.target = 'stop'; this.selStop = null; }
+    else if (this.selStop == null) { this.editing.stops.push({ name: `Stop ${this.editing.stops.length + 1}`, lat, lng }); this.selStop = this.editing.stops.length - 1; }
     else { this.editing.stops[this.selStop].lat = lat; this.editing.stops[this.selStop].lng = lng; }
     this.drawStops();
   }
@@ -128,16 +152,33 @@ export class TransportRoutesComponent implements OnInit, AfterViewChecked, OnDes
   drawStops(fit = false): void {
     if (!this.map || !this.editing) return;
     this.clearMap();
+    const e = this.editing;
+    const num = (v: any) => (v == null || v === '' ? null : +v);
     const pts: any[] = [];
-    this.editing.stops.forEach((s: TransportStop, i: number) => {
-      if (s.lat == null || s.lng == null || s.lat === ('' as any) || s.lng === ('' as any)) return;
-      const ll = { lat: +s.lat, lng: +s.lng }; pts.push(ll);
-      const m = new google.maps.Marker({ position: ll, map: this.map, draggable: true, label: { text: String(i + 1), color: '#fff', fontWeight: '700' }, title: s.name });
-      m.addListener('dragend', (e: any) => this.zone.run(() => { s.lat = e.latLng.lat(); s.lng = e.latLng.lng(); this.drawStops(); }));
-      m.addListener('click', () => this.zone.run(() => this.selStop = i));
+    const addMarker = (pos: any, opts: any, onDrag: (ll: any) => void) => {
+      const m = new google.maps.Marker({ position: pos, map: this.map, draggable: true, ...opts });
+      m.addListener('dragend', (ev: any) => this.zone.run(() => { onDrag(ev.latLng); this.drawStops(); }));
       this.markers.push(m);
+    };
+    const sLat = num(e.sourceLat), sLng = num(e.sourceLng), dLat = num(e.destLat), dLng = num(e.destLng);
+    if (sLat != null && sLng != null) {
+      const ll = { lat: sLat, lng: sLng }; pts.push(ll);
+      addMarker(ll, { label: { text: 'A', color: '#fff', fontWeight: '800' }, title: e.source || 'From', zIndex: 3 }, (p) => { e.sourceLat = p.lat(); e.sourceLng = p.lng(); });
+    }
+    e.stops.forEach((st: TransportStop, i: number) => {
+      const la = num(st.lat), ln = num(st.lng);
+      if (la == null || ln == null) return;
+      const ll = { lat: la, lng: ln }; pts.push(ll);
+      addMarker(ll, { label: { text: String(i + 1), color: '#fff', fontWeight: '700' }, title: st.name,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 11, fillColor: '#1565c0', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 } },
+        (p) => { st.lat = p.lat(); st.lng = p.lng(); });
+      this.markers[this.markers.length - 1].addListener('click', () => this.zone.run(() => { this.target = 'stop'; this.selStop = i; }));
     });
-    if (pts.length > 1) this.line = new google.maps.Polyline({ path: pts, strokeColor: '#1565c0', strokeOpacity: .6, strokeWeight: 3, map: this.map });
+    if (dLat != null && dLng != null) {
+      const ll = { lat: dLat, lng: dLng }; pts.push(ll);
+      addMarker(ll, { label: { text: 'B', color: '#fff', fontWeight: '800' }, title: e.destination || 'To', zIndex: 3 }, (p) => { e.destLat = p.lat(); e.destLng = p.lng(); });
+    }
+    if (pts.length > 1) this.line = new google.maps.Polyline({ path: pts, strokeColor: '#1565c0', strokeOpacity: .7, strokeWeight: 4, map: this.map });
     if (fit && pts.length) { const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend(p)); pts.length === 1 ? (this.map.setCenter(pts[0]), this.map.setZoom(14)) : this.map.fitBounds(b, 40); }
   }
 
@@ -145,7 +186,10 @@ export class TransportRoutesComponent implements OnInit, AfterViewChecked, OnDes
     if (!this.editing) return;
     if (!this.editing.source.trim() || !this.editing.destination.trim()) { this.swal.error('From and To are required'); return; }
     this.saving = true;
-    const body = { ...this.editing, stops: this.editing.stops.filter(s => s.name && s.name.trim()).map(s => ({ name: s.name.trim(), lat: s.lat == null || s.lat === ('' as any) ? null : +s.lat, lng: s.lng == null || s.lng === ('' as any) ? null : +s.lng })) };
+    const n = (v: any) => (v == null || v === '' ? null : +v);
+    const body = { ...this.editing,
+      sourceLat: n(this.editing.sourceLat), sourceLng: n(this.editing.sourceLng), destLat: n(this.editing.destLat), destLng: n(this.editing.destLng),
+      stops: this.editing.stops.filter(s => s.name && s.name.trim()).map(s => ({ name: s.name.trim(), lat: n(s.lat), lng: n(s.lng) })) };
     this.svc.saveRoute(body).subscribe({
       next: (r: any) => { this.saving = false; if (r?.success === false) { this.swal.error(r.message); return; } this.cancel(); this.store.refresh(); this.swal.success('Route saved'); },
       error: (e) => { this.saving = false; this.swal.error('Could not save', e?.error?.message || ''); }
