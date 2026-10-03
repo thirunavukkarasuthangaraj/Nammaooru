@@ -43,6 +43,7 @@ public class TransportService {
     private final TransportTripRepository tripRepository;
     private final TransportVehiclePositionRepository positionRepository;
     private final TransportPositionHistoryRepository historyRepository;
+    private final TransportScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final SettingService settingService;
     private final ObjectMapper objectMapper;
@@ -155,6 +156,7 @@ public class TransportService {
         out.put("vehicles", vehicles.stream().map(v -> vehicleView(v, drivers, routes)).collect(Collectors.toList()));
         out.put("drivers", drivers);
         out.put("routes", routes.stream().map(this::routeView).collect(Collectors.toList()));
+        out.put("schedules", scheduleRepository.findByTransporterIdOrderByVehicleIdAscDepartTimeAsc(t.getId()).stream().map(this::scheduleView).collect(Collectors.toList()));
         out.put("positions", livePositions(vehicles.stream().map(TransportVehicle::getId).collect(Collectors.toList())));
         out.put("settings", publicSettings());
         return out;
@@ -178,6 +180,7 @@ public class TransportService {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("vehicleId", p.getVehicleId());
         m.put("tripId", p.getTripId());
+        if (p.getTripId() != null) tripRepository.findById(p.getTripId()).ifPresent(tr -> { m.put("direction", tr.getDirection()); m.put("tripStatus", tr.getStatus()); });
         m.put("lat", p.getLatitude());
         m.put("lng", p.getLongitude());
         m.put("speedKmh", p.getSpeedKmh());
@@ -266,6 +269,7 @@ public class TransportService {
         v.setIsPublic(false);
         vehicleRepository.save(v);
         positionRepository.deleteById(id);
+        scheduleRepository.deleteAll(scheduleRepository.findByVehicleIdOrderByDepartTimeAsc(id));
     }
 
     private TransportVehicle ownedVehicle(Transporter t, Long id) {
@@ -361,6 +365,77 @@ public class TransportService {
         return r;
     }
 
+    /* ===================== owner: schedules (timetable) ===================== */
+
+    private Map<String, Object> scheduleView(TransportSchedule sc) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", sc.getId());
+        m.put("vehicleId", sc.getVehicleId());
+        m.put("routeId", sc.getRouteId());
+        m.put("direction", sc.getDirection());
+        m.put("departTime", sc.getDepartTime());
+        m.put("arriveTime", sc.getArriveTime());
+        m.put("days", sc.getDays());
+        m.put("isActive", sc.getIsActive());
+        return m;
+    }
+
+    private static String hhmm(Object o) {
+        String v = str(o);
+        if (!v.matches("^([01]?\\d|2[0-3]):[0-5]\\d$")) throw new RuntimeException("Time must be HH:mm (24h), got '" + v + "'");
+        String[] p = v.split(":");
+        return String.format("%02d:%s", Integer.parseInt(p[0]), p[1]);
+    }
+
+    @Transactional
+    public Map<String, Object> saveSchedule(String username, Map<String, Object> body) {
+        Transporter t = owner(username);
+        Long vehicleId = asLong(body.get("vehicleId"));
+        if (vehicleId == null) throw new RuntimeException("Vehicle is required");
+        TransportVehicle v = ownedVehicle(t, vehicleId);
+        if (v.getRouteId() == null) throw new RuntimeException("Assign a route to this vehicle first");
+        String dir = "BA".equalsIgnoreCase(str(body.get("direction"))) ? "BA" : "AB";
+        String dep = hhmm(body.get("departTime")), arr = hhmm(body.get("arriveTime"));
+        String days = str(body.get("days")).toUpperCase();
+        if (days.isEmpty()) days = "DAILY";
+        Long id = asLong(body.get("id"));
+        TransportSchedule sc = id == null ? TransportSchedule.builder().transporterId(t.getId()).build()
+                : scheduleRepository.findById(id).filter(x -> x.getTransporterId().equals(t.getId())).orElseThrow(() -> new RuntimeException("Schedule not found"));
+        sc.setVehicleId(vehicleId);
+        sc.setRouteId(v.getRouteId());
+        sc.setDirection(dir);
+        sc.setDepartTime(dep);
+        sc.setArriveTime(arr);
+        sc.setDays(days);
+        sc.setIsActive(body.get("isActive") == null || Boolean.TRUE.equals(body.get("isActive")) || "true".equalsIgnoreCase(str(body.get("isActive"))));
+        return scheduleView(scheduleRepository.save(sc));
+    }
+
+    @Transactional
+    public void deleteSchedule(String username, Long id) {
+        Transporter t = owner(username);
+        TransportSchedule sc = scheduleRepository.findById(id).filter(x -> x.getTransporterId().equals(t.getId())).orElseThrow(() -> new RuntimeException("Schedule not found"));
+        scheduleRepository.delete(sc);
+    }
+
+    private static int minutesOf(String hhmm) {
+        String[] p = hhmm.split(":");
+        return Integer.parseInt(p[0]) * 60 + Integer.parseInt(p[1]);
+    }
+
+    /** Best matching schedule for a trip starting now: the departure closest to the current time (within 90 min), else null. */
+    private TransportSchedule nearestSchedule(Long vehicleId) {
+        List<TransportSchedule> all = scheduleRepository.findByVehicleIdInAndIsActiveTrueOrderByDepartTimeAsc(List.of(vehicleId));
+        if (all.isEmpty()) return null;
+        int now = LocalDateTime.now().getHour() * 60 + LocalDateTime.now().getMinute();
+        TransportSchedule best = null; int bestDiff = Integer.MAX_VALUE;
+        for (TransportSchedule sc : all) {
+            int diff = Math.abs(minutesOf(sc.getDepartTime()) - now);
+            if (diff < bestDiff) { bestDiff = diff; best = sc; }
+        }
+        return bestDiff <= 90 ? best : null;
+    }
+
     /* ===================== owner: trips ===================== */
 
     @Transactional(readOnly = true)
@@ -423,6 +498,7 @@ public class TransportService {
             TransportRoute r = routes.get(v.getRouteId());
             m.put("route", r == null ? null : routeView(r));
             m.put("gpsIntervalSec", gpsIntervalFor(v.getVehicleType()));
+            m.put("schedules", scheduleRepository.findByVehicleIdInAndIsActiveTrueOrderByDepartTimeAsc(List.of(v.getId())).stream().map(this::scheduleView).collect(Collectors.toList()));
             return m;
         }).collect(Collectors.toList()));
         out.put("openTrip", open);
@@ -431,7 +507,7 @@ public class TransportService {
     }
 
     @Transactional
-    public Map<String, Object> startTrip(String username, Long vehicleId) {
+    public Map<String, Object> startTrip(String username, Long vehicleId, String directionIn, Long scheduleIdIn) {
         List<TransportDriver> drivers = driverRows(username);
         TransportVehicle v = vehicleRepository.findById(vehicleId).orElseThrow(() -> new RuntimeException("Vehicle not found"));
         TransportDriver me = drivers.stream().filter(d -> d.getId().equals(v.getDriverId())).findFirst()
@@ -442,9 +518,14 @@ public class TransportService {
         for (TransportDriver d : drivers)
             tripRepository.findByDriverIdAndStatus(d.getId(), TransportTrip.Status.RUNNING).forEach(tr -> endTripRow(tr, now, null));
         tripRepository.findByVehicleIdAndStatus(vehicleId, TransportTrip.Status.RUNNING).forEach(tr -> endTripRow(tr, now, null));
+        TransportSchedule sc = scheduleIdIn != null ? scheduleRepository.findById(scheduleIdIn).orElse(null) : null;
+        if (sc == null && (directionIn == null || directionIn.isBlank())) sc = nearestSchedule(vehicleId);
+        String direction = directionIn != null && !directionIn.isBlank() ? ("BA".equalsIgnoreCase(directionIn) ? "BA" : "AB")
+                : (sc != null ? sc.getDirection() : "AB");
         TransportTrip trip = tripRepository.save(TransportTrip.builder()
                 .transporterId(v.getTransporterId()).vehicleId(vehicleId).driverId(me.getId())
-                .routeId(v.getRouteId()).startedAt(now).status(TransportTrip.Status.RUNNING).build());
+                .routeId(v.getRouteId()).direction(direction).scheduleId(sc == null ? null : sc.getId())
+                .startedAt(now).status(TransportTrip.Status.RUNNING).build());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("trip", trip);
         out.put("gpsIntervalSec", gpsIntervalFor(v.getVehicleType()));
@@ -552,12 +633,16 @@ public class TransportService {
         Set<Long> routeIds = buses.stream().map(TransportVehicle::getRouteId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<Long, TransportRoute> routes = routeIds.isEmpty() ? Map.of()
                 : routeRepository.findByIdIn(routeIds).stream().collect(Collectors.toMap(TransportRoute::getId, r -> r));
+        Map<Long, List<Map<String, Object>>> schedulesByVehicle = new HashMap<>();
+        if (!buses.isEmpty()) scheduleRepository.findByVehicleIdInAndIsActiveTrueOrderByDepartTimeAsc(buses.stream().map(TransportVehicle::getId).collect(Collectors.toList()))
+                .forEach(sc -> schedulesByVehicle.computeIfAbsent(sc.getVehicleId(), k -> new ArrayList<>()).add(scheduleView(sc)));
         out.put("buses", buses.stream().map(b -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", b.getId()); m.put("name", b.getName()); m.put("regNo", b.getRegNo());
             m.put("operator", owners.get(b.getTransporterId()).getCompanyName());
             TransportRoute r = routes.get(b.getRouteId());
             m.put("route", r == null ? null : routeView(r));
+            m.put("schedules", schedulesByVehicle.getOrDefault(b.getId(), List.of()));
             return m;
         }).collect(Collectors.toList()));
         out.put("positions", livePositions(buses.stream().map(TransportVehicle::getId).collect(Collectors.toList())));

@@ -151,6 +151,20 @@ public class TransportController {
         catch (Exception e) { return ResponseUtil.badRequest(e.getMessage()); }
     }
 
+    @PostMapping("/owner/schedules")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> saveSchedule(@RequestBody Map<String, Object> body) {
+        try { return ResponseUtil.success(transportService.saveSchedule(username(), body), "Timetable saved"); }
+        catch (Exception e) { return ResponseUtil.badRequest(e.getMessage()); }
+    }
+
+    @DeleteMapping("/owner/schedules/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> deleteSchedule(@PathVariable Long id) {
+        try { transportService.deleteSchedule(username(), id); return ResponseUtil.success(null, "Timetable entry removed"); }
+        catch (Exception e) { return ResponseUtil.badRequest(e.getMessage()); }
+    }
+
     @GetMapping("/owner/trips")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> ownerTrips(
@@ -180,7 +194,11 @@ public class TransportController {
     @PostMapping("/driver/trips/start")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> startTrip(@RequestBody Map<String, Object> body) {
-        try { return ResponseUtil.success(transportService.startTrip(username(), Long.valueOf(s(body.get("vehicleId")))), "Trip started"); }
+        try {
+            Long scheduleId = null;
+            try { if (body.get("scheduleId") != null && !s(body.get("scheduleId")).isEmpty()) scheduleId = Long.valueOf(s(body.get("scheduleId"))); } catch (Exception ignored) {}
+            return ResponseUtil.success(transportService.startTrip(username(), Long.valueOf(s(body.get("vehicleId"))), s(body.get("direction")), scheduleId), "Trip started");
+        }
         catch (Exception e) { return ResponseUtil.badRequest(e.getMessage()); }
     }
 

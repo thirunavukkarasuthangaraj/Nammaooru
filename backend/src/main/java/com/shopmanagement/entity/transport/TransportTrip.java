@@ -25,6 +25,14 @@ public class TransportTrip {
     @Column(name = "route_id")
     private Long routeId;
 
+    /** AB = From->To, BA = To->From */
+    @Column(nullable = false, length = 2)
+    @Builder.Default
+    private String direction = "AB";
+
+    @Column(name = "schedule_id")
+    private Long scheduleId;
+
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
