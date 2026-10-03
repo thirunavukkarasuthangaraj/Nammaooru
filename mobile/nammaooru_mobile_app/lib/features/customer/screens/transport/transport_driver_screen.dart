@@ -154,12 +154,13 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     if (_openTrip == null) return;
     final sure = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      useRootNavigator: false, // keep the dialog on the Driver screen's navigator so Back closes it, not the screen
+      builder: (dialogCtx) => AlertDialog(
         title: Text(_t('End trip?', 'பயணத்தை முடிக்கவா?')),
         content: Text(_t('Location sharing will stop.', 'இருப்பிட பகிர்வு நிறுத்தப்படும்.')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(_t('Cancel', 'ரத்து'))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(_t('End trip', 'முடி'), style: const TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: Text(_t('Cancel', 'ரத்து'))),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, true), child: Text(_t('End trip', 'முடி'), style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -299,7 +300,7 @@ class _TransportDriverScreenState extends State<TransportDriverScreen> {
     final km = (_live['distanceKm'] as num?)?.toDouble() ?? 0;
     final sent = _i(_live['sent']);
     final buffered = _i(_live['buffered']);
-    final liveOk = status == 'Live';
+    final liveOk = status.startsWith('Live');
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [

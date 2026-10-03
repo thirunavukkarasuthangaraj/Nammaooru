@@ -126,11 +126,12 @@ class _TransportOwnerScreenState extends State<TransportOwnerScreen> with Single
   Future<bool> _confirm(String msg) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      useRootNavigator: false,
+      builder: (dialogCtx) => AlertDialog(
         content: Text(msg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(_t('Cancel', 'ரத்து'))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(_t('Remove', 'நீக்கு'), style: const TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: Text(_t('Cancel', 'ரத்து'))),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, true), child: Text(_t('Remove', 'நீக்கு'), style: const TextStyle(color: Colors.red))),
         ],
       ),
     );

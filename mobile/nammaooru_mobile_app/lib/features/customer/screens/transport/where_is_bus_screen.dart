@@ -550,7 +550,7 @@ class _WhereIsBusScreenState extends State<WhereIsBusScreen> {
         icon: BitmapDescriptor.defaultMarkerWithHue(st == 'MOVING' ? BitmapDescriptor.hueGreen : st == 'STOPPED' ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueViolet),
         infoWindow: InfoWindow(title: b['name']?.toString(), snippet: st),
         onTap: () => _select(id),
-        zIndex: _selected == id ? 2 : 1,
+        zIndex: _selected == id ? 20 : 10, // live buses always above route pills
       ));
     }
     if (_selected != null && _state(_selected!) == 'OFFLINE') {
