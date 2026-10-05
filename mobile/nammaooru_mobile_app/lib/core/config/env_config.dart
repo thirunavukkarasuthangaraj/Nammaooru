@@ -14,7 +14,11 @@ class EnvConfig {
   static const String baseUrl = 'https://api.nammaoorudelivary.in';
   static const String apiUrl =
       'https://api.nammaoorudelivary.in'; // Alias for compatibility
-  static const String imageBaseUrl = 'https://api.nammaoorudelivary.in';
+  // Media goes through the Cloudflare-proxied main domain, NOT the bare api
+  // host: api.nammaoorudelivary.in is direct-to-Hetzner and from Indian ISPs
+  // crawls at ~16 KB/s (a 6 MB promo video took 380 s), while the same file via
+  // nammaoorudelivary.in arrives at ~1.6 MB/s. nginx serves /uploads on both.
+  static const String imageBaseUrl = 'https://nammaoorudelivary.in';
 
   static const String apiVersion = '';
   static const String fullApiUrl = '$baseUrl/api';
