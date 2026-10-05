@@ -129,6 +129,41 @@
   color: #40704c;
 }
 
+.chip.kind {
+  background: #eef2ff;
+  color: #4a68a8;
+}
+
+.chip.kind.combo {
+  background: #fdeef3;
+  color: #b0375f;
+}
+
+.price-line {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f7a39;
+}
+
+.no-artwork {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 120px;
+  background: #f3f4f6;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.no-artwork mat-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+}
+
 .chip.asset {
   display: inline-flex;
   align-items: center;

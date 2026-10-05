@@ -246,6 +246,41 @@ export class PromoCodeService {
   rejectPromoVideo(promotionId: number, reason: string): Observable<any> {
     return this.http.patch(`${environment.apiUrl}/promotions/${promotionId}/video/reject`, { reason });
   }
+
+  // --- Combo home-banner review (SUPER_ADMIN) ---
+  // Combos are a separate entity from promotions but land on the same customer
+  // home carousel, so they are reviewed on the same admin page.
+
+  getComboReviewQueue(status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL' = 'PENDING'): Observable<ComboReviewItem[]> {
+    return this.http
+      .get<any>(`${environment.apiUrl}/combos/banner-review`, { params: { status } })
+      .pipe(map(response => (response?.data ?? []) as ComboReviewItem[]));
+  }
+
+  approveComboBanner(comboId: number): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/combos/${comboId}/banner/approve`, {});
+  }
+
+  rejectComboBanner(comboId: number, reason: string): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/combos/${comboId}/banner/reject`, { reason });
+  }
+}
+
+export interface ComboReviewItem {
+  id: number;
+  name: string;
+  shopId?: number;
+  shopName?: string;
+  description?: string;
+  bannerImageUrl?: string;
+  comboPrice?: number;
+  originalPrice?: number;
+  startDate?: string;
+  endDate?: string;
+  bannerStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  bannerReviewNote?: string;
+  bannerSubmittedAt?: string;
+  createdBy?: string;
 }
 
 export interface PromoVideoReviewItem {

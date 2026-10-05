@@ -43,6 +43,10 @@ public class ComboResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String createdBy;
+    // Home-banner review (SUPER_ADMIN): PENDING / APPROVED / REJECTED
+    private String bannerStatus;
+    private String bannerReviewNote;
+    private LocalDateTime bannerSubmittedAt;
 
     @Data
     @Builder

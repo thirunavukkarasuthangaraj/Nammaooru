@@ -2,6 +2,7 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.combo.ComboResponse;
 import com.shopmanagement.dto.combo.CreateComboRequest;
+import com.shopmanagement.entity.Promotion;
 import com.shopmanagement.service.ComboService;
 import com.shopmanagement.service.FileUploadService;
 import jakarta.validation.Valid;
@@ -48,7 +49,9 @@ public class ComboController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("statusCode", "0000");
-            response.put("message", "Combo created successfully");
+            response.put("message", "PENDING".equals(combo.getBannerStatus())
+                    ? "Combo created. It will show on the customer home screen once an admin approves it."
+                    : "Combo created successfully");
             response.put("data", combo);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -246,6 +249,51 @@ public class ComboController {
     }
 
     // ==================== CUSTOMER APIs ====================
+
+    // ------------------------------------------------------------------
+    // Home-banner review (SUPER_ADMIN) - a combo only reaches the customer
+    // home carousel once approved here.
+    // ------------------------------------------------------------------
+
+    @GetMapping("/combos/banner-review")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getCombosForBannerReview(
+            @RequestParam(defaultValue = "PENDING") String status) {
+        List<ComboResponse> combos = comboService.getCombosForBannerReview(status);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("data", combos);
+        response.put("count", combos.size());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/combos/{comboId}/banner/approve")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> approveComboBanner(@PathVariable Long comboId) {
+        ComboResponse combo = comboService.decideBanner(comboId, Promotion.ReviewStatus.APPROVED, null);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Combo approved - it will now show on the home screen");
+        response.put("data", combo);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/combos/{comboId}/banner/reject")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> rejectComboBanner(
+            @PathVariable Long comboId,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        ComboResponse combo = comboService.decideBanner(comboId, Promotion.ReviewStatus.REJECTED, reason);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Combo rejected");
+        response.put("data", combo);
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * Get all active combos across all shops (for dashboard)

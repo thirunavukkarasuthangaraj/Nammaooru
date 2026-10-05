@@ -61,6 +61,27 @@ public class ProductCombo {
     @Column(name = "banner_image_url")
     private String bannerImageUrl;
 
+    // Home-banner review. A combo is always shop-owner content, so it is parked
+    // at PENDING on creation and only reaches the customer home "SPECIAL
+    // OFFERS" carousel once a SUPER_ADMIN approves it - see hasApprovedBanner().
+    // It stays visible on its own shop's page regardless: the deal is valid,
+    // it just is not promoted platform-wide until reviewed.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "banner_status", length = 20)
+    private Promotion.ReviewStatus bannerStatus;
+
+    @Column(name = "banner_review_note", columnDefinition = "TEXT")
+    private String bannerReviewNote;
+
+    @Column(name = "banner_reviewed_by", length = 100)
+    private String bannerReviewedBy;
+
+    @Column(name = "banner_reviewed_at")
+    private LocalDateTime bannerReviewedAt;
+
+    @Column(name = "banner_submitted_at")
+    private LocalDateTime bannerSubmittedAt;
+
     @NotNull
     @DecimalMin(value = "0.01")
     @Column(name = "combo_price", nullable = false, precision = 10, scale = 2)
@@ -85,6 +106,32 @@ public class ProductCombo {
     @Builder.Default
     @Column(name = "is_active")
     private Boolean isActive = true;
+
+    /** The only check the home carousel feeds should use. */
+    public boolean hasApprovedBanner() {
+        return bannerStatus == Promotion.ReviewStatus.APPROVED;
+    }
+
+    /**
+     * (Re)enter the review queue. Called on creation and whenever the banner
+     * image changes - a changed creative needs a fresh look.
+     *
+     * @param autoApprove true when the submitter is an ADMIN/SUPER_ADMIN, who
+     *                    is the approver anyway
+     */
+    public void submitForBannerReview(String actor, boolean autoApprove) {
+        bannerSubmittedAt = LocalDateTime.now();
+        bannerReviewNote = null;
+        if (autoApprove) {
+            bannerStatus = Promotion.ReviewStatus.APPROVED;
+            bannerReviewedBy = actor;
+            bannerReviewedAt = LocalDateTime.now();
+        } else {
+            bannerStatus = Promotion.ReviewStatus.PENDING;
+            bannerReviewedBy = null;
+            bannerReviewedAt = null;
+        }
+    }
 
     @Builder.Default
     @Column(name = "max_quantity_per_order")

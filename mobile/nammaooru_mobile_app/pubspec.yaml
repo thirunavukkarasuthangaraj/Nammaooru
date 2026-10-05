@@ -66,8 +66,11 @@ dependencies:
   # JWT
   jwt_decode: ^0.3.1
   cached_network_image: ^3.4.1
-  # Promotion banner videos on the home "SPECIAL OFFERS" carousel
+  # Promotion banner videos on the home "SPECIAL OFFERS" carousel. The video
+  # is fetched once through flutter_cache_manager (already pulled in by
+  # cached_network_image) and played from disk after that.
   video_player: ^2.9.2
+  flutter_cache_manager: ^3.4.1
   image_picker: ^1.1.2
   image_cropper: ^9.1.0
   file_picker: ^8.1.4

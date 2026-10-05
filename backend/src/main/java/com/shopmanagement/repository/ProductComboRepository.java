@@ -77,4 +77,13 @@ public interface ProductComboRepository extends JpaRepository<ProductCombo, Long
            "AND s.isActive = true " +
            "ORDER BY c.displayOrder ASC, c.createdAt DESC")
     List<ProductCombo> findAllActiveCombos(@Param("today") LocalDate today);
+
+    /** Home-banner review queue, oldest submission first. */
+    @Query("SELECT c FROM ProductCombo c WHERE c.bannerStatus = :status " +
+           "ORDER BY c.bannerSubmittedAt ASC")
+    List<ProductCombo> findByBannerStatus(@Param("status") com.shopmanagement.entity.Promotion.ReviewStatus status);
+
+    @Query("SELECT c FROM ProductCombo c WHERE c.bannerStatus IS NOT NULL " +
+           "ORDER BY c.bannerSubmittedAt ASC")
+    List<ProductCombo> findAllWithBannerReview();
 }

@@ -2,8 +2,9 @@
   <div class="page-header">
     <div class="header-text">
       <h2><mat-icon>smart_display</mat-icon> Banner Approvals</h2>
-      <p>Banner images and promo videos shop owners want on the customer home
-        screen. Nothing here reaches customers until you approve it.</p>
+      <p>Everything shop owners want on the customer home screen - promo
+        banners, promo videos and combos. Nothing here reaches customers until
+        you approve it.</p>
     </div>
     <button mat-stroked-button (click)="load()" [disabled]="isLoading">
       <mat-icon>refresh</mat-icon> Refresh
@@ -26,12 +27,12 @@
   <div class="empty-state" *ngIf="!isLoading && items.length === 0">
     <mat-icon>inbox</mat-icon>
     <p *ngIf="filter === 'PENDING'">Nothing waiting for review.</p>
-    <p *ngIf="filter === 'APPROVED'">No approved banners yet.</p>
-    <p *ngIf="filter === 'REJECTED'">No rejected banners.</p>
+    <p *ngIf="filter === 'APPROVED'">Nothing approved yet.</p>
+    <p *ngIf="filter === 'REJECTED'">Nothing rejected.</p>
   </div>
 
   <div class="video-grid" *ngIf="!isLoading && items.length > 0">
-    <mat-card class="video-card" *ngFor="let item of items; trackBy: trackById">
+    <mat-card class="video-card" *ngFor="let item of items; trackBy: trackByKey">
 
       <!-- Video takes the slot when there is one, since that is what plays on
            the home screen; otherwise the banner image is the creative. -->
@@ -51,6 +52,13 @@
         [src]="mediaUrl(item.imageUrl)"
         alt="Banner image">
 
+      <!-- A combo with no banner image still shows as a text card on the
+           home screen, so it is still something to review. -->
+      <div class="no-artwork" *ngIf="!item.videoUrl && !item.imageUrl">
+        <mat-icon>{{ item.kind === 'combo' ? 'local_offer' : 'percent' }}</mat-icon>
+        <span>No banner image - shows as a text card</span>
+      </div>
+
       <!-- Both attached: show the image underneath so the admin reviews the
            whole creative, not just the video. -->
       <img
@@ -62,8 +70,11 @@
       <div class="video-meta">
         <h3>{{ item.title }}</h3>
         <div class="meta-row">
-          <span class="chip code">{{ item.code }}</span>
-          <span class="chip shop">{{ item.shopName || 'Platform Offer' }}</span>
+          <span class="chip kind" [class.combo]="item.kind === 'combo'">
+            {{ item.kind === 'combo' ? 'Combo' : 'Promo code' }}
+          </span>
+          <span class="chip code" *ngIf="item.kind === 'promo'">{{ item.code }}</span>
+          <span class="chip shop">{{ item.shopName }}</span>
           <span class="chip asset" *ngIf="item.imageUrl">
             <mat-icon>image</mat-icon> Image
           </span>
@@ -71,16 +82,17 @@
             <mat-icon>videocam</mat-icon> Video
           </span>
         </div>
+        <p class="price-line" *ngIf="item.priceLine">{{ item.priceLine }}</p>
         <p class="description" *ngIf="item.description">{{ item.description }}</p>
         <p class="submitted">
-          Submitted {{ (item.videoSubmittedAt || item.imageSubmittedAt) | date:'dd MMM yyyy, h:mm a' }}
+          Submitted {{ item.submittedAt | date:'dd MMM yyyy, h:mm a' }}
           <ng-container *ngIf="item.submittedBy"> by {{ item.submittedBy }}</ng-container>
         </p>
-        <p class="runs">
+        <p class="runs" *ngIf="item.startDate && item.endDate">
           Runs {{ item.startDate | date:'dd MMM' }} &ndash; {{ item.endDate | date:'dd MMM yyyy' }}
         </p>
-        <p class="review-note" *ngIf="item.videoReviewNote || item.imageReviewNote">
-          <strong>Your note:</strong> {{ item.videoReviewNote || item.imageReviewNote }}
+        <p class="review-note" *ngIf="item.reviewNote">
+          <strong>Your note:</strong> {{ item.reviewNote }}
         </p>
         <p class="reviewed" *ngIf="item.reviewedBy">
           Reviewed by {{ item.reviewedBy }}
@@ -91,17 +103,17 @@
       <mat-card-actions class="card-actions">
         <button mat-raised-button color="primary"
                 *ngIf="!isFullyApproved(item)"
-                [disabled]="isBusy(item.id)"
+                [disabled]="isBusy(item)"
                 (click)="approve(item)">
           <mat-icon>check</mat-icon> Approve
         </button>
         <button mat-stroked-button color="warn"
                 *ngIf="!isFullyRejected(item)"
-                [disabled]="isBusy(item.id)"
+                [disabled]="isBusy(item)"
                 (click)="reject(item)">
           <mat-icon>close</mat-icon> Reject
         </button>
-        <mat-spinner diameter="20" *ngIf="isBusy(item.id)"></mat-spinner>
+        <mat-spinner diameter="20" *ngIf="isBusy(item)"></mat-spinner>
       </mat-card-actions>
     </mat-card>
   </div>

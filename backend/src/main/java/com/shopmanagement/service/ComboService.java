@@ -6,6 +6,7 @@ import com.shopmanagement.dto.notification.NotificationRequest;
 import com.shopmanagement.entity.ComboItem;
 import com.shopmanagement.entity.Notification;
 import com.shopmanagement.entity.ProductCombo;
+import com.shopmanagement.entity.Promotion;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.product.entity.ShopProduct;
 import com.shopmanagement.product.repository.ShopProductRepository;
@@ -18,11 +19,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -85,6 +89,10 @@ public class ComboService {
                 .totalQuantityAvailable(request.getTotalQuantityAvailable())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                 .build();
+
+        // Shop-owner content: off the home carousel until a SUPER_ADMIN
+        // approves it. An admin creating one on a shop's behalf is the approver.
+        combo.submitForBannerReview(currentActor(), callerIsApprover());
 
         // Save combo first to get ID
         combo = comboRepository.save(combo);
@@ -158,7 +166,14 @@ public class ComboService {
         combo.setNameTamil(request.getNameTamil());
         combo.setDescription(request.getDescription());
         combo.setDescriptionTamil(request.getDescriptionTamil());
+        // Only a *changed* banner image goes back for review - editing the price
+        // or dates of an approved combo must not pull it off the home screen.
+        String newBanner = normalizeUrl(request.getBannerImageUrl());
+        boolean bannerChanged = !java.util.Objects.equals(newBanner, normalizeUrl(combo.getBannerImageUrl()));
         combo.setBannerImageUrl(request.getBannerImageUrl());
+        if (bannerChanged) {
+            combo.submitForBannerReview(currentActor(), callerIsApprover());
+        }
         combo.setComboPrice(request.getComboPrice());
         combo.setOriginalPrice(originalPrice);
         combo.setStartDate(request.getStartDate());
@@ -284,9 +299,54 @@ public class ComboService {
         List<ProductCombo> combos = comboRepository.findAllActiveCombos(LocalDate.now());
 
         return combos.stream()
+                // This is the customer home carousel: shop-owner combos appear
+                // here only once a SUPER_ADMIN has approved them.
+                .filter(ProductCombo::hasApprovedBanner)
                 .filter(this::isComboAvailable) // Filter out combos with out-of-stock items
                 .map(combo -> mapToResponse(combo, true))
                 .collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------------------------
+    // Home-banner review (SUPER_ADMIN)
+    // ------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<ComboResponse> getCombosForBannerReview(String status) {
+        List<ProductCombo> combos = "ALL".equalsIgnoreCase(status)
+                ? comboRepository.findAllWithBannerReview()
+                : comboRepository.findByBannerStatus(Promotion.ReviewStatus.valueOf(status.toUpperCase()));
+        return combos.stream()
+                .map(combo -> mapToResponse(combo, false))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ComboResponse decideBanner(Long comboId, Promotion.ReviewStatus decision, String note) {
+        ProductCombo combo = comboRepository.findById(comboId)
+                .orElseThrow(() -> new RuntimeException("Combo not found"));
+        combo.setBannerStatus(decision);
+        combo.setBannerReviewNote(note);
+        combo.setBannerReviewedBy(currentActor());
+        combo.setBannerReviewedAt(LocalDateTime.now());
+        ProductCombo saved = comboRepository.save(combo);
+        log.info("Combo banner {}: comboId={} by={} note={}", decision, comboId, saved.getBannerReviewedBy(), note);
+        return mapToResponse(saved, false);
+    }
+
+    private String currentActor() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
+    }
+
+    private boolean callerIsApprover() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a ->
+                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
+    }
+
+    private static String normalizeUrl(String url) {
+        return (url == null || url.trim().isEmpty()) ? null : url.trim();
     }
 
     /**
@@ -391,7 +451,10 @@ public class ComboService {
                 .isAvailable(isComboAvailable(combo))
                 .createdAt(combo.getCreatedAt())
                 .updatedAt(combo.getUpdatedAt())
-                .createdBy(combo.getCreatedBy());
+                .createdBy(combo.getCreatedBy())
+                .bannerStatus(combo.getBannerStatus() != null ? combo.getBannerStatus().name() : null)
+                .bannerReviewNote(combo.getBannerReviewNote())
+                .bannerSubmittedAt(combo.getBannerSubmittedAt());
 
         if (includeItems) {
             List<ComboResponse.ComboItemResponse> items = combo.getItems().stream()

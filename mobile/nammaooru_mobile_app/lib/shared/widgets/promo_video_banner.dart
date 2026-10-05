@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/utils/image_url_helper.dart';
@@ -69,7 +71,12 @@ class _PromoVideoBannerState extends State<PromoVideoBanner>
       return;
     }
 
-    final controller = VideoPlayerController.networkUrl(uri);
+    final controller = await _createController(resolved, uri);
+    if (!mounted) {
+      // Disposed while the download was still running.
+      await controller.dispose();
+      return;
+    }
     _controller = controller;
 
     try {
@@ -93,6 +100,26 @@ class _PromoVideoBannerState extends State<PromoVideoBanner>
       }
       await controller.dispose();
       _controller = null;
+    }
+  }
+
+  /// On a phone the file is fetched once through the app's shared download
+  /// cache (the same one cached_network_image uses) and played from disk
+  /// from then on, so a banner that plays on every Home visit is not
+  /// re-downloaded on every Home visit. The first play waits for the full
+  /// download (the poster holds the slot meanwhile); every later one is
+  /// instant. The browser has its own HTTP cache and no file system, so web
+  /// streams straight from the URL.
+  Future<VideoPlayerController> _createController(String resolved, Uri uri) async {
+    if (kIsWeb) return VideoPlayerController.networkUrl(uri);
+    try {
+      final file = await DefaultCacheManager().getSingleFile(resolved);
+      return VideoPlayerController.file(file);
+    } catch (e) {
+      // Cache dir unavailable / download failed - fall back to streaming so a
+      // cache hiccup never costs the banner itself.
+      debugPrint('Promo video cache unavailable, streaming instead ($resolved): $e');
+      return VideoPlayerController.networkUrl(uri);
     }
   }
 

@@ -41,7 +41,10 @@ public class FeaturedPostsService {
 
         // Combos - active combos from all shops
         try {
-            var combos = productComboRepository.findAllActiveCombos(LocalDate.now());
+            // Home launch banner: only combos a SUPER_ADMIN has approved.
+            var combos = productComboRepository.findAllActiveCombos(LocalDate.now()).stream()
+                    .filter(ProductCombo::hasApprovedBanner)
+                    .toList();
             var limitedCombos = combos.size() > 6 ? combos.subList(0, 6) : combos;
             result.put("combos", limitedCombos.stream().map(this::mapCombo).toList());
         } catch (Exception e) {
