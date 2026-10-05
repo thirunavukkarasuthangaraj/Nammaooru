@@ -909,39 +909,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with count badge
-        Padding(
-          padding: const EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 2),
-          child: Row(
-            children: [
-              Text(
-                'SPECIAL OFFERS',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$totalItems',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
         // Unified carousel
         SizedBox(
           height: 165,
@@ -1001,63 +968,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
 
     // Handle promotion tap - show promo code details
     if (type == 'promotion') {
-      final code = post['promoCode'] ?? '';
-      final title = post['title'] ?? 'Special Offer';
-      final subtitle = post['subtitle'] ?? '';
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (_) => Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 20),
-              Icon(Icons.percent_rounded, size: 48, color: VillageTheme.primaryGreen),
-              const SizedBox(height: 12),
-              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey[600]), textAlign: TextAlign.center),
-              if (code.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: VillageTheme.primaryGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: VillageTheme.primaryGreen, width: 2, style: BorderStyle.solid),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(code, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen, letterSpacing: 2)),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: code));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Promo code "$code" copied!'), duration: const Duration(seconds: 2)),
-                          );
-                        },
-                        child: Icon(Icons.copy, color: VillageTheme.primaryGreen, size: 20),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text('Use this code at checkout', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-              ],
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
+      _showPromoCodeSheet(
+        title: (post['title'] ?? 'Special Offer').toString(),
+        subtitle: (post['subtitle'] ?? '').toString(),
+        code: (post['promoCode'] ?? '').toString(),
+        shopId: post['shopId'] is int ? post['shopId'] as int : null,
       );
       return;
     }
@@ -1324,7 +1239,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
         videoUrl: promo.videoUrl!,
         posterUrl: promo.videoThumbnailUrl ?? promo.imageUrl,
         isActive: isActive,
-        onTap: () => _navigateToPromoShop(promo),
+        onTap: () => _onPromoTap(promo),
         fallback: _buildPromoImageOrTextCard(promo),
       );
     }
@@ -1343,7 +1258,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     // no image was uploaded, or it fails to load.
     if (hasImage) {
       return GestureDetector(
-        onTap: () => _navigateToPromoShop(promo),
+        onTap: () => _onPromoTap(promo),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
@@ -1389,7 +1304,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
 
   Widget _buildPromoCardTextContent(PromoCode promo) {
     return GestureDetector(
-      onTap: () => _navigateToPromoShop(promo),
+      onTap: () => _onPromoTap(promo),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
@@ -1708,26 +1623,106 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     );
   }
 
-  void _navigateToPromoShop(PromoCode promo) {
-    if (promo.shopId != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ShopDetailsScreen(
-            shopId: promo.shopId!,
-            shop: null,
-          ),
+  /// A banner is an advert for a code - tapping it shows the code, big, with a
+  /// copy button. It used to jump straight to the shop (or, for a platform
+  /// promo, flash a two-second toast the customer could not copy from).
+  void _onPromoTap(PromoCode promo) {
+    final shopLine = promo.shopName != null && promo.shopName!.trim().isNotEmpty
+        ? promo.shopName!
+        : 'Platform Offer';
+    _showPromoCodeSheet(
+      title: promo.title,
+      subtitle: '$shopLine \u2022 ${promo.formattedDiscount}',
+      code: promo.code,
+      shopId: promo.shopId,
+    );
+  }
+
+  /// Bottom sheet with the promo code and a copy button. Shared by the
+  /// SPECIAL OFFERS carousel and the launch banner so both behave the same.
+  void _showPromoCodeSheet({
+    required String title,
+    required String subtitle,
+    required String code,
+    int? shopId,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 20),
+            Icon(Icons.percent_rounded, size: 48, color: VillageTheme.primaryGreen),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey[600]), textAlign: TextAlign.center),
+            ],
+            if (code.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: VillageTheme.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: VillageTheme.primaryGreen, width: 2, style: BorderStyle.solid),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(code, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen, letterSpacing: 2)),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: code));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Promo code "$code" copied!'), duration: const Duration(seconds: 2)),
+                        );
+                      },
+                      child: Icon(Icons.copy, color: VillageTheme.primaryGreen, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('Use this code at checkout', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            ],
+            if (shopId != null) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ShopDetailsScreen(shopId: shopId, shop: null),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.storefront_rounded),
+                  label: const Text('Visit shop'),
+                  style: OutlinedButton.styleFrom(foregroundColor: VillageTheme.primaryGreen),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+          ],
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Use code "${promo.code}" at checkout!'),
-          backgroundColor: VillageTheme.primaryGreen,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+      ),
+    );
   }
 
   Future<void> _loadFeaturedShops() async {

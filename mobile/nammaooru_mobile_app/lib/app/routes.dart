@@ -64,6 +64,13 @@ class AppRouter {
   static final RouteObserver<ModalRoute<void>> routeObserver =
       RouteObserver<ModalRoute<void>>();
 
+  /// Observer for the customer ShellRoute's nested navigator. Screens that
+  /// live inside the shell (Home and friends) subscribe here to learn when
+  /// something is pushed on top of them - the root [routeObserver] never sees
+  /// those pushes, and one observer can't serve two navigators.
+  static final RouteObserver<ModalRoute<void>> shellRouteObserver =
+      RouteObserver<ModalRoute<void>>();
+
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/',
@@ -111,6 +118,7 @@ class AppRouter {
         builder: (context, state) => const NotificationsScreen(),
       ),
       ShellRoute(
+        observers: [shellRouteObserver],
         builder: (context, state, child) {
           return CustomerShell(child: child);
         },

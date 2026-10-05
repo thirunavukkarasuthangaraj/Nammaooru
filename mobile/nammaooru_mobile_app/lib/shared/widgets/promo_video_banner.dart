@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../app/routes.dart';
 import '../../core/utils/image_url_helper.dart';
 
 /// A promotion video playing inside the home "SPECIAL OFFERS" carousel.
@@ -50,11 +51,16 @@ class PromoVideoBanner extends StatefulWidget {
 }
 
 class _PromoVideoBannerState extends State<PromoVideoBanner>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _controller;
   bool _ready = false;
   bool _failed = false;
   bool _muted = true;
+  // True while another screen is pushed on top of the one this banner sits
+  // in. Home stays mounted underneath a shop/product page, so without this
+  // the video (and its sound, if unmuted) kept playing behind that page.
+  bool _covered = false;
+  ModalRoute<dynamic>? _subscribedRoute;
 
   @override
   void initState() {
@@ -90,7 +96,7 @@ class _PromoVideoBannerState extends State<PromoVideoBanner>
       await controller.setLooping(true);
       await controller.setVolume(0);
       setState(() => _ready = true);
-      if (widget.isActive) {
+      if (widget.isActive && !_covered) {
         await controller.play();
       }
     } catch (e) {
@@ -124,6 +130,48 @@ class _PromoVideoBannerState extends State<PromoVideoBanner>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null && route != _subscribedRoute) {
+      _unsubscribeRoute();
+      _subscribedRoute = route;
+      // Subscribe to both: only the observer attached to the navigator that
+      // owns this route will ever fire, the other is a harmless no-op.
+      AppRouter.routeObserver.subscribe(this, route);
+      AppRouter.shellRouteObserver.subscribe(this, route);
+    }
+    // ModalRoute.of() re-notifies when isCurrent flips, so this also catches
+    // the case where neither observer is wired to the right navigator.
+    final nowCovered = route != null && !route.isCurrent;
+    if (nowCovered != _covered) {
+      _covered = nowCovered;
+      _syncPlayback();
+    }
+  }
+
+  void _unsubscribeRoute() {
+    if (_subscribedRoute == null) return;
+    AppRouter.routeObserver.unsubscribe(this);
+    AppRouter.shellRouteObserver.unsubscribe(this);
+    _subscribedRoute = null;
+  }
+
+  /// Another screen was pushed on top - stop immediately, sound included.
+  @override
+  void didPushNext() {
+    _covered = true;
+    _syncPlayback();
+  }
+
+  /// Back on this screen - pick up where the carousel left off.
+  @override
+  void didPopNext() {
+    _covered = false;
+    _syncPlayback();
+  }
+
+  @override
   void didUpdateWidget(covariant PromoVideoBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
 
@@ -154,7 +202,7 @@ class _PromoVideoBannerState extends State<PromoVideoBanner>
   void _syncPlayback() {
     final controller = _controller;
     if (controller == null || !_ready) return;
-    if (widget.isActive) {
+    if (widget.isActive && !_covered) {
       controller.play();
     } else {
       controller.pause();
@@ -180,6 +228,7 @@ class _PromoVideoBannerState extends State<PromoVideoBanner>
 
   @override
   void dispose() {
+    _unsubscribeRoute();
     WidgetsBinding.instance.removeObserver(this);
     _disposeController();
     super.dispose();

@@ -15,6 +15,8 @@ export interface PromoCode {
   currentUsageCount?: number;
   firstTimeOnly: boolean;
   applicableToAllShops: boolean;
+  // What the backend entity actually serialises for the same flag.
+  isPublic?: boolean;
   applicableShopIds?: number[];
   imageUrl?: string;
   // Banner video for the customer home carousel. Shown only once videoStatus

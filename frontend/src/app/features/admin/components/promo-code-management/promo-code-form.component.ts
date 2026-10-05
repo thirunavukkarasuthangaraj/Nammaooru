@@ -108,7 +108,9 @@ export class PromoCodeFormComponent implements OnInit {
       usageLimit: promo.usageLimit,
       usageLimitPerCustomer: promo.usageLimitPerCustomer,
       firstTimeOnly: promo.firstTimeOnly,
-      applicableToAllShops: promo.applicableToAllShops,
+      // The API sends this as isPublic; reading only applicableToAllShops
+      // left the box unchecked on every edit and un-published the promo on save.
+      applicableToAllShops: promo.applicableToAllShops ?? promo.isPublic ?? true,
       imageUrl: promo.imageUrl,
       videoUrl: promo.videoUrl
     });

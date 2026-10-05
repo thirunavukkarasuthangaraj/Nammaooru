@@ -30,12 +30,18 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     List<Promotion> findAllActive(@Param("now") LocalDateTime now);
 
     /**
-     * Find active promotions for a specific shop
+     * Active promotions shown INSIDE one shop's page: that shop's own only.
+     *
+     * Platform promotions (shopId null) used to be appended here too, so an
+     * admin's home-screen banner showed up inside every single shop as if the
+     * shop had made the offer. They belong on the Home carousel
+     * (findAllPublicActive); whether the code is accepted at checkout for a
+     * given shop is a separate check in PromotionService.validatePromoCode.
      */
     @Query("SELECT p FROM Promotion p WHERE p.status = 'ACTIVE' " +
            "AND p.startDate <= :now AND p.endDate >= :now " +
            "AND (p.usageLimit IS NULL OR p.usedCount < p.usageLimit) " +
-           "AND (p.shopId = :shopId OR p.shopId IS NULL)")
+           "AND p.shopId = :shopId")
     List<Promotion> findActiveByShopId(@Param("shopId") Long shopId, @Param("now") LocalDateTime now);
 
     /**
