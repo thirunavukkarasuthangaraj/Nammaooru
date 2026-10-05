@@ -24,6 +24,12 @@ export interface PromoCode {
   firstTimeOnly: boolean;
   applicableToAllShops?: boolean;
   imageUrl?: string;
+  // Banner video for the customer home carousel. Only reaches customers once
+  // videoStatus is APPROVED by a super admin.
+  videoUrl?: string;
+  videoThumbnailUrl?: string;
+  videoStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  videoReviewNote?: string;
   shopId?: number;
 }
 

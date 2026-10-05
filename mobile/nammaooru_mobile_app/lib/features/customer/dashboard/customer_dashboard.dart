@@ -27,6 +27,7 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/address_service.dart';
 import '../widgets/deliver_to_picker.dart';
 import '../../../shared/widgets/platform_promos_carousel.dart';
+import '../../../shared/widgets/promo_video_banner.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../../../services/version_service.dart';
 import 'dart:async';
@@ -774,20 +775,44 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     }
   }
 
+  /// How long the slide at [page] holds before the carousel moves on. A promo
+  /// video needs long enough to actually get its message across; a still
+  /// banner is read at a glance.
+  Duration _offerSlideDuration(int page) {
+    final promoIndex = page - _combos.length;
+    if (promoIndex >= 0 &&
+        promoIndex < _promos.length &&
+        _promos[promoIndex].hasVideo) {
+      return const Duration(seconds: 15);
+    }
+    return const Duration(seconds: 5);
+  }
+
   void _startAutoSlideOffers() {
-    final totalItems = _promos.length + _combos.length + _featuredPosts.length;
-    if (totalItems <= 1) return;
+    // Must match _buildUnifiedOffersCarousel's itemCount. _featuredPosts used
+    // to be counted here even though they are not slides in this carousel, so
+    // the timer animated past the last real page and the rotation stalled
+    // there for good.
+    final totalItems = _promos.length + _combos.length;
 
     _autoSlideTimer?.cancel();
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_unifiedOffersController.hasClients && mounted) {
-        final nextPage = (_currentOfferPage + 1) % totalItems;
-        _unifiedOffersController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
-      }
+    if (totalItems <= 1) return;
+
+    // A plain Timer (re-armed on every page change) rather than Timer.periodic,
+    // so each slide can hold for a different length of time.
+    _autoSlideTimer = Timer(_offerSlideDuration(_currentOfferPage), () {
+      if (!mounted || !_unifiedOffersController.hasClients) return;
+
+      final nextPage = (_currentOfferPage + 1) % totalItems;
+      _unifiedOffersController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+
+      // onPageChanged re-arms with the new slide's duration; this is only a
+      // safety net so the rotation can't die if that callback never fires.
+      _startAutoSlideOffers();
     });
   }
 
@@ -925,13 +950,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
             itemCount: totalItems,
             onPageChanged: (index) {
               setState(() => _currentOfferPage = index);
+              // The next slide may be a video (which needs a longer dwell than
+              // a still banner), so re-time the rotation from here.
+              _startAutoSlideOffers();
             },
             itemBuilder: (context, index) {
               // Order: combos first, then promos (shop-based only)
               if (index < _combos.length) {
                 return _buildComboCard(_combos[index]);
               } else {
-                return _buildPromoCard(_promos[index - _combos.length]);
+                // Only the visible slide gets to play: PageView.builder keeps
+                // neighbours alive, so without this two or three videos would
+                // decode and stream at once behind the card on screen.
+                return _buildPromoCard(
+                  _promos[index - _combos.length],
+                  isActive: _currentOfferPage == index,
+                );
               }
             },
           ),
@@ -1279,7 +1313,26 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     );
   }
 
-  Widget _buildPromoCard(PromoCode promo) {
+  Widget _buildPromoCard(PromoCode promo, {bool isActive = true}) {
+    final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
+
+    // A promo video outranks the still banner: it only ever reaches us after a
+    // super admin approved it, so if one is present it is the intended
+    // creative. Falls all the way back to the image/text card if it won't play.
+    if (promo.hasVideo) {
+      return PromoVideoBanner(
+        videoUrl: promo.videoUrl!,
+        posterUrl: promo.videoThumbnailUrl ?? promo.imageUrl,
+        isActive: isActive,
+        onTap: () => _navigateToPromoShop(promo),
+        fallback: _buildPromoImageOrTextCard(promo),
+      );
+    }
+
+    return _buildPromoImageOrTextCard(promo);
+  }
+
+  Widget _buildPromoImageOrTextCard(PromoCode promo) {
     final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
 
     // A fully-designed banner image (offer text, code, and call-to-action all

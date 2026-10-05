@@ -17,6 +17,12 @@ export interface PromoCode {
   applicableToAllShops: boolean;
   applicableShopIds?: number[];
   imageUrl?: string;
+  // Banner video for the customer home carousel. Shown only once videoStatus
+  // is APPROVED - an admin's own upload is approved on save.
+  videoUrl?: string;
+  videoThumbnailUrl?: string;
+  videoStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  videoReviewNote?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -83,4 +89,6 @@ export interface CreatePromoCodeRequest {
   applicableToAllShops: boolean;
   applicableShopIds?: number[];
   imageUrl?: string;
+  videoUrl?: string;
+  videoThumbnailUrl?: string;
 }

@@ -66,6 +66,8 @@ dependencies:
   # JWT
   jwt_decode: ^0.3.1
   cached_network_image: ^3.4.1
+  # Promotion banner videos on the home "SPECIAL OFFERS" carousel
+  video_player: ^2.9.2
   image_picker: ^1.1.2
   image_cropper: ^9.1.0
   file_picker: ^8.1.4

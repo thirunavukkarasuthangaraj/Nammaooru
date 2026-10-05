@@ -215,4 +215,56 @@ export class PromoCodeService {
       }))
     );
   }
+
+  /**
+   * Upload a banner video for the customer home carousel. An admin's video is
+   * approved on save; a shop owner's goes into the review queue below.
+   */
+  uploadPromoVideo(file: File): Observable<{ videoUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<any>(`${environment.apiUrl}/uploads/promotion-video`, formData).pipe(
+      map(response => ({
+        videoUrl: response.url || response.data?.url || response.videoUrl || response
+      }))
+    );
+  }
+
+  // --- Banner video review (SUPER_ADMIN) ---
+
+  getVideoReviewQueue(status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL' = 'PENDING'): Observable<PromoVideoReviewItem[]> {
+    return this.http
+      .get<any>(`${environment.apiUrl}/promotions/videos`, { params: { status } })
+      .pipe(map(response => (response?.data ?? []) as PromoVideoReviewItem[]));
+  }
+
+  approvePromoVideo(promotionId: number): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/promotions/${promotionId}/video/approve`, {});
+  }
+
+  rejectPromoVideo(promotionId: number, reason: string): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/promotions/${promotionId}/video/reject`, { reason });
+  }
+}
+
+export interface PromoVideoReviewItem {
+  id: number;
+  code: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  videoUrl: string;
+  videoThumbnailUrl?: string;
+  videoStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  videoReviewNote?: string;
+  videoReviewedBy?: string;
+  videoReviewedAt?: string;
+  videoSubmittedAt?: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  shopId?: number;
+  shopName?: string;
+  submittedBy?: string;
 }

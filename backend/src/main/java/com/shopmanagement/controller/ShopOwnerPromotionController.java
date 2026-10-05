@@ -121,13 +121,22 @@ public class ShopOwnerPromotionController {
                 .createdBy(username)
                 .usedCount(0)
                 .imageUrl(request.getImageUrl())
+                .videoThumbnailUrl(request.getVideoThumbnailUrl())
                 .build();
+
+        // A shop owner is not an approver: the video is parked at PENDING and
+        // stays off the customer home banner until a SUPER_ADMIN approves it.
+        if (request.isVideoUrlPresent()) {
+            promotion.submitVideo(request.getVideoUrl(), username, false);
+        }
 
         Promotion savedPromotion = promotionRepository.save(promotion);
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
-        response.put("message", "Shop promotion created successfully");
+        response.put("message", promotion.getVideoStatus() == Promotion.VideoStatus.PENDING
+                ? "Shop promotion created. Your banner video was sent for admin approval."
+                : "Shop promotion created successfully");
         response.put("data", savedPromotion);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -176,13 +185,28 @@ public class ShopOwnerPromotionController {
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setImageUrl(request.getImageUrl());
+        if (request.isVideoThumbnailUrlPresent()) {
+            promotion.setVideoThumbnailUrl(request.getVideoThumbnailUrl());
+        }
         promotion.setUpdatedBy(username);
+
+        // Only a *changed* video re-enters the queue - submitVideo() no-ops on
+        // an unchanged URL, so editing the title or dates of a promotion whose
+        // video is already live does not pull it off the home banner.
+        Promotion.VideoStatus statusBefore = promotion.getVideoStatus();
+        if (request.isVideoUrlPresent()) {
+            promotion.submitVideo(request.getVideoUrl(), username, false);
+        }
+        boolean sentForReview = promotion.getVideoStatus() == Promotion.VideoStatus.PENDING
+                && statusBefore != Promotion.VideoStatus.PENDING;
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
-        response.put("message", "Shop promotion updated successfully");
+        response.put("message", sentForReview
+                ? "Shop promotion updated. Your banner video was sent for admin approval."
+                : "Shop promotion updated successfully");
         response.put("data", updatedPromotion);
 
         return ResponseEntity.ok(response);
@@ -391,5 +415,29 @@ public class ShopOwnerPromotionController {
         private boolean firstTimeOnly = false;
 
         private String imageUrl;
+
+        // Banner video for the customer home carousel. Needs SUPER_ADMIN
+        // approval before customers see it.
+        //
+        // Older clients (the shop-owner Flutter app) send an update payload
+        // with no video keys at all. Treating that as "clear the video" would
+        // delete an approved banner on any unrelated edit, so presence of the
+        // key is tracked separately from its value: only a client that
+        // actually sent videoUrl can change or clear it.
+        private String videoUrl;
+        private boolean videoUrlPresent;
+
+        private String videoThumbnailUrl;
+        private boolean videoThumbnailUrlPresent;
+
+        public void setVideoUrl(String videoUrl) {
+            this.videoUrl = videoUrl;
+            this.videoUrlPresent = true;
+        }
+
+        public void setVideoThumbnailUrl(String videoThumbnailUrl) {
+            this.videoThumbnailUrl = videoThumbnailUrl;
+            this.videoThumbnailUrlPresent = true;
+        }
     }
 }

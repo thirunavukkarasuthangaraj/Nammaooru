@@ -1,0 +1,84 @@
+<div class="approvals-page">
+  <div class="page-header">
+    <div class="header-text">
+      <h2><mat-icon>smart_display</mat-icon> Banner Video Approvals</h2>
+      <p>Promo videos shop owners want on the customer home banner. Nothing here
+        reaches customers until you approve it.</p>
+    </div>
+    <button mat-stroked-button (click)="load()" [disabled]="isLoading">
+      <mat-icon>refresh</mat-icon> Refresh
+    </button>
+  </div>
+
+  <div class="filter-row">
+    <button mat-button
+            *ngFor="let f of filters"
+            [class.active]="filter === f.value"
+            (click)="setFilter(f.value)">
+      <mat-icon>{{ f.icon }}</mat-icon> {{ f.label }}
+    </button>
+  </div>
+
+  <div class="loading-state" *ngIf="isLoading">
+    <mat-spinner diameter="36"></mat-spinner>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && items.length === 0">
+    <mat-icon>inbox</mat-icon>
+    <p *ngIf="filter === 'PENDING'">Nothing waiting for review.</p>
+    <p *ngIf="filter === 'APPROVED'">No approved videos yet.</p>
+    <p *ngIf="filter === 'REJECTED'">No rejected videos.</p>
+  </div>
+
+  <div class="video-grid" *ngIf="!isLoading && items.length > 0">
+    <mat-card class="video-card" *ngFor="let item of items; trackBy: trackById">
+      <video
+        class="video-player"
+        [src]="mediaUrl(item.videoUrl)"
+        [poster]="mediaUrl(item.videoThumbnailUrl || item.imageUrl)"
+        controls
+        muted
+        playsinline
+        preload="metadata"></video>
+
+      <div class="video-meta">
+        <h3>{{ item.title }}</h3>
+        <div class="meta-row">
+          <span class="chip code">{{ item.code }}</span>
+          <span class="chip shop">{{ item.shopName || 'Platform Offer' }}</span>
+        </div>
+        <p class="description" *ngIf="item.description">{{ item.description }}</p>
+        <p class="submitted">
+          Submitted {{ item.videoSubmittedAt | date:'dd MMM yyyy, h:mm a' }}
+          <ng-container *ngIf="item.submittedBy"> by {{ item.submittedBy }}</ng-container>
+        </p>
+        <p class="runs">
+          Runs {{ item.startDate | date:'dd MMM' }} &ndash; {{ item.endDate | date:'dd MMM yyyy' }}
+        </p>
+        <p class="review-note" *ngIf="item.videoReviewNote">
+          <strong>Your note:</strong> {{ item.videoReviewNote }}
+        </p>
+        <p class="reviewed" *ngIf="item.videoReviewedBy">
+          Reviewed by {{ item.videoReviewedBy }}
+          on {{ item.videoReviewedAt | date:'dd MMM yyyy, h:mm a' }}
+        </p>
+      </div>
+
+      <mat-card-actions class="card-actions">
+        <button mat-raised-button color="primary"
+                *ngIf="item.videoStatus !== 'APPROVED'"
+                [disabled]="isBusy(item.id)"
+                (click)="approve(item)">
+          <mat-icon>check</mat-icon> Approve
+        </button>
+        <button mat-stroked-button color="warn"
+                *ngIf="item.videoStatus !== 'REJECTED'"
+                [disabled]="isBusy(item.id)"
+                (click)="reject(item)">
+          <mat-icon>close</mat-icon> Reject
+        </button>
+        <mat-spinner diameter="20" *ngIf="isBusy(item.id)"></mat-spinner>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

@@ -197,6 +197,84 @@ mat-dialog-actions button mat-spinner {
   margin-right: 8px;
 }
 
+/* Banner video */
+.video-review-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #3a4a66;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.video-review-note mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #4a68a8;
+}
+
+.video-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.video-status-chip mat-icon {
+  font-size: 17px;
+  width: 17px;
+  height: 17px;
+}
+
+.video-status-pending {
+  background: #fff4e0;
+  color: #9a6400;
+}
+
+.video-status-approved {
+  background: #e4f6e8;
+  color: #1f7a39;
+}
+
+.video-status-rejected {
+  background: #fdeaea;
+  color: #b3261e;
+}
+
+.video-reject-reason {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-left: 3px solid #b3261e;
+  background: #fdf3f3;
+  font-size: 13px;
+  color: #7a2520;
+}
+
+.video-preview {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.video-preview video {
+  width: 100%;
+  max-height: 240px;
+  display: block;
+  background: #000;
+  border-radius: 8px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .dialog-container {

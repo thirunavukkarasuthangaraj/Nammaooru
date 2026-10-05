@@ -40,6 +40,15 @@ public class FileUploadService {
     @Value("${file.upload.max-size:10485760}") // 10MB in bytes
     private long maxFileSize;
 
+    @Value("${file.upload.allowed-video-extensions:mp4,webm,mov}")
+    private String allowedVideoExtensions;
+
+    // Videos need far more headroom than a banner image; kept under nginx's
+    // client_max_body_size (50M) so a rejection surfaces as our own readable
+    // error instead of a bare 413 from the proxy.
+    @Value("${file.upload.max-video-size:31457280}") // 30MB in bytes
+    private long maxVideoSize;
+
     public String uploadFile(MultipartFile file, String category) throws IOException {
         validateFile(file);
         contentModerationService.validateImageContent(file);
@@ -138,6 +147,49 @@ public class FileUploadService {
 
         String fileUrl = "/uploads/" + categoryPath + generatedName;
         log.info("Voice file uploaded successfully: {}", fileUrl);
+        return fileUrl;
+    }
+
+    /**
+     * Upload a short promotional video (mp4, webm, mov).
+     *
+     * Deliberately does NOT go through validateFile()/content moderation: those
+     * are image-only (allowed-extensions is an image list and the moderator
+     * decodes the bytes as an image), and a video can't be screened that way.
+     * A human approval step covers it instead - a shop owner's video sits at
+     * PENDING until a SUPER_ADMIN approves it, so nothing an owner uploads here
+     * reaches a customer unreviewed.
+     */
+    public String uploadVideoFile(MultipartFile file, String category) throws IOException {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be empty");
+        }
+        if (file.getSize() > maxVideoSize) {
+            throw new IllegalArgumentException(
+                    "Video is too large (" + (file.getSize() / (1024 * 1024)) + "MB). Maximum allowed is "
+                            + (maxVideoSize / (1024 * 1024)) + "MB.");
+        }
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.trim().isEmpty()) {
+            throw new IllegalArgumentException("File name cannot be empty");
+        }
+        String extension = getFileExtension(fileName).toLowerCase();
+        List<String> allowedVideoExts = Arrays.asList(allowedVideoExtensions.split(","));
+        if (!allowedVideoExts.contains(extension)) {
+            throw new IllegalArgumentException(
+                    "Video type not allowed. Allowed types: " + allowedVideoExtensions);
+        }
+
+        String generatedName = UUID.randomUUID().toString() + "." + extension;
+        String categoryPath = category != null ? category + "/" : "";
+        Path uploadDir = Paths.get(uploadPath, categoryPath);
+        Files.createDirectories(uploadDir);
+
+        Path filePath = uploadDir.resolve(generatedName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        String fileUrl = "/uploads/" + categoryPath + generatedName;
+        log.info("Video uploaded successfully: {} ({} bytes)", fileUrl, file.getSize());
         return fileUrl;
     }
 

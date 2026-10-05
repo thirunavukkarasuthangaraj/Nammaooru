@@ -64,7 +64,9 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 10MB
+      # 30MB so a promotion banner video fits; per-type ceilings are enforced in
+      # FileUploadService (images still capped at file.upload.max-size).
+      max-file-size: 30MB
       max-request-size: 50MB
 
   mail:
@@ -141,6 +143,9 @@ file:
     path: ${FILE_UPLOAD_PATH:/opt/shop-management/uploads}
     max-size: 10485760
     allowed-extensions: jpg,jpeg,png,gif,webp
+    # Promotion banner videos (reviewed by a SUPER_ADMIN before customers see them)
+    max-video-size: 31457280
+    allowed-video-extensions: mp4,webm,mov
 
   # File Storage Configuration
   storage:

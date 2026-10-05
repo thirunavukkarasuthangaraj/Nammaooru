@@ -176,6 +176,10 @@ class PromoCode {
   final DateTime endDate;
   final String? imageUrl;
   final String? bannerUrl;
+  /// Promo video for the home banner. The backend only sends this once a
+  /// super admin has approved it, so anything non-null here is safe to play.
+  final String? videoUrl;
+  final String? videoThumbnailUrl;
   final bool? isFirstTimeOnly;
   final String? termsAndConditions;
   final int? shopId;
@@ -197,6 +201,8 @@ class PromoCode {
     required this.endDate,
     this.imageUrl,
     this.bannerUrl,
+    this.videoUrl,
+    this.videoThumbnailUrl,
     this.isFirstTimeOnly,
     this.termsAndConditions,
     this.shopId,
@@ -224,6 +230,8 @@ class PromoCode {
       endDate: DateTime.parse(json['endDate']),
       imageUrl: json['imageUrl'],
       bannerUrl: json['bannerUrl'],
+      videoUrl: json['videoUrl'],
+      videoThumbnailUrl: json['videoThumbnailUrl'],
       isFirstTimeOnly: json['isFirstTimeOnly'],
       termsAndConditions: json['termsAndConditions'],
       shopId: json['shopId'],
@@ -232,6 +240,8 @@ class PromoCode {
       shopBusinessType: json['shopBusinessType']?.toString(),
     );
   }
+
+  bool get hasVideo => videoUrl != null && videoUrl!.trim().isNotEmpty;
 
   String get formattedDiscount {
     if (type == 'PERCENTAGE') {

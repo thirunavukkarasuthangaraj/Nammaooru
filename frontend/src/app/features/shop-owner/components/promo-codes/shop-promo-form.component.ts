@@ -16,7 +16,13 @@ export class ShopPromoFormComponent implements OnInit {
   isEditMode = false;
   isSaving = false;
   isUploading = false;
+  isUploadingVideo = false;
   imagePreview: string | null = null;
+  videoPreview: string | null = null;
+  // Review state of the already-saved video, so an owner can see whether the
+  // one they uploaded last time is live, waiting, or was turned down.
+  videoStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null = null;
+  videoReviewNote: string | null = null;
 
   promoTypes = [
     { value: 'PERCENTAGE', label: 'Percentage Discount' },
@@ -59,7 +65,8 @@ export class ShopPromoFormComponent implements OnInit {
       usageLimit: [null],
       usageLimitPerCustomer: [1],
       firstTimeOnly: [false],
-      imageUrl: ['']
+      imageUrl: [''],
+      videoUrl: ['']
     });
 
     // Auto-generate code when title changes (only in create mode)
@@ -87,11 +94,35 @@ export class ShopPromoFormComponent implements OnInit {
       usageLimit: promo.usageLimit,
       usageLimitPerCustomer: promo.usageLimitPerCustomer || 1,
       firstTimeOnly: promo.firstTimeOnly,
-      imageUrl: promo.imageUrl
+      imageUrl: promo.imageUrl,
+      videoUrl: promo.videoUrl
     });
 
     if (promo.imageUrl) {
       this.imagePreview = this.getImageUrl(promo.imageUrl);
+    }
+
+    if (promo.videoUrl) {
+      this.videoPreview = this.getImageUrl(promo.videoUrl);
+      this.videoStatus = promo.videoStatus ?? 'PENDING';
+      this.videoReviewNote = promo.videoReviewNote ?? null;
+    }
+  }
+
+  get videoStatusLabel(): string {
+    switch (this.videoStatus) {
+      case 'APPROVED': return 'Approved - showing on the home banner';
+      case 'REJECTED': return 'Rejected by admin';
+      case 'PENDING': return 'Waiting for admin approval';
+      default: return '';
+    }
+  }
+
+  get videoStatusIcon(): string {
+    switch (this.videoStatus) {
+      case 'APPROVED': return 'check_circle';
+      case 'REJECTED': return 'cancel';
+      default: return 'hourglass_top';
     }
   }
 
@@ -152,6 +183,56 @@ export class ShopPromoFormComponent implements OnInit {
     this.imagePreview = null;
   }
 
+  onVideoSelected(event: any): void {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      this.showSnackBar('Please select a video file', 'error');
+      return;
+    }
+
+    // Matches file.upload.max-video-size on the server; checking here saves the
+    // owner a 30MB upload that the API would only reject at the end.
+    if (file.size > 30 * 1024 * 1024) {
+      this.showSnackBar('Video must be less than 30MB', 'error');
+      return;
+    }
+
+    this.uploadVideo(file);
+  }
+
+  uploadVideo(file: File): void {
+    this.isUploadingVideo = true;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<any>(`${environment.apiUrl}/uploads/promotion-video`, formData).subscribe({
+      next: (response) => {
+        const videoUrl = response.url || response.path || response.data?.url;
+        this.promoForm.patchValue({ videoUrl });
+        this.videoPreview = this.getImageUrl(videoUrl);
+        // Uploading replaces whatever was reviewed before, so it goes back in
+        // the queue. The server is the authority on this; we just reflect it.
+        this.videoStatus = 'PENDING';
+        this.videoReviewNote = null;
+        this.isUploadingVideo = false;
+        this.showSnackBar('Video uploaded - it will go live once an admin approves it', 'success');
+      },
+      error: (error) => {
+        this.isUploadingVideo = false;
+        this.showSnackBar(error.error?.message || 'Failed to upload video', 'error');
+      }
+    });
+  }
+
+  removeVideo(): void {
+    this.promoForm.patchValue({ videoUrl: '' });
+    this.videoPreview = null;
+    this.videoStatus = null;
+    this.videoReviewNote = null;
+  }
+
   onImageError(event: Event): void {
     console.log('Image failed to load');
     // Keep the preview area visible so user can remove it
@@ -190,6 +271,7 @@ export class ShopPromoFormComponent implements OnInit {
       usageLimitPerCustomer: formValue.usageLimitPerCustomer || 1,
       firstTimeOnly: formValue.firstTimeOnly,
       imageUrl: formValue.imageUrl || null,
+      videoUrl: formValue.videoUrl || null,
       status: 'ACTIVE'
     };
 
@@ -202,10 +284,13 @@ export class ShopPromoFormComponent implements OnInit {
       : this.http.post(url, payload);
 
     request.subscribe({
-      next: () => {
+      next: (response: any) => {
         this.isSaving = false;
+        // The server says whether the video went into the approval queue -
+        // prefer its wording so the owner isn't told "created!" and then left
+        // wondering why their video isn't on the app yet.
         this.showSnackBar(
-          this.isEditMode ? 'Promo code updated!' : 'Promo code created!',
+          response?.message || (this.isEditMode ? 'Promo code updated!' : 'Promo code created!'),
           'success'
         );
         this.dialogRef.close(true);

@@ -36,6 +36,7 @@ import { ShopPaymentsComponent } from './components/shop-payments/shop-payments.
 import { PromoCodeListComponent } from './components/promo-code-management/promo-code-list.component';
 import { PromoCodeFormComponent } from './components/promo-code-management/promo-code-form.component';
 import { PromoCodeStatsComponent } from './components/promo-code-management/promo-code-stats.component';
+import { PromoVideoApprovalsComponent } from './components/promo-video-approvals/promo-video-approvals.component';
 import { MarketingMessagesComponent } from './components/marketing-messages/marketing-messages.component';
 import { PushNotificationSenderComponent } from './components/push-notification-sender/push-notification-sender.component';
 import { MenuPermissionsComponent } from './components/menu-permissions/menu-permissions.component';
@@ -85,6 +86,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     PromoCodeListComponent,
     PromoCodeFormComponent,
     PromoCodeStatsComponent,
+    PromoVideoApprovalsComponent,
     MarketingMessagesComponent,
     PushNotificationSenderComponent,
     MenuPermissionsComponent,
@@ -189,6 +191,10 @@ import { MatTabsModule } from '@angular/material/tabs';
       {
         path: 'promo-codes',
         component: PromoCodeListComponent
+      },
+      {
+        path: 'promo-video-approvals',
+        component: PromoVideoApprovalsComponent
       },
       {
         path: 'push-notifications',

@@ -172,7 +172,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         { title: 'Promo Codes', icon: 'local_offer', route: '/admin/promo-codes', badge: null },
         { title: 'Push Notifications', icon: 'notifications_active', route: '/admin/push-notifications', badge: null },
         { title: 'Marketing Messages', icon: 'campaign', route: '/admin/marketing', badge: null },
-        { title: 'Health Tips', icon: 'health_and_safety', route: '/admin/health-tips', badge: null }
+        { title: 'Health Tips', icon: 'health_and_safety', route: '/admin/health-tips', badge: null },
+        // SUPER_ADMIN only - the approve/reject API is locked to that role, so
+        // this entry is deliberately not mirrored into adminMenuItems.
+        { title: 'Banner Video Approvals', icon: 'smart_display', route: '/admin/promo-video-approvals', badge: null }
       ]
     },
     {

@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { PromoCodeService } from '../../../../core/services/promo-code.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { PromoCode, CreatePromoCodeRequest } from '../../../../core/models/promo-code.model';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-promo-code-form',
@@ -15,8 +16,10 @@ export class PromoCodeFormComponent implements OnInit {
   isEditMode = false;
   isLoading = false;
   isUploading = false;
+  isUploadingVideo = false;
   selectedFile: File | null = null;
   imagePreview: string | null = null;
+  videoPreview: string | null = null;
   discountTypes = [
     { value: 'PERCENTAGE', label: 'Percentage Discount', icon: 'percent' },
     { value: 'FIXED_AMOUNT', label: 'Fixed Amount', icon: 'attach_money' },
@@ -69,7 +72,8 @@ export class PromoCodeFormComponent implements OnInit {
       usageLimitPerCustomer: [null, Validators.min(1)],
       firstTimeOnly: [false],
       applicableToAllShops: [true],
-      imageUrl: ['']
+      imageUrl: [''],
+      videoUrl: ['']
     });
 
     // Add validation for discount value based on type
@@ -105,18 +109,31 @@ export class PromoCodeFormComponent implements OnInit {
       usageLimitPerCustomer: promo.usageLimitPerCustomer,
       firstTimeOnly: promo.firstTimeOnly,
       applicableToAllShops: promo.applicableToAllShops,
-      imageUrl: promo.imageUrl
+      imageUrl: promo.imageUrl,
+      videoUrl: promo.videoUrl
     });
 
     // Show existing image as preview when editing
     if (promo.imageUrl) {
       this.imagePreview = promo.imageUrl;
     }
+
+    if (promo.videoUrl) {
+      this.videoPreview = this.toMediaUrl(promo.videoUrl);
+    }
+  }
+
+  /** Uploads come back as /uploads/... paths; the <video> tag needs an origin. */
+  toMediaUrl(url: string): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${environment.imageBaseUrl}${path.startsWith('/uploads/') ? path : '/uploads' + path}`;
   }
 
   onSubmit(): void {
-    if (this.isUploading) {
-      this.showSnackBar('Please wait for the image to finish uploading', 'error');
+    if (this.isUploading || this.isUploadingVideo) {
+      this.showSnackBar('Please wait for the upload to finish', 'error');
       return;
     }
     if (this.promoForm.valid) {
@@ -262,6 +279,45 @@ export class PromoCodeFormComponent implements OnInit {
     this.selectedFile = null;
     this.imagePreview = null;
     this.promoForm.patchValue({ imageUrl: '' });
+  }
+
+  onVideoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (!file.type.startsWith('video/')) {
+      this.showSnackBar('Please select a video file', 'error');
+      return;
+    }
+
+    // Mirrors file.upload.max-video-size on the server.
+    if (file.size > 30 * 1024 * 1024) {
+      this.showSnackBar('Video size should be less than 30MB', 'error');
+      return;
+    }
+
+    this.isUploadingVideo = true;
+    this.promoCodeService.uploadPromoVideo(file).subscribe({
+      next: (response) => {
+        this.promoForm.patchValue({ videoUrl: response.videoUrl });
+        this.videoPreview = this.toMediaUrl(response.videoUrl);
+        this.isUploadingVideo = false;
+        // An admin is the approver, so this one goes live on save with no
+        // second review - unlike a shop owner's, which queues as PENDING.
+        this.showSnackBar('Video uploaded - it goes live on the home banner when you save', 'success');
+      },
+      error: (error) => {
+        console.error('Error uploading video:', error);
+        this.isUploadingVideo = false;
+        this.showSnackBar(error.error?.message || 'Failed to upload video', 'error');
+      }
+    });
+  }
+
+  removeVideo(): void {
+    this.videoPreview = null;
+    this.promoForm.patchValue({ videoUrl: '' });
   }
 
   private showSnackBar(message: string, type: 'success' | 'error'): void {

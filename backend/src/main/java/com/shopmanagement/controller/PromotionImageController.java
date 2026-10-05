@@ -57,6 +57,49 @@ public class PromotionImageController {
         }
     }
 
+    /**
+     * Upload a promotion banner video for the customer home carousel.
+     *
+     * Uploading only parks the file - it does not publish anything. The URL is
+     * attached to a promotion separately, and a shop owner's video stays at
+     * PENDING until a SUPER_ADMIN approves it.
+     */
+    @PostMapping(value = "/promotion-video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SHOP_OWNER')")
+    public ResponseEntity<Map<String, Object>> uploadPromotionVideo(
+            @RequestParam("file") MultipartFile file) {
+
+        log.info("Uploading promotion banner video: {} ({} bytes)",
+                file.getOriginalFilename(), file.getSize());
+
+        try {
+            String videoUrl = fileUploadService.uploadVideoFile(file, "promotion-videos");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("statusCode", "0000");
+            response.put("message", "Promotion video uploaded successfully");
+            response.put("url", videoUrl);
+            response.put("path", videoUrl);
+
+            log.info("Promotion video uploaded successfully: {}", videoUrl);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (IOException e) {
+            log.error("Failed to upload promotion video", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", "5000");
+            errorResponse.put("message", "Failed to upload video: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid promotion video: {}", e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", "4000");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
     @PostMapping(value = "/notification", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> uploadNotificationImage(

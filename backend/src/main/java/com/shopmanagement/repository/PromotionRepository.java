@@ -52,4 +52,22 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
      */
     @Query("SELECT p FROM Promotion p WHERE p.shopId = :shopId")
     Page<Promotion> findByShopId(@Param("shopId") Long shopId, Pageable pageable);
+
+    /**
+     * Banner videos in one review state. Oldest submission first, so the queue
+     * is answered in the order it arrived.
+     *
+     * Kept separate from findAllWithVideo() rather than using a
+     * "(:status IS NULL OR ...)" query: Hibernate can't infer the type of a
+     * null enum parameter, so the "all" case has to be its own query.
+     */
+    @Query("SELECT p FROM Promotion p WHERE p.videoUrl IS NOT NULL " +
+           "AND p.videoStatus = :status " +
+           "ORDER BY p.videoSubmittedAt ASC")
+    List<Promotion> findByVideoStatus(@Param("status") Promotion.VideoStatus status);
+
+    /** Every promotion that has a banner video, whatever its review state. */
+    @Query("SELECT p FROM Promotion p WHERE p.videoUrl IS NOT NULL " +
+           "ORDER BY p.videoSubmittedAt ASC")
+    List<Promotion> findAllWithVideo();
 }

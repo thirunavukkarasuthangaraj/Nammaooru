@@ -16,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -136,6 +137,13 @@ public class PromotionController {
                 promoMap.put("endDate", promo.getEndDate());
                 promoMap.put("imageUrl", promo.getImageUrl());
                 promoMap.put("bannerUrl", promo.getBannerUrl());
+                // Only an approved video is ever handed to the app. A PENDING or
+                // REJECTED one leaves these null, so the carousel silently falls
+                // back to the banner image instead of airing an unreviewed clip.
+                if (promo.hasApprovedVideo()) {
+                    promoMap.put("videoUrl", promo.getVideoUrl());
+                    promoMap.put("videoThumbnailUrl", promo.getVideoThumbnailUrl());
+                }
                 promoMap.put("isFirstTimeOnly", promo.getIsFirstTimeOnly());
                 promoMap.put("termsAndConditions", promo.getTermsAndConditions());
                 promoMap.put("shopId", promo.getShopId());
@@ -223,7 +231,9 @@ public class PromotionController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Map<String, Object>> createPromotion(@Valid @RequestBody CreatePromotionRequest request) {
+    public ResponseEntity<Map<String, Object>> createPromotion(
+            Authentication authentication,
+            @Valid @RequestBody CreatePromotionRequest request) {
         log.info("Creating new promotion: {}", request.getCode());
 
         Promotion promotion = new Promotion();
@@ -242,6 +252,14 @@ public class PromotionController {
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setIsPublic(request.isApplicableToAllShops());
         promotion.setImageUrl(request.getImageUrl());
+        if (request.isVideoThumbnailUrlPresent()) {
+            promotion.setVideoThumbnailUrl(request.getVideoThumbnailUrl());
+        }
+        // An ADMIN/SUPER_ADMIN is the approver, so their own video needs no
+        // second pair of eyes and goes live immediately.
+        if (request.isVideoUrlPresent()) {
+            promotion.submitVideo(request.getVideoUrl(), currentUser(authentication), true);
+        }
 
         Promotion savedPromotion = promotionRepository.save(promotion);
 
@@ -259,6 +277,7 @@ public class PromotionController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> updatePromotion(
+            Authentication authentication,
             @PathVariable Long id,
             @Valid @RequestBody CreatePromotionRequest request) {
         log.info("Updating promotion: {}", id);
@@ -281,6 +300,12 @@ public class PromotionController {
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setIsPublic(request.isApplicableToAllShops());
         promotion.setImageUrl(request.getImageUrl());
+        if (request.isVideoThumbnailUrlPresent()) {
+            promotion.setVideoThumbnailUrl(request.getVideoThumbnailUrl());
+        }
+        if (request.isVideoUrlPresent()) {
+            promotion.submitVideo(request.getVideoUrl(), currentUser(authentication), true);
+        }
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
 
@@ -381,6 +406,152 @@ public class PromotionController {
         return ResponseEntity.ok(response);
     }
 
+    // ------------------------------------------------------------------
+    // Banner video review (SUPER_ADMIN)
+    //
+    // Shop owners can attach a promo video to their own promotion, but it only
+    // reaches the customer home carousel once it is approved here.
+    // ------------------------------------------------------------------
+
+    /**
+     * Banner videos awaiting review (or, with ?status=, already-settled ones so
+     * an admin can revisit what they approved/rejected).
+     */
+    @GetMapping("/videos")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getVideoReviewQueue(
+            @RequestParam(defaultValue = "PENDING") String status) {
+
+        List<Promotion> promotions = "ALL".equalsIgnoreCase(status)
+                ? promotionRepository.findAllWithVideo()
+                : promotionRepository.findByVideoStatus(
+                        Promotion.VideoStatus.valueOf(status.toUpperCase()));
+
+        List<Map<String, Object>> items = promotions.stream()
+                .map(promo -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", promo.getId());
+                    item.put("code", promo.getCode());
+                    item.put("title", promo.getTitle());
+                    item.put("description", promo.getDescription());
+                    item.put("imageUrl", promo.getImageUrl());
+                    item.put("videoUrl", promo.getVideoUrl());
+                    item.put("videoThumbnailUrl", promo.getVideoThumbnailUrl());
+                    item.put("videoStatus", promo.getVideoStatus());
+                    item.put("videoReviewNote", promo.getVideoReviewNote());
+                    item.put("videoReviewedBy", promo.getVideoReviewedBy());
+                    item.put("videoReviewedAt", promo.getVideoReviewedAt());
+                    item.put("videoSubmittedAt", promo.getVideoSubmittedAt());
+                    item.put("startDate", promo.getStartDate());
+                    item.put("endDate", promo.getEndDate());
+                    item.put("status", promo.getStatus());
+                    item.put("shopId", promo.getShopId());
+                    item.put("submittedBy", promo.getUpdatedBy() != null
+                            ? promo.getUpdatedBy() : promo.getCreatedBy());
+
+                    if (promo.getShopId() != null) {
+                        shopRepository.findById(promo.getShopId())
+                                .ifPresent(shop -> item.put("shopName", shop.getName()));
+                    } else {
+                        item.put("shopName", "Platform Offer");
+                    }
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion videos retrieved successfully");
+        response.put("data", items);
+        response.put("count", items.size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Approve a banner video - this is what actually puts it on the customer
+     * home carousel.
+     */
+    @PatchMapping("/{id}/video/approve")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> approvePromotionVideo(
+            Authentication authentication,
+            @PathVariable Long id) {
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        if (promotion.getVideoUrl() == null || promotion.getVideoUrl().trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", "1004");
+            errorResponse.put("message", "This promotion has no video to approve");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        promotion.setVideoStatus(Promotion.VideoStatus.APPROVED);
+        promotion.setVideoReviewNote(null);
+        promotion.setVideoReviewedBy(currentUser(authentication));
+        promotion.setVideoReviewedAt(java.time.LocalDateTime.now());
+
+        Promotion saved = promotionRepository.save(promotion);
+        log.info("Promotion video approved: promotionId={} by={}", id, promotion.getVideoReviewedBy());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion video approved - it will now show on the home banner");
+        response.put("data", saved);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Reject a banner video. The URL is kept so the owner can see what was
+     * rejected and why, but hasApprovedVideo() keeps it off the home carousel.
+     */
+    @PatchMapping("/{id}/video/reject")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> rejectPromotionVideo(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody(required = false) VideoRejectionRequest request) {
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
+
+        if (promotion.getVideoUrl() == null || promotion.getVideoUrl().trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", "1004");
+            errorResponse.put("message", "This promotion has no video to reject");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        promotion.setVideoStatus(Promotion.VideoStatus.REJECTED);
+        promotion.setVideoReviewNote(request != null ? request.getReason() : null);
+        promotion.setVideoReviewedBy(currentUser(authentication));
+        promotion.setVideoReviewedAt(java.time.LocalDateTime.now());
+
+        Promotion saved = promotionRepository.save(promotion);
+        log.info("Promotion video rejected: promotionId={} by={} reason={}",
+                id, promotion.getVideoReviewedBy(), promotion.getVideoReviewNote());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", "0000");
+        response.put("message", "Promotion video rejected");
+        response.put("data", saved);
+
+        return ResponseEntity.ok(response);
+    }
+
+    private String currentUser(Authentication authentication) {
+        return authentication != null ? authentication.getName() : "system";
+    }
+
+    @Data
+    public static class VideoRejectionRequest {
+        @Size(max = 500, message = "Reason cannot exceed 500 characters")
+        private String reason;
+    }
+
     /**
      * Request DTO for promo code validation
      */
@@ -457,5 +628,27 @@ public class PromotionController {
         private boolean applicableToAllShops = true;
 
         private String imageUrl;
+
+        // Banner video for the customer home carousel. Set by an admin, so it
+        // is approved on save - see Promotion.submitVideo(..., autoApprove).
+        //
+        // Presence is tracked separately from value so a client that doesn't
+        // send these keys at all leaves an existing video untouched, rather
+        // than silently clearing it on an unrelated edit.
+        private String videoUrl;
+        private boolean videoUrlPresent;
+
+        private String videoThumbnailUrl;
+        private boolean videoThumbnailUrlPresent;
+
+        public void setVideoUrl(String videoUrl) {
+            this.videoUrl = videoUrl;
+            this.videoUrlPresent = true;
+        }
+
+        public void setVideoThumbnailUrl(String videoThumbnailUrl) {
+            this.videoThumbnailUrl = videoThumbnailUrl;
+            this.videoThumbnailUrlPresent = true;
+        }
     }
 }

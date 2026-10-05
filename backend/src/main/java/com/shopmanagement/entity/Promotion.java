@@ -91,7 +91,33 @@ public class Promotion {
     
     @Column(name = "banner_url")
     private String bannerUrl;
-    
+
+    // Short promo video shown in place of the banner image on the customer
+    // home carousel. Never surfaced to customers on its own - see
+    // hasApprovedVideo(): a shop owner's upload sits at PENDING until a
+    // SUPER_ADMIN approves it.
+    @Column(name = "video_url", length = 500)
+    private String videoUrl;
+
+    @Column(name = "video_thumbnail_url", length = 500)
+    private String videoThumbnailUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "video_status", length = 20)
+    private VideoStatus videoStatus;
+
+    @Column(name = "video_review_note", columnDefinition = "TEXT")
+    private String videoReviewNote;
+
+    @Column(name = "video_reviewed_by", length = 100)
+    private String videoReviewedBy;
+
+    @Column(name = "video_reviewed_at")
+    private LocalDateTime videoReviewedAt;
+
+    @Column(name = "video_submitted_at")
+    private LocalDateTime videoSubmittedAt;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -122,6 +148,64 @@ public class Promotion {
     public boolean hasUsageLeft() {
         return usageLimit == null || usedCount < usageLimit;
     }
+
+    /**
+     * The only check any customer-facing response should use before handing out
+     * videoUrl. A video that is still PENDING (or was rejected) must stay
+     * invisible to customers even though the row holds a perfectly valid URL.
+     */
+    public boolean hasApprovedVideo() {
+        return videoUrl != null
+                && !videoUrl.trim().isEmpty()
+                && videoStatus == VideoStatus.APPROVED;
+    }
+
+    /**
+     * Attach/replace/remove a banner video, putting it back in the review queue
+     * whenever the URL actually changes. Submitting the same URL again must NOT
+     * reset an already-granted approval, otherwise any unrelated edit to the
+     * promotion (title, dates) would silently pull a live video off the home
+     * screen until an admin re-approved it.
+     *
+     * @param autoApprove true when the submitter is themselves an approver
+     *                    (ADMIN/SUPER_ADMIN), so there is nobody left to review it
+     */
+    public void submitVideo(String newVideoUrl, String actor, boolean autoApprove) {
+        String normalized = (newVideoUrl == null || newVideoUrl.trim().isEmpty())
+                ? null
+                : newVideoUrl.trim();
+        String current = (videoUrl == null || videoUrl.trim().isEmpty()) ? null : videoUrl.trim();
+
+        if (java.util.Objects.equals(normalized, current)) {
+            return;
+        }
+
+        videoUrl = normalized;
+
+        if (normalized == null) {
+            // Video removed - clear the whole review trail so the promotion does
+            // not linger in the approval queue pointing at nothing.
+            videoStatus = null;
+            videoReviewNote = null;
+            videoReviewedBy = null;
+            videoReviewedAt = null;
+            videoSubmittedAt = null;
+            return;
+        }
+
+        videoSubmittedAt = LocalDateTime.now();
+        videoReviewNote = null;
+
+        if (autoApprove) {
+            videoStatus = VideoStatus.APPROVED;
+            videoReviewedBy = actor;
+            videoReviewedAt = LocalDateTime.now();
+        } else {
+            videoStatus = VideoStatus.PENDING;
+            videoReviewedBy = null;
+            videoReviewedAt = null;
+        }
+    }
     
     public BigDecimal calculateDiscount(BigDecimal orderAmount) {
         if (!canBeUsed() || orderAmount.compareTo(minimumOrderAmount != null ? minimumOrderAmount : BigDecimal.ZERO) < 0) {
@@ -148,5 +232,10 @@ public class Promotion {
     
     public enum PromotionStatus {
         ACTIVE, INACTIVE, EXPIRED, SUSPENDED
+    }
+
+    /** Review state of the banner video. NULL = no video attached. */
+    public enum VideoStatus {
+        PENDING, APPROVED, REJECTED
     }
 }

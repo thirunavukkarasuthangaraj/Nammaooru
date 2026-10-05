@@ -150,6 +150,47 @@
           </button>
         </div>
       </div>
+
+      <!-- Banner Video Section -->
+      <div class="form-section">
+        <h3><mat-icon>videocam</mat-icon> Promo Video (Optional)</h3>
+
+        <div class="video-review-note">
+          <mat-icon>info</mat-icon>
+          <span>A video plays in place of the banner image on the customer home
+            screen. It needs admin approval before customers can see it.</span>
+        </div>
+
+        <div class="video-status-chip"
+             *ngIf="videoPreview && videoStatus"
+             [ngClass]="'video-status-' + videoStatus.toLowerCase()">
+          <mat-icon>{{ videoStatusIcon }}</mat-icon>
+          <span>{{ videoStatusLabel }}</span>
+        </div>
+
+        <div class="video-reject-reason" *ngIf="videoStatus === 'REJECTED' && videoReviewNote">
+          <strong>Admin note:</strong> {{ videoReviewNote }}
+        </div>
+
+        <div class="image-upload-area" *ngIf="!videoPreview">
+          <input type="file" #videoInput accept="video/mp4,video/webm,video/quicktime"
+                 (change)="onVideoSelected($event)" hidden>
+          <div class="upload-placeholder" (click)="videoInput.click()">
+            <mat-icon *ngIf="!isUploadingVideo">movie</mat-icon>
+            <mat-spinner diameter="30" *ngIf="isUploadingVideo"></mat-spinner>
+            <span *ngIf="!isUploadingVideo">Click to upload a promo video</span>
+            <span *ngIf="isUploadingVideo">Uploading...</span>
+            <small>MP4 / WebM / MOV &middot; up to 15 seconds &middot; Max 30MB</small>
+          </div>
+        </div>
+
+        <div class="video-preview" *ngIf="videoPreview">
+          <video [src]="videoPreview" controls muted playsinline preload="metadata"></video>
+          <button mat-stroked-button color="warn" (click)="removeVideo()" class="remove-image-text-btn">
+            <mat-icon>delete</mat-icon> Remove Video
+          </button>
+        </div>
+      </div>
     </form>
   </mat-dialog-content>
 

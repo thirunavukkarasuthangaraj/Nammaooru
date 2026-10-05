@@ -236,6 +236,44 @@
         </div>
       </div>
 
+      <!-- Promotional Video Upload -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>videocam</mat-icon>
+          Promo Video (Optional)
+        </h3>
+
+        <div class="image-upload-container">
+          <input type="file" #videoInput accept="video/mp4,video/webm,video/quicktime"
+                 (change)="onVideoSelected($event)" style="display: none;">
+
+          <div class="video-preview-area" *ngIf="videoPreview">
+            <video [src]="videoPreview" controls muted playsinline preload="metadata" class="preview-video"></video>
+            <div class="video-actions">
+              <button mat-stroked-button (click)="videoInput.click()" type="button" [disabled]="isUploadingVideo">
+                <mat-icon>edit</mat-icon> Change Video
+              </button>
+              <button mat-stroked-button color="warn" (click)="removeVideo()" type="button" [disabled]="isUploadingVideo">
+                <mat-icon>delete</mat-icon> Remove Video
+              </button>
+            </div>
+          </div>
+
+          <div class="upload-placeholder" *ngIf="!videoPreview" (click)="videoInput.click()">
+            <mat-spinner diameter="28" *ngIf="isUploadingVideo"></mat-spinner>
+            <mat-icon class="upload-icon" *ngIf="!isUploadingVideo">movie</mat-icon>
+            <span class="upload-text">{{ isUploadingVideo ? 'Uploading...' : 'Click to select a promo video' }}</span>
+            <span class="upload-hint">MP4 / WebM / MOV &middot; up to 15 seconds &middot; Max 30MB</span>
+          </div>
+
+          <p class="video-admin-hint">
+            Plays in place of the banner image on the customer home screen.
+            Videos you upload here go live as soon as you save - shop owners'
+            videos wait in <strong>Banner Video Approvals</strong>.
+          </p>
+        </div>
+      </div>
+
     </form>
   </mat-dialog-content>
 
