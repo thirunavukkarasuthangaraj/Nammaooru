@@ -6,11 +6,13 @@ import { environment } from '../../../../../environments/environment';
 type ReviewFilter = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /**
- * Super-admin review queue for promotion banner videos.
+ * Super-admin review queue for promotion banner artwork - both the banner
+ * IMAGE and the promo video.
  *
- * A shop owner's video is uploaded and attached to their promo, but the
- * customer home carousel never receives it until it is approved here - the
- * /promotions/active API omits videoUrl entirely for anything not APPROVED.
+ * A shop owner uploads either onto their promo, but no customer-facing API
+ * hands the URL out until it is approved here: /promotions/active and
+ * /featured-posts both omit unapproved artwork entirely, so the app falls back
+ * to its plain card.
  */
 @Component({
   selector: 'app-promo-video-approvals',
@@ -48,9 +50,9 @@ export class PromoVideoApprovalsComponent implements OnInit {
         this.isLoading = false;
       },
       error: (error) => {
-        console.error('Failed to load promo video queue', error);
+        console.error('Failed to load promo banner queue', error);
         this.isLoading = false;
-        this.swal.toast(error.error?.message || 'Failed to load videos', 'error');
+        this.swal.toast(error.error?.message || 'Failed to load banners', 'error');
       }
     });
   }
@@ -73,24 +75,44 @@ export class PromoVideoApprovalsComponent implements OnInit {
     return this.busyIds.has(id);
   }
 
+  /**
+   * A promo can carry an image, a video, or both, and the backend decides on
+   * all of them at once - so a button only disappears when every attached
+   * asset already sits in that state.
+   */
+  isFullyApproved(item: PromoVideoReviewItem): boolean {
+    return this.everyAssetIs(item, 'APPROVED');
+  }
+
+  isFullyRejected(item: PromoVideoReviewItem): boolean {
+    return this.everyAssetIs(item, 'REJECTED');
+  }
+
+  private everyAssetIs(item: PromoVideoReviewItem, state: ReviewFilter): boolean {
+    const states: (string | undefined)[] = [];
+    if (item.imageUrl) states.push(item.imageStatus);
+    if (item.videoUrl) states.push(item.videoStatus);
+    return states.length > 0 && states.every(s => s === state);
+  }
+
   approve(item: PromoVideoReviewItem): void {
     this.busyIds.add(item.id);
     this.promoCodeService.approvePromoVideo(item.id).subscribe({
       next: () => {
         this.busyIds.delete(item.id);
-        this.swal.toast(`"${item.title}" is now live on the home banner`, 'success');
+        this.swal.toast(`"${item.title}" is now live on the home screen`, 'success');
         this.removeFromCurrentList(item.id);
       },
       error: (error) => {
         this.busyIds.delete(item.id);
-        this.swal.toast(error.error?.message || 'Failed to approve video', 'error');
+        this.swal.toast(error.error?.message || 'Failed to approve banner', 'error');
       }
     });
   }
 
   async reject(item: PromoVideoReviewItem): Promise<void> {
     const result = await this.swal.prompt(
-      'Reject this video?',
+      'Reject this banner?',
       'The shop owner sees this note, so say what needs fixing.'
     );
     // Dismissing the dialog is a cancel, not an empty reason - nothing should
@@ -103,12 +125,12 @@ export class PromoVideoApprovalsComponent implements OnInit {
     this.promoCodeService.rejectPromoVideo(item.id, reason).subscribe({
       next: () => {
         this.busyIds.delete(item.id);
-        this.swal.toast('Video rejected', 'success');
+        this.swal.toast('Banner rejected', 'success');
         this.removeFromCurrentList(item.id);
       },
       error: (error) => {
         this.busyIds.delete(item.id);
-        this.swal.toast(error.error?.message || 'Failed to reject video', 'error');
+        this.swal.toast(error.error?.message || 'Failed to reject banner', 'error');
       }
     });
   }

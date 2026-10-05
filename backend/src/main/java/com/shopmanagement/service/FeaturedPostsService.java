@@ -366,8 +366,17 @@ public class FeaturedPostsService {
         m.put("discountValue", p.getDiscountValue());
         m.put("minimumOrderAmount", p.getMinimumOrderAmount());
         m.put("maximumDiscountAmount", p.getMaximumDiscountAmount());
-        m.put("imageUrl", p.getImageUrl());
-        m.put("bannerUrl", p.getBannerUrl());
+        // This feeds the home launch banner, so it is a customer-facing surface:
+        // only hand out banner artwork a SUPER_ADMIN has approved. Unapproved
+        // shop-owner banners fall back to the icon/gradient card instead.
+        if (p.hasApprovedImage()) {
+            m.put("imageUrl", p.getImageUrl());
+            m.put("bannerUrl", p.getBannerUrl());
+        }
+        if (p.hasApprovedVideo()) {
+            m.put("videoUrl", p.getVideoUrl());
+            m.put("videoThumbnailUrl", p.getVideoThumbnailUrl());
+        }
         m.put("endDate", p.getEndDate() != null ? p.getEndDate().toString() : null);
         // Get shop name if shop-specific promotion
         if (p.getShopId() != null) {

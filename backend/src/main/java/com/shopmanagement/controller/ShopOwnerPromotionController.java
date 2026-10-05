@@ -120,12 +120,14 @@ public class ShopOwnerPromotionController {
                 .shopId(shop.getId())  // Set shop ID so promo is shop-specific
                 .createdBy(username)
                 .usedCount(0)
-                .imageUrl(request.getImageUrl())
                 .videoThumbnailUrl(request.getVideoThumbnailUrl())
                 .build();
 
-        // A shop owner is not an approver: the video is parked at PENDING and
-        // stays off the customer home banner until a SUPER_ADMIN approves it.
+        // A shop owner is not an approver: banner artwork is parked at PENDING
+        // and stays off the customer home screen until a SUPER_ADMIN approves
+        // it. This covers the banner IMAGE as well as the video - an image used
+        // to go live with no review at all.
+        promotion.submitImage(request.getImageUrl(), username, false);
         if (request.isVideoUrlPresent()) {
             promotion.submitVideo(request.getVideoUrl(), username, false);
         }
@@ -134,8 +136,8 @@ public class ShopOwnerPromotionController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
-        response.put("message", promotion.getVideoStatus() == Promotion.VideoStatus.PENDING
-                ? "Shop promotion created. Your banner video was sent for admin approval."
+        response.put("message", promotion.isBannerPendingReview()
+                ? "Shop promotion created. Your banner was sent for admin approval."
                 : "Shop promotion created successfully");
         response.put("data", savedPromotion);
 
@@ -184,28 +186,29 @@ public class ShopOwnerPromotionController {
         promotion.setUsageLimit(request.getUsageLimit());
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
-        promotion.setImageUrl(request.getImageUrl());
         if (request.isVideoThumbnailUrlPresent()) {
             promotion.setVideoThumbnailUrl(request.getVideoThumbnailUrl());
         }
         promotion.setUpdatedBy(username);
 
-        // Only a *changed* video re-enters the queue - submitVideo() no-ops on
-        // an unchanged URL, so editing the title or dates of a promotion whose
-        // video is already live does not pull it off the home banner.
-        Promotion.VideoStatus statusBefore = promotion.getVideoStatus();
+        // Only *changed* artwork re-enters the queue - submitImage()/submitVideo()
+        // no-op on an unchanged URL, so editing the title or dates of a promotion
+        // whose banner is already live does not pull it off the home screen.
+        boolean pendingBefore = promotion.isBannerPendingReview();
+        if (request.isImageUrlPresent()) {
+            promotion.submitImage(request.getImageUrl(), username, false);
+        }
         if (request.isVideoUrlPresent()) {
             promotion.submitVideo(request.getVideoUrl(), username, false);
         }
-        boolean sentForReview = promotion.getVideoStatus() == Promotion.VideoStatus.PENDING
-                && statusBefore != Promotion.VideoStatus.PENDING;
+        boolean sentForReview = promotion.isBannerPendingReview() && !pendingBefore;
 
         Promotion updatedPromotion = promotionRepository.save(promotion);
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
         response.put("message", sentForReview
-                ? "Shop promotion updated. Your banner video was sent for admin approval."
+                ? "Shop promotion updated. Your banner was sent for admin approval."
                 : "Shop promotion updated successfully");
         response.put("data", updatedPromotion);
 
@@ -424,11 +427,18 @@ public class ShopOwnerPromotionController {
         // delete an approved banner on any unrelated edit, so presence of the
         // key is tracked separately from its value: only a client that
         // actually sent videoUrl can change or clear it.
+        private boolean imageUrlPresent;
+
         private String videoUrl;
         private boolean videoUrlPresent;
 
         private String videoThumbnailUrl;
         private boolean videoThumbnailUrlPresent;
+
+        public void setImageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
+            this.imageUrlPresent = true;
+        }
 
         public void setVideoUrl(String videoUrl) {
             this.videoUrl = videoUrl;

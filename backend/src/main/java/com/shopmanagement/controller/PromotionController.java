@@ -135,8 +135,13 @@ public class PromotionController {
                 promoMap.put("usageLimitPerCustomer", promo.getUsageLimitPerCustomer());
                 promoMap.put("startDate", promo.getStartDate());
                 promoMap.put("endDate", promo.getEndDate());
-                promoMap.put("imageUrl", promo.getImageUrl());
-                promoMap.put("bannerUrl", promo.getBannerUrl());
+                // Only approved banner artwork is ever handed to the app. A
+                // PENDING or REJECTED asset is omitted entirely, so the carousel
+                // falls back to the plain text/gradient card.
+                if (promo.hasApprovedImage()) {
+                    promoMap.put("imageUrl", promo.getImageUrl());
+                    promoMap.put("bannerUrl", promo.getBannerUrl());
+                }
                 // Only an approved video is ever handed to the app. A PENDING or
                 // REJECTED one leaves these null, so the carousel silently falls
                 // back to the banner image instead of airing an unreviewed clip.
@@ -251,7 +256,9 @@ public class PromotionController {
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setIsPublic(request.isApplicableToAllShops());
-        promotion.setImageUrl(request.getImageUrl());
+        if (request.isImageUrlPresent()) {
+            promotion.submitImage(request.getImageUrl(), currentUser(authentication), true);
+        }
         if (request.isVideoThumbnailUrlPresent()) {
             promotion.setVideoThumbnailUrl(request.getVideoThumbnailUrl());
         }
@@ -299,7 +306,9 @@ public class PromotionController {
         promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
         promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setIsPublic(request.isApplicableToAllShops());
-        promotion.setImageUrl(request.getImageUrl());
+        if (request.isImageUrlPresent()) {
+            promotion.submitImage(request.getImageUrl(), currentUser(authentication), true);
+        }
         if (request.isVideoThumbnailUrlPresent()) {
             promotion.setVideoThumbnailUrl(request.getVideoThumbnailUrl());
         }
@@ -407,25 +416,26 @@ public class PromotionController {
     }
 
     // ------------------------------------------------------------------
-    // Banner video review (SUPER_ADMIN)
+    // Banner review (SUPER_ADMIN)
     //
-    // Shop owners can attach a promo video to their own promotion, but it only
-    // reaches the customer home carousel once it is approved here.
+    // A shop owner can attach a banner image and/or a promo video to their
+    // promotion, but neither reaches the customer home screen until it is
+    // approved here.
     // ------------------------------------------------------------------
 
     /**
-     * Banner videos awaiting review (or, with ?status=, already-settled ones so
-     * an admin can revisit what they approved/rejected).
+     * Banner artwork awaiting review (or, with ?status=, already-settled items
+     * so an admin can revisit what they approved/rejected).
      */
     @GetMapping("/videos")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Map<String, Object>> getVideoReviewQueue(
+    public ResponseEntity<Map<String, Object>> getBannerReviewQueue(
             @RequestParam(defaultValue = "PENDING") String status) {
 
         List<Promotion> promotions = "ALL".equalsIgnoreCase(status)
-                ? promotionRepository.findAllWithVideo()
-                : promotionRepository.findByVideoStatus(
-                        Promotion.VideoStatus.valueOf(status.toUpperCase()));
+                ? promotionRepository.findAllWithBanner()
+                : promotionRepository.findByBannerStatus(
+                        Promotion.ReviewStatus.valueOf(status.toUpperCase()));
 
         List<Map<String, Object>> items = promotions.stream()
                 .map(promo -> {
@@ -435,13 +445,18 @@ public class PromotionController {
                     item.put("title", promo.getTitle());
                     item.put("description", promo.getDescription());
                     item.put("imageUrl", promo.getImageUrl());
+                    item.put("imageStatus", promo.getImageStatus());
+                    item.put("imageReviewNote", promo.getImageReviewNote());
+                    item.put("imageSubmittedAt", promo.getImageSubmittedAt());
                     item.put("videoUrl", promo.getVideoUrl());
                     item.put("videoThumbnailUrl", promo.getVideoThumbnailUrl());
                     item.put("videoStatus", promo.getVideoStatus());
                     item.put("videoReviewNote", promo.getVideoReviewNote());
-                    item.put("videoReviewedBy", promo.getVideoReviewedBy());
-                    item.put("videoReviewedAt", promo.getVideoReviewedAt());
                     item.put("videoSubmittedAt", promo.getVideoSubmittedAt());
+                    item.put("reviewedBy", promo.getVideoReviewedBy() != null
+                            ? promo.getVideoReviewedBy() : promo.getImageReviewedBy());
+                    item.put("reviewedAt", promo.getVideoReviewedAt() != null
+                            ? promo.getVideoReviewedAt() : promo.getImageReviewedAt());
                     item.put("startDate", promo.getStartDate());
                     item.put("endDate", promo.getEndDate());
                     item.put("status", promo.getStatus());
@@ -461,7 +476,7 @@ public class PromotionController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
-        response.put("message", "Promotion videos retrieved successfully");
+        response.put("message", "Promotion banners retrieved successfully");
         response.put("data", items);
         response.put("count", items.size());
 
@@ -469,74 +484,76 @@ public class PromotionController {
     }
 
     /**
-     * Approve a banner video - this is what actually puts it on the customer
-     * home carousel.
+     * Approve this promotion's banner artwork - this is what actually puts it
+     * on the customer home screen. Covers both the image and the video, so one
+     * click clears the whole card.
      */
     @PatchMapping("/{id}/video/approve")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Map<String, Object>> approvePromotionVideo(
+    public ResponseEntity<Map<String, Object>> approvePromotionBanner(
             Authentication authentication,
             @PathVariable Long id) {
-
-        Promotion promotion = promotionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
-
-        if (promotion.getVideoUrl() == null || promotion.getVideoUrl().trim().isEmpty()) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("statusCode", "1004");
-            errorResponse.put("message", "This promotion has no video to approve");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-
-        promotion.setVideoStatus(Promotion.VideoStatus.APPROVED);
-        promotion.setVideoReviewNote(null);
-        promotion.setVideoReviewedBy(currentUser(authentication));
-        promotion.setVideoReviewedAt(java.time.LocalDateTime.now());
-
-        Promotion saved = promotionRepository.save(promotion);
-        log.info("Promotion video approved: promotionId={} by={}", id, promotion.getVideoReviewedBy());
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("statusCode", "0000");
-        response.put("message", "Promotion video approved - it will now show on the home banner");
-        response.put("data", saved);
-
-        return ResponseEntity.ok(response);
+        return decideBanner(authentication, id, Promotion.ReviewStatus.APPROVED, null);
     }
 
     /**
-     * Reject a banner video. The URL is kept so the owner can see what was
-     * rejected and why, but hasApprovedVideo() keeps it off the home carousel.
+     * Reject this promotion's banner artwork. The URLs are kept so the owner
+     * can see what was turned down and why, but hasApprovedImage() /
+     * hasApprovedVideo() keep them off the customer home screen.
      */
     @PatchMapping("/{id}/video/reject")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Map<String, Object>> rejectPromotionVideo(
+    public ResponseEntity<Map<String, Object>> rejectPromotionBanner(
             Authentication authentication,
             @PathVariable Long id,
             @RequestBody(required = false) VideoRejectionRequest request) {
+        return decideBanner(authentication, id, Promotion.ReviewStatus.REJECTED,
+                request != null ? request.getReason() : null);
+    }
+
+    private ResponseEntity<Map<String, Object>> decideBanner(
+            Authentication authentication,
+            Long id,
+            Promotion.ReviewStatus decision,
+            String note) {
 
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
 
-        if (promotion.getVideoUrl() == null || promotion.getVideoUrl().trim().isEmpty()) {
+        boolean hasImage = promotion.getImageUrl() != null && !promotion.getImageUrl().trim().isEmpty();
+        boolean hasVideo = promotion.getVideoUrl() != null && !promotion.getVideoUrl().trim().isEmpty();
+
+        if (!hasImage && !hasVideo) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("statusCode", "1004");
-            errorResponse.put("message", "This promotion has no video to reject");
+            errorResponse.put("message", "This promotion has no banner to review");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }
 
-        promotion.setVideoStatus(Promotion.VideoStatus.REJECTED);
-        promotion.setVideoReviewNote(request != null ? request.getReason() : null);
-        promotion.setVideoReviewedBy(currentUser(authentication));
-        promotion.setVideoReviewedAt(java.time.LocalDateTime.now());
+        String reviewer = currentUser(authentication);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        if (hasImage) {
+            promotion.setImageStatus(decision);
+            promotion.setImageReviewNote(note);
+            promotion.setImageReviewedBy(reviewer);
+            promotion.setImageReviewedAt(now);
+        }
+        if (hasVideo) {
+            promotion.setVideoStatus(decision);
+            promotion.setVideoReviewNote(note);
+            promotion.setVideoReviewedBy(reviewer);
+            promotion.setVideoReviewedAt(now);
+        }
 
         Promotion saved = promotionRepository.save(promotion);
-        log.info("Promotion video rejected: promotionId={} by={} reason={}",
-                id, promotion.getVideoReviewedBy(), promotion.getVideoReviewNote());
+        log.info("Promotion banner {}: promotionId={} by={} note={}", decision, id, reviewer, note);
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", "0000");
-        response.put("message", "Promotion video rejected");
+        response.put("message", decision == Promotion.ReviewStatus.APPROVED
+                ? "Banner approved - it will now show on the home screen"
+                : "Banner rejected");
         response.put("data", saved);
 
         return ResponseEntity.ok(response);
@@ -635,11 +652,18 @@ public class PromotionController {
         // Presence is tracked separately from value so a client that doesn't
         // send these keys at all leaves an existing video untouched, rather
         // than silently clearing it on an unrelated edit.
+        private boolean imageUrlPresent;
+
         private String videoUrl;
         private boolean videoUrlPresent;
 
         private String videoThumbnailUrl;
         private boolean videoThumbnailUrlPresent;
+
+        public void setImageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
+            this.imageUrlPresent = true;
+        }
 
         public void setVideoUrl(String videoUrl) {
             this.videoUrl = videoUrl;

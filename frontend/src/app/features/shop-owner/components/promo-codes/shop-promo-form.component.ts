@@ -23,6 +23,8 @@ export class ShopPromoFormComponent implements OnInit {
   // one they uploaded last time is live, waiting, or was turned down.
   videoStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null = null;
   videoReviewNote: string | null = null;
+  imageStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null = null;
+  imageReviewNote: string | null = null;
 
   promoTypes = [
     { value: 'PERCENTAGE', label: 'Percentage Discount' },
@@ -100,12 +102,39 @@ export class ShopPromoFormComponent implements OnInit {
 
     if (promo.imageUrl) {
       this.imagePreview = this.getImageUrl(promo.imageUrl);
+      this.imageStatus = promo.imageStatus ?? 'PENDING';
+      this.imageReviewNote = promo.imageReviewNote ?? null;
     }
 
     if (promo.videoUrl) {
       this.videoPreview = this.getImageUrl(promo.videoUrl);
       this.videoStatus = promo.videoStatus ?? 'PENDING';
       this.videoReviewNote = promo.videoReviewNote ?? null;
+    }
+  }
+
+  get imageStatusLabel(): string {
+    return this.statusLabel(this.imageStatus, 'banner');
+  }
+
+  get imageStatusIcon(): string {
+    return this.statusIcon(this.imageStatus);
+  }
+
+  private statusLabel(status: string | null, what: string): string {
+    switch (status) {
+      case 'APPROVED': return `Approved - showing on the home ${what}`;
+      case 'REJECTED': return 'Rejected by admin';
+      case 'PENDING': return 'Waiting for admin approval';
+      default: return '';
+    }
+  }
+
+  private statusIcon(status: string | null): string {
+    switch (status) {
+      case 'APPROVED': return 'check_circle';
+      case 'REJECTED': return 'cancel';
+      default: return 'hourglass_top';
     }
   }
 
@@ -168,8 +197,12 @@ export class ShopPromoFormComponent implements OnInit {
         const imageUrl = response.url || response.path || response.data?.url;
         this.promoForm.patchValue({ imageUrl });
         this.imagePreview = this.getImageUrl(imageUrl);
+        // A new banner replaces whatever was reviewed before, so it goes back
+        // in the queue. The server is the authority; this just reflects it.
+        this.imageStatus = 'PENDING';
+        this.imageReviewNote = null;
         this.isUploading = false;
-        this.showSnackBar('Image uploaded', 'success');
+        this.showSnackBar('Banner uploaded - it will go live once an admin approves it', 'success');
       },
       error: (error) => {
         this.isUploading = false;
@@ -181,6 +214,8 @@ export class ShopPromoFormComponent implements OnInit {
   removeImage(): void {
     this.promoForm.patchValue({ imageUrl: '' });
     this.imagePreview = null;
+    this.imageStatus = null;
+    this.imageReviewNote = null;
   }
 
   onVideoSelected(event: any): void {

@@ -129,6 +129,23 @@
       <div class="form-section">
         <h3><mat-icon>image</mat-icon> Promo Banner (Optional)</h3>
 
+        <div class="video-review-note">
+          <mat-icon>info</mat-icon>
+          <span>Your banner needs admin approval before customers can see it on
+            the home screen.</span>
+        </div>
+
+        <div class="video-status-chip"
+             *ngIf="imagePreview && imageStatus"
+             [ngClass]="'video-status-' + imageStatus.toLowerCase()">
+          <mat-icon>{{ imageStatusIcon }}</mat-icon>
+          <span>{{ imageStatusLabel }}</span>
+        </div>
+
+        <div class="video-reject-reason" *ngIf="imageStatus === 'REJECTED' && imageReviewNote">
+          <strong>Admin note:</strong> {{ imageReviewNote }}
+        </div>
+
         <div class="image-upload-area" *ngIf="!imagePreview">
           <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" hidden>
           <div class="upload-placeholder" (click)="fileInput.click()">

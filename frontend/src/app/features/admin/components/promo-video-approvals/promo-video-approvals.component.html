@@ -1,9 +1,9 @@
 <div class="approvals-page">
   <div class="page-header">
     <div class="header-text">
-      <h2><mat-icon>smart_display</mat-icon> Banner Video Approvals</h2>
-      <p>Promo videos shop owners want on the customer home banner. Nothing here
-        reaches customers until you approve it.</p>
+      <h2><mat-icon>smart_display</mat-icon> Banner Approvals</h2>
+      <p>Banner images and promo videos shop owners want on the customer home
+        screen. Nothing here reaches customers until you approve it.</p>
     </div>
     <button mat-stroked-button (click)="load()" [disabled]="isLoading">
       <mat-icon>refresh</mat-icon> Refresh
@@ -26,13 +26,17 @@
   <div class="empty-state" *ngIf="!isLoading && items.length === 0">
     <mat-icon>inbox</mat-icon>
     <p *ngIf="filter === 'PENDING'">Nothing waiting for review.</p>
-    <p *ngIf="filter === 'APPROVED'">No approved videos yet.</p>
-    <p *ngIf="filter === 'REJECTED'">No rejected videos.</p>
+    <p *ngIf="filter === 'APPROVED'">No approved banners yet.</p>
+    <p *ngIf="filter === 'REJECTED'">No rejected banners.</p>
   </div>
 
   <div class="video-grid" *ngIf="!isLoading && items.length > 0">
     <mat-card class="video-card" *ngFor="let item of items; trackBy: trackById">
+
+      <!-- Video takes the slot when there is one, since that is what plays on
+           the home screen; otherwise the banner image is the creative. -->
       <video
+        *ngIf="item.videoUrl"
         class="video-player"
         [src]="mediaUrl(item.videoUrl)"
         [poster]="mediaUrl(item.videoThumbnailUrl || item.imageUrl)"
@@ -41,38 +45,58 @@
         playsinline
         preload="metadata"></video>
 
+      <img
+        *ngIf="!item.videoUrl && item.imageUrl"
+        class="video-player"
+        [src]="mediaUrl(item.imageUrl)"
+        alt="Banner image">
+
+      <!-- Both attached: show the image underneath so the admin reviews the
+           whole creative, not just the video. -->
+      <img
+        *ngIf="item.videoUrl && item.imageUrl"
+        class="secondary-image"
+        [src]="mediaUrl(item.imageUrl)"
+        alt="Banner image">
+
       <div class="video-meta">
         <h3>{{ item.title }}</h3>
         <div class="meta-row">
           <span class="chip code">{{ item.code }}</span>
           <span class="chip shop">{{ item.shopName || 'Platform Offer' }}</span>
+          <span class="chip asset" *ngIf="item.imageUrl">
+            <mat-icon>image</mat-icon> Image
+          </span>
+          <span class="chip asset" *ngIf="item.videoUrl">
+            <mat-icon>videocam</mat-icon> Video
+          </span>
         </div>
         <p class="description" *ngIf="item.description">{{ item.description }}</p>
         <p class="submitted">
-          Submitted {{ item.videoSubmittedAt | date:'dd MMM yyyy, h:mm a' }}
+          Submitted {{ (item.videoSubmittedAt || item.imageSubmittedAt) | date:'dd MMM yyyy, h:mm a' }}
           <ng-container *ngIf="item.submittedBy"> by {{ item.submittedBy }}</ng-container>
         </p>
         <p class="runs">
           Runs {{ item.startDate | date:'dd MMM' }} &ndash; {{ item.endDate | date:'dd MMM yyyy' }}
         </p>
-        <p class="review-note" *ngIf="item.videoReviewNote">
-          <strong>Your note:</strong> {{ item.videoReviewNote }}
+        <p class="review-note" *ngIf="item.videoReviewNote || item.imageReviewNote">
+          <strong>Your note:</strong> {{ item.videoReviewNote || item.imageReviewNote }}
         </p>
-        <p class="reviewed" *ngIf="item.videoReviewedBy">
-          Reviewed by {{ item.videoReviewedBy }}
-          on {{ item.videoReviewedAt | date:'dd MMM yyyy, h:mm a' }}
+        <p class="reviewed" *ngIf="item.reviewedBy">
+          Reviewed by {{ item.reviewedBy }}
+          on {{ item.reviewedAt | date:'dd MMM yyyy, h:mm a' }}
         </p>
       </div>
 
       <mat-card-actions class="card-actions">
         <button mat-raised-button color="primary"
-                *ngIf="item.videoStatus !== 'APPROVED'"
+                *ngIf="!isFullyApproved(item)"
                 [disabled]="isBusy(item.id)"
                 (click)="approve(item)">
           <mat-icon>check</mat-icon> Approve
         </button>
         <button mat-stroked-button color="warn"
-                *ngIf="item.videoStatus !== 'REJECTED'"
+                *ngIf="!isFullyRejected(item)"
                 [disabled]="isBusy(item.id)"
                 (click)="reject(item)">
           <mat-icon>close</mat-icon> Reject

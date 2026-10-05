@@ -88,6 +88,25 @@ public class Promotion {
     
     @Column(name = "image_url")
     private String imageUrl;
+
+    // Review state of the banner IMAGE. Mirrors the video fields below: a shop
+    // owner's banner stays off the customer home screen until a SUPER_ADMIN
+    // approves it. NULL means no image has ever been attached.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "image_status", length = 20)
+    private ReviewStatus imageStatus;
+
+    @Column(name = "image_review_note", columnDefinition = "TEXT")
+    private String imageReviewNote;
+
+    @Column(name = "image_reviewed_by", length = 100)
+    private String imageReviewedBy;
+
+    @Column(name = "image_reviewed_at")
+    private LocalDateTime imageReviewedAt;
+
+    @Column(name = "image_submitted_at")
+    private LocalDateTime imageSubmittedAt;
     
     @Column(name = "banner_url")
     private String bannerUrl;
@@ -104,7 +123,7 @@ public class Promotion {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "video_status", length = 20)
-    private VideoStatus videoStatus;
+    private ReviewStatus videoStatus;
 
     @Column(name = "video_review_note", columnDefinition = "TEXT")
     private String videoReviewNote;
@@ -151,40 +170,80 @@ public class Promotion {
 
     /**
      * The only check any customer-facing response should use before handing out
-     * videoUrl. A video that is still PENDING (or was rejected) must stay
+     * imageUrl. A banner that is still PENDING (or was rejected) must stay
      * invisible to customers even though the row holds a perfectly valid URL.
      */
+    public boolean hasApprovedImage() {
+        return imageUrl != null
+                && !imageUrl.trim().isEmpty()
+                && imageStatus == ReviewStatus.APPROVED;
+    }
+
+    /** Same rule as hasApprovedImage(), for the banner video. */
     public boolean hasApprovedVideo() {
         return videoUrl != null
                 && !videoUrl.trim().isEmpty()
-                && videoStatus == VideoStatus.APPROVED;
+                && videoStatus == ReviewStatus.APPROVED;
+    }
+
+    /** True when either banner asset is sitting in the SUPER_ADMIN queue. */
+    public boolean isBannerPendingReview() {
+        return imageStatus == ReviewStatus.PENDING || videoStatus == ReviewStatus.PENDING;
     }
 
     /**
-     * Attach/replace/remove a banner video, putting it back in the review queue
-     * whenever the URL actually changes. Submitting the same URL again must NOT
-     * reset an already-granted approval, otherwise any unrelated edit to the
-     * promotion (title, dates) would silently pull a live video off the home
-     * screen until an admin re-approved it.
+     * Attach/replace/remove the banner image, putting it back in the review
+     * queue whenever the URL actually changes. Submitting the same URL again
+     * must NOT reset an already-granted approval, otherwise any unrelated edit
+     * to the promotion (title, dates) would silently pull a live banner off the
+     * home screen until an admin re-approved it.
      *
      * @param autoApprove true when the submitter is themselves an approver
      *                    (ADMIN/SUPER_ADMIN), so there is nobody left to review it
      */
-    public void submitVideo(String newVideoUrl, String actor, boolean autoApprove) {
-        String normalized = (newVideoUrl == null || newVideoUrl.trim().isEmpty())
-                ? null
-                : newVideoUrl.trim();
-        String current = (videoUrl == null || videoUrl.trim().isEmpty()) ? null : videoUrl.trim();
+    public void submitImage(String newImageUrl, String actor, boolean autoApprove) {
+        String normalized = normalizeUrl(newImageUrl);
+        if (java.util.Objects.equals(normalized, normalizeUrl(imageUrl))) {
+            return;
+        }
 
-        if (java.util.Objects.equals(normalized, current)) {
+        imageUrl = normalized;
+
+        if (normalized == null) {
+            // Banner removed - clear the review trail so the promotion does not
+            // linger in the approval queue pointing at nothing.
+            imageStatus = null;
+            imageReviewNote = null;
+            imageReviewedBy = null;
+            imageReviewedAt = null;
+            imageSubmittedAt = null;
+            return;
+        }
+
+        imageSubmittedAt = LocalDateTime.now();
+        imageReviewNote = null;
+
+        if (autoApprove) {
+            imageStatus = ReviewStatus.APPROVED;
+            imageReviewedBy = actor;
+            imageReviewedAt = LocalDateTime.now();
+        } else {
+            imageStatus = ReviewStatus.PENDING;
+            imageReviewedBy = null;
+            imageReviewedAt = null;
+        }
+    }
+
+    /** Same contract as submitImage(), for the banner video. */
+    public void submitVideo(String newVideoUrl, String actor, boolean autoApprove) {
+        String normalized = normalizeUrl(newVideoUrl);
+        if (java.util.Objects.equals(normalized, normalizeUrl(videoUrl))) {
             return;
         }
 
         videoUrl = normalized;
 
         if (normalized == null) {
-            // Video removed - clear the whole review trail so the promotion does
-            // not linger in the approval queue pointing at nothing.
             videoStatus = null;
             videoReviewNote = null;
             videoReviewedBy = null;
@@ -197,16 +256,20 @@ public class Promotion {
         videoReviewNote = null;
 
         if (autoApprove) {
-            videoStatus = VideoStatus.APPROVED;
+            videoStatus = ReviewStatus.APPROVED;
             videoReviewedBy = actor;
             videoReviewedAt = LocalDateTime.now();
         } else {
-            videoStatus = VideoStatus.PENDING;
+            videoStatus = ReviewStatus.PENDING;
             videoReviewedBy = null;
             videoReviewedAt = null;
         }
     }
-    
+
+    private static String normalizeUrl(String url) {
+        return (url == null || url.trim().isEmpty()) ? null : url.trim();
+    }
+
     public BigDecimal calculateDiscount(BigDecimal orderAmount) {
         if (!canBeUsed() || orderAmount.compareTo(minimumOrderAmount != null ? minimumOrderAmount : BigDecimal.ZERO) < 0) {
             return BigDecimal.ZERO;
@@ -234,8 +297,8 @@ public class Promotion {
         ACTIVE, INACTIVE, EXPIRED, SUSPENDED
     }
 
-    /** Review state of the banner video. NULL = no video attached. */
-    public enum VideoStatus {
+    /** Review state of a banner asset (image or video). NULL = not attached. */
+    public enum ReviewStatus {
         PENDING, APPROVED, REJECTED
     }
 }

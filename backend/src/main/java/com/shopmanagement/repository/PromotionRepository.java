@@ -54,20 +54,21 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     Page<Promotion> findByShopId(@Param("shopId") Long shopId, Pageable pageable);
 
     /**
-     * Banner videos in one review state. Oldest submission first, so the queue
-     * is answered in the order it arrived.
+     * Banner assets (image and/or video) in one review state. Oldest
+     * submission first, so the queue is answered in the order it arrived.
      *
-     * Kept separate from findAllWithVideo() rather than using a
-     * "(:status IS NULL OR ...)" query: Hibernate can't infer the type of a
-     * null enum parameter, so the "all" case has to be its own query.
+     * Not written as "(:status IS NULL OR ...)" for the all-states case:
+     * Hibernate can't infer the type of a null enum parameter, so "all" has to
+     * be its own query - see findAllWithBanner().
      */
-    @Query("SELECT p FROM Promotion p WHERE p.videoUrl IS NOT NULL " +
-           "AND p.videoStatus = :status " +
-           "ORDER BY p.videoSubmittedAt ASC")
-    List<Promotion> findByVideoStatus(@Param("status") Promotion.VideoStatus status);
+    @Query("SELECT p FROM Promotion p " +
+           "WHERE p.imageStatus = :status OR p.videoStatus = :status " +
+           "ORDER BY COALESCE(p.videoSubmittedAt, p.imageSubmittedAt) ASC")
+    List<Promotion> findByBannerStatus(@Param("status") Promotion.ReviewStatus status);
 
-    /** Every promotion that has a banner video, whatever its review state. */
-    @Query("SELECT p FROM Promotion p WHERE p.videoUrl IS NOT NULL " +
-           "ORDER BY p.videoSubmittedAt ASC")
-    List<Promotion> findAllWithVideo();
+    /** Every promotion carrying banner artwork, whatever its review state. */
+    @Query("SELECT p FROM Promotion p " +
+           "WHERE p.imageUrl IS NOT NULL OR p.videoUrl IS NOT NULL " +
+           "ORDER BY COALESCE(p.videoSubmittedAt, p.imageSubmittedAt) ASC")
+    List<Promotion> findAllWithBanner();
 }

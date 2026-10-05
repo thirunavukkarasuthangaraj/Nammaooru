@@ -30,6 +30,8 @@ export interface PromoCode {
   videoThumbnailUrl?: string;
   videoStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   videoReviewNote?: string;
+  imageStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  imageReviewNote?: string;
   shopId?: number;
 }
 
