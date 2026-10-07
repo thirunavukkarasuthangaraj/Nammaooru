@@ -33,7 +33,7 @@ export class PromoCodeFormComponent implements OnInit {
   // code / discount / usage rules - just artwork, dates and an optional link.
   bannerTypeOptions: { value: PromoBannerType; label: string; icon: string; hint: string }[] = [
     { value: 'PROMO_CODE', label: 'Promo code', icon: 'confirmation_number', hint: 'A code customers apply at checkout for a discount' },
-    { value: 'IMAGE_BANNER', label: 'Image banner', icon: 'image', hint: 'Artwork only on the home carousel - no code, no discount' }
+    { value: 'IMAGE_BANNER', label: 'Image banner', icon: 'image', hint: 'Image or video on the home carousel - no code, no discount' }
   ];
 
   constructor(

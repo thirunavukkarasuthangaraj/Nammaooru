@@ -279,11 +279,12 @@
         </div>
       </div>
 
-      <!-- Promotional Video Upload (promo code only - an image banner is its image) -->
-      <div class="form-section" *ngIf="!isImageBanner">
+      <!-- Promotional Video Upload - for both kinds. On an image banner the
+           video plays in the carousel and the image above is its poster. -->
+      <div class="form-section">
         <h3 class="section-title">
           <mat-icon>videocam</mat-icon>
-          Promo Video (Optional)
+          {{ isImageBanner ? 'Banner Video (Optional)' : 'Promo Video (Optional)' }}
         </h3>
 
         <div class="image-upload-container">
@@ -310,9 +311,10 @@
           </div>
 
           <p class="video-admin-hint">
-            Plays in place of the banner image on the customer home screen.
+            Plays in place of the banner image on the customer home screen
+            {{ isImageBanner ? '- the image above shows while the video loads.' : '.' }}
             Videos you upload here go live as soon as you save - shop owners'
-            videos wait in <strong>Banner Video Approvals</strong>.
+            videos wait in <strong>Banner Approvals</strong>.
           </p>
         </div>
       </div>
