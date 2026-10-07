@@ -2682,14 +2682,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   // route fragment. Preferred over the backend imageUrl so the home grid
   // always shows the same artwork.
   static const Map<String, String> _serviceAssets = {
-    'grocery':       'assets/images/services/grocery.png',
-    'labours':       'assets/images/services/labours.png',
-    'farmer':        'assets/images/services/farmer.png',
-    'womens-corner': 'assets/images/services/womens_corner.png',
-    'real-estate':   'assets/images/services/real_estate.png',
-    'parcels':       'assets/images/services/parcels.png',
-    'travels':       'assets/images/services/travels.png',
-    'rentals':       'assets/images/services/rentals.png',
+    'grocery':       'assets/images/services/grocery.webp',
+    'labours':       'assets/images/services/labours.webp',
+    'farmer':        'assets/images/services/farmer.webp',
+    'womens-corner': 'assets/images/services/womens_corner.webp',
+    'real-estate':   'assets/images/services/real_estate.webp',
+    'parcels':       'assets/images/services/parcels.webp',
+    'travels':       'assets/images/services/travels.webp',
+    'rentals':       'assets/images/services/rentals.webp',
   };
 
   String? _getServiceAsset(String? route) {
