@@ -2184,14 +2184,21 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
         gradient: LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF3D9140)], begin: Alignment.topLeft, end: Alignment.bottomRight),
       ),
       child: Row(children: [
-        // Logo badge: white disc with the brand house mark, like the mockup
-        Container(
-          width: 40, height: 40,
-          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-          child: const Icon(Icons.home_rounded, color: Color(0xFF2E7D32), size: 24),
+        // App name stays on one line: in Tamil ("நம்மூரு") next to the wider
+        // "English" pill it used to wrap onto a second line, so it scales
+        // down instead of breaking.
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              lang.appName,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+            ),
+          ),
         ),
-        const SizedBox(width: 12),
-        Expanded(child: Text(lang.appName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5))),
         // Outlined language pill with a dropdown caret
         OutlinedButton(
           onPressed: () => lang.toggleLanguage(),
