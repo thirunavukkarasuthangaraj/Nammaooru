@@ -2598,8 +2598,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle),
             ),
             const SizedBox(width: 10),
@@ -2902,11 +2902,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+          padding: const EdgeInsets.fromLTRB(8, 8, 6, 8),
           child: Row(children: [
             // Picture disc (service image from the backend, icon fallback)
             Container(
-              width: 60, height: 60,
+              width: 52, height: 52,
               decoration: BoxDecoration(color: discTint, shape: BoxShape.circle),
               clipBehavior: Clip.antiAlias,
               child: assetPath != null
@@ -2915,30 +2915,30 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
                       ? Image.network(
                           ImageUrlHelper.getFullImageUrl(imageUrl),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 30),
+                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 26),
                         )
-                      : Icon(icon, color: color, size: 30),
+                      : Icon(icon, color: color, size: 26),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, height: 1.2, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24))),
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24))),
                   if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, height: 1.25, color: dark ? Colors.white60 : const Color(0xFF5F6B64))),
+                    const SizedBox(height: 2),
+                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64))),
                   ],
                 ],
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             // Chevron disc
             Container(
-              width: 32, height: 32,
+              width: 26, height: 26,
               decoration: BoxDecoration(color: discTint, shape: BoxShape.circle),
-              child: Icon(Icons.chevron_right_rounded, size: 22, color: dark ? Colors.white : color),
+              child: Icon(Icons.chevron_right_rounded, size: 20, color: dark ? Colors.white : color),
             ),
           ]),
         ),
