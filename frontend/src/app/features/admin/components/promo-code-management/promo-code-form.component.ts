@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { PromoCodeService } from '../../../../core/services/promo-code.service';
 import { SwalService } from '../../../../core/services/swal.service';
@@ -102,6 +102,12 @@ export class PromoCodeFormComponent implements OnInit {
       this.applyBannerTypeValidators(bannerType);
     });
 
+    // An image banner needs an image OR a video, so adding/removing the video
+    // changes whether the (otherwise empty) image control is valid.
+    this.promoForm.get('videoUrl')?.valueChanges.subscribe(() => {
+      this.promoForm.get('imageUrl')?.updateValueAndValidity({ emitEvent: false });
+    });
+
     // Disable code field in edit mode
     if (this.isEditMode) {
       this.promoForm.get('code')?.disable();
@@ -111,6 +117,22 @@ export class PromoCodeFormComponent implements OnInit {
   get isImageBanner(): boolean {
     return this.promoForm?.get('bannerType')?.value === 'IMAGE_BANNER';
   }
+
+  /** True when an image banner has neither an image nor a video yet. */
+  get isBannerMediaMissing(): boolean {
+    return this.isImageBanner && !!this.promoForm?.get('imageUrl')?.hasError('mediaRequired');
+  }
+
+  /**
+   * Image-banner rule: the banner is its media, so at least one of image or
+   * video must be present. Lives on the image control (so the existing
+   * touched/invalid styling applies) but looks across at the video control.
+   */
+  private readonly imageOrVideoRequired: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+    const image = (control.value ?? '').toString().trim();
+    const video = (control.parent?.get('videoUrl')?.value ?? '').toString().trim();
+    return image || video ? null : { mediaRequired: true };
+  };
 
   /**
    * Swap the required-ness of the two halves of the form. For an image banner
@@ -131,7 +153,7 @@ export class PromoCodeFormComponent implements OnInit {
         c?.clearValidators();
         c?.updateValueAndValidity({ emitEvent: false });
       });
-      imageUrl?.setValidators([Validators.required]);
+      imageUrl?.setValidators([this.imageOrVideoRequired]);
       imageUrl?.updateValueAndValidity({ emitEvent: false });
     } else {
       code?.setValidators([
@@ -265,8 +287,8 @@ export class PromoCodeFormComponent implements OnInit {
     } else {
       this.markFormGroupTouched(this.promoForm);
       this.showSnackBar(
-        this.isImageBanner && this.promoForm.get('imageUrl')?.invalid
-          ? 'An image banner needs an image - please upload one'
+        this.isBannerMediaMissing
+          ? 'A banner needs an image or a video - please upload one'
           : 'Please fill all required fields correctly',
         'error'
       );

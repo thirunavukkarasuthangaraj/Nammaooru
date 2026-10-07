@@ -224,16 +224,16 @@
       </div>
 
       <!-- Promotional Image Upload -->
-      <div class="form-section" [class.section-required]="isImageBanner && promoForm.get('imageUrl')?.touched && promoForm.get('imageUrl')?.invalid">
+      <div class="form-section" [class.section-required]="isBannerMediaMissing && promoForm.get('imageUrl')?.touched">
         <h3 class="section-title">
           <mat-icon>image</mat-icon>
-          {{ isImageBanner ? 'Banner Image *' : 'Promotional Banner (Optional)' }}
+          {{ isImageBanner ? 'Banner Image' : 'Promotional Banner (Optional)' }}
         </h3>
 
         <p class="image-required-hint" *ngIf="isImageBanner">
-          This image is the whole banner - it is what customers see on the home carousel.
-          <span class="required-error" *ngIf="promoForm.get('imageUrl')?.touched && promoForm.get('imageUrl')?.invalid">
-            An image is required.
+          The banner is its media - upload an image, a video (below), or both. At least one is required.
+          <span class="required-error" *ngIf="isBannerMediaMissing && promoForm.get('imageUrl')?.touched">
+            An image or a video is required.
           </span>
         </p>
 
@@ -284,7 +284,7 @@
       <div class="form-section">
         <h3 class="section-title">
           <mat-icon>videocam</mat-icon>
-          {{ isImageBanner ? 'Banner Video (Optional)' : 'Promo Video (Optional)' }}
+          {{ isImageBanner ? 'Banner Video' : 'Promo Video (Optional)' }}
         </h3>
 
         <div class="image-upload-container">
@@ -326,10 +326,11 @@
     <button mat-button (click)="onCancel()" [disabled]="isLoading">
       Cancel
     </button>
-    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="isLoading || isUploading || promoForm.invalid">
+    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="isLoading || isUploading || isUploadingVideo || promoForm.invalid">
       <mat-spinner diameter="20" *ngIf="isLoading" class="button-spinner"></mat-spinner>
       <span *ngIf="isUploading && !isLoading">Uploading image...</span>
-      <span *ngIf="!isLoading && !isUploading">{{ isEditMode ? 'Update' : 'Create' }}</span>
+      <span *ngIf="isUploadingVideo && !isUploading && !isLoading">Uploading video...</span>
+      <span *ngIf="!isLoading && !isUploading && !isUploadingVideo">{{ isEditMode ? 'Update' : 'Create' }}</span>
     </button>
   </mat-dialog-actions>
 </div>

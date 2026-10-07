@@ -122,11 +122,11 @@ public class PromotionController {
 
         // Enrich promotions with shop name
         List<Map<String, Object>> enrichedPromotions = promotions.stream()
-            // An image-only banner IS its image: with the artwork still
-            // PENDING/REJECTED (or missing) there would be nothing left to
+            // An image-only banner IS its media: with neither an approved
+            // image nor an approved video there would be nothing left to
             // show - no code, no discount - so the row is dropped rather than
             // handed to the app as an empty card.
-            .filter(promo -> !promo.isImageOnly() || promo.hasApprovedImage())
+            .filter(promo -> !promo.isImageOnly() || promo.hasApprovedImage() || promo.hasApprovedVideo())
             .map(promo -> {
                 Map<String, Object> promoMap = new HashMap<>();
                 promoMap.put("id", promo.getId());
@@ -621,14 +621,14 @@ public class PromotionController {
             Promotion.BannerType bannerType, CreatePromotionRequest request, Promotion existing) {
 
         if (bannerType == Promotion.BannerType.IMAGE_BANNER) {
-            String newImage = request.isImageUrlPresent() ? request.getImageUrl() : null;
-            boolean hasNewImage = newImage != null && !newImage.trim().isEmpty();
-            boolean keepsExistingImage = !request.isImageUrlPresent()
-                    && existing != null
-                    && existing.getImageUrl() != null
-                    && !existing.getImageUrl().trim().isEmpty();
-            if (!hasNewImage && !keepsExistingImage) {
-                return validationError("An image is required for an image banner");
+            // The banner IS its media, so it needs an image OR a video (either
+            // sent now, or already on the row and not being cleared).
+            boolean hasImage = hasMedia(request.isImageUrlPresent(), request.getImageUrl(),
+                    existing != null ? existing.getImageUrl() : null);
+            boolean hasVideo = hasMedia(request.isVideoUrlPresent(), request.getVideoUrl(),
+                    existing != null ? existing.getVideoUrl() : null);
+            if (!hasImage && !hasVideo) {
+                return validationError("An image or a video is required for an image banner");
             }
             return null;
         }
@@ -650,6 +650,16 @@ public class PromotionController {
             return validationError("Discount value is required for a promo code");
         }
         return null;
+    }
+
+    /**
+     * Whether a media URL will be on the row after this request: the value sent
+     * (if the field was sent at all - an explicit blank clears it), otherwise
+     * whatever the existing row already holds.
+     */
+    private boolean hasMedia(boolean sent, String sentValue, String existingValue) {
+        String effective = sent ? sentValue : existingValue;
+        return effective != null && !effective.trim().isEmpty();
     }
 
     /**

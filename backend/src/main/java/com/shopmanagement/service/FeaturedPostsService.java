@@ -56,10 +56,11 @@ public class FeaturedPostsService {
         try {
             var promos = promotionRepository.findAllPublicActive(LocalDateTime.now());
             promos = promotionService.filterPromotionsByShopProximity(promos, lat, lng);
-            // Same rule as /api/promotions/active: an image-only banner whose
-            // artwork isn't approved has nothing to show, so it is dropped.
+            // Same rule as /api/promotions/active: an image-only banner with
+            // neither an approved image nor an approved video has nothing to
+            // show, so it is dropped.
             promos = promos.stream()
-                    .filter(p -> !p.isImageOnly() || p.hasApprovedImage())
+                    .filter(p -> !p.isImageOnly() || p.hasApprovedImage() || p.hasApprovedVideo())
                     .toList();
             var limitedPromos = promos.size() > 10 ? promos.subList(0, 10) : promos;
             result.put("promotions", limitedPromos.stream().map(this::mapPromotion).toList());
