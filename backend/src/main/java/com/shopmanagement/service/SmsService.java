@@ -42,8 +42,11 @@ public class SmsService {
     private String msg91ForgotPasswordTemplateId;
 
     // SMS Templates - Must match DLT approved template
-    // DLT Template ID: 1207176226012464195 | MSG91 Template ID: 690f78375bceb56a7e591805
-    private static final String OTP_TEMPLATE = "Your OTP to complete your Namma Ooru Registration is %s. It is valid for %d minutes. - NAMMAO";
+    // DLT Template ID: 1277179133809831517 "Login-autoread" (approved 2026-10-07).
+    // Ends with the SMS Retriever app hash so the customer app auto-reads the
+    // OTP; MSG91_OTP_TEMPLATE_ID must point at a flow built from this text.
+    // Previous: DLT 1207176226012464195 | MSG91 690f78375bceb56a7e591805 (no hash).
+    private static final String OTP_TEMPLATE = "Your OTP to complete your Namma Ooru Registration is %s. It is valid for %d minutes. - NAMMAO FmownHW72rm";
     // DLT Template ID: 1207177176721454484 | MSG91 Template ID: 699c2a8bf9f067a42101e683
     private static final String FORGOT_PASSWORD_TEMPLATE = "Your Namma Ooru verification code is %s. It is valid for %d minutes. Do not share this with anyone. - NAMMAO";
     private static final String WELCOME_TEMPLATE = "Welcome to NammaOoru! Your account has been created successfully. Start shopping now! -NammaOoru";
