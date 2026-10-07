@@ -5,6 +5,9 @@ class NotificationModel {
   final String type;
   final DateTime createdAt;
   final bool isRead;
+  /// Image attached by the admin sender (relative /uploads/... path or an
+  /// absolute URL). Resolve with ImageUrlHelper before loading.
+  final String? imageUrl;
   final Map<String, dynamic>? data;
 
   const NotificationModel({
@@ -14,8 +17,37 @@ class NotificationModel {
     required this.type,
     required this.createdAt,
     this.isRead = false,
+    this.imageUrl,
     this.data,
   });
+
+  bool get hasImage => imageUrl != null && imageUrl!.trim().isNotEmpty;
+
+  /// True when this entry came from the backend list (numeric notifications.id)
+  /// rather than being an FCM message cached locally.
+  bool get isBackendNotification => int.tryParse(id) != null;
+
+  NotificationModel copyWith({
+    String? id,
+    String? title,
+    String? body,
+    String? type,
+    DateTime? createdAt,
+    bool? isRead,
+    String? imageUrl,
+    Map<String, dynamic>? data,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      type: type ?? this.type,
+      createdAt: createdAt ?? this.createdAt,
+      isRead: isRead ?? this.isRead,
+      imageUrl: imageUrl ?? this.imageUrl,
+      data: data ?? this.data,
+    );
+  }
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     // Handle both backend format (message/status) and Firebase format (body/isRead)
@@ -43,17 +75,23 @@ class NotificationModel {
 
     // Build data map from backend fields for routing
     Map<String, dynamic>? dataMap;
-    if (json['data'] is Map<String, dynamic>) {
-      dataMap = json['data'];
+    if (json['data'] is Map) {
+      dataMap = Map<String, dynamic>.from(json['data'] as Map);
     } else {
       dataMap = {};
     }
     // Capture category, referenceType, referenceId from backend response
-    if (json['category'] != null) dataMap?['category'] = json['category'];
-    if (json['referenceType'] != null) dataMap?['referenceType'] = json['referenceType'];
-    if (json['referenceId'] != null) dataMap?['referenceId'] = json['referenceId'].toString();
-    if (json['actionUrl'] != null) dataMap?['actionUrl'] = json['actionUrl'];
-    if (dataMap != null && dataMap.isEmpty) dataMap = null;
+    if (json['category'] != null) dataMap['category'] = json['category'];
+    if (json['referenceType'] != null) dataMap['referenceType'] = json['referenceType'];
+    if (json['referenceId'] != null) dataMap['referenceId'] = json['referenceId'].toString();
+    if (json['actionUrl'] != null) dataMap['actionUrl'] = json['actionUrl'];
+
+    final rawImage = json['imageUrl'] ?? json['image_url'] ?? dataMap['imageUrl'];
+    final String? image = rawImage == null || rawImage.toString().trim().isEmpty
+        ? null
+        : rawImage.toString();
+
+    if (dataMap.isEmpty) dataMap = null;
 
     return NotificationModel(
       id: json['id']?.toString() ?? '',
@@ -62,6 +100,7 @@ class NotificationModel {
       type: typeStr,
       createdAt: createdTime,
       isRead: isReadStatus,
+      imageUrl: image,
       data: dataMap,
     );
   }
@@ -74,6 +113,7 @@ class NotificationModel {
       'type': type,
       'createdAt': createdAt.toIso8601String(),
       'isRead': isRead,
+      'imageUrl': imageUrl,
       'data': data,
     };
   }

@@ -43,13 +43,24 @@ public class NotificationService {
     private final EmailService emailService;
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final FirebaseNotificationService firebaseNotificationService;
-    
+
+    /**
+     * Public (Cloudflare-fronted) origin that serves /uploads/**. Push images
+     * must be absolute URLs reachable by the device; the api. host is direct
+     * to the origin and far slower from Indian ISPs, so never use it here.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.frontend.base-url:https://nammaoorudelivary.in}")
+    private String publicBaseUrl;
+
+    private static final String LEGACY_API_ORIGIN = "https://api.nammaoorudelivary.in";
+
     @Transactional
     public NotificationResponse createNotification(NotificationRequest request) {
         log.info("Creating notification: {}", request.getTitle());
-        
+
         // Build data payload for push notification routing
         java.util.Map<String, String> pushData = buildPushData(request);
+        pushData.putIfAbsent("type", pushTypeFor(request));
 
         // Handle single recipient
         if (request.getRecipientId() != null) {
@@ -63,7 +74,8 @@ public class NotificationService {
 
             // Send push notification if requested
             if (request.getSendPush() != null && request.getSendPush()) {
-                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage(), pushData, request.getImageUrl());
+                sendPushToUser(request.getRecipientId(), request.getTitle(), request.getMessage(),
+                        withNotificationId(pushData, savedNotification.getId()), request.getImageUrl());
             }
 
             return mapToResponse(savedNotification);
@@ -86,10 +98,12 @@ public class NotificationService {
                 }
             }
 
-            // Send push notifications if requested
+            // Send push notifications if requested (one per saved row so the app
+            // can match the push to its in-app list entry)
             if (request.getSendPush() != null && request.getSendPush()) {
-                for (Long recipientId : request.getRecipientIds()) {
-                    sendPushToUser(recipientId, request.getTitle(), request.getMessage(), pushData, request.getImageUrl());
+                for (Notification saved : savedNotifications) {
+                    sendPushToUser(saved.getRecipientId(), request.getTitle(), request.getMessage(),
+                            withNotificationId(pushData, saved.getId()), request.getImageUrl());
                 }
             }
 
@@ -147,7 +161,7 @@ public class NotificationService {
 
         // Send FCM push notifications if requested
         if (request.getSendPush() != null && request.getSendPush()) {
-            sendBroadcastPushNotifications(request, recipientIds);
+            sendBroadcastPushForNotifications(request, savedNotifications);
         }
 
         log.info("Broadcast notification created for {} recipients", savedNotifications.size());
@@ -165,35 +179,87 @@ public class NotificationService {
             Notification notification = buildNotification(request, recipientId);
             notifications.add(notification);
         }
-        notificationRepository.saveAll(notifications);
+        List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
 
         if (request.getSendPush() != null && request.getSendPush()) {
-            sendBroadcastPushNotifications(request, recipientIds);
+            sendBroadcastPushForNotifications(request, savedNotifications);
         }
 
         log.info("Notification sent to {} users", recipientIds.size());
     }
 
     /**
-     * Convert relative image URL to full public URL for FCM
+     * Convert a stored image path (e.g. /uploads/notifications/x.jpg) to the
+     * absolute public URL FCM/devices can fetch. Uses the Cloudflare main
+     * domain; legacy api.-host URLs are rewritten to it as well.
      */
-    private String resolveImageUrl(String imageUrl) {
-        if (imageUrl == null || imageUrl.isEmpty()) return null;
+    String resolveImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) return null;
+        String base = (publicBaseUrl == null || publicBaseUrl.isBlank())
+                ? "https://nammaoorudelivary.in"
+                : publicBaseUrl.replaceAll("/+$", "");
+
+        if (imageUrl.startsWith(LEGACY_API_ORIGIN + "/")) {
+            return base + imageUrl.substring(LEGACY_API_ORIGIN.length());
+        }
         // Already a full URL
         if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) return imageUrl;
-        // Relative path - prepend the API base URL
-        return "https://api.nammaoorudelivary.in" + imageUrl;
+
+        String path = imageUrl.startsWith("/") ? imageUrl : "/" + imageUrl;
+        if (!path.startsWith("/uploads/")) {
+            path = "/uploads" + path;
+        }
+        return base + path;
     }
 
+    /** Copy of the push data map carrying the DB row id, so the app can de-duplicate. */
+    private java.util.Map<String, String> withNotificationId(java.util.Map<String, String> data, Long notificationId) {
+        java.util.Map<String, String> copy = data == null ? new java.util.HashMap<>() : new java.util.HashMap<>(data);
+        if (notificationId != null) {
+            copy.put("notificationId", String.valueOf(notificationId));
+        }
+        return copy;
+    }
+
+    /** Lower-case routing type for the app ("announcement", "promotion", ...). */
+    private String pushTypeFor(NotificationRequest request) {
+        if (request.getCategory() != null) {
+            return request.getCategory().toLowerCase();
+        }
+        return request.getType() != null ? request.getType().name().toLowerCase() : "promotion";
+    }
+
+    /**
+     * Backwards-compatible entry point: pushes without a per-user notification id.
+     */
     public void sendBroadcastPushNotifications(NotificationRequest request, List<Long> recipientIds) {
+        sendBroadcastPush(request, recipientIds, java.util.Collections.emptyMap());
+    }
+
+    /**
+     * Push one message per active device of every recipient of the saved rows,
+     * tagging each with its own notifications.id.
+     */
+    public void sendBroadcastPushForNotifications(NotificationRequest request, List<Notification> savedNotifications) {
+        java.util.Map<Long, Long> notificationIdByUser = new java.util.HashMap<>();
+        List<Long> recipientIds = new ArrayList<>();
+        for (Notification n : savedNotifications) {
+            if (n.getRecipientId() == null) continue;
+            recipientIds.add(n.getRecipientId());
+            notificationIdByUser.putIfAbsent(n.getRecipientId(), n.getId());
+        }
+        sendBroadcastPush(request, recipientIds, notificationIdByUser);
+    }
+
+    private void sendBroadcastPush(NotificationRequest request, List<Long> recipientIds,
+                                   java.util.Map<Long, Long> notificationIdByUser) {
         try {
             log.info("📱 Sending FCM push notifications for broadcast to {} recipients", recipientIds.size());
-            log.info("📱 Recipient IDs: {}", recipientIds);
             log.info("📱 Recipient Type: {}", request.getRecipientType());
 
             // Get user IDs based on recipient type
             List<Long> userIds = getUserIdsForRecipients(request.getRecipientType(), recipientIds);
-            log.info("📱 Found {} user IDs: {}", userIds.size(), userIds);
+            log.info("📱 Found {} user IDs", userIds.size());
 
             if (userIds.isEmpty()) {
                 log.warn("❌ No user IDs found for broadcast notification - check if Customer emails match User emails");
@@ -215,24 +281,35 @@ public class NotificationService {
             int failCount = 0;
 
             String fullImageUrl = resolveImageUrl(request.getImageUrl());
+            String pushType = pushTypeFor(request);
 
             for (UserFcmToken fcmToken : fcmTokens) {
-                try {
-                    firebaseNotificationService.sendPromotionalNotification(
-                            request.getTitle(),
-                            request.getMessage(),
-                            fcmToken.getFcmToken(),
-                            fullImageUrl
-                    );
+                java.util.Map<String, String> data = new java.util.HashMap<>();
+                data.put("type", pushType);
+                if (request.getCategory() != null) {
+                    data.put("category", request.getCategory());
+                }
+                Long notificationId = notificationIdByUser.get(fcmToken.getUserId());
+                if (notificationId != null) {
+                    data.put("notificationId", String.valueOf(notificationId));
+                }
+
+                boolean sent = firebaseNotificationService.sendNotificationWithData(
+                        request.getTitle(),
+                        request.getMessage(),
+                        fcmToken.getFcmToken(),
+                        data,
+                        fullImageUrl
+                );
+                if (sent) {
                     successCount++;
-                } catch (Exception e) {
-                    log.error("Failed to send push notification to token: {}...",
-                            fcmToken.getFcmToken().substring(0, Math.min(20, fcmToken.getFcmToken().length())), e);
+                } else {
                     failCount++;
                 }
             }
 
-            log.info("✅ Broadcast push notifications completed: {} success, {} failed", successCount, failCount);
+            log.info("✅ Broadcast push notifications completed: {} success, {} failed (dead tokens deactivated)",
+                    successCount, failCount);
 
         } catch (Exception e) {
             log.error("❌ Error sending broadcast push notifications", e);
@@ -253,27 +330,32 @@ public class NotificationService {
     public void sendPushToUser(Long userId, String title, String message, java.util.Map<String, String> data, String imageUrl) {
         try {
             String fullImageUrl = resolveImageUrl(imageUrl);
+            // Every active device of the user, newest first
             List<UserFcmToken> fcmTokens = userFcmTokenRepository.findActiveTokensByUserId(userId);
             if (fcmTokens.isEmpty()) {
-                log.debug("No FCM tokens found for user {}", userId);
+                log.info("No active FCM tokens for user {} - push skipped (in-app row still saved)", userId);
                 return;
             }
 
+            int sentCount = 0;
             for (UserFcmToken fcmToken : fcmTokens) {
-                try {
-                    if (data != null && !data.isEmpty()) {
-                        firebaseNotificationService.sendNotificationWithData(
-                                title, message, fcmToken.getFcmToken(), data, fullImageUrl);
-                    } else {
-                        firebaseNotificationService.sendPromotionalNotification(
-                                title, message, fcmToken.getFcmToken(), fullImageUrl);
-                    }
+                boolean sent;
+                if (data != null && !data.isEmpty()) {
+                    sent = firebaseNotificationService.sendNotificationWithData(
+                            title, message, fcmToken.getFcmToken(), data, fullImageUrl);
+                } else {
+                    sent = firebaseNotificationService.sendPromotionalNotification(
+                            title, message, fcmToken.getFcmToken(), fullImageUrl);
+                }
+                if (sent) {
+                    sentCount++;
                     log.info("Push notification sent to user {} on device {}", userId, fcmToken.getDeviceType());
-                } catch (Exception e) {
-                    log.error("Failed to send push to user {} token: {}...", userId,
-                            fcmToken.getFcmToken().substring(0, Math.min(20, fcmToken.getFcmToken().length())), e);
+                } else {
+                    log.warn("Push to user {} failed for token {}... (deactivated if dead)", userId,
+                            fcmToken.getFcmToken().substring(0, Math.min(20, fcmToken.getFcmToken().length())));
                 }
             }
+            log.info("Push summary for user {}: {}/{} devices reached", userId, sentCount, fcmTokens.size());
         } catch (Exception e) {
             log.error("Error sending push notification to user {}", userId, e);
         }

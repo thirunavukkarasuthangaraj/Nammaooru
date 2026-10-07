@@ -49,6 +49,7 @@ export class FeatureConfigManagementComponent implements OnInit {
     section_recent_orders:  { label: 'Recent Orders',   icon: 'receipt_long', desc: 'Recent orders section on home screen' },
     section_special_offers: { label: 'Special Offers Banner', icon: 'local_offer', desc: 'Promo codes & combo offers carousel on home screen' },
     section_profile_my_posts: { label: 'Profile: My Posts', icon: 'article', desc: 'My Posts stats, pricing & per-type counts on the Profile screen' },
+    section_cart_add_suggestions: { label: 'Add-to-cart suggestions popup', icon: 'add_shopping_cart', desc: 'Bottom sheet after a product is added to cart on the shop screen: "Added to cart" confirmation plus related "You may also need" products. Off = plain snackbar only' },
   };
 
   getNavMeta(f: FeatureConfig) {

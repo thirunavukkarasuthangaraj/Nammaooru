@@ -111,12 +111,12 @@ public class AuthService {
                 }
 
                 // Update existing unverified user's details
-                String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
+                String[] nameParts = splitName(request.getFirstName());
                 existingUser.setUsername(normalizedUsername);
                 existingUser.setEmail(normalizedEmail);
                 existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
-                existingUser.setFirstName(fullName);
-                existingUser.setLastName(fullName);
+                existingUser.setFirstName(nameParts[0]);
+                existingUser.setLastName(nameParts[1]);
                 existingUser.setGender(request.getGender());
                 existingUser.setMobileNumber(request.getMobileNumber());
 
@@ -154,6 +154,9 @@ public class AuthService {
                     }
                 }
 
+                existingUser.setLastLogin(java.time.LocalDateTime.now());
+                userRepository.save(existingUser);
+
                 var jwtToken = jwtService.generateToken(existingUser);
                 return AuthResponse.builder()
                         .accessToken(jwtToken)
@@ -177,7 +180,7 @@ public class AuthService {
         // Shop owners and delivery partners should be created by admin
 
         // Store full name in both firstName and lastName as per requirement
-        String fullName = request.getFirstName() != null ? request.getFirstName().trim() : "";
+        String[] nameParts = splitName(request.getFirstName());
 
         // Phone-first flow: OTP for this number may already be verified via
         // /register/send-otp + /register/verify-otp before name/email were
@@ -189,8 +192,8 @@ public class AuthService {
                 .username(normalizedUsername)
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword())) // Password is NOT lowercased - security requirement
-                .firstName(fullName)
-                .lastName(fullName)
+                .firstName(nameParts[0])
+                .lastName(nameParts[1])
                 .gender(request.getGender())
                 .mobileNumber(request.getMobileNumber())
                 .role(User.UserRole.USER)  // Mobile users get USER role for customer functionality
@@ -235,6 +238,19 @@ public class AuthService {
                 .role(user.getRole().name())
                 .profileImageUrl(user.getProfileImageUrl())
                 .build();
+    }
+
+    /**
+     * The app collects one "name" field. Split it into first/last so the two
+     * columns never hold the same string (which doubled the name in the admin
+     * user list, e.g. "Abdul Razak Abdul Razak").
+     */
+    private static String[] splitName(String rawName) {
+        String fullName = rawName == null ? "" : rawName.trim();
+        String[] parts = fullName.split("\\s+", 2);
+        String first = parts.length > 0 ? parts[0] : "";
+        String last = parts.length > 1 ? parts[1].trim() : "";
+        return new String[] { first, last };
     }
 
     public AuthResponse authenticate(AuthRequest request) {

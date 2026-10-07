@@ -91,6 +91,73 @@ mat-form-field {
   gap: 24px;
 }
 
+/* Banner type picker (promo code vs image banner) */
+.banner-type-section {
+  border-left-color: #1976d2;
+}
+
+.banner-type-section .section-title mat-icon {
+  color: #1976d2;
+}
+
+.banner-type-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.banner-type-option {
+  flex: 1;
+  min-width: 220px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.banner-type-option.mat-mdc-radio-checked {
+  border-color: #1976d2;
+  background: #e3f2fd;
+}
+
+.banner-type-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #333;
+}
+
+.banner-type-label mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #1976d2;
+}
+
+.banner-type-hint {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* Image banner: the image is mandatory */
+.form-section.section-required {
+  border-left-color: #f44336;
+}
+
+.image-required-hint {
+  margin: -8px 0 12px 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.image-required-hint .required-error {
+  color: #f44336;
+  font-weight: 600;
+}
+
 .dialog-actions {
   padding: 16px 24px;
   border-top: 1px solid #e0e0e0;

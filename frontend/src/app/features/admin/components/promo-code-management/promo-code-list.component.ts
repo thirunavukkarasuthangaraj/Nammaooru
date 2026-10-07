@@ -130,7 +130,10 @@ export class PromoCodeListComponent implements OnInit {
   }
 
   deletePromoCode(promoCode: PromoCode): void {
-    if (confirm(`Are you sure you want to delete promo code "${promoCode.code}"?`)) {
+    const label = this.isImageBanner(promoCode)
+      ? `image banner "${promoCode.title}"`
+      : `promo code "${promoCode.code}"`;
+    if (confirm(`Are you sure you want to delete ${label}?`)) {
       this.promoCodeService.deletePromoCode(promoCode.id).subscribe({
         next: () => {
           this.loadPromoCodes();
@@ -146,6 +149,11 @@ export class PromoCodeListComponent implements OnInit {
 
   getFormattedDiscount(promo: PromoCode): string {
     return this.promoCodeService.getFormattedDiscount(promo);
+  }
+
+  /** Artwork-only home banner: no code, discount or usage to show. */
+  isImageBanner(promo: PromoCode): boolean {
+    return this.promoCodeService.isImageBanner(promo);
   }
 
   getFormattedMinOrder(promo: PromoCode): string {

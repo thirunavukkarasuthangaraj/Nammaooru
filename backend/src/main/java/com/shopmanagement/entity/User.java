@@ -205,7 +205,17 @@ public class User implements UserDetails {
 
     // Helper methods
     public String getFullName() {
-        return firstName + " " + lastName;
+        String first = firstName == null ? "" : firstName.trim();
+        String last = lastName == null ? "" : lastName.trim();
+        // Older mobile registrations stored the whole name in both columns,
+        // which rendered as "Abdul Razak Abdul Razak" in the admin list.
+        if (last.isEmpty() || last.equalsIgnoreCase(first)) {
+            return first.isEmpty() ? username : first;
+        }
+        if (first.isEmpty()) {
+            return last;
+        }
+        return first + " " + last;
     }
     
     public boolean isLocked() {

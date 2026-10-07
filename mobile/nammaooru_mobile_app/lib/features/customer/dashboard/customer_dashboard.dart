@@ -28,6 +28,7 @@ import '../../../core/services/address_service.dart';
 import '../widgets/deliver_to_picker.dart';
 import '../../../shared/widgets/platform_promos_carousel.dart';
 import '../../../shared/widgets/promo_video_banner.dart';
+import '../../../shared/widgets/promo_code_sheet.dart';
 import '../../../core/services/promo_code_service.dart';
 import '../../../services/version_service.dart';
 import 'dart:async';
@@ -968,11 +969,29 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
 
     // Handle promotion tap - show promo code details
     if (type == 'promotion') {
+      // postData is the raw promotion JSON from the featured feed; everything
+      // in it is optional so the sheet only shows what the admin filled in.
+      final raw = postData ?? const <String, dynamic>{};
+      double? asDouble(dynamic v) =>
+          v == null ? null : double.tryParse(v.toString());
+      final endDate = raw['endDate']?.toString();
       _showPromoCodeSheet(
         title: (post['title'] ?? 'Special Offer').toString(),
         subtitle: (post['subtitle'] ?? '').toString(),
         code: (post['promoCode'] ?? '').toString(),
         shopId: post['shopId'] is int ? post['shopId'] as int : null,
+        shopName: raw['shopName']?.toString(),
+        description: raw['description']?.toString(),
+        discountLabel: _promoDiscountLabel(
+          raw['type']?.toString(),
+          asDouble(raw['discountValue']),
+        ),
+        imageUrl: (post['image'] ?? '').toString(),
+        minimumOrderAmount: asDouble(raw['minimumOrderAmount']),
+        maximumDiscountAmount: asDouble(raw['maximumDiscountAmount']),
+        validUntil: endDate != null ? DateTime.tryParse(endDate) : null,
+        firstTimeOnly: raw['isFirstTimeOnly'] == true,
+        terms: raw['termsAndConditions']?.toString(),
       );
       return;
     }
@@ -1229,7 +1248,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   }
 
   Widget _buildPromoCard(PromoCode promo, {bool isActive = true}) {
-    final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
+    // An image-only banner has no code or discount behind it, so it is the
+    // picture or a quiet placeholder - never the gradient text card, which
+    // would announce "₹0 OFF" over an empty code.
+    final stillCard = promo.isImageOnly
+        ? _buildPromoImageCard(
+            promo,
+            onError: () => _buildPromoPlaceholderCard(promo),
+          )
+        : _buildPromoImageOrTextCard(promo);
 
     // A promo video outranks the still banner: it only ever reaches us after a
     // super admin approved it, so if one is present it is the intended
@@ -1240,66 +1267,120 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
         posterUrl: promo.videoThumbnailUrl ?? promo.imageUrl,
         isActive: isActive,
         onTap: () => _onPromoTap(promo),
-        fallback: _buildPromoImageOrTextCard(promo),
+        fallback: stillCard,
       );
     }
 
-    return _buildPromoImageOrTextCard(promo);
+    return stillCard;
   }
 
   Widget _buildPromoImageOrTextCard(PromoCode promo) {
-    final hasImage = promo.imageUrl != null && promo.imageUrl!.trim().isNotEmpty;
-
     // A fully-designed banner image (offer text, code, and call-to-action all
     // baked into the graphic) reads far better than plain text drawn over a
     // flat gradient - when one's uploaded, show it as the whole card instead
     // of squeezing it into a side thumbnail next to a second, redundant copy
     // of the same text. Falls back to the text/gradient card below only if
     // no image was uploaded, or it fails to load.
-    if (hasImage) {
-      return GestureDetector(
-        onTap: () => _onPromoTap(promo),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            // Cached (not plain Image.network) so a banner that already
-            // loaded once - very likely, since the same handful of promos
-            // show on every visit - paints instantly from disk instead of
-            // re-downloading and re-showing a loading state every time.
-            child: CachedNetworkImage(
-              imageUrl: ImageUrlHelper.getFullImageUrl(promo.imageUrl),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              fadeInDuration: const Duration(milliseconds: 150),
-              placeholder: (_, __) => Container(
-                color: VillageTheme.primaryGreen.withOpacity(0.08),
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: VillageTheme.primaryGreen.withOpacity(0.5)),
-                ),
-              ),
-              errorWidget: (_, __, ___) => _buildPromoCardTextContent(promo),
+    return _buildPromoImageCard(
+      promo,
+      onError: () => _buildPromoCardTextContent(promo),
+    );
+  }
+
+  /// The promo's uploaded picture as the whole card. [onError] builds what
+  /// shows instead when there is no usable image URL or it fails to load.
+  Widget _buildPromoImageCard(
+    PromoCode promo, {
+    required Widget Function() onError,
+  }) {
+    final imageUrl = promo.imageUrl?.trim();
+    final bannerUrl = promo.bannerUrl?.trim();
+    final url = (imageUrl != null && imageUrl.isNotEmpty)
+        ? imageUrl
+        : (bannerUrl != null && bannerUrl.isNotEmpty)
+            ? bannerUrl
+            : null;
+    if (url == null) return onError();
+
+    return GestureDetector(
+      onTap: () => _onPromoTap(promo),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          // Cached (not plain Image.network) so a banner that already
+          // loaded once - very likely, since the same handful of promos
+          // show on every visit - paints instantly from disk instead of
+          // re-downloading and re-showing a loading state every time.
+          child: CachedNetworkImage(
+            imageUrl: ImageUrlHelper.getFullImageUrl(url),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            fadeInDuration: const Duration(milliseconds: 150),
+            placeholder: (_, __) => Container(
+              color: VillageTheme.primaryGreen.withOpacity(0.08),
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2, color: VillageTheme.primaryGreen.withOpacity(0.5)),
+              ),
+            ),
+            errorWidget: (_, __, ___) => onError(),
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    return _buildPromoCardTextContent(promo);
+  /// Neutral stand-in for an image-only banner whose picture is missing or
+  /// would not load. There is no code or discount to fall back on, so it just
+  /// shows the title (if any) on a soft tile; still tappable for its link.
+  Widget _buildPromoPlaceholderCard(PromoCode promo) {
+    final title = promo.title.trim();
+    return GestureDetector(
+      onTap: () => _onPromoTap(promo),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.image_outlined, color: Colors.grey[500], size: 28),
+            if (title.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildPromoCardTextContent(PromoCode promo) {
@@ -1627,101 +1708,118 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   /// copy button. It used to jump straight to the shop (or, for a platform
   /// promo, flash a two-second toast the customer could not copy from).
   void _onPromoTap(PromoCode promo) {
-    final shopLine = promo.shopName != null && promo.shopName!.trim().isNotEmpty
-        ? promo.shopName!
-        : 'Platform Offer';
+    // A picture-only banner has nothing to redeem: it either opens its link
+    // or is just an announcement. Never raise the code sheet with an empty code.
+    if (promo.isImageOnly) {
+      if (promo.hasLink) _openPromoLink(promo.linkUrl!.trim());
+      return;
+    }
+
+    final shopName = promo.shopName?.trim();
     _showPromoCodeSheet(
       title: promo.title,
-      subtitle: '$shopLine \u2022 ${promo.formattedDiscount}',
+      subtitle: '',
       code: promo.code,
       shopId: promo.shopId,
+      shopName: (shopName == null || shopName.isEmpty) ? null : shopName,
+      description: promo.description,
+      discountLabel: promo.formattedDiscount,
+      // Still image first; a video promo falls back to its poster frame. The
+      // sheet never autoplays the clip - the carousel already did that.
+      imageUrl: promo.imageUrl ?? promo.bannerUrl ?? promo.videoThumbnailUrl,
+      minimumOrderAmount: promo.minimumOrderAmount,
+      maximumDiscountAmount: promo.maximumDiscountAmount,
+      validUntil: promo.endDate,
+      firstTimeOnly: promo.isFirstTimeOnly == true,
+      terms: promo.termsAndConditions,
     );
+  }
+
+  /// Opens an image banner's link in the browser (or whatever app claims the
+  /// scheme). A bare "example.com" is treated as https; junk is ignored.
+  Future<void> _openPromoLink(String link) async {
+    final withScheme = link.contains('://') ? link : 'https://$link';
+    final uri = Uri.tryParse(withScheme);
+    if (uri == null) return;
+    final isWeb = uri.scheme == 'http' || uri.scheme == 'https';
+    if (isWeb && uri.host.isEmpty) return;
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open this link')),
+        );
+      }
+    } catch (e) {
+      print('Error opening promo link $link: $e');
+    }
+  }
+
+  /// "20% OFF" / "\u20b950 OFF" / "FREE DELIVERY" from a raw promo type + value.
+  /// Mirrors [PromoCode.formattedDiscount] for feed entries that arrive as
+  /// plain JSON rather than a parsed [PromoCode].
+  static String? _promoDiscountLabel(String? type, double? value) {
+    switch (type) {
+      case 'PERCENTAGE':
+        return value == null ? null : '${value.toStringAsFixed(0)}% OFF';
+      case 'FIXED_AMOUNT':
+        return value == null ? null : '\u20b9${value.toStringAsFixed(0)} OFF';
+      case 'FREE_SHIPPING':
+        return 'FREE DELIVERY';
+      case 'BUY_ONE_GET_ONE':
+        return 'BUY 1 GET 1';
+      default:
+        return null;
+    }
   }
 
   /// Bottom sheet with the promo code and a copy button. Shared by the
   /// SPECIAL OFFERS carousel and the launch banner so both behave the same.
+  /// [subtitle] is kept for callers that only have a one-line summary; it is
+  /// used as the shop line when [shopName] is absent. Every rich field is
+  /// optional - [PromoCodeSheet] hides whatever is null.
   void _showPromoCodeSheet({
     required String title,
     required String subtitle,
     required String code,
     int? shopId,
+    String? shopName,
+    String? description,
+    String? discountLabel,
+    String? imageUrl,
+    double? minimumOrderAmount,
+    double? maximumDiscountAmount,
+    DateTime? validUntil,
+    bool firstTimeOnly = false,
+    String? terms,
   }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 20),
-            Icon(Icons.percent_rounded, size: 48, color: VillageTheme.primaryGreen),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            if (subtitle.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey[600]), textAlign: TextAlign.center),
-            ],
-            if (code.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: VillageTheme.primaryGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: VillageTheme.primaryGreen, width: 2, style: BorderStyle.solid),
+    final fallbackShopLine = subtitle.trim().isEmpty ? null : subtitle.trim();
+    PromoCodeSheet.show(
+      context,
+      title: title,
+      shopName: shopName ?? fallbackShopLine,
+      description: description,
+      discountLabel: discountLabel,
+      code: code,
+      imageUrl: imageUrl,
+      minimumOrderAmount: minimumOrderAmount,
+      maximumDiscountAmount: maximumDiscountAmount,
+      validUntil: validUntil,
+      firstTimeOnly: firstTimeOnly,
+      terms: terms,
+      onVisitShop: shopId == null
+          ? null
+          : () {
+              // The sheet has already popped itself; push with the dashboard's
+              // own context so the route lands in the right navigator.
+              if (!mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ShopDetailsScreen(shopId: shopId, shop: null),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(code, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: VillageTheme.primaryGreen, letterSpacing: 2)),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: code));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Promo code "$code" copied!'), duration: const Duration(seconds: 2)),
-                        );
-                      },
-                      child: Icon(Icons.copy, color: VillageTheme.primaryGreen, size: 20),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Use this code at checkout', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-            ],
-            if (shopId != null) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ShopDetailsScreen(shopId: shopId, shop: null),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.storefront_rounded),
-                  label: const Text('Visit shop'),
-                  style: OutlinedButton.styleFrom(foregroundColor: VillageTheme.primaryGreen),
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+              );
+            },
     );
   }
 

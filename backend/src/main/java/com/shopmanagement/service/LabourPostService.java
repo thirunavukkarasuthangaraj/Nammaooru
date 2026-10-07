@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -160,10 +161,38 @@ public class LabourPostService {
         return saved;
     }
 
+    /**
+     * Public location search, scoped to the category the user is browsing when one
+     * is selected. Matching is fuzzy (see LabourPostRepository.NORM_OPEN) so the
+     * many English spellings of a Tamil town all find each other.
+     *
+     * @return the matching page, or null when the search text has no usable
+     *         tokens (caller then falls back to the normal listing)
+     */
     @Transactional(readOnly = true)
-    public Page<LabourPost> searchByLocation(String search, Pageable pageable) {
-        List<PostStatus> visibleStatuses = getVisibleStatuses();
-        return labourPostRepository.findVisibleByLocationFeaturedFirst(visibleStatuses, search, pageable);
+    public Page<LabourPost> searchByLocation(String search, String categoryStr, Pageable pageable) {
+        String[] tokens = search == null ? new String[0]
+                : Arrays.stream(search.trim().split("[^\\p{L}\\p{N}]+"))
+                        .filter(t -> !t.isBlank())
+                        .toArray(String[]::new);
+        if (tokens.length == 0) {
+            return null;
+        }
+
+        String category = null;
+        if (categoryStr != null && !categoryStr.isBlank()) {
+            try {
+                category = LabourCategory.valueOf(categoryStr.trim().toUpperCase()).name();
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid labour category: " + categoryStr);
+            }
+        }
+
+        String[] statuses = getVisibleStatuses().stream().map(Enum::name).toArray(String[]::new);
+        List<LabourPost> posts = labourPostRepository.searchVisibleByLocation(
+                statuses, category, tokens, pageable.getPageSize(), (int) pageable.getOffset());
+        long total = labourPostRepository.countVisibleByLocation(statuses, category, tokens);
+        return new PageImpl<>(posts, pageable, total);
     }
 
     @Transactional(readOnly = true)

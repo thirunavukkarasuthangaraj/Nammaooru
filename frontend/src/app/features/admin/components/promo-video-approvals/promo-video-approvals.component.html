@@ -70,10 +70,11 @@
       <div class="video-meta">
         <h3>{{ item.title }}</h3>
         <div class="meta-row">
-          <span class="chip kind" [class.combo]="item.kind === 'combo'">
-            {{ item.kind === 'combo' ? 'Combo' : 'Promo code' }}
+          <span class="chip kind" [class.combo]="item.kind === 'combo'" [class.image-banner]="item.kind === 'promo' && !item.code">
+            {{ item.kind === 'combo' ? 'Combo' : (item.code ? 'Promo code' : 'Image banner') }}
           </span>
-          <span class="chip code" *ngIf="item.kind === 'promo'">{{ item.code }}</span>
+          <!-- An image-only banner has no code behind it, so no chip. -->
+          <span class="chip code" *ngIf="item.kind === 'promo' && item.code">{{ item.code }}</span>
           <span class="chip shop">{{ item.shopName }}</span>
           <span class="chip asset" *ngIf="item.imageUrl">
             <mat-icon>image</mat-icon> Image

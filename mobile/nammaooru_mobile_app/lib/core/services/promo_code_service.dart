@@ -186,14 +186,21 @@ class PromoCode {
   final String? shopName;
   final String? shopNameTamil;
   final String? shopBusinessType;
+  /// 'PROMO_CODE' (the default - a code the customer redeems) or
+  /// 'IMAGE_BANNER' (a super-admin-uploaded picture with an optional link;
+  /// no code, no discount, nothing to redeem).
+  final String bannerType;
+  /// Where an image-only banner should take the customer when tapped. Null or
+  /// empty means the banner is just an announcement.
+  final String? linkUrl;
 
   PromoCode({
     required this.id,
-    required this.code,
+    this.code = '',
     required this.title,
     this.description,
-    required this.type,
-    required this.discountValue,
+    this.type = 'PERCENTAGE',
+    this.discountValue = 0,
     this.minimumOrderAmount,
     this.maximumDiscountAmount,
     this.usageLimitPerCustomer,
@@ -209,41 +216,77 @@ class PromoCode {
     this.shopName,
     this.shopNameTamil,
     this.shopBusinessType,
+    this.bannerType = 'PROMO_CODE',
+    this.linkUrl,
   });
 
+  /// Lenient on purpose: [PromoCodeService.getActivePromotions] parses the
+  /// whole list inside one try/catch, so a single row that threw here (an
+  /// image-only banner with no code/type/discount, or an odd date string)
+  /// used to blank the entire home carousel.
   factory PromoCode.fromJson(Map<String, dynamic> json) {
+    double? asDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    }
+
+    int? asInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v.toString());
+    }
+
+    DateTime parseDate(dynamic v, DateTime fallback) {
+      if (v == null) return fallback;
+      return DateTime.tryParse(v.toString()) ?? fallback;
+    }
+
+    final now = DateTime.now();
+    final type = json['type']?.toString();
+
     return PromoCode(
-      id: json['id'],
-      code: json['code'],
-      title: json['title'],
-      description: json['description'],
-      type: json['type']?.toString() ?? 'PERCENTAGE',
-      discountValue: (json['discountValue'] ?? 0).toDouble(),
-      minimumOrderAmount: json['minimumOrderAmount'] != null
-          ? (json['minimumOrderAmount']).toDouble()
+      id: asInt(json['id']) ?? 0,
+      code: json['code']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString(),
+      type: (type == null || type.isEmpty) ? 'PERCENTAGE' : type,
+      discountValue: asDouble(json['discountValue']) ?? 0,
+      minimumOrderAmount: asDouble(json['minimumOrderAmount']),
+      maximumDiscountAmount: asDouble(json['maximumDiscountAmount']),
+      usageLimitPerCustomer: asInt(json['usageLimitPerCustomer']),
+      startDate: parseDate(json['startDate'], now),
+      // A banner with no readable end date is treated as open-ended rather
+      // than dropped.
+      endDate: parseDate(json['endDate'], now.add(const Duration(days: 365 * 10))),
+      imageUrl: json['imageUrl']?.toString(),
+      bannerUrl: json['bannerUrl']?.toString(),
+      videoUrl: json['videoUrl']?.toString(),
+      videoThumbnailUrl: json['videoThumbnailUrl']?.toString(),
+      isFirstTimeOnly: json['isFirstTimeOnly'] is bool
+          ? json['isFirstTimeOnly'] as bool
           : null,
-      maximumDiscountAmount: json['maximumDiscountAmount'] != null
-          ? (json['maximumDiscountAmount']).toDouble()
-          : null,
-      usageLimitPerCustomer: json['usageLimitPerCustomer'],
-      startDate: DateTime.parse(json['startDate']),
-      endDate: DateTime.parse(json['endDate']),
-      imageUrl: json['imageUrl'],
-      bannerUrl: json['bannerUrl'],
-      videoUrl: json['videoUrl'],
-      videoThumbnailUrl: json['videoThumbnailUrl'],
-      isFirstTimeOnly: json['isFirstTimeOnly'],
-      termsAndConditions: json['termsAndConditions'],
-      shopId: json['shopId'],
-      shopName: json['shopName'],
-      shopNameTamil: json['shopNameTamil'],
+      termsAndConditions: json['termsAndConditions']?.toString(),
+      shopId: asInt(json['shopId']),
+      shopName: json['shopName']?.toString(),
+      shopNameTamil: json['shopNameTamil']?.toString(),
       shopBusinessType: json['shopBusinessType']?.toString(),
+      bannerType: json['bannerType']?.toString() ?? 'PROMO_CODE',
+      linkUrl: json['linkUrl']?.toString(),
     );
   }
 
   bool get hasVideo => videoUrl != null && videoUrl!.trim().isNotEmpty;
 
+  /// A picture-only banner: nothing to redeem, so no code/discount text
+  /// should ever be drawn for it.
+  bool get isImageOnly => bannerType == 'IMAGE_BANNER';
+
+  bool get hasLink => linkUrl != null && linkUrl!.trim().isNotEmpty;
+
   String get formattedDiscount {
+    if (isImageOnly) return '';
     if (type == 'PERCENTAGE') {
       return '${discountValue.toStringAsFixed(0)}% OFF';
     } else if (type == 'FIXED_AMOUNT') {

@@ -423,6 +423,11 @@ public class AuthController {
                     }
                 }
 
+                // OTP verification is how app customers sign in, so record it as
+                // a login - the admin list showed every customer as "Never logged in".
+                user.setLastLogin(java.time.LocalDateTime.now());
+                userRepository.save(user);
+
                 var jwtToken = authService.generateTokenForUser(user);
 
                 AuthResponse authResponse = AuthResponse.builder()

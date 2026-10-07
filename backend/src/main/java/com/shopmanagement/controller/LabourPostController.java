@@ -69,10 +69,13 @@ public class LabourPostController {
             @RequestParam(required = false) String search) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<LabourPost> posts;
+            Page<LabourPost> posts = null;
             if (search != null && !search.trim().isEmpty()) {
-                posts = labourPostService.searchByLocation(search.trim(), pageable);
-            } else {
+                // Keep the selected category when searching so "Painter" + "tirupattur"
+                // doesn't suddenly show every trade in town.
+                posts = labourPostService.searchByLocation(search.trim(), category, pageable);
+            }
+            if (posts == null) {
                 Double effectiveLat = lat;
                 Double effectiveLng = lng;
                 Double effectiveRadius = (lat != null && lng != null) ? radius : null;

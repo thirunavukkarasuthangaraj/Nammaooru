@@ -143,6 +143,35 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Find customers opted in for health tip notifications
     List<User> findByRoleAndHealthTipNotificationsEnabledTrue(User.UserRole role);
 
+    // Admin customer picker: search app customers (role USER) by name / phone / email
+    // or by location. Location lives on the customers / customer_addresses tables,
+    // which are linked to users only by mobile number, so join on that.
+    @Query("SELECT DISTINCT u FROM User u " +
+           "LEFT JOIN Customer c ON c.mobileNumber = u.mobileNumber " +
+           "LEFT JOIN CustomerAddress a ON a.customer = c AND a.isActive = true " +
+           "WHERE u.role = :role AND (" +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "u.mobileNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
+           "LOWER(c.city) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(c.state) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "c.postalCode LIKE CONCAT('%', :searchTerm, '%') OR " +
+           "LOWER(c.addressLine1) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(c.addressLine2) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.village) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.area) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.street) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.landmark) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.city) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "a.postalCode LIKE CONCAT('%', :searchTerm, '%')" +
+           ") ORDER BY u.firstName ASC, u.lastName ASC, u.id ASC")
+    List<User> searchCustomerUsers(@Param("role") User.UserRole role,
+                                   @Param("searchTerm") String searchTerm,
+                                   Pageable pageable);
+
     // Find nearby customers (USER role) within radius using Haversine formula
     @Query(value = "SELECT * FROM users u WHERE u.role = 'USER' " +
            "AND u.is_active = true " +

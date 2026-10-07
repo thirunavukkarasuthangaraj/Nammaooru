@@ -3,8 +3,13 @@ package com.shopmanagement.service;
 import com.shopmanagement.dto.user.UserRequest;
 import com.shopmanagement.dto.user.UserUpdateRequest;
 import com.shopmanagement.dto.user.UserResponse;
+import com.shopmanagement.dto.user.CustomerPickerResponse;
+import com.shopmanagement.entity.Customer;
+import com.shopmanagement.entity.CustomerAddress;
 import com.shopmanagement.entity.Permission;
 import com.shopmanagement.entity.User;
+import com.shopmanagement.repository.CustomerAddressRepository;
+import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.PermissionRepository;
 import com.shopmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +41,9 @@ public class UserService {
     private final PermissionRepository permissionRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    
+    private final CustomerRepository customerRepository;
+    private final CustomerAddressRepository customerAddressRepository;
+
     @Transactional
     public UserResponse createUser(UserRequest request) {
         log.info("Creating user: {}", request.getUsername());
@@ -321,7 +328,12 @@ public class UserService {
     }
     
     public Page<UserResponse> getUsersByRole(User.UserRole role, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "firstName"));
+        return getUsersByRole(role, page, size, "firstName", "asc");
+    }
+
+    public Page<UserResponse> getUsersByRole(User.UserRole role, int page, int size, String sortBy, String sortDirection) {
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<User> users = userRepository.findByRole(role, pageable);
         return users.map(this::mapToResponse);
     }
@@ -344,6 +356,111 @@ public class UserService {
         return users.map(this::mapToResponse);
     }
     
+    /**
+     * Search app customers (users with role USER) by name, phone, email or
+     * location (village/area/city/pincode from the linked customer record).
+     * Returns users.id, which is the recipientId the notification code expects.
+     */
+    @Transactional(readOnly = true)
+    public List<CustomerPickerResponse> searchCustomerRecipients(String searchTerm, int limit) {
+        String term = searchTerm == null ? "" : searchTerm.trim();
+        if (term.isEmpty()) {
+            return List.of();
+        }
+        int safeLimit = Math.max(1, Math.min(limit, 50));
+        List<User> users = userRepository.searchCustomerUsers(User.UserRole.USER, term, PageRequest.of(0, safeLimit));
+        return users.stream().map(this::toCustomerPickerResponse).collect(Collectors.toList());
+    }
+
+    private CustomerPickerResponse toCustomerPickerResponse(User user) {
+        // Phone-first registrations may have no names; never show "null null".
+        String fullName = joinNameParts(user.getFirstName(), user.getLastName());
+        if (fullName == null) {
+            fullName = firstNonBlank(user.getUsername(), user.getMobileNumber(), "Customer #" + user.getId());
+        }
+        return CustomerPickerResponse.builder()
+                .id(user.getId())
+                .fullName(fullName)
+                .mobileNumber(user.getMobileNumber())
+                .email(user.getEmail())
+                .location(resolveCustomerLocation(user))
+                .build();
+    }
+
+    /**
+     * The users table has no address columns; the customer's address lives on
+     * customers / customer_addresses (linked by mobile number). Prefer the
+     * default active delivery address, then any active address, then the
+     * customer profile's city/pincode.
+     */
+    private String resolveCustomerLocation(User user) {
+        if (user.getMobileNumber() == null) {
+            return null;
+        }
+        try {
+            Optional<Customer> customerOpt = customerRepository.findFirstByMobileNumberOrderByIdAsc(user.getMobileNumber());
+            if (customerOpt.isEmpty()) {
+                return null;
+            }
+            Customer customer = customerOpt.get();
+
+            Optional<CustomerAddress> addressOpt = customerAddressRepository.findDefaultActiveAddressByCustomerId(customer.getId());
+            if (addressOpt.isEmpty()) {
+                List<CustomerAddress> active = customerAddressRepository.findByCustomerIdAndIsActive(customer.getId(), true);
+                if (active != null && !active.isEmpty()) {
+                    addressOpt = Optional.of(active.get(0));
+                }
+            }
+
+            String location = null;
+            if (addressOpt.isPresent()) {
+                CustomerAddress a = addressOpt.get();
+                String locality = firstNonBlank(a.getVillage(), a.getArea(), a.getStreet(), a.getLandmark());
+                location = joinLocationParts(locality, a.getCity(), a.getPostalCode());
+            }
+            if (location == null) {
+                location = joinLocationParts(null, customer.getCity(), customer.getPostalCode());
+            }
+            return location;
+        } catch (Exception e) {
+            log.warn("Could not resolve location for user {}: {}", user.getId(), e.getMessage());
+            return null;
+        }
+    }
+
+    private static String joinNameParts(String first, String last) {
+        StringBuilder sb = new StringBuilder();
+        if (first != null && !first.trim().isEmpty()) {
+            sb.append(first.trim());
+        }
+        if (last != null && !last.trim().isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append(last.trim());
+        }
+        return sb.length() == 0 ? null : sb.toString();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String v : values) {
+            if (v != null && !v.trim().isEmpty()) {
+                return v.trim();
+            }
+        }
+        return null;
+    }
+
+    private static String joinLocationParts(String... parts) {
+        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
+        for (String p : parts) {
+            if (p != null && !p.trim().isEmpty()) {
+                seen.add(p.trim());
+            }
+        }
+        return seen.isEmpty() ? null : String.join(", ", seen);
+    }
+
     public List<UserResponse> getSubordinates(Long managerId) {
         List<User> subordinates = userRepository.findByReportsTo(managerId);
         return subordinates.stream().map(this::mapToResponse).collect(Collectors.toList());

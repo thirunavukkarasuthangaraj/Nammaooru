@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../../app/routes.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -233,12 +234,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     if (!authProvider.isAuthenticated) {
       return PopScope(
         canPop: false,
-        onPopInvoked: (bool didPop) async {
+        onPopInvokedWithResult: (bool didPop, _) {
           if (didPop) return;
-          // Navigate to dashboard instead of exiting
-          if (context.mounted) {
-            context.go('/');
-          }
+          // Pop whatever is on top, else back to the Home tab
+          if (context.mounted) AppRouter.handleCustomerBack(context);
         },
         child: Scaffold(
           appBar: AppBar(
@@ -257,12 +256,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool didPop) async {
+      onPopInvokedWithResult: (bool didPop, _) {
         if (didPop) return;
-        // Navigate to dashboard instead of exiting
-        if (context.mounted) {
-          context.go('/');
-        }
+        // Pop whatever is on top, else back to the Home tab (was go('/'),
+        // the Splash route)
+        if (context.mounted) AppRouter.handleCustomerBack(context);
       },
       child: Scaffold(
         appBar: AppBar(

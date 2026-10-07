@@ -7,6 +7,7 @@ import '../../../services/shop_api_service.dart';
 import '../../../services/voice_search_service.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/providers/cart_provider.dart';
+import '../../../shared/providers/feature_config_provider.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -5005,10 +5006,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         onlinePaymentEnabled: _shop?['onlinePaymentEnabled'] as bool? ?? true,
       );
 
-      // First ADD of this product (not stepper +): suggest same-category
-      // products the customer may also need. They can add or just dismiss.
+      // First ADD of this product (not stepper +): confirm it and, if the
+      // admin has the suggestions sheet enabled, show related products.
       if (currentCartQuantity == 0 && context.mounted) {
-        _showRelatedProducts(product);
+        _onFirstAddToCart(product);
       }
     } else {
       // Show dialog for different shop
@@ -5066,10 +5067,69 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     }
   }
 
-  /// Bottom sheet with in-stock products from the same category as the one
-  /// just added — quick extra ADDs without leaving the flow. Uses the
-  /// already-loaded product list, so no API call.
-  void _showRelatedProducts(ProductModel added) {
+  // ── Added-to-cart sheet ───────────────────────────────────────────────────
+
+  /// feature_configs.feature_name the super admin toggles under
+  /// Admin > Feature Config > "Customer App Sections". Keeps the `section_`
+  /// prefix on purpose: /feature-config/app-config only returns nav_/section_
+  /// rows and the admin page groups toggles by that prefix.
+  static const String _cartSuggestionsFlag = 'section_cart_add_suggestions';
+
+  /// Runs once per product on its FIRST add (not on stepper +). Shows the
+  /// "Added to cart" sheet with relevant suggestions, or - when the admin has
+  /// switched that sheet off - a plain snackbar with a View cart action so the
+  /// customer still gets feedback beyond the floating cart pill.
+  void _onFirstAddToCart(ProductModel product) {
+    final featureConfig =
+        Provider.of<FeatureConfigProvider>(context, listen: false);
+    if (featureConfig.isVisible(_cartSuggestionsFlag)) {
+      _showAddedToCartSheet(product);
+      return;
+    }
+
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            '${product.name} ${lang.getText('added to cart', 'கூடையில் சேர்க்கப்பட்டது')}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: VillageTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          action: SnackBarAction(
+            label: lang.getText('View cart', 'கூடை'),
+            textColor: Colors.white,
+            onPressed: () {
+              if (mounted) context.push('/customer/cart');
+            },
+          ),
+        ),
+      );
+  }
+
+  static String? _idOrNull(dynamic value) {
+    final s = value?.toString().trim();
+    if (s == null || s.isEmpty || s == 'null') return null;
+    return s;
+  }
+
+  /// Up to [_maxSuggestions] in-stock products from THIS shop worth showing
+  /// next to [added], most relevant first. Works off the already-loaded
+  /// catalog (no API call) using the category hierarchy the API returns on
+  /// every product (masterProduct.category.id / parentId):
+  ///   1. same leaf category  - e.g. another "Rice Bag" product
+  ///   2. sibling / parent category - e.g. "Millets" when "Rice Bag" was added
+  ///   3. fallback when neither exists: the shop's featured products
+  /// Inside a tier, products sharing a name word (brand/variant line) and a
+  /// similar price come first. The added product and anything already in the
+  /// cart are never suggested.
+  static const int _maxSuggestions = 6;
+
+  List<dynamic> _suggestionsFor(ProductModel added, CartProvider cart) {
     dynamic raw;
     for (final p in _allProducts) {
       if (p['id'].toString() == added.id) {
@@ -5077,47 +5137,24 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         break;
       }
     }
-    final categoryName =
-        raw?['masterProduct']?['category']?['name']?.toString();
-    if (categoryName == null || categoryName.isEmpty) return;
+    final addedCat = raw?['masterProduct']?['category'];
+    final addedCatId = _idOrNull(addedCat?['id']);
+    final addedCatName = addedCat?['name']?.toString().toLowerCase();
+    final addedParentId = _idOrNull(addedCat?['parentId']);
 
-    // The whole point of this sheet is to surface similar products the
-    // customer isn't already looking at. If they're browsing this exact
-    // category right now, every candidate below is already visible in the
-    // grid behind the sheet - showing it again here is just noise.
-    if (_showCategoryDetail &&
-        _selectedCategoryName != null &&
-        _selectedCategoryName!.toLowerCase() == categoryName.toLowerCase()) {
-      return;
-    }
-
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final languageProvider =
-        Provider.of<LanguageProvider>(context, listen: false);
-
-    // Includes the product just added, and anything already in the cart -
-    // shown with its live quantity stepper so the customer can bump it
-    // again right here instead of closing the sheet and reopening it.
     final candidates = _allProducts.where((p) {
-      final cat = p['masterProduct']?['category']?['name']?.toString();
-      if (cat == null || cat.toLowerCase() != categoryName.toLowerCase()) {
-        return false;
-      }
+      if (p['id'].toString() == added.id) return false;
+      if (p['isAvailable'] == false) return false;
       final stock = int.tryParse(p['stockQuantity']?.toString() ?? '0') ?? 0;
       if (stock <= 0) return false;
+      if (cart.getQuantity(p['id'].toString()) > 0) return false;
       return true;
     }).toList();
-    if (candidates.isEmpty) return;
+    if (candidates.isEmpty) return const [];
 
-    // Categories can be broad ("Grocery"), so rank inside the category:
-    // shared name words (English + Tamil) rank highest, plus a small bonus
-    // for a similar price range. Ties keep the original catalog order.
-    //
-    // Pack-size/unit words ("1kg", "500g", "2pack") are excluded from the
-    // token set - two unrelated products that just happen to come in the
-    // same size were matching each other on that alone, producing
-    // suggestions with nothing actually in common with the added item.
-    final unitPattern = RegExp(r'^\d*(kg|g|gm|ml|ltr|litre|l|pc|pcs|piece|pieces|pack|packs|packet|combo|box)$');
+    // Pack-size/unit words ("1kg", "500g", "2pack") are not real similarity.
+    final unitPattern = RegExp(
+        r'^\d*(kg|g|gm|ml|ltr|litre|l|pc|pcs|piece|pieces|pack|packs|packet|combo|box)$');
     Set<String> tokensOf(dynamic p) => [
           p?['customName']?.toString(),
           p?['masterProduct']?['name']?.toString(),
@@ -5132,49 +5169,116 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 !unitPattern.hasMatch(t) &&
                 !RegExp(r'^\d+$').hasMatch(t))
             .toSet();
-
     final addedTokens = tokensOf(raw)
       ..addAll(tokensOf({'customName': added.name}));
-    final addedPrice = double.tryParse(raw?['price']?.toString() ?? '') ?? 0.0;
+    final addedPrice =
+        double.tryParse(raw?['price']?.toString() ?? '') ?? added.price;
 
-    int relevance(dynamic p) {
-      var score = 0;
+    int score(dynamic p) {
+      final cat = p['masterProduct']?['category'];
+      final catId = _idOrNull(cat?['id']);
+      final catName = cat?['name']?.toString().toLowerCase();
+      final parentId = _idOrNull(cat?['parentId']);
+
+      var s = 0;
+      final sameLeaf = (addedCatId != null && catId == addedCatId) ||
+          (addedCatName != null &&
+              addedCatName.isNotEmpty &&
+              catName == addedCatName);
+      if (sameLeaf) {
+        s = 1000;
+      } else if ((addedParentId != null && parentId == addedParentId) ||
+          (addedParentId != null && catId == addedParentId) ||
+          (addedCatId != null && parentId == addedCatId)) {
+        s = 500;
+      } else {
+        return 0;
+      }
       final tokens = tokensOf(p);
       for (final t in addedTokens) {
-        if (tokens.contains(t)) score += 3;
+        if (tokens.contains(t)) s += 3;
       }
       final price = double.tryParse(p['price']?.toString() ?? '') ?? 0.0;
       if (addedPrice > 0 && price > 0) {
         final ratio = price / addedPrice;
-        if (ratio >= 0.5 && ratio <= 2.0) score += 1;
+        if (ratio >= 0.5 && ratio <= 2.0) s += 1;
       }
-      return score;
+      return s;
     }
 
-    final ranked = List.generate(
-        candidates.length, (i) => MapEntry(i, relevance(candidates[i])))
-      ..sort((a, b) => b.value != a.value ? b.value - a.value : a.key - b.key);
-    // A name-word match scores >= 3. Show ONLY name-matched products —
-    // padding with random same-category items reads as "completely wrong",
-    // so with no real match the sheet is skipped entirely. No cap on count:
-    // a whole brand line (e.g. every "Gold Winner" variant) should all show
-    // up, not just the first 8 - the row scrolls horizontally either way.
-    final related = ranked
-        .where((e) => e.value >= 3)
-        .map((e) => candidates[e.key])
-        .toList();
-    if (related.isEmpty) return;
+    final ranked = <MapEntry<int, int>>[];
+    for (var i = 0; i < candidates.length; i++) {
+      final s = score(candidates[i]);
+      if (s > 0) ranked.add(MapEntry(i, s));
+    }
+    ranked.sort(
+        (a, b) => b.value != a.value ? b.value - a.value : a.key - b.key);
+    if (ranked.isNotEmpty) {
+      return ranked
+          .take(_maxSuggestions)
+          .map((e) => candidates[e.key])
+          .toList();
+    }
 
-    showModalBottomSheet(
+    // No category relation at all - fall back to the shop's featured picks.
+    return candidates
+        .where((p) => p['isFeatured'] == true)
+        .take(_maxSuggestions)
+        .toList();
+  }
+
+  ProductModel _suggestionModel(dynamic p, String name, String imageUrl) {
+    final price = double.tryParse(p['price']?.toString() ?? '0') ?? 0.0;
+    final stock = int.tryParse(p['stockQuantity']?.toString() ?? '0') ?? 0;
+    final description = [
+      p['customDescription'],
+      p['displayDescription'],
+      p['description'],
+      p['masterProduct']?['description'],
+    ]
+        .map((value) => value?.toString().trim() ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
+    return ProductModel(
+      id: p['id'].toString(),
+      name: name,
+      description: description,
+      price: price,
+      category: p['masterProduct']?['category']?['name']?.toString() ?? '',
+      shopId: _shop?['shopId']?.toString() ?? widget.shopId.toString(),
+      shopDatabaseId: _shop?['id'] ?? widget.shopId,
+      shopName: _shop?['name']?.toString() ?? 'Shop',
+      images: imageUrl.isNotEmpty ? [imageUrl] : [],
+      stockQuantity: stock,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  static String _rupees(double price) =>
+      '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}';
+
+  /// Compact "Added to cart" confirmation (thumbnail, name, qty, View cart)
+  /// followed - only when there is something relevant - by a horizontal row of
+  /// suggestion cards from [_suggestionsFor]. Dismiss with the drag handle,
+  /// tapping outside, or "Continue shopping".
+  void _showAddedToCartSheet(ProductModel added) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
+    final suggestions = _suggestionsFor(added, cartProvider);
+    final addedImage = added.images.isNotEmpty ? added.images.first : '';
+
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          return SafeArea(
-            child: Column(
+      builder: (sheetContext) => SafeArea(
+        child: Consumer<CartProvider>(
+          builder: (_, cart, __) {
+            final addedQty = cart.getQuantity(added.id);
+            return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -5182,259 +5286,332 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   child: Container(
                     width: 40,
                     height: 4,
-                    margin: const EdgeInsets.only(top: 12, bottom: 12),
+                    margin: const EdgeInsets.only(top: 12, bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
+                // Confirmation row
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    languageProvider.getText(
-                        'You may also need', 'இதுவும் வேண்டுமா?'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 195,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: related.length,
-                    itemBuilder: (context, index) {
-                      final p = related[index];
-                      final name = languageProvider.getDisplayName(p);
-                      final price =
-                          double.tryParse(p['price']?.toString() ?? '0') ?? 0.0;
-                      final stock =
-                          int.tryParse(p['stockQuantity']?.toString() ?? '0') ??
-                              0;
-                      final imageUrl = p['primaryImageUrl']?.toString() ??
-                          p['masterProduct']?['primaryImageUrl']?.toString() ??
-                          '';
-                      final originalPrice = double.tryParse(
-                              p['originalPrice']?.toString() ?? '0') ??
-                          0.0;
-                      final baseWeight = p['baseWeight'] ??
-                          p['masterProduct']?['baseWeight'] ??
-                          1;
-                      final baseUnit = p['baseUnit']?.toString() ??
-                          p['masterProduct']?['baseUnit']?.toString() ??
-                          'unit';
-                      final description = [
-                        p['customDescription'],
-                        p['displayDescription'],
-                        p['description'],
-                        p['masterProduct']?['description'],
-                      ]
-                          .map((value) => value?.toString().trim() ?? '')
-                          .firstWhere((value) => value.isNotEmpty,
-                              orElse: () => '');
-                      final model = ProductModel(
-                        id: p['id'].toString(),
-                        name: name,
-                        description: description,
-                        price: price,
-                        category: categoryName,
-                        shopId: _shop?['shopId']?.toString() ??
-                            widget.shopId.toString(),
-                        shopDatabaseId: _shop?['id'] ?? widget.shopId,
-                        shopName: _shop?['name']?.toString() ?? 'Shop',
-                        images: imageUrl.isNotEmpty ? [imageUrl] : [],
-                        stockQuantity: stock,
-                        createdAt: DateTime.now(),
-                        updatedAt: DateTime.now(),
-                      );
-                      final cartQuantity = cartProvider.getQuantity(model.id);
-                      return Container(
-                        width: 124,
-                        margin: const EdgeInsets.only(right: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECEFF1),
-                          borderRadius: BorderRadius.circular(16),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          color: const Color(0xFFF1F3F4),
+                          child: addedImage.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: ImageUrlHelper.getFullImageUrl(
+                                      addedImage),
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, __, ___) => const Icon(
+                                      Icons.inventory_2,
+                                      color: Colors.grey),
+                                )
+                              : const Icon(Icons.inventory_2,
+                                  color: Colors.grey),
                         ),
-                        padding: const EdgeInsets.all(8),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            GestureDetector(
-                              onTap: () async {
-                                Navigator.of(sheetContext).pop();
-                                await Future<void>.delayed(
-                                    const Duration(milliseconds: 250));
-                                if (mounted) {
-                                  _showProductDetails(
-                                    model,
-                                    '$baseWeight $baseUnit',
-                                    originalPrice,
-                                  );
-                                }
-                              },
-                              child: Container(
-                                height: 72,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
+                            Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded,
+                                    size: 16, color: VillageTheme.primaryGreen),
+                                const SizedBox(width: 4),
+                                Text(
+                                  languageProvider.getText(
+                                      'Added to cart', 'கூடையில் சேர்க்கப்பட்டது'),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: VillageTheme.primaryGreen,
+                                  ),
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: imageUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl:
-                                              ImageUrlHelper.getFullImageUrl(
-                                                  imageUrl),
-                                          fit: BoxFit.cover,
-                                          errorWidget: (_, __, ___) =>
-                                              const Icon(Icons.inventory_2,
-                                                  color: Colors.grey),
-                                        )
-                                      : const Icon(Icons.inventory_2,
-                                          color: Colors.grey),
-                                ),
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 3),
                             Text(
-                              name,
+                              added.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF1A1A1A),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              '₹${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: VillageTheme.primaryGreen,
+                              '${languageProvider.getText('Qty', 'அளவு')} ${addedQty == 0 ? 1 : addedQty}  ·  ${_rupees(added.price)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
                               ),
                             ),
-                            const Spacer(),
-                            if (cartQuantity == 0)
-                              GestureDetector(
-                                onTap: () async {
-                                  await cartProvider.addToCart(model);
-                                  if (sheetContext.mounted) {
-                                    setSheetState(() {});
-                                  }
-                                },
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 26,
-                                  decoration: BoxDecoration(
-                                    color: VillageTheme.primaryGreen,
-                                    borderRadius: BorderRadius.circular(13),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.add_rounded,
-                                          color: Colors.white, size: 14),
-                                      Text(
-                                        'ADD',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else
-                              Container(
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: VillageTheme.primaryGreen,
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    InkWell(
-                                      onTap: () {
-                                        cartProvider.decreaseQuantity(model.id);
-                                        setSheetState(() {});
-                                      },
-                                      borderRadius: BorderRadius.circular(13),
-                                      child: const SizedBox(
-                                        width: 30,
-                                        height: 26,
-                                        child: Icon(Icons.remove,
-                                            color: Colors.white, size: 14),
-                                      ),
-                                    ),
-                                    Container(
-                                      constraints:
-                                          const BoxConstraints(minWidth: 24),
-                                      height: 22,
-                                      alignment: Alignment.center,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Text(
-                                        '$cartQuantity',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    InkWell(
-                                      onTap: () async {
-                                        if (cartQuantity >= stock) {
-                                          ScaffoldMessenger.of(context)
-                                            ..hideCurrentSnackBar()
-                                            ..showSnackBar(SnackBar(
-                                              content:
-                                                  Text('Only $stock available'),
-                                              backgroundColor: Colors.orange,
-                                              duration:
-                                                  const Duration(seconds: 2),
-                                            ));
-                                          return;
-                                        }
-                                        await cartProvider.addToCart(model);
-                                        if (sheetContext.mounted) {
-                                          setSheetState(() {});
-                                        }
-                                      },
-                                      borderRadius: BorderRadius.circular(13),
-                                      child: const SizedBox(
-                                        width: 30,
-                                        height: 26,
-                                        child: Icon(Icons.add,
-                                            color: Colors.white, size: 14),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                           ],
                         ),
-                      );
-                    },
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          if (mounted) context.push('/customer/cart');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: VillageTheme.primaryGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: Text(
+                            languageProvider.getText('View cart', 'கூடை')),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                if (suggestions.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      languageProvider.getText(
+                          'You may also need', 'இதுவும் வேண்டுமா?'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 188,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: suggestions.length,
+                      itemBuilder: (_, index) => _buildSuggestionCard(
+                        sheetContext,
+                        suggestions[index],
+                        cart,
+                        languageProvider,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: Text(languageProvider.getText(
+                          'Continue shopping', 'தொடர்ந்து வாங்கவும்')),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
               ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionCard(
+    BuildContext sheetContext,
+    dynamic p,
+    CartProvider cart,
+    LanguageProvider languageProvider,
+  ) {
+    final name = languageProvider.getDisplayName(p);
+    final imageUrl = p['primaryImageUrl']?.toString() ??
+        p['masterProduct']?['primaryImageUrl']?.toString() ??
+        '';
+    final originalPrice =
+        double.tryParse(p['originalPrice']?.toString() ?? '0') ?? 0.0;
+    final baseWeight =
+        p['baseWeight'] ?? p['masterProduct']?['baseWeight'] ?? 1;
+    final baseUnit = p['baseUnit']?.toString() ??
+        p['masterProduct']?['baseUnit']?.toString() ??
+        'unit';
+    final model = _suggestionModel(p, name, imageUrl);
+    final cartQuantity = cart.getQuantity(model.id);
+
+    Future<void> addOne() async {
+      if (cartQuantity >= model.stockQuantity) {
+        ScaffoldMessenger.of(sheetContext)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text('Only ${model.stockQuantity} available'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ));
+        return;
+      }
+      await cart.addToCart(model);
+    }
+
+    return Container(
+      width: 124,
+      margin: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE6EAED)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () async {
+              Navigator.of(sheetContext).pop();
+              await Future<void>.delayed(const Duration(milliseconds: 250));
+              if (mounted) {
+                _showProductDetails(
+                    model, '$baseWeight $baseUnit', originalPrice);
+              }
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 72,
+                width: double.infinity,
+                color: Colors.white,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: ImageUrlHelper.getFullImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => const Icon(
+                            Icons.inventory_2,
+                            color: Colors.grey),
+                      )
+                    : const Icon(Icons.inventory_2, color: Colors.grey),
+              ),
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 6),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            _rupees(model.price),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: VillageTheme.primaryGreen,
+            ),
+          ),
+          const Spacer(),
+          if (cartQuantity == 0)
+            GestureDetector(
+              onTap: addOne,
+              child: Container(
+                width: double.infinity,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: VillageTheme.primaryGreen,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_rounded, color: Colors.white, size: 14),
+                    Text(
+                      'ADD',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 26,
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  InkWell(
+                    onTap: () => cart.decreaseQuantity(model.id),
+                    borderRadius: BorderRadius.circular(13),
+                    child: const SizedBox(
+                      width: 30,
+                      height: 26,
+                      child:
+                          Icon(Icons.remove, color: Colors.white, size: 14),
+                    ),
+                  ),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 24),
+                    height: 22,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$cartQuantity',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: addOne,
+                    borderRadius: BorderRadius.circular(13),
+                    child: const SizedBox(
+                      width: 30,
+                      height: 26,
+                      child: Icon(Icons.add, color: Colors.white, size: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

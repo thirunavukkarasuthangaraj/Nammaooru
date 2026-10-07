@@ -158,6 +158,10 @@
           color: #4a5568;
           font-weight: 500;
           font-size: 14px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100%;
         }
 
         .verified-icon {
@@ -378,6 +382,42 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
           }
+        }
+      }
+
+      .phone {
+        color: #2d3748;
+        font-weight: 500;
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .joined-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .joined-date {
+          color: #4a5568;
+          font-size: 14px;
+          font-weight: 500;
+        }
+      }
+
+      .new-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: #22c55e;
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        line-height: 14px;
+        vertical-align: middle;
+
+        &.inline {
+          margin-left: 8px;
         }
       }
 

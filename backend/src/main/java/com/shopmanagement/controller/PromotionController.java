@@ -122,9 +122,20 @@ public class PromotionController {
 
         // Enrich promotions with shop name
         List<Map<String, Object>> enrichedPromotions = promotions.stream()
+            // An image-only banner IS its image: with the artwork still
+            // PENDING/REJECTED (or missing) there would be nothing left to
+            // show - no code, no discount - so the row is dropped rather than
+            // handed to the app as an empty card.
+            .filter(promo -> !promo.isImageOnly() || promo.hasApprovedImage())
             .map(promo -> {
                 Map<String, Object> promoMap = new HashMap<>();
                 promoMap.put("id", promo.getId());
+                // PROMO_CODE (default) or IMAGE_BANNER. For IMAGE_BANNER the
+                // code/type/discountValue below are null and linkUrl is the
+                // optional tap target.
+                promoMap.put("bannerType", promo.getBannerType() != null
+                        ? promo.getBannerType().name() : Promotion.BannerType.PROMO_CODE.name());
+                promoMap.put("linkUrl", promo.getLinkUrl());
                 promoMap.put("code", promo.getCode());
                 promoMap.put("title", promo.getTitle());
                 promoMap.put("description", promo.getDescription());
@@ -239,22 +250,25 @@ public class PromotionController {
     public ResponseEntity<Map<String, Object>> createPromotion(
             Authentication authentication,
             @Valid @RequestBody CreatePromotionRequest request) {
-        log.info("Creating new promotion: {}", request.getCode());
+        log.info("Creating new promotion: {} ({})", request.getCode(), request.getBannerType());
+
+        Promotion.BannerType bannerType = resolveBannerType(request.getBannerType(), Promotion.BannerType.PROMO_CODE);
+        if (bannerType == null) {
+            return validationError("bannerType must be PROMO_CODE or IMAGE_BANNER");
+        }
+        ResponseEntity<Map<String, Object>> invalid = validateForBannerType(bannerType, request, null);
+        if (invalid != null) {
+            return invalid;
+        }
 
         Promotion promotion = new Promotion();
-        promotion.setCode(request.getCode().toUpperCase());
+        promotion.setBannerType(bannerType);
         promotion.setTitle(request.getTitle());
         promotion.setDescription(request.getDescription());
-        promotion.setType(Promotion.PromotionType.valueOf(request.getType()));
-        promotion.setDiscountValue(request.getDiscountValue());
-        promotion.setMinimumOrderAmount(request.getMinimumOrderAmount());
-        promotion.setMaximumDiscountAmount(request.getMaximumDiscountAmount());
+        applyBannerTypeFields(promotion, bannerType, request, true);
         promotion.setStartDate(request.getStartDate());
         promotion.setEndDate(request.getEndDate());
         promotion.setStatus(Promotion.PromotionStatus.valueOf(request.getStatus()));
-        promotion.setUsageLimit(request.getUsageLimit());
-        promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
-        promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setIsPublic(request.isApplicableToAllShops());
         if (request.isImageUrlPresent()) {
             promotion.submitImage(request.getImageUrl(), currentUser(authentication), true);
@@ -292,19 +306,29 @@ public class PromotionController {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + id));
 
-        // Update fields - code cannot be changed
+        // A request that doesn't say keeps the row's current kind, so older
+        // clients that never send bannerType can't silently turn a promo code
+        // into an image banner (or vice versa).
+        Promotion.BannerType currentType = promotion.getBannerType() != null
+                ? promotion.getBannerType() : Promotion.BannerType.PROMO_CODE;
+        Promotion.BannerType bannerType = resolveBannerType(request.getBannerType(), currentType);
+        if (bannerType == null) {
+            return validationError("bannerType must be PROMO_CODE or IMAGE_BANNER");
+        }
+        ResponseEntity<Map<String, Object>> invalid = validateForBannerType(bannerType, request, promotion);
+        if (invalid != null) {
+            return invalid;
+        }
+
+        // Update fields - an existing code cannot be changed; it is only set
+        // here when an image banner is being converted into a promo code.
+        promotion.setBannerType(bannerType);
         promotion.setTitle(request.getTitle());
         promotion.setDescription(request.getDescription());
-        promotion.setType(Promotion.PromotionType.valueOf(request.getType()));
-        promotion.setDiscountValue(request.getDiscountValue());
-        promotion.setMinimumOrderAmount(request.getMinimumOrderAmount());
-        promotion.setMaximumDiscountAmount(request.getMaximumDiscountAmount());
+        applyBannerTypeFields(promotion, bannerType, request, promotion.getCode() == null);
         promotion.setStartDate(request.getStartDate());
         promotion.setEndDate(request.getEndDate());
         promotion.setStatus(Promotion.PromotionStatus.valueOf(request.getStatus()));
-        promotion.setUsageLimit(request.getUsageLimit());
-        promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
-        promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
         promotion.setIsPublic(request.isApplicableToAllShops());
         if (request.isImageUrlPresent()) {
             promotion.submitImage(request.getImageUrl(), currentUser(authentication), true);
@@ -441,6 +465,9 @@ public class PromotionController {
                 .map(promo -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("id", promo.getId());
+                    item.put("bannerType", promo.getBannerType() != null
+                            ? promo.getBannerType().name() : Promotion.BannerType.PROMO_CODE.name());
+                    item.put("linkUrl", promo.getLinkUrl());
                     item.put("code", promo.getCode());
                     item.put("title", promo.getTitle());
                     item.put("description", promo.getDescription());
@@ -563,6 +590,109 @@ public class PromotionController {
         return authentication != null ? authentication.getName() : "system";
     }
 
+    // ------------------------------------------------------------------
+    // Banner type (PROMO_CODE vs IMAGE_BANNER) handling for create/update.
+    //
+    // The field-level @NotBlank/@NotNull on code/type/discountValue had to go
+    // (an image banner has none of them), so the per-kind rules live here.
+    // ------------------------------------------------------------------
+
+    /** Parses the request value; defaults when absent; null when unrecognised. */
+    private Promotion.BannerType resolveBannerType(String raw, Promotion.BannerType fallback) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return fallback;
+        }
+        try {
+            return Promotion.BannerType.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Per-kind required fields. Returns a 400 in the same shape the other
+     * handlers here use, or null when the request is fine.
+     *
+     * @param existing the row being updated, or null on create - an image
+     *                 banner that already has artwork needn't resend it, and a
+     *                 promo code that already has a code can't change it
+     */
+    private ResponseEntity<Map<String, Object>> validateForBannerType(
+            Promotion.BannerType bannerType, CreatePromotionRequest request, Promotion existing) {
+
+        if (bannerType == Promotion.BannerType.IMAGE_BANNER) {
+            String newImage = request.isImageUrlPresent() ? request.getImageUrl() : null;
+            boolean hasNewImage = newImage != null && !newImage.trim().isEmpty();
+            boolean keepsExistingImage = !request.isImageUrlPresent()
+                    && existing != null
+                    && existing.getImageUrl() != null
+                    && !existing.getImageUrl().trim().isEmpty();
+            if (!hasNewImage && !keepsExistingImage) {
+                return validationError("An image is required for an image banner");
+            }
+            return null;
+        }
+
+        // PROMO_CODE
+        boolean needsCode = existing == null || existing.getCode() == null;
+        if (needsCode && (request.getCode() == null || request.getCode().trim().isEmpty())) {
+            return validationError("Code is required for a promo code");
+        }
+        if (request.getType() == null || request.getType().trim().isEmpty()) {
+            return validationError("Discount type is required for a promo code");
+        }
+        try {
+            Promotion.PromotionType.valueOf(request.getType().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return validationError("Unknown discount type: " + request.getType());
+        }
+        if (request.getDiscountValue() == null) {
+            return validationError("Discount value is required for a promo code");
+        }
+        return null;
+    }
+
+    /**
+     * Copies the kind-specific fields. For an image banner every redeem-related
+     * field is cleared so the row can never be applied at checkout; for a promo
+     * code they are taken from the request (the code only when setCode is true).
+     */
+    private void applyBannerTypeFields(Promotion promotion, Promotion.BannerType bannerType,
+                                       CreatePromotionRequest request, boolean setCode) {
+        if (bannerType == Promotion.BannerType.IMAGE_BANNER) {
+            promotion.setCode(null);
+            promotion.setType(null);
+            promotion.setDiscountValue(null);
+            promotion.setMinimumOrderAmount(null);
+            promotion.setMaximumDiscountAmount(null);
+            promotion.setUsageLimit(null);
+            promotion.setUsageLimitPerCustomer(null);
+            promotion.setIsFirstTimeOnly(false);
+            promotion.setLinkUrl(request.getLinkUrl() != null && !request.getLinkUrl().trim().isEmpty()
+                    ? request.getLinkUrl().trim() : null);
+            return;
+        }
+
+        if (setCode && request.getCode() != null) {
+            promotion.setCode(request.getCode().trim().toUpperCase());
+        }
+        promotion.setType(Promotion.PromotionType.valueOf(request.getType().trim().toUpperCase()));
+        promotion.setDiscountValue(request.getDiscountValue());
+        promotion.setMinimumOrderAmount(request.getMinimumOrderAmount());
+        promotion.setMaximumDiscountAmount(request.getMaximumDiscountAmount());
+        promotion.setUsageLimit(request.getUsageLimit());
+        promotion.setUsageLimitPerCustomer(request.getUsageLimitPerCustomer());
+        promotion.setIsFirstTimeOnly(request.isFirstTimeOnly());
+        promotion.setLinkUrl(null);
+    }
+
+    private ResponseEntity<Map<String, Object>> validationError(String message) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("statusCode", "1001");
+        errorResponse.put("message", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @Data
     public static class VideoRejectionRequest {
         @Size(max = 500, message = "Reason cannot exceed 500 characters")
@@ -603,7 +733,16 @@ public class PromotionController {
      */
     @Data
     public static class CreatePromotionRequest {
-        @NotBlank(message = "Code is required")
+        // PROMO_CODE (default when absent) or IMAGE_BANNER. Decides which of
+        // the fields below are required - see validateForBannerType().
+        private String bannerType;
+
+        // IMAGE_BANNER only: optional tap-through target (https URL / deep link).
+        @Size(max = 500, message = "Link URL cannot exceed 500 characters")
+        private String linkUrl;
+
+        // Required for PROMO_CODE, must be absent for IMAGE_BANNER - enforced
+        // in the handler, not here, since one DTO serves both kinds.
         @Size(min = 4, max = 20, message = "Code must be between 4 and 20 characters")
         @Pattern(regexp = "^[A-Z0-9]+$", message = "Code must contain only uppercase letters and numbers")
         private String code;
@@ -615,10 +754,10 @@ public class PromotionController {
         @Size(max = 500, message = "Description cannot exceed 500 characters")
         private String description;
 
-        @NotBlank(message = "Type is required")
+        // Required for PROMO_CODE (see above)
         private String type; // PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING
 
-        @NotNull(message = "Discount value is required")
+        // Required for PROMO_CODE (see above)
         @DecimalMin(value = "0.0", message = "Discount value must be positive")
         private BigDecimal discountValue;
 

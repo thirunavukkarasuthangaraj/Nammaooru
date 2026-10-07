@@ -13,10 +13,14 @@ import com.shopmanagement.repository.UserRepository;
 import com.shopmanagement.service.CustomerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -449,24 +453,69 @@ public class CustomerMobileController {
         }
     }
 
-    @GetMapping("/notifications")
-    public ResponseEntity<ApiResponse<List<Notification>>> getNotifications() {
-        try {
-            log.info("Fetching notifications for current user");
+    /**
+     * users.id of the JWT principal, or null when the request is anonymous.
+     * Always derived from the token, never from anything the app caches, so a
+     * phone that switched accounts sees the feed of whoever is logged in now.
+     */
+    private Long currentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        return userRepository.findByUsername(authentication.getName()).map(User::getId).orElse(null);
+    }
 
+    /** customers.id for the current login, or null (order/health-tip rows are keyed by it). */
+    private Long currentCustomerIdOrNull() {
+        try {
             Customer customer = getCurrentCustomer();
-            if (customer == null) {
+            return customer != null ? customer.getId() : null;
+        } catch (Exception e) {
+            log.warn("Could not resolve customer for notification feed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private boolean belongsToCurrentLogin(Notification n, Long userId, Long customerId) {
+        if (n.getRecipientId() == null || n.getRecipientType() == null) return false;
+        switch (n.getRecipientType()) {
+            case USER:
+            case ALL_USERS:
+            case ALL_CUSTOMERS:
+                return n.getRecipientId().equals(userId);
+            case CUSTOMER:
+                return customerId != null && n.getRecipientId().equals(customerId);
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * In-app notification feed for the logged-in user: admin broadcasts
+     * (ALL_CUSTOMERS / ALL_USERS), direct USER notifications and the customer's
+     * own CUSTOMER rows (orders, health tips), newest first, paged.
+     */
+    @GetMapping("/notifications")
+    public ResponseEntity<ApiResponse<List<Notification>>> getNotifications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Long userId = currentUserId();
+            if (userId == null) {
                 return ResponseEntity.status(401)
                     .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
             }
+            Long customerId = currentCustomerIdOrNull();
 
-            List<Notification> notifications = notificationRepository.findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(
-                customer.getId(),
-                Notification.RecipientType.CUSTOMER
-            );
+            int safeSize = Math.max(1, Math.min(size, 100));
+            Page<Notification> feed = notificationRepository.findMobileFeed(
+                    userId, customerId, PageRequest.of(Math.max(0, page), safeSize));
 
-            log.info("Found {} notifications for customer {}", notifications.size(), customer.getId());
-            return ResponseEntity.ok(ApiResponse.success(notifications, "Notifications fetched successfully"));
+            log.info("Notification feed for user {} (customer {}): {} of {} rows (page {})",
+                    userId, customerId, feed.getNumberOfElements(), feed.getTotalElements(), page);
+            return ResponseEntity.ok(ApiResponse.success(feed.getContent(), "Notifications fetched successfully"));
 
         } catch (Exception e) {
             log.error("Error fetching notifications", e);
@@ -475,24 +524,65 @@ public class CustomerMobileController {
         }
     }
 
+    @GetMapping("/notifications/unread-count")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUnreadNotificationCount() {
+        try {
+            Long userId = currentUserId();
+            if (userId == null) {
+                return ResponseEntity.status(401)
+                    .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
+            }
+            long count = notificationRepository.countMobileFeedUnread(userId, currentCustomerIdOrNull());
+            return ResponseEntity.ok(ApiResponse.success(Map.of("unreadCount", count), "Unread count fetched"));
+        } catch (Exception e) {
+            log.error("Error counting unread notifications", e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to count notifications", "NOTIFICATIONS_ERROR"));
+        }
+    }
+
+    @PostMapping("/notifications/{id}/mark-read")
+    @Transactional
+    public ResponseEntity<ApiResponse<String>> markNotificationAsRead(@PathVariable Long id) {
+        try {
+            Long userId = currentUserId();
+            if (userId == null) {
+                return ResponseEntity.status(401)
+                    .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
+            }
+            Optional<Notification> found = notificationRepository.findById(id);
+            if (found.isEmpty() || !belongsToCurrentLogin(found.get(), userId, currentCustomerIdOrNull())) {
+                return ResponseEntity.status(404)
+                    .body(ApiResponse.error("Notification not found", "NOT_FOUND"));
+            }
+            Notification notification = found.get();
+            if (!notification.isRead()) {
+                notification.markAsRead();
+                notificationRepository.save(notification);
+            }
+            return ResponseEntity.ok(ApiResponse.success("", "Notification marked as read"));
+        } catch (Exception e) {
+            log.error("Error marking notification {} as read", id, e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to mark notification as read", "MARK_READ_ERROR"));
+        }
+    }
+
     @PostMapping("/notifications/mark-all-read")
+    @Transactional
     public ResponseEntity<ApiResponse<String>> markAllNotificationsAsRead() {
         try {
             log.info("Marking all notifications as read for current user");
 
-            Customer customer = getCurrentCustomer();
-            if (customer == null) {
+            Long userId = currentUserId();
+            if (userId == null) {
                 return ResponseEntity.status(401)
                     .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
             }
 
-            notificationRepository.markAllAsReadByRecipient(
-                customer.getId(),
-                Notification.RecipientType.CUSTOMER
-            );
-            int updatedCount = 1; // Placeholder count
+            int updatedCount = notificationRepository.markMobileFeedAsRead(userId, currentCustomerIdOrNull());
 
-            log.info("Marked {} notifications as read for customer {}", updatedCount, customer.getId());
+            log.info("Marked {} notifications as read for user {}", updatedCount, userId);
             return ResponseEntity.ok(ApiResponse.success("",
                 String.format("Marked %d notifications as read", updatedCount)));
 
@@ -573,42 +663,4 @@ public class CustomerMobileController {
         }
     }
 
-    @PostMapping("/notifications/{id}/mark-read")
-    public ResponseEntity<ApiResponse<String>> markNotificationAsRead(@PathVariable Long id) {
-        try {
-            log.info("Marking notification {} as read", id);
-
-            Customer customer = getCurrentCustomer();
-            if (customer == null) {
-                return ResponseEntity.status(401)
-                    .body(ApiResponse.error("User not authenticated", "AUTHENTICATION_ERROR"));
-            }
-
-            Optional<Notification> notificationOpt = notificationRepository.findById(id);
-            if (notificationOpt.isEmpty()) {
-                return ResponseEntity.status(404)
-                    .body(ApiResponse.error("Notification not found", "NOTIFICATION_NOT_FOUND"));
-            }
-
-            Notification notification = notificationOpt.get();
-
-            // Check if notification belongs to current customer
-            if (!notification.getRecipientId().equals(customer.getId()) ||
-                notification.getRecipientType() != Notification.RecipientType.CUSTOMER) {
-                return ResponseEntity.status(403)
-                    .body(ApiResponse.error("Access denied", "ACCESS_DENIED"));
-            }
-
-            notification.markAsRead();
-            notificationRepository.save(notification);
-
-            log.info("Notification {} marked as read for customer {}", id, customer.getId());
-            return ResponseEntity.ok(ApiResponse.success("", "Notification marked as read"));
-
-        } catch (Exception e) {
-            log.error("Error marking notification {} as read", id, e);
-            return ResponseEntity.status(500)
-                    .body(ApiResponse.error("Failed to mark notification as read", "MARK_READ_ERROR"));
-        }
-    }
 }

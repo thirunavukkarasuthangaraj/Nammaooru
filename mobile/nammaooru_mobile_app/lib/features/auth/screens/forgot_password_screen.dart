@@ -114,7 +114,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with CodeAu
           height: double.infinity,
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/images/login_background.png'),
+              image: AssetImage('assets/images/login_background.webp'),
               fit: BoxFit.cover,
             ),
           ),

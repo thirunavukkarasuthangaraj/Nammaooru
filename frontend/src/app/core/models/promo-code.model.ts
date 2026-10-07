@@ -1,10 +1,20 @@
+/**
+ * PROMO_CODE - a redeemable code (the default). IMAGE_BANNER - artwork only
+ * for the customer home carousel: no code / type / discountValue, optional
+ * linkUrl opened on tap.
+ */
+export type PromoBannerType = 'PROMO_CODE' | 'IMAGE_BANNER';
+
 export interface PromoCode {
   id: number;
-  code: string;
+  bannerType?: PromoBannerType;
+  linkUrl?: string;
+  // Absent (null) for an IMAGE_BANNER.
+  code?: string;
   title: string;
   description?: string;
-  type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING' | 'BUY_X_GET_Y';
-  discountValue: number;
+  type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING' | 'BUY_X_GET_Y';
+  discountValue?: number;
   minimumOrderAmount?: number;
   maximumDiscountAmount?: number;
   startDate: string;
@@ -75,11 +85,15 @@ export interface PromoCodeStats {
 }
 
 export interface CreatePromoCodeRequest {
-  code: string;
+  // Defaults to PROMO_CODE on the server when omitted.
+  bannerType?: PromoBannerType;
+  linkUrl?: string | null;
+  // Required for PROMO_CODE; omitted/null for IMAGE_BANNER.
+  code?: string | null;
   title: string;
   description?: string;
-  type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING' | 'BUY_X_GET_Y';
-  discountValue: number;
+  type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING' | 'BUY_X_GET_Y' | null;
+  discountValue?: number | null;
   minimumOrderAmount?: number;
   maximumDiscountAmount?: number;
   startDate: string;

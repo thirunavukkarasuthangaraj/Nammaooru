@@ -5,6 +5,7 @@ import com.shopmanagement.common.util.ResponseUtil;
 import com.shopmanagement.dto.user.UserRequest;
 import com.shopmanagement.dto.user.UserUpdateRequest;
 import com.shopmanagement.dto.user.UserResponse;
+import com.shopmanagement.dto.user.CustomerPickerResponse;
 import com.shopmanagement.entity.User;
 import com.shopmanagement.service.UserService;
 import jakarta.validation.Valid;
@@ -151,10 +152,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getUsersByRole(
             @PathVariable String role,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "firstName") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection) {
         log.info("Fetching users with role: {}", role);
         User.UserRole userRole = User.UserRole.valueOf(role.toUpperCase());
-        Page<UserResponse> response = userService.getUsersByRole(userRole, page, size);
+        Page<UserResponse> response = userService.getUsersByRole(userRole, page, size, sortBy, sortDirection);
         return ResponseUtil.paginated(response);
     }
     
@@ -190,6 +193,21 @@ public class UserController {
         log.info("Searching users with term: {}", searchTerm);
         Page<UserResponse> response = userService.searchUsers(searchTerm, page, size);
         return ResponseUtil.paginated(response);
+    }
+
+    /**
+     * Admin customer picker: search app customers (role USER) by name, phone,
+     * email or location (village / area / city / pincode). Returns users.id
+     * as {@code id}, suitable for notification recipientId.
+     */
+    @GetMapping("/search/customers")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> searchCustomerRecipients(
+            @RequestParam String searchTerm,
+            @RequestParam(defaultValue = "20") int limit) {
+        log.info("Searching customer recipients with term: {}", searchTerm);
+        List<CustomerPickerResponse> items = userService.searchCustomerRecipients(searchTerm, limit);
+        return ResponseUtil.list(items);
     }
     
     @GetMapping("/{id}/subordinates")

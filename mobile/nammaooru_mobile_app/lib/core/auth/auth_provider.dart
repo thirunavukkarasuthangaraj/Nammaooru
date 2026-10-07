@@ -248,6 +248,10 @@ class AuthProvider with ChangeNotifier {
     // itself stays on the device and is re-associated by the next login.
     await _unregisterFcmToken();
 
+    // Locally cached FCM messages belong to the account that is leaving; the
+    // next login on this phone must not see them in its Notifications screen.
+    FirebaseNotificationService.clearLocalNotifications();
+
     await AuthService.logout();
     _authState = AuthState.unauthenticated;
     _userRole = null;
@@ -269,6 +273,13 @@ class AuthProvider with ChangeNotifier {
         _userId = await AuthService.getCurrentUserId();
         _authState = AuthState.authenticated;
         _errorMessage = null;
+
+        // Any path that re-establishes a session must re-associate this
+        // phone's FCM token with the current user (idempotent on the backend).
+        FirebaseNotificationService.getToken().catchError((e) {
+          debugPrint('FCM token re-sync on auth refresh failed: $e');
+          return null;
+        });
       } else {
         _authState = AuthState.unauthenticated;
         _userRole = null;

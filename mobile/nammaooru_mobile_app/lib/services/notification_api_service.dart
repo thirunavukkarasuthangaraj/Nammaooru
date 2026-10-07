@@ -211,15 +211,24 @@ class NotificationApiService {
     }
   }
 
-  /// Update FCM token for push notifications
-  Future<Map<String, dynamic>> updateFcmToken(String fcmToken) async {
+  /// Update FCM token for push notifications. deviceId/deviceType let the
+  /// backend retire this phone's previous token when Firebase rotates it.
+  Future<Map<String, dynamic>> updateFcmToken(
+    String fcmToken, {
+    String? deviceId,
+    String? deviceType,
+  }) async {
     try {
       final headers = await _getHeaders();
 
       final response = await http.post(
         Uri.parse('$_baseUrl/customer/notifications/fcm-token'),
         headers: headers,
-        body: json.encode({'fcmToken': fcmToken}),
+        body: json.encode({
+          'fcmToken': fcmToken,
+          if (deviceType != null) 'deviceType': deviceType,
+          if (deviceId != null) 'deviceId': deviceId,
+        }),
       );
 
       if (response.statusCode == 200) {

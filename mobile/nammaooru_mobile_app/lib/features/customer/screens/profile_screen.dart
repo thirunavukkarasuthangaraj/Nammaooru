@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../../app/routes.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/village_theme.dart';
@@ -493,12 +494,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool didPop) async {
+      onPopInvokedWithResult: (bool didPop, _) {
         if (didPop) return;
-        // Navigate to dashboard instead of exiting
-        if (context.mounted) {
-          context.go('/');
-        }
+        // Pop whatever is on top, else back to the Home tab. (This used to
+        // go('/') - the Splash route - which replayed the 3s splash for
+        // guests and relied on the auth redirect for everyone else.)
+        if (context.mounted) AppRouter.handleCustomerBack(context);
       },
       child: Scaffold(
         body: Container(

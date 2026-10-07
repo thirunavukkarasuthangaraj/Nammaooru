@@ -139,6 +139,11 @@
   color: #b0375f;
 }
 
+.chip.kind.image-banner {
+  background: #fff3e0;
+  color: #e65100;
+}
+
 .price-line {
   margin: 0 0 6px;
   font-size: 14px;

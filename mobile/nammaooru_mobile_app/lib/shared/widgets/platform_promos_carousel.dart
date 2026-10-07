@@ -73,6 +73,8 @@ class _PlatformPromosCarouselState extends State<PlatformPromosCarousel> {
   }
 
   void _navigateToShop(PromoCode promo) {
+    // An image-only banner has no code to quote and no shop to open.
+    if (promo.isImageOnly) return;
     // If promo has shopId, navigate to that shop
     if (promo.shopId != null) {
       Navigator.push(

@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { PromoCodeService } from '../../../../core/services/promo-code.service';
 import { SwalService } from '../../../../core/services/swal.service';
-import { PromoCode, CreatePromoCodeRequest } from '../../../../core/models/promo-code.model';
+import { PromoCode, CreatePromoCodeRequest, PromoBannerType } from '../../../../core/models/promo-code.model';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -29,6 +29,12 @@ export class PromoCodeFormComponent implements OnInit {
     { value: 'ACTIVE', label: 'Active', color: 'primary' },
     { value: 'INACTIVE', label: 'Inactive', color: 'warn' }
   ];
+  // Promo code (default) vs. image-only home banner. An image banner has no
+  // code / discount / usage rules - just artwork, dates and an optional link.
+  bannerTypeOptions: { value: PromoBannerType; label: string; icon: string; hint: string }[] = [
+    { value: 'PROMO_CODE', label: 'Promo code', icon: 'confirmation_number', hint: 'A code customers apply at checkout for a discount' },
+    { value: 'IMAGE_BANNER', label: 'Image banner', icon: 'image', hint: 'Artwork only on the home carousel - no code, no discount' }
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -53,6 +59,8 @@ export class PromoCodeFormComponent implements OnInit {
     nextMonth.setMonth(nextMonth.getMonth() + 1);
 
     this.promoForm = this.fb.group({
+      bannerType: ['PROMO_CODE' as PromoBannerType, Validators.required],
+      linkUrl: ['', [Validators.maxLength(500), Validators.pattern(/^(https?:\/\/|[a-z][a-z0-9+.-]*:\/\/).+/i)]],
       code: ['', [
         Validators.required,
         Validators.pattern(/^[A-Z0-9]+$/),
@@ -78,6 +86,9 @@ export class PromoCodeFormComponent implements OnInit {
 
     // Add validation for discount value based on type
     this.promoForm.get('type')?.valueChanges.subscribe(type => {
+      if (this.isImageBanner) {
+        return; // discountValue carries no validators for an image banner
+      }
       const discountControl = this.promoForm.get('discountValue');
       if (type === 'PERCENTAGE') {
         discountControl?.setValidators([Validators.required, Validators.min(0), Validators.max(100)]);
@@ -87,19 +98,77 @@ export class PromoCodeFormComponent implements OnInit {
       discountControl?.updateValueAndValidity();
     });
 
+    this.promoForm.get('bannerType')?.valueChanges.subscribe((bannerType: PromoBannerType) => {
+      this.applyBannerTypeValidators(bannerType);
+    });
+
     // Disable code field in edit mode
     if (this.isEditMode) {
       this.promoForm.get('code')?.disable();
     }
   }
 
+  get isImageBanner(): boolean {
+    return this.promoForm?.get('bannerType')?.value === 'IMAGE_BANNER';
+  }
+
+  /**
+   * Swap the required-ness of the two halves of the form. For an image banner
+   * the code/discount/usage controls are irrelevant (and hidden) so they must
+   * not block submit; the image itself becomes mandatory instead.
+   */
+  private applyBannerTypeValidators(bannerType: PromoBannerType): void {
+    const code = this.promoForm.get('code');
+    const type = this.promoForm.get('type');
+    const discount = this.promoForm.get('discountValue');
+    const minOrder = this.promoForm.get('minimumOrderAmount');
+    const usageLimit = this.promoForm.get('usageLimit');
+    const perCustomer = this.promoForm.get('usageLimitPerCustomer');
+    const imageUrl = this.promoForm.get('imageUrl');
+
+    if (bannerType === 'IMAGE_BANNER') {
+      [code, type, discount, minOrder, usageLimit, perCustomer].forEach(c => {
+        c?.clearValidators();
+        c?.updateValueAndValidity({ emitEvent: false });
+      });
+      imageUrl?.setValidators([Validators.required]);
+      imageUrl?.updateValueAndValidity({ emitEvent: false });
+    } else {
+      code?.setValidators([
+        Validators.required,
+        Validators.pattern(/^[A-Z0-9]+$/),
+        Validators.minLength(4),
+        Validators.maxLength(20)
+      ]);
+      type?.setValidators([Validators.required]);
+      discount?.setValidators(
+        type?.value === 'PERCENTAGE'
+          ? [Validators.required, Validators.min(0), Validators.max(100)]
+          : [Validators.required, Validators.min(0)]
+      );
+      minOrder?.setValidators([Validators.min(0)]);
+      usageLimit?.setValidators([Validators.min(1)]);
+      perCustomer?.setValidators([Validators.min(1)]);
+      imageUrl?.clearValidators();
+      [code, type, discount, minOrder, usageLimit, perCustomer, imageUrl].forEach(c =>
+        c?.updateValueAndValidity({ emitEvent: false })
+      );
+      // A promo code converted back from an image banner needs sane defaults
+      // in the fields that were blanked.
+      if (!type?.value) type?.setValue('PERCENTAGE', { emitEvent: false });
+      if (discount?.value === null || discount?.value === undefined) discount?.setValue(0, { emitEvent: false });
+    }
+  }
+
   populateForm(promo: PromoCode): void {
     this.promoForm.patchValue({
-      code: promo.code,
+      bannerType: promo.bannerType ?? 'PROMO_CODE',
+      linkUrl: promo.linkUrl ?? '',
+      code: promo.code ?? '',
       title: promo.title,
       description: promo.description,
-      type: promo.type,
-      discountValue: promo.discountValue,
+      type: promo.type ?? 'PERCENTAGE',
+      discountValue: promo.discountValue ?? 0,
       minimumOrderAmount: promo.minimumOrderAmount || 0,
       maximumDiscountAmount: promo.maximumDiscountAmount,
       startDate: new Date(promo.startDate),
@@ -114,6 +183,10 @@ export class PromoCodeFormComponent implements OnInit {
       imageUrl: promo.imageUrl,
       videoUrl: promo.videoUrl
     });
+
+    // patchValue above already fired the bannerType subscription, but run it
+    // once more now that every control holds its loaded value.
+    this.applyBannerTypeValidators(promo.bannerType ?? 'PROMO_CODE');
 
     // Show existing image as preview when editing
     if (promo.imageUrl) {
@@ -143,13 +216,31 @@ export class PromoCodeFormComponent implements OnInit {
 
       // Get form value and re-enable code field to include it
       const formValue = this.promoForm.getRawValue();
+      const bannerType: PromoBannerType = formValue.bannerType || 'PROMO_CODE';
 
-      const formData: CreatePromoCodeRequest = {
-        ...formValue,
-        code: formValue.code.toUpperCase(),
-        startDate: this.formatDateToISO(formValue.startDate),
-        endDate: this.formatDateToISO(formValue.endDate)
-      };
+      let formData: CreatePromoCodeRequest;
+      if (bannerType === 'IMAGE_BANNER') {
+        // No code, discount or usage rules travel with an image banner - the
+        // server rejects them anyway, so only send what the banner is.
+        const { code, type, discountValue, minimumOrderAmount, maximumDiscountAmount,
+                usageLimit, usageLimitPerCustomer, firstTimeOnly, ...rest } = formValue;
+        formData = {
+          ...rest,
+          bannerType,
+          linkUrl: formValue.linkUrl?.trim() || null,
+          startDate: this.formatDateToISO(formValue.startDate),
+          endDate: this.formatDateToISO(formValue.endDate)
+        };
+      } else {
+        const { linkUrl, ...rest } = formValue;
+        formData = {
+          ...rest,
+          bannerType,
+          code: (formValue.code || '').toUpperCase(),
+          startDate: this.formatDateToISO(formValue.startDate),
+          endDate: this.formatDateToISO(formValue.endDate)
+        };
+      }
 
       const apiCall = this.isEditMode && this.data.promoCode
         ? this.promoCodeService.updatePromoCode(this.data.promoCode.id, formData)
@@ -173,7 +264,12 @@ export class PromoCodeFormComponent implements OnInit {
       });
     } else {
       this.markFormGroupTouched(this.promoForm);
-      this.showSnackBar('Please fill all required fields correctly', 'error');
+      this.showSnackBar(
+        this.isImageBanner && this.promoForm.get('imageUrl')?.invalid
+          ? 'An image banner needs an image - please upload one'
+          : 'Please fill all required fields correctly',
+        'error'
+      );
     }
   }
 
@@ -194,7 +290,9 @@ export class PromoCodeFormComponent implements OnInit {
       return 'This field is required';
     }
     if (control?.hasError('pattern')) {
-      return 'Only uppercase letters and numbers allowed';
+      return fieldName === 'linkUrl'
+        ? 'Enter a full URL, e.g. https://... or nammaooru://...'
+        : 'Only uppercase letters and numbers allowed';
     }
     if (control?.hasError('minlength')) {
       return `Minimum ${control.errors?.['minlength'].requiredLength} characters`;

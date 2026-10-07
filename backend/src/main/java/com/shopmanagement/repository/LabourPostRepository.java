@@ -59,10 +59,47 @@ public interface LabourPostRepository extends JpaRepository<LabourPost, Long> {
                                                              @Param("category") LabourCategory category,
                                                              @Param("after") LocalDateTime after, Pageable pageable);
 
-    @Query("SELECT p FROM LabourPost p WHERE p.status IN :statuses AND LOWER(p.location) LIKE LOWER(CONCAT('%', :location, '%')) " +
-           "ORDER BY CASE WHEN p.featured = true THEN 0 ELSE 1 END, p.createdAt DESC")
-    Page<LabourPost> findVisibleByLocationFeaturedFirst(@Param("statuses") List<PostStatus> statuses,
-                                                        @Param("location") String location, Pageable pageable);
+    // Fuzzy place-name normaliser used by the public location search. Tamil town
+    // names have no single English spelling - the same place is typed as
+    // "Tirupattur", "TIRUPPATHUR", "Thirupathoor" - so a plain ILIKE on the raw
+    // column misses posts the user can clearly see exist. NORM(x) lower-cases,
+    // strips spaces/punctuation, folds the common transliteration pairs
+    // (th->t, sh->s, oo->u, w->v, ...) and finally collapses doubled letters, so
+    // every spelling above becomes "tirupatur". Both the stored location and each
+    // search token go through the same expression, so the match is symmetric.
+    String NORM_OPEN = "regexp_replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(" +
+            "regexp_replace(lower(coalesce(";
+    String NORM_CLOSE = ", '')), '[^a-z0-9]', '', 'g'), " +
+            "'th','t'),'dh','d'),'bh','b'),'kh','k'),'gh','g'),'ph','p'),'sh','s'),'zh','l'),'oo','u'),'ee','i'),'w','v'), " +
+            "'(.)\\1+', '\\1', 'g')";
+
+    // Every search token (split on whitespace/punctuation by the service) must
+    // appear in the normalised location, in any order, so "Ambur Krishnapuram"
+    // still finds "krisnapuram, Ambur". A token with no Latin letters/digits
+    // (e.g. typed in Tamil script) normalises to '' and would match everything,
+    // so those fall back to a plain case-insensitive substring match on the raw
+    // column. Category is optional (NULL = all).
+    String LOCATION_SEARCH_WHERE =
+            "WHERE lp.status = ANY(CAST(:statuses AS text[])) " +
+            "AND (CAST(:category AS text) IS NULL OR lp.category = CAST(:category AS text)) " +
+            "AND (SELECT bool_and(CASE WHEN " + NORM_OPEN + "t.tok" + NORM_CLOSE + " <> '' " +
+            "THEN " + NORM_OPEN + "lp.location" + NORM_CLOSE + " LIKE '%' || " + NORM_OPEN + "t.tok" + NORM_CLOSE + " || '%' " +
+            "ELSE lp.location ILIKE '%' || t.tok || '%' END) " +
+            "FROM unnest(CAST(:tokens AS text[])) AS t(tok)) ";
+
+    @Query(value = "SELECT * FROM labour_posts lp " + LOCATION_SEARCH_WHERE +
+           "ORDER BY COALESCE(lp.featured, false) DESC, lp.created_at DESC LIMIT :limit OFFSET :offset",
+           nativeQuery = true)
+    List<LabourPost> searchVisibleByLocation(@Param("statuses") String[] statuses,
+                                             @Param("category") String category,
+                                             @Param("tokens") String[] tokens,
+                                             @Param("limit") int limit,
+                                             @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM labour_posts lp " + LOCATION_SEARCH_WHERE, nativeQuery = true)
+    long countVisibleByLocation(@Param("statuses") String[] statuses,
+                                @Param("category") String category,
+                                @Param("tokens") String[] tokens);
 
     long countByStatus(PostStatus status);
 

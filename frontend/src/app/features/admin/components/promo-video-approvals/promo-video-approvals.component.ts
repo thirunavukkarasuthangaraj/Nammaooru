@@ -19,7 +19,8 @@ interface BannerReviewItem {
   kind: 'promo' | 'combo';
   id: number;
   title: string;
-  code: string;
+  /** Empty for an image-only promo banner (no code behind it). */
+  code?: string;
   shopName: string;
   description?: string;
   imageUrl?: string;
@@ -102,7 +103,7 @@ export class PromoVideoApprovalsComponent implements OnInit {
       kind: 'promo',
       id: p.id,
       title: p.title,
-      code: p.code,
+      code: p.bannerType === 'IMAGE_BANNER' ? undefined : (p.code || undefined),
       shopName: p.shopName || 'Platform Offer',
       description: p.description,
       imageUrl: p.imageUrl,

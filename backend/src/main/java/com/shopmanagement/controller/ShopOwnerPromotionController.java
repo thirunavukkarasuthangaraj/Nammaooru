@@ -94,8 +94,18 @@ public class ShopOwnerPromotionController {
 
         log.info("Creating new shop promotion: {} for shop: {}", request.getCode(), shop.getName());
 
+        // @NotBlank already rejects a missing code, but never dereference it
+        // blindly - shop owners only ever create promo codes, not image banners.
+        String code = request.getCode() != null ? request.getCode().trim().toUpperCase() : null;
+        if (code == null || code.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", "1001");
+            errorResponse.put("message", "Promo code is required");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
         // Check if code already exists
-        if (promotionRepository.findByCode(request.getCode().toUpperCase()).isPresent()) {
+        if (promotionRepository.findByCode(code).isPresent()) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("statusCode", "1002");
             errorResponse.put("message", "Promo code already exists");
@@ -103,7 +113,8 @@ public class ShopOwnerPromotionController {
         }
 
         Promotion promotion = Promotion.builder()
-                .code(request.getCode().toUpperCase())
+                .bannerType(Promotion.BannerType.PROMO_CODE)
+                .code(code)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .type(Promotion.PromotionType.valueOf(request.getType()))

@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/auth/auth_service.dart';
+import '../core/services/device_info_service.dart';
 import '../shared/models/notification_model.dart';
 import '../app/routes.dart';
 import 'notification_api_service.dart';
@@ -247,13 +250,23 @@ class FirebaseNotificationService {
 
   /// Convert Firebase message to NotificationModel
   static NotificationModel _convertToNotificationModel(RemoteMessage message) {
+    // The backend tags each push with its notifications.id so the cached copy
+    // and the row fetched from the API are recognised as the same item.
+    final backendId = message.data['notificationId']?.toString();
+    final imageUrl = message.notification?.android?.imageUrl
+        ?? message.notification?.apple?.imageUrl
+        ?? message.data['imageUrl']?.toString();
+
     return NotificationModel(
-      id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: (backendId != null && backendId.isNotEmpty)
+          ? backendId
+          : (message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString()),
       title: message.notification?.title ?? 'New Notification',
       body: message.notification?.body ?? '',
       type: message.data['type'] ?? 'general',
       createdAt: DateTime.now(),
       isRead: false,
+      imageUrl: (imageUrl == null || imageUrl.isEmpty) ? null : imageUrl,
       data: message.data.isNotEmpty ? message.data : null,
     );
   }
@@ -446,13 +459,37 @@ class FirebaseNotificationService {
   /// Send FCM token to backend, retrying transient failures so a flaky
   /// network at login doesn't leave the device unregistered.
   static Future<void> _sendTokenToBackend(String token) async {
+    // No session -> nobody to associate the token with. (onTokenRefresh fires
+    // while logged out too; the next login re-registers via getToken().)
+    final jwt = await AuthService.getAuthToken();
+    if (jwt == null || jwt.isEmpty) {
+      debugPrint('FCM token not registered: no logged-in user yet');
+      return;
+    }
+
+    String? deviceId;
+    try {
+      deviceId = await DeviceInfoService().getDeviceUuid();
+    } catch (e) {
+      debugPrint('Device id unavailable for FCM registration: $e');
+    }
+    final deviceType = kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android');
+
     const maxAttempts = 3;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        final response = await NotificationApiService.instance.updateFcmToken(token);
+        final response = await NotificationApiService.instance.updateFcmToken(
+          token,
+          deviceId: deviceId,
+          deviceType: deviceType,
+        );
 
         if (response['statusCode'] == '0000') {
-          debugPrint('✅ FCM token registered for current user');
+          debugPrint('✅ FCM token registered for current user ($deviceType, $deviceId)');
+          return;
+        }
+        if (response['statusCode'] == '401') {
+          debugPrint('❌ FCM registration rejected: session not valid, will retry after next login');
           return;
         }
         debugPrint('❌ FCM registration API failed (attempt $attempt/$maxAttempts): ${response['message']}');
@@ -579,15 +616,7 @@ class FirebaseNotificationService {
   static void markAsReadLocally(String notificationId) {
     final index = _localNotifications.indexWhere((n) => n.id == notificationId);
     if (index != -1) {
-      _localNotifications[index] = NotificationModel(
-        id: _localNotifications[index].id,
-        title: _localNotifications[index].title,
-        body: _localNotifications[index].body,
-        type: _localNotifications[index].type,
-        createdAt: _localNotifications[index].createdAt,
-        isRead: true,
-        data: _localNotifications[index].data,
-      );
+      _localNotifications[index] = _localNotifications[index].copyWith(isRead: true);
       _persistNotifications();
     }
   }

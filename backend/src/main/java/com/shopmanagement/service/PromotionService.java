@@ -62,12 +62,22 @@ public class PromotionService {
                 promoCode, customerId, deviceUuid, phone);
 
         // 1. Find promotion by code
-        Optional<Promotion> promotionOpt = promotionRepository.findByCode(promoCode);
+        if (promoCode == null || promoCode.trim().isEmpty()) {
+            return PromoCodeValidationResult.error("Invalid promo code");
+        }
+        Optional<Promotion> promotionOpt = promotionRepository.findByCode(promoCode.trim());
         if (promotionOpt.isEmpty()) {
             return PromoCodeValidationResult.error("Invalid promo code");
         }
 
         Promotion promotion = promotionOpt.get();
+
+        // An image-only banner has no code at all (so it cannot be matched
+        // above), but belt and braces: nothing without a type and a discount
+        // value is ever redeemable.
+        if (promotion.isImageOnly() || promotion.getType() == null || promotion.getDiscountValue() == null) {
+            return PromoCodeValidationResult.error("Invalid promo code");
+        }
         String normalizedPhone = normalizePhone(phone);
 
         // 2. Check if promotion is active
@@ -281,8 +291,15 @@ public class PromotionService {
         // Filter out promotions that the user has already used
         return allPromotions.stream()
                 .filter(promotion -> {
+                    // An image-only banner can't be "used", so it is never
+                    // hidden on usage grounds - everyone sees it while live.
+                    if (promotion.isImageOnly()) {
+                        return true;
+                    }
+
                     // Check if promotion has usage restrictions
-                    boolean hasRestrictions = promotion.getIsFirstTimeOnly() ||
+                    boolean firstTimeOnly = Boolean.TRUE.equals(promotion.getIsFirstTimeOnly());
+                    boolean hasRestrictions = firstTimeOnly ||
                                             promotion.getUsageLimitPerCustomer() != null;
 
                     if (!hasRestrictions) {
@@ -293,7 +310,7 @@ public class PromotionService {
                     Boolean hasUsed = promotionUsageRepository.hasUsedPromotion(
                         promotion.getId(), customerId, null, phone);
 
-                    if (hasUsed && promotion.getIsFirstTimeOnly()) {
+                    if (Boolean.TRUE.equals(hasUsed) && firstTimeOnly) {
                         return false; // First-time-only promo already used, hide it
                     }
 

@@ -153,6 +153,9 @@ export class PromoCodeService {
    * Get formatted discount text
    */
   getFormattedDiscount(promo: PromoCode): string {
+    if (this.isImageBanner(promo)) {
+      return 'No discount (image only)';
+    }
     switch (promo.type) {
       case 'PERCENTAGE':
         return `${promo.discountValue}% OFF`;
@@ -165,10 +168,18 @@ export class PromoCodeService {
     }
   }
 
+  /** True for an artwork-only home banner (no code behind it). */
+  isImageBanner(promo: Pick<PromoCode, 'bannerType'>): boolean {
+    return promo.bannerType === 'IMAGE_BANNER';
+  }
+
   /**
    * Get formatted minimum order text
    */
   getFormattedMinOrder(promo: PromoCode): string {
+    if (this.isImageBanner(promo)) {
+      return '-';
+    }
     if (promo.minimumOrderAmount && promo.minimumOrderAmount > 0) {
       return `Min order: ₹${promo.minimumOrderAmount}`;
     }
@@ -285,7 +296,10 @@ export interface ComboReviewItem {
 
 export interface PromoVideoReviewItem {
   id: number;
-  code: string;
+  bannerType?: 'PROMO_CODE' | 'IMAGE_BANNER';
+  linkUrl?: string;
+  // Null for an IMAGE_BANNER.
+  code?: string;
   title: string;
   description?: string;
   imageUrl?: string;

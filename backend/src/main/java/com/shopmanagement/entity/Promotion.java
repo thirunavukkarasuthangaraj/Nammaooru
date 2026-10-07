@@ -31,15 +31,29 @@ public class Promotion {
     @Column(columnDefinition = "TEXT")
     private String description;
     
-    @Column(unique = true, nullable = false, length = 50)
+    // What kind of row this is. A PROMO_CODE carries code/type/discountValue;
+    // an IMAGE_BANNER is pure artwork for the home carousel and has none of
+    // them (NULL in the DB - see V135 and isImageOnly()).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "banner_type", nullable = false, length = 20)
+    @Builder.Default
+    private BannerType bannerType = BannerType.PROMO_CODE;
+
+    // Nullable since V135: NULL for an image-only banner. The DB CHECK
+    // constraint still requires it for a PROMO_CODE row.
+    @Column(unique = true, length = 50)
     private String code;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private PromotionType type;
     
-    @Column(name = "discount_value", nullable = false)
+    @Column(name = "discount_value")
     private BigDecimal discountValue;
+
+    // Optional tap-through target for an image banner (https URL or app deep link).
+    @Column(name = "link_url", length = 500)
+    private String linkUrl;
     
     @Column(name = "minimum_order_amount")
     private BigDecimal minimumOrderAmount;
@@ -152,20 +166,35 @@ public class Promotion {
     private String updatedBy;
     
     // Helper methods
+
+    /**
+     * True for a pure artwork banner: no code to type in at checkout, no
+     * discount to compute. Every code path that redeems a promotion must treat
+     * such a row as "not a promo code" (see canBeUsed / calculateDiscount).
+     */
+    public boolean isImageOnly() {
+        return bannerType == BannerType.IMAGE_BANNER;
+    }
+
     public boolean isActive() {
         LocalDateTime now = LocalDateTime.now();
         return status == PromotionStatus.ACTIVE && 
-               startDate.isBefore(now) && 
-               endDate.isAfter(now) &&
-               (usageLimit == null || usedCount < usageLimit);
+               startDate != null && startDate.isBefore(now) && 
+               endDate != null && endDate.isAfter(now) &&
+               (usageLimit == null || (usedCount != null ? usedCount : 0) < usageLimit);
     }
     
+    /**
+     * Whether this promotion can be applied to an order as a code. An image
+     * banner is never redeemable even while it is live on the carousel.
+     */
     public boolean canBeUsed() {
-        return isActive() && status == PromotionStatus.ACTIVE;
+        return !isImageOnly() && type != null && discountValue != null
+                && isActive() && status == PromotionStatus.ACTIVE;
     }
     
     public boolean hasUsageLeft() {
-        return usageLimit == null || usedCount < usageLimit;
+        return usageLimit == null || (usedCount != null ? usedCount : 0) < usageLimit;
     }
 
     /**
@@ -271,7 +300,10 @@ public class Promotion {
     }
 
     public BigDecimal calculateDiscount(BigDecimal orderAmount) {
-        if (!canBeUsed() || orderAmount.compareTo(minimumOrderAmount != null ? minimumOrderAmount : BigDecimal.ZERO) < 0) {
+        // canBeUsed() already rejects an image banner / a row with no type or
+        // discountValue, so the dereferences below are safe.
+        if (!canBeUsed() || orderAmount == null
+                || orderAmount.compareTo(minimumOrderAmount != null ? minimumOrderAmount : BigDecimal.ZERO) < 0) {
             return BigDecimal.ZERO;
         }
         
@@ -291,6 +323,15 @@ public class Promotion {
     
     public enum PromotionType {
         PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING, BUY_ONE_GET_ONE
+    }
+
+    /**
+     * PROMO_CODE - a redeemable code (the original and default kind).
+     * IMAGE_BANNER - artwork only, for the customer home carousel; no code,
+     * type or discountValue, optionally a linkUrl to open on tap.
+     */
+    public enum BannerType {
+        PROMO_CODE, IMAGE_BANNER
     }
     
     public enum PromotionStatus {

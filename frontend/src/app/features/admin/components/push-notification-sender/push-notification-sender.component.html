@@ -103,13 +103,64 @@
             </mat-error>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" *ngIf="isSpecificUser">
-            <mat-label>Customer ID</mat-label>
-            <input matInput type="number" formControlName="recipientId" placeholder="Enter customer ID">
-            <mat-error *ngIf="notificationForm.get('recipientId')?.hasError('required')">
-              Customer ID is required for specific user
-            </mat-error>
+          <mat-form-field appearance="outline" *ngIf="isSpecificUser" class="customer-search-field">
+            <mat-label>{{ selectedCustomer ? 'Search another customer' : 'Find customer' }}</mat-label>
+            <input matInput
+                   type="text"
+                   [formControl]="customerSearchCtrl"
+                   [matAutocomplete]="customerAuto"
+                   placeholder="Name, phone, email, village / town / pincode"
+                   autocomplete="off">
+            <mat-spinner *ngIf="customerSearching" matSuffix diameter="18" class="customer-search-spinner"></mat-spinner>
+            <mat-icon *ngIf="!customerSearching" matSuffix>search</mat-icon>
+            <mat-hint *ngIf="!selectedCustomer">Type at least {{ CUSTOMER_SEARCH_MIN_CHARS }} characters</mat-hint>
+            <mat-autocomplete #customerAuto="matAutocomplete"
+                              class="customer-autocomplete-panel"
+                              [displayWith]="displayCustomer"
+                              (optionSelected)="onCustomerSelected($event)">
+              <mat-option *ngFor="let customer of customerOptions" [value]="customer" class="customer-option">
+                <div class="customer-option-main">
+                  <span class="customer-option-name">{{ customer.fullName }}</span>
+                  <span class="customer-option-contact" *ngIf="customer.mobileNumber || customer.email">
+                    {{ customer.mobileNumber || customer.email }}
+                  </span>
+                </div>
+                <div class="customer-option-location">
+                  <mat-icon>place</mat-icon>
+                  <span>{{ customer.location || 'No address on file' }}</span>
+                </div>
+              </mat-option>
+              <mat-option *ngIf="customerSearched && !customerSearching && customerOptions.length === 0 && !customerSearchError" disabled>
+                No customers match your search
+              </mat-option>
+              <mat-option *ngIf="customerSearchError" disabled>
+                Search failed. Please try again.
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
+        </div>
+
+        <!-- Selected customer summary (only for SPECIFIC_USER) -->
+        <div class="form-row selected-customer-row" *ngIf="isSpecificUser">
+          <mat-chip-set *ngIf="selectedCustomer" aria-label="Selected customer" class="selected-customer-chips">
+            <mat-chip class="selected-customer-chip" disableRipple (removed)="clearSelectedCustomer()">
+              <mat-icon matChipAvatar>person</mat-icon>
+              <span class="chip-name">{{ selectedCustomer.fullName }}</span>
+              <span class="chip-detail" *ngIf="selectedCustomer.mobileNumber || selectedCustomer.email">
+                &middot; {{ selectedCustomer.mobileNumber || selectedCustomer.email }}
+              </span>
+              <span class="chip-detail" *ngIf="selectedCustomer.location">
+                &middot; {{ selectedCustomer.location }}
+              </span>
+              <button matChipRemove type="button" matTooltip="Clear selected customer" aria-label="Clear selected customer">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip>
+          </mat-chip-set>
+          <p class="recipient-error" *ngIf="showRecipientRequiredError">
+            <mat-icon>error_outline</mat-icon>
+            Please search and select a customer to notify
+          </p>
         </div>
 
         <!-- Location-based targeting (only for ALL_CUSTOMERS) -->
@@ -151,7 +202,7 @@
             <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
             {{ loading ? 'Sending...' : 'Send Notification' }}
           </button>
-          <button mat-button type="button" (click)="notificationForm.reset({priority: 'HIGH', type: 'INFO', recipientType: 'ALL_CUSTOMERS'}); removeImage()" [disabled]="loading">
+          <button mat-button type="button" (click)="resetForm()" [disabled]="loading">
             Reset
           </button>
         </div>
@@ -169,7 +220,7 @@
     <mat-card-content>
       <ul>
         <li><strong>All Customers:</strong> Sends notification to all customers who have the mobile app installed</li>
-        <li><strong>Specific User:</strong> Sends notification to a specific customer by their ID</li>
+        <li><strong>Specific User:</strong> Search a customer by name, phone, email or location (village / town / pincode) and pick them from the list</li>
         <li><strong>Image:</strong> Upload an image to show in the push notification (big picture style on Android)</li>
         <li><strong>Priority Levels:</strong>
           <ul>

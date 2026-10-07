@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
+import '../../../app/routes.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/common_buttons.dart';
 import '../../../shared/widgets/error_widget.dart';
@@ -92,7 +93,7 @@ class _CartScreenState extends State<CartScreen> {
       builder: (context, _) {
         return PopScope(
           canPop: false,
-          onPopInvoked: (didPop) {
+          onPopInvokedWithResult: (didPop, _) {
             if (!didPop) {
               // Leaving mid-tour lets the showcase overlay try to find a
               // target that's no longer in the tree ("inactive element"
@@ -100,8 +101,8 @@ class _CartScreenState extends State<CartScreen> {
               try {
                 ShowCaseWidget.of(context).dismiss();
               } catch (_) {}
-              // Handle device back button - go to dashboard
-              context.go('/customer/dashboard');
+              // Device back: pop to the shop that pushed us, else Home tab
+              AppRouter.handleCustomerBack(context);
             }
           },
           child: Scaffold(
@@ -114,8 +115,8 @@ class _CartScreenState extends State<CartScreen> {
                 try {
                   ShowCaseWidget.of(context).dismiss();
                 } catch (_) {}
-                // When coming from dashboard (bottom nav), go back to dashboard
-                context.go('/customer/dashboard');
+                // Same rule as the device back button
+                AppRouter.handleCustomerBack(context);
               },
             ),
             body: cartProvider.isEmpty

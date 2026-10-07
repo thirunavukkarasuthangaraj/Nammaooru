@@ -11,6 +11,7 @@ import com.shopmanagement.service.FirebaseNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -28,17 +29,29 @@ public class FcmTokenController {
     private final FirebaseNotificationService firebaseNotificationService;
     private final FcmTokenService fcmTokenService;
 
+    /**
+     * The authenticated user, or null when the request carries no (valid) JWT.
+     * /api/customer/** is permitAll, so the app can hit these endpoints while
+     * logged out (e.g. onTokenRefresh before login) - that must be a clean 401,
+     * not a stack trace.
+     */
     private User currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        return userRepository.findByUsername(auth.getName()).orElse(null);
+    }
+
+    private ResponseEntity<?> loginRequired() {
+        return ResponseEntity.status(401).body(ApiResponse.error("Login required to register a device token"));
     }
 
     @PostMapping("/notifications/fcm-token")
     public ResponseEntity<?> updateDeliveryPartnerFcmToken(@RequestBody FcmTokenRequest request) {
         try {
             User user = currentUser();
+            if (user == null) return loginRequired();
             log.info("🔔 Updating FCM token for delivery partner: {} (ID: {}, Role: {})",
                     user.getUsername(), user.getId(), user.getRole());
 
@@ -55,6 +68,7 @@ public class FcmTokenController {
     public ResponseEntity<?> updateFcmToken(@RequestBody FcmTokenRequest request) {
         try {
             User user = currentUser();
+            if (user == null) return loginRequired();
             log.info("Updating FCM token for user: {} (ID: {})", user.getUsername(), user.getId());
 
             fcmTokenService.registerToken(user.getId(), request);
@@ -70,6 +84,7 @@ public class FcmTokenController {
     public ResponseEntity<?> removeFcmToken(@RequestParam String token) {
         try {
             User user = currentUser();
+            if (user == null) return loginRequired();
 
             fcmTokenService.deactivateToken(user.getId(), token);
 
@@ -84,6 +99,7 @@ public class FcmTokenController {
     public ResponseEntity<?> testPushNotification() {
         try {
             User user = currentUser();
+            if (user == null) return loginRequired();
             log.info("Testing push notification for user: {}", user.getUsername());
 
             // Get FCM token for the user

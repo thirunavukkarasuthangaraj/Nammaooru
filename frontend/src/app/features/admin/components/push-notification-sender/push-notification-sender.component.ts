@@ -1,14 +1,18 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { Subject, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { PushNotificationService, PushNotificationRequest } from '../../../../core/services/push-notification.service';
 import { SwalService } from '../../../../core/services/swal.service';
+import { UserService, CustomerPickerResult } from '../../../../core/services/user.service';
 
 @Component({
   selector: 'app-push-notification-sender',
   templateUrl: './push-notification-sender.component.html',
   styleUrls: ['./push-notification-sender.component.scss']
 })
-export class PushNotificationSenderComponent implements OnInit {
+export class PushNotificationSenderComponent implements OnInit, OnDestroy {
   notificationForm!: FormGroup;
   loading = false;
   uploading = false;
@@ -18,20 +22,131 @@ export class PushNotificationSenderComponent implements OnInit {
   priorities: string[] = [];
   radiusOptions = [5, 10, 25, 50, 100];
 
+  // Customer picker (search by name / phone / email / location)
+  readonly CUSTOMER_SEARCH_MIN_CHARS = 2;
+  readonly CUSTOMER_SEARCH_LIMIT = 20;
+  customerSearchCtrl = new FormControl<string | CustomerPickerResult>('');
+  customerOptions: CustomerPickerResult[] = [];
+  customerSearching = false;
+  customerSearchError = false;
+  customerSearched = false;
+  selectedCustomer: CustomerPickerResult | null = null;
+
   // Image upload
   selectedFile: File | null = null;
   imagePreview: string | null = null;
   uploadedImageUrl: string | null = null;
 
+  private destroy$ = new Subject<void>();
+
   constructor(
     private fb: FormBuilder,
     private pushNotificationService: PushNotificationService,
+    private userService: UserService,
     private swal: SwalService
   ) {}
 
   ngOnInit(): void {
     this.initializeForm();
+    this.setupCustomerSearch();
     this.loadEnums();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupCustomerSearch(): void {
+    this.customerSearchCtrl.valueChanges.pipe(
+      takeUntil(this.destroy$),
+      // Selecting an option pushes the object into the control; ignore that.
+      filter((value): value is string => typeof value === 'string'),
+      map(value => value.trim()),
+      tap(term => {
+        if (term.length < this.CUSTOMER_SEARCH_MIN_CHARS) {
+          this.customerOptions = [];
+          this.customerSearched = false;
+          this.customerSearching = false;
+        }
+      }),
+      filter(term => term.length >= this.CUSTOMER_SEARCH_MIN_CHARS),
+      debounceTime(300),
+      distinctUntilChanged(),
+      tap(() => {
+        this.customerSearching = true;
+        this.customerSearchError = false;
+      }),
+      switchMap(term => this.userService.searchCustomerRecipients(term, this.CUSTOMER_SEARCH_LIMIT).pipe(
+        catchError(error => {
+          console.error('Customer search failed:', error);
+          this.customerSearchError = true;
+          return of([] as CustomerPickerResult[]);
+        })
+      ))
+    ).subscribe(results => {
+      this.customerSearching = false;
+      this.customerSearched = true;
+      this.customerOptions = results;
+    });
+  }
+
+  displayCustomer = (value: string | CustomerPickerResult | null): string => {
+    if (!value) {
+      return '';
+    }
+    return typeof value === 'string' ? value : this.customerLabel(value);
+  };
+
+  customerLabel(customer: CustomerPickerResult): string {
+    const contact = customer.mobileNumber || customer.email;
+    return contact ? `${customer.fullName} (${contact})` : customer.fullName;
+  }
+
+  onCustomerSelected(event: MatAutocompleteSelectedEvent): void {
+    const customer = event.option.value as CustomerPickerResult;
+    this.selectedCustomer = customer;
+    this.customerOptions = [];
+    this.customerSearched = false;
+    // The chip below shows the pick; keep the input empty for another search.
+    this.customerSearchCtrl.setValue('', { emitEvent: false });
+    // Same form field the submit code already reads -> payload unchanged.
+    this.notificationForm.get('recipientId')?.setValue(customer.id);
+    this.notificationForm.get('recipientId')?.markAsTouched();
+  }
+
+  clearSelectedCustomer(): void {
+    this.selectedCustomer = null;
+    this.customerOptions = [];
+    this.customerSearched = false;
+    this.customerSearchCtrl.setValue('', { emitEvent: false });
+    const recipientIdControl = this.notificationForm.get('recipientId');
+    recipientIdControl?.setValue(null);
+    recipientIdControl?.markAsTouched();
+  }
+
+  private resetCustomerPicker(): void {
+    this.selectedCustomer = null;
+    this.customerOptions = [];
+    this.customerSearched = false;
+    this.customerSearchError = false;
+    this.customerSearching = false;
+    this.customerSearchCtrl.setValue('', { emitEvent: false });
+  }
+
+  get showRecipientRequiredError(): boolean {
+    const control = this.notificationForm.get('recipientId');
+    return !!control && control.hasError('required') && control.touched && !this.selectedCustomer;
+  }
+
+  resetForm(): void {
+    this.notificationForm.reset({
+      priority: 'HIGH',
+      type: 'INFO',
+      recipientType: 'ALL_CUSTOMERS'
+    });
+    this.resetCustomerPicker();
+    this.removeImage();
   }
 
   private initializeForm(): void {
@@ -56,6 +171,7 @@ export class PushNotificationSenderComponent implements OnInit {
       } else {
         recipientIdControl?.clearValidators();
         recipientIdControl?.setValue(null);
+        this.resetCustomerPicker();
       }
       recipientIdControl?.updateValueAndValidity();
     });
@@ -180,12 +296,7 @@ export class PushNotificationSenderComponent implements OnInit {
       next: (response) => {
         this.loading = false;
         this.swal.toast('Push notification sent successfully!', 'success');
-        this.notificationForm.reset({
-          priority: 'HIGH',
-          type: 'INFO',
-          recipientType: 'ALL_CUSTOMERS'
-        });
-        this.removeImage();
+        this.resetForm();
       },
       error: (error) => {
         this.loading = false;

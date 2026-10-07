@@ -41,7 +41,7 @@
   </div>
 
   <div class="table-container">
-    <mat-table [dataSource]="dataSource" matSort class="users-table">
+    <mat-table [dataSource]="dataSource" matSort matSortActive="createdAt" matSortDirection="desc" class="users-table">
       <!-- Full Name Column -->
       <ng-container matColumnDef="fullName">
         <mat-header-cell *matHeaderCellDef mat-sort-header>Name</mat-header-cell>
@@ -51,8 +51,8 @@
               <mat-icon>person</mat-icon>
             </div>
             <div class="user-details">
-              <span class="user-name">{{ user.fullName }}</span>
-              <span class="username">@{{ user.username }}</span>
+              <span class="user-name" [matTooltip]="user.fullName">{{ user.fullName }}<span class="new-badge inline" *ngIf="isNewUser(user)">NEW</span></span>
+              <span class="username" [matTooltip]="'Username: ' + user.username">@{{ user.username }}</span>
             </div>
           </div>
         </mat-cell>
@@ -63,9 +63,18 @@
         <mat-header-cell *matHeaderCellDef mat-sort-header>Email</mat-header-cell>
         <mat-cell *matCellDef="let user">
           <div class="email-info">
-            <span class="email">{{ user.email }}</span>
+            <span class="email" [matTooltip]="user.email">{{ user.email }}</span>
             <mat-icon class="verified-icon" color="primary" *ngIf="user.emailVerified" matTooltip="Email verified">verified</mat-icon>
           </div>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Mobile Number Column (customer view) -->
+      <ng-container matColumnDef="mobileNumber">
+        <mat-header-cell *matHeaderCellDef mat-sort-header>Phone</mat-header-cell>
+        <mat-cell *matCellDef="let user">
+          <span class="phone" *ngIf="user.mobileNumber; else noPhoneTemplate">{{ user.mobileNumber }}</span>
+          <ng-template #noPhoneTemplate><span class="no-login">No phone</span></ng-template>
         </mat-cell>
       </ng-container>
 
@@ -127,6 +136,22 @@
                 <span class="status-text">{{ getDisplayStatus(user) }}</span>
               </mat-chip>
             </ng-template>
+          </div>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Joined Column -->
+      <ng-container matColumnDef="createdAt">
+        <mat-header-cell *matHeaderCellDef mat-sort-header>Joined</mat-header-cell>
+        <mat-cell *matCellDef="let user">
+          <div class="joined-container">
+            <span class="joined-date" *ngIf="user.createdAt; else noJoinedTemplate">
+              {{ user.createdAt | date:'dd/MM/yyyy' }}
+            </span>
+            <ng-template #noJoinedTemplate>
+              <span class="no-login">Unknown</span>
+            </ng-template>
+            <span class="new-badge" *ngIf="isNewUser(user)" matTooltip="Registered in the last 7 days">NEW</span>
           </div>
         </mat-cell>
       </ng-container>

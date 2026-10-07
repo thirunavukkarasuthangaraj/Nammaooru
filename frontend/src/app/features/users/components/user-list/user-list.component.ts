@@ -4,6 +4,8 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Observable, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { UserService, UserResponse } from '../../../../core/services/user.service';
 import { SwalService } from '../../../../core/services/swal.service';
 import { DeliveryPartnerService } from '../../../delivery/services/delivery-partner.service';
@@ -44,7 +46,7 @@ export class UserListComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-  displayedColumns: string[] = ['fullName', 'email', 'role', 'department', 'status', 'lastLogin', 'actions'];
+  displayedColumns: string[] = ['fullName', 'email', 'role', 'department', 'status', 'createdAt', 'lastLogin', 'actions'];
   dataSource = new MatTableDataSource<UserResponse>();
   originalData: UserResponse[] = [];
   loading = false;
@@ -52,6 +54,11 @@ export class UserListComponent implements OnInit {
   roleFilter = '';
   statusFilter = '';
   documentStatus: Map<number, boolean> = new Map(); // Track if delivery partner has documents
+
+  /** Backend page size used while loading every user (newest first). */
+  private static readonly FETCH_PAGE_SIZE = 200;
+  /** Users created within this many days get a "New" badge. */
+  private static readonly NEW_USER_DAYS = 7;
   
   roleOptions = [
     { value: '', label: 'All Roles' },
@@ -88,6 +95,10 @@ export class UserListComponent implements OnInit {
     if (routeRole) {
       this.roleFilter = routeRole;
     }
+    // Customers have no department; their phone number is what admins look up.
+    if (this.roleFilter === 'USER') {
+      this.displayedColumns = ['fullName', 'email', 'mobileNumber', 'status', 'createdAt', 'lastLogin', 'actions'];
+    }
     this.loadUsers();
   }
 
@@ -98,17 +109,10 @@ export class UserListComponent implements OnInit {
 
   loadUsers(): void {
     this.loading = true;
-    
-    // Use role-specific API if role filter is set
-    const apiCall = this.roleFilter ? 
-      this.userService.getUsersByRole(this.roleFilter, 0, 100) : 
-      this.userService.getAllUsers(0, 100);
-    
-    apiCall.subscribe({
-      next: (response) => {
-        console.log('✅ Users API SUCCESS:', response); // Debug log
-        console.log('Real API Users data:', response.content); // Debug log
-        this.originalData = response.content;
+
+    this.fetchAllUsers(0, []).subscribe({
+      next: (users) => {
+        this.originalData = users;
         this.dataSource.data = [...this.originalData];
 
         // Check document status for delivery partners
@@ -121,180 +125,31 @@ export class UserListComponent implements OnInit {
       },
       error: (error) => {
         console.error('❌ Error loading users from API:', error);
-        console.log('🔄 Falling back to mock data...');
-        this.loadMockData();
+        this.originalData = [];
+        this.dataSource.data = [];
         this.loading = false;
+        this.swal.toast('Could not load users. Please refresh and try again.', 'error');
       }
     });
   }
 
-  private loadMockData(): void {
-    const mockUsers: any[] = [
-      {
-        id: 1,
-        username: 'superadmin',
-        email: 'admin@nammaooru.com',
-        firstName: 'Super',
-        lastName: 'Admin',
-        fullName: 'Super Admin',
-        role: 'SUPER_ADMIN',
-        status: 'ACTIVE',
-        department: 'Administration',
-        designation: 'System Administrator',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 2,
-        username: 'adminuser',
-        email: 'admin@management.com',
-        firstName: 'Admin',
-        lastName: 'User',
-        fullName: 'Admin User',
-        role: 'ADMIN',
-        status: 'ACTIVE',
-        department: 'Management',
-        designation: 'Platform Administrator',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 3,
-        username: 'rajeshkumar',
-        email: 'rajesh@annamalai.com',
-        firstName: 'Rajesh',
-        lastName: 'Kumar',
-        fullName: 'Rajesh Kumar',
-        role: 'SHOP_OWNER',
-        status: 'ACTIVE',
-        department: 'Operations',
-        designation: 'Shop Owner',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 4,
-        username: 'priyasharma',
-        email: 'priya@example.com',
-        firstName: 'Priya',
-        lastName: 'Sharma',
-        fullName: 'Priya Sharma',
-        role: 'USER',
-        status: 'ACTIVE',
-        department: 'Customer',
-        designation: 'Customer',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 5,
-        username: 'csmanager',
-        email: 'support@nammaooru.com',
-        firstName: 'Customer',
-        lastName: 'Support',
-        fullName: 'Customer Support Manager',
-        role: 'CUSTOMER_SERVICE',
-        status: 'ACTIVE',
-        department: 'Customer Service',
-        designation: 'Support Manager',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 6,
-        username: 'deliveryboy1',
-        email: 'delivery1@nammaooru.com',
-        firstName: 'Ravi',
-        lastName: 'Delivery',
-        fullName: 'Ravi Delivery',
-        role: 'DELIVERY_PARTNER',
-        status: 'ACTIVE',
-        department: 'Logistics',
-        designation: 'Delivery Partner',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 7,
-        username: 'opsmanager',
-        email: 'ops@nammaooru.com',
-        firstName: 'Operations',
-        lastName: 'Manager',
-        fullName: 'Operations Manager',
-        role: 'MANAGER',
-        status: 'ACTIVE',
-        department: 'Operations',
-        designation: 'Operations Manager',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 8,
-        username: 'employee1',
-        email: 'emp1@nammaooru.com',
-        firstName: 'John',
-        lastName: 'Employee',
-        fullName: 'John Employee',
-        role: 'EMPLOYEE',
-        status: 'ACTIVE',
-        department: 'Operations',
-        designation: 'Operations Executive',
-        isActive: true,
-        emailVerified: true,
-        lastLogin: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 9,
-        username: 'inactiveuser',
-        email: 'inactive@example.com',
-        firstName: 'Inactive',
-        lastName: 'User',
-        fullName: 'Inactive User',
-        role: 'USER',
-        status: 'INACTIVE',
-        department: 'Customer',
-        designation: 'Customer',
-        isActive: false,
-        emailVerified: false,
-        lastLogin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 10,
-        username: 'pendinguser',
-        email: 'pending@example.com',
-        firstName: 'Pending',
-        lastName: 'Verification',
-        fullName: 'Pending Verification',
-        role: 'USER',
-        status: 'PENDING_VERIFICATION',
-        department: 'Customer',
-        designation: 'Customer',
-        isActive: false,
-        emailVerified: false,
-        lastLogin: '',
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
+  /**
+   * Loads every page from the backend, newest users first, so recently
+   * onboarded users are never cut off by a single-page limit.
+   */
+  private fetchAllUsers(page: number, acc: UserResponse[]): Observable<UserResponse[]> {
+    const size = UserListComponent.FETCH_PAGE_SIZE;
+    const apiCall = this.roleFilter
+      ? this.userService.getUsersByRole(this.roleFilter, page, size, 'createdAt', 'desc')
+      : this.userService.getAllUsers(page, size, 'createdAt', 'desc');
 
-    this.originalData = mockUsers as any;
-    this.dataSource.data = [...this.originalData];
-    this.swal.toast('Loaded mock user data - API not available', 'warning');
+    return apiCall.pipe(
+      switchMap(response => {
+        const all = [...acc, ...response.content];
+        const hasMore = response.content.length > 0 && page + 1 < response.totalPages;
+        return hasMore ? this.fetchAllUsers(page + 1, all) : of(all);
+      })
+    );
   }
 
   applyFilter(): void {
@@ -490,6 +345,19 @@ export class UserListComponent implements OnInit {
       return 'Inactive';
     }
     return user.status === 'ACTIVE' ? 'Active' : (user.status || 'Active').replace('_', ' ');
+  }
+
+  /** True when the user registered within the last few days. */
+  isNewUser(user: UserResponse): boolean {
+    if (!user.createdAt) {
+      return false;
+    }
+    const created = new Date(user.createdAt).getTime();
+    if (isNaN(created)) {
+      return false;
+    }
+    const ageMs = Date.now() - created;
+    return ageMs >= 0 && ageMs < UserListComponent.NEW_USER_DAYS * 24 * 60 * 60 * 1000;
   }
 
   getStatusTooltip(user: UserResponse): string {

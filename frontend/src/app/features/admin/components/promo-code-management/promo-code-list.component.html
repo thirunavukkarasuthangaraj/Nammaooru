@@ -37,8 +37,13 @@
           <ng-container matColumnDef="code">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Code</th>
             <td mat-cell *matCellDef="let promo">
-              <div class="promo-code-badge">
+              <div class="promo-code-badge" *ngIf="!isImageBanner(promo)">
                 {{ promo.code }}
+              </div>
+              <div class="promo-code-badge image-banner-badge" *ngIf="isImageBanner(promo)"
+                   matTooltip="Artwork-only home banner - no code to redeem">
+                <mat-icon>image</mat-icon>
+                No code
               </div>
             </td>
           </ng-container>
@@ -60,9 +65,14 @@
           <ng-container matColumnDef="type">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
             <td mat-cell *matCellDef="let promo">
-              <mat-chip [class]="'type-chip type-' + promo.type.toLowerCase()">
-                {{ promo.type.replace('_', ' ') }}
-              </mat-chip>
+              <div class="type-chips">
+                <mat-chip [class]="'type-chip kind-chip ' + (isImageBanner(promo) ? 'kind-image_banner' : 'kind-promo_code')">
+                  {{ isImageBanner(promo) ? 'Image banner' : 'Promo code' }}
+                </mat-chip>
+                <mat-chip *ngIf="promo.type" [class]="'type-chip type-' + promo.type.toLowerCase()">
+                  {{ promo.type.replace('_', ' ') }}
+                </mat-chip>
+              </div>
             </td>
           </ng-container>
 
@@ -91,7 +101,7 @@
           <ng-container matColumnDef="usage">
             <th mat-header-cell *matHeaderCellDef>Usage</th>
             <td mat-cell *matCellDef="let promo">
-              <div class="usage-info">
+              <div class="usage-info" *ngIf="!isImageBanner(promo)">
                 {{ getUsageText(promo) }}
                 <mat-icon
                   class="stats-icon"
@@ -100,6 +110,7 @@
                   bar_chart
                 </mat-icon>
               </div>
+              <span class="usage-na" *ngIf="isImageBanner(promo)">-</span>
             </td>
           </ng-container>
 
@@ -140,7 +151,7 @@
                   <mat-icon>edit</mat-icon>
                   <span>Edit</span>
                 </button>
-                <button mat-menu-item (click)="openStatsDialog(promo)">
+                <button mat-menu-item (click)="openStatsDialog(promo)" *ngIf="!isImageBanner(promo)">
                   <mat-icon>bar_chart</mat-icon>
                   <span>View Stats</span>
                 </button>

@@ -144,6 +144,32 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Find by recipient ID and type with ordering
     List<Notification> findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(Long recipientId, Notification.RecipientType recipientType);
 
+    // Customer app feed. Two id spaces are in play: admin broadcasts and direct
+    // user notifications are stored against users.id (USER / ALL_USERS /
+    // ALL_CUSTOMERS), while order and health-tip rows are stored against
+    // customers.id (CUSTOMER). ALL_SHOP_OWNERS rows hold shop ids and ADMIN rows
+    // are for the web console, so neither is part of this feed.
+    @Query("SELECT n FROM Notification n WHERE n.isActive = true " +
+           "AND n.status <> 'DELETED' AND n.status <> 'ARCHIVED' AND (" +
+           "(n.recipientId = :userId AND n.recipientType IN ('USER', 'ALL_USERS', 'ALL_CUSTOMERS')) OR " +
+           "(n.recipientId = :customerId AND n.recipientType = 'CUSTOMER')) " +
+           "ORDER BY n.createdAt DESC")
+    Page<Notification> findMobileFeed(@Param("userId") Long userId,
+                                      @Param("customerId") Long customerId,
+                                      Pageable pageable);
+
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.isActive = true AND n.status = 'UNREAD' AND (" +
+           "(n.recipientId = :userId AND n.recipientType IN ('USER', 'ALL_USERS', 'ALL_CUSTOMERS')) OR " +
+           "(n.recipientId = :customerId AND n.recipientType = 'CUSTOMER'))")
+    long countMobileFeedUnread(@Param("userId") Long userId, @Param("customerId") Long customerId);
+
+    @Modifying
+    @Query("UPDATE Notification n SET n.status = 'READ', n.readAt = CURRENT_TIMESTAMP " +
+           "WHERE n.status = 'UNREAD' AND (" +
+           "(n.recipientId = :userId AND n.recipientType IN ('USER', 'ALL_USERS', 'ALL_CUSTOMERS')) OR " +
+           "(n.recipientId = :customerId AND n.recipientType = 'CUSTOMER'))")
+    int markMobileFeedAsRead(@Param("userId") Long userId, @Param("customerId") Long customerId);
+
     // Find distinct health tips sent (one per unique message, most recent first)
     @Query("SELECT n FROM Notification n WHERE n.type = 'HEALTH_TIP' AND n.isActive = true " +
            "AND n.id IN (SELECT MIN(n2.id) FROM Notification n2 WHERE n2.type = 'HEALTH_TIP' AND n2.isActive = true GROUP BY n2.message) " +

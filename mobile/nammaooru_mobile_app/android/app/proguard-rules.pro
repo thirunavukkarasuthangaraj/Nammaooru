@@ -6,13 +6,13 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 
-# Firebase
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
-
-# Google Maps
--keep class com.google.android.gms.maps.** { *; }
--keep interface com.google.android.gms.maps.** { *; }
+# Firebase / Google Play services / Google Maps
+# No blanket -keep here on purpose. Every Firebase and play-services AAR ships
+# its own consumer R8 rules (SafeParcelable, ReflectedParcelable, Maps, Auth,
+# Location, FCM ...), which Gradle merges automatically. The old
+# `-keep class com.google.android.gms.** { *; }` / `com.google.firebase.**`
+# rules forced ~1.2 MB of unused GMS/Firebase code (fido, wallet, common,
+# internal) into classes.dex unshrunk and unobfuscated.
 
 # Google Play Core (required for split/deferred components)
 -keep class com.google.android.play.core.** { *; }

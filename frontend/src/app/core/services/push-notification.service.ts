@@ -100,7 +100,9 @@ export class PushNotificationService {
       message: request.message,
       priority: request.priority,
       type: request.type,
-      recipientType: 'SPECIFIC_USER',
+      // Backend RecipientType enum has no SPECIFIC_USER; the picker returns
+      // users.id, which is what USER rows and FCM token lookups are keyed by.
+      recipientType: 'USER',
       recipientId: request.recipientId,
       sendPush: true
     };

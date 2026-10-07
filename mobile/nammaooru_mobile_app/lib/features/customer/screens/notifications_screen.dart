@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,7 @@ import '../../../services/notification_api_service.dart';
 import '../../../services/firebase_notification_service.dart';
 import '../../../core/theme/village_theme.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
@@ -27,10 +30,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isMarkingAllRead = false;
   int _currentPage = 0;
   static const int _pageSize = 20;
+  Timer? _refreshDebounce;
+  late final void Function(NotificationModel) _firebaseListener;
 
   @override
   void initState() {
     super.initState();
+    _firebaseListener = _onPushReceived;
     _loadNotifications();
     _setupFirebaseListener();
     _scrollController.addListener(_onScroll);
@@ -38,6 +44,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   void dispose() {
+    _refreshDebounce?.cancel();
+    FirebaseNotificationService.removeListener(_firebaseListener);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -50,31 +58,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _setupFirebaseListener() {
-    // Listen for new Firebase notifications
-    FirebaseNotificationService.addListener((notification) {
-      if (mounted) {
-        setState(() {
-          // Add new notification to the top of the list
-          _notifications.insert(0, notification);
-          // Keep only latest 100 notifications
-          if (_notifications.length > 100) {
-            _notifications.removeAt(100);
-          }
-        });
+    // Listen for new Firebase notifications while this screen is open
+    FirebaseNotificationService.addListener(_firebaseListener);
+  }
 
-        // Show snackbar for new notification
-        Helpers.showSnackBar(
-          context,
-          '🔔 ${notification.title}',
-          isError: false,
-        );
+  /// A push arrived while the app is in the foreground: show it at the top
+  /// immediately, then re-fetch from the backend so the entry carries the
+  /// stored row (id, image, full message) and stays consistent after a refresh.
+  void _onPushReceived(NotificationModel notification) {
+    if (!mounted) return;
+    setState(() {
+      if (!_isAlreadyListed(notification)) {
+        _notifications.insert(0, notification);
+      }
+      if (_notifications.length > 100) {
+        _notifications.removeRange(100, _notifications.length);
+      }
+    });
+
+    Helpers.showSnackBar(
+      context,
+      '🔔 ${notification.title}',
+      isError: false,
+    );
+
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(const Duration(seconds: 2), () {
+      if (mounted && !_isLoading) {
+        _loadNotifications(showSpinner: false);
       }
     });
   }
 
-  Future<void> _loadNotifications() async {
+  /// True when [candidate] (usually a locally cached FCM message) is already
+  /// represented in the list: same id (backend tags pushes with notificationId),
+  /// or same title + body delivered within a few minutes of a backend row.
+  bool _isAlreadyListed(NotificationModel candidate) {
+    return _notifications.any((n) => _sameNotification(n, candidate));
+  }
+
+  static bool _sameNotification(NotificationModel a, NotificationModel b) {
+    if (a.id == b.id) return true;
+    if (a.title != b.title || a.body != b.body) return false;
+    return a.createdAt.difference(b.createdAt).abs() < const Duration(minutes: 10);
+  }
+
+  Future<void> _loadNotifications({bool showSpinner = true}) async {
     setState(() {
-      _isLoading = true;
+      if (showSpinner) _isLoading = true;
       _currentPage = 0;
       _hasMoreData = true;
     });
@@ -93,10 +124,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             _notifications = _notificationApi.parseNotifications(notificationsData);
             _hasMoreData = notificationsData.length >= _pageSize;
 
-            // Merge with Firebase local notifications (avoid duplicates)
+            // Merge with Firebase local notifications (avoid duplicates - a push
+            // and its backend row are the same item)
             final firebaseNotifications = FirebaseNotificationService.getLocalNotifications();
             for (final fbNotification in firebaseNotifications) {
-              if (!_notifications.any((n) => n.id == fbNotification.id)) {
+              if (!_isAlreadyListed(fbNotification)) {
                 _notifications.add(fbNotification);
               }
             }
@@ -149,7 +181,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
             // Add only non-duplicate notifications
             for (final notification in newNotifications) {
-              if (!_notifications.any((n) => n.id == notification.id)) {
+              if (!_isAlreadyListed(notification)) {
                 _notifications.add(notification);
               }
             }
@@ -224,15 +256,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _updateNotificationReadStatus(String notificationId, bool isRead) {
     final index = _notifications.indexWhere((n) => n.id == notificationId);
     if (index != -1) {
-      _notifications[index] = NotificationModel(
-        id: _notifications[index].id,
-        title: _notifications[index].title,
-        body: _notifications[index].body,
-        type: _notifications[index].type,
-        createdAt: _notifications[index].createdAt,
-        isRead: isRead,
-        data: _notifications[index].data,
-      );
+      _notifications[index] = _notifications[index].copyWith(isRead: isRead);
     }
   }
 
@@ -264,17 +288,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           } else {
             // If API failed, update UI locally
             setState(() {
-              _notifications = _notifications.map((notification) =>
-                NotificationModel(
-                  id: notification.id,
-                  title: notification.title,
-                  body: notification.body,
-                  type: notification.type,
-                  createdAt: notification.createdAt,
-                  isRead: true,
-                  data: notification.data,
-                )
-              ).toList();
+              _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
             });
             Helpers.showSnackBar(context, 'Marked as read locally', isError: false);
           }
@@ -361,15 +375,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       setState(() {
         _notifications = _notifications.map((notification) {
           if (readIds.contains(notification.id)) {
-            return NotificationModel(
-              id: notification.id,
-              title: notification.title,
-              body: notification.body,
-              type: notification.type,
-              createdAt: notification.createdAt,
-              isRead: true,
-              data: notification.data,
-            );
+            return notification.copyWith(isRead: true);
           }
           return notification;
         }).toList();
@@ -418,9 +424,114 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         context.go('/customer/marketplace');
         break;
       default:
-        // Stay on notifications screen (just mark as read)
+        // Nothing to navigate to: show the full message and image here.
+        _showNotificationDetail(notification);
         break;
     }
+  }
+
+  /// Full-content view (title, complete message, image) for announcements and
+  /// promotions that do not deep-link anywhere.
+  void _showNotificationDetail(NotificationModel notification) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: notification.hasImage ? 0.75 : 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.95,
+          builder: (_, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  if (notification.hasImage) ...[
+                    _buildNotificationImage(notification, borderRadius: 16),
+                    const SizedBox(height: 16),
+                  ],
+                  Text(
+                    notification.title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time_rounded, size: 14, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatTime(notification.createdAt),
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SelectableText(
+                    notification.body,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 16:9 rounded image; only called when [notification.hasImage].
+  Widget _buildNotificationImage(NotificationModel notification, {double borderRadius = 12}) {
+    final url = ImageUrlHelper.getFullImageUrl(notification.imageUrl);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            color: const Color(0xFFF0F0F0),
+            child: const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4CAF50)),
+              ),
+            ),
+          ),
+          errorWidget: (_, __, ___) => Container(
+            color: const Color(0xFFF0F0F0),
+            child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 32),
+          ),
+        ),
+      ),
+    );
   }
 
   String? _getRouteForCategory(String category) {
@@ -653,7 +764,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                       const SizedBox(height: 4),
 
-                      // Body text
+                      // Full message (admin announcements are often several
+                      // lines of Tamil; truncating hides the offer details)
                       Text(
                         notification.body,
                         style: TextStyle(
@@ -661,9 +773,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           color: Colors.grey.shade700,
                           height: 1.3,
                         ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
                       ),
+
+                      // Image attached in the admin sender
+                      if (notification.hasImage) ...[
+                        const SizedBox(height: 10),
+                        _buildNotificationImage(notification),
+                      ],
 
                       const SizedBox(height: 8),
 

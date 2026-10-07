@@ -56,6 +56,11 @@ public class FeaturedPostsService {
         try {
             var promos = promotionRepository.findAllPublicActive(LocalDateTime.now());
             promos = promotionService.filterPromotionsByShopProximity(promos, lat, lng);
+            // Same rule as /api/promotions/active: an image-only banner whose
+            // artwork isn't approved has nothing to show, so it is dropped.
+            promos = promos.stream()
+                    .filter(p -> !p.isImageOnly() || p.hasApprovedImage())
+                    .toList();
             var limitedPromos = promos.size() > 10 ? promos.subList(0, 10) : promos;
             result.put("promotions", limitedPromos.stream().map(this::mapPromotion).toList());
         } catch (Exception e) {
@@ -362,6 +367,11 @@ public class FeaturedPostsService {
     private Map<String, Object> mapPromotion(Promotion p) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", p.getId());
+        // PROMO_CODE or IMAGE_BANNER; for the latter code/type/discountValue
+        // are null and linkUrl is the optional tap target.
+        m.put("bannerType", p.getBannerType() != null
+                ? p.getBannerType().name() : Promotion.BannerType.PROMO_CODE.name());
+        m.put("linkUrl", p.getLinkUrl());
         m.put("title", p.getTitle());
         m.put("description", p.getDescription());
         m.put("code", p.getCode());

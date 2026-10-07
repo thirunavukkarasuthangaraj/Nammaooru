@@ -72,6 +72,15 @@ export interface UserRequest {
   passwordChangeRequired?: boolean;
 }
 
+/** Row from GET /api/users/search/customers — `id` is users.id (notification recipientId). */
+export interface CustomerPickerResult {
+  id: number;
+  fullName: string;
+  mobileNumber: string | null;
+  email: string | null;
+  location: string | null;
+}
+
 export interface PageResponse<T> {
   content: T[];
   totalElements: number;
@@ -252,10 +261,12 @@ export class UserService {
     );
   }
 
-  getUsersByRole(role: string, page: number = 0, size: number = 10): Observable<PageResponse<UserResponse>> {
+  getUsersByRole(role: string, page: number = 0, size: number = 10, sortBy: string = 'firstName', sortDirection: string = 'asc'): Observable<PageResponse<UserResponse>> {
     const params = new HttpParams()
       .set('page', page.toString())
-      .set('size', size.toString());
+      .set('size', size.toString())
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
 
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/role/${role}`, { params }).pipe(
       map(response => {
@@ -316,6 +327,27 @@ export class UserService {
           size: paginatedData.pageSize || paginatedData.size || size,
           number: paginatedData.currentPage || paginatedData.number || page
         };
+      }),
+      catchError(error => throwError(() => error))
+    );
+  }
+
+  /**
+   * Search app customers (role USER) by name, phone, email or location
+   * (village / area / city / pincode). Used by admin customer pickers.
+   */
+  searchCustomerRecipients(searchTerm: string, limit: number = 20): Observable<CustomerPickerResult[]> {
+    const params = new HttpParams()
+      .set('searchTerm', searchTerm)
+      .set('limit', limit.toString());
+
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/search/customers`, { params }).pipe(
+      map(response => {
+        if (ApiResponseHelper.isError(response)) {
+          throw new Error(ApiResponseHelper.getErrorMessage(response));
+        }
+        const data = response.data;
+        return (data?.items || data?.content || []) as CustomerPickerResult[];
       }),
       catchError(error => throwError(() => error))
     );

@@ -2,6 +2,7 @@ import '../features/customer/screens/transport/where_is_bus_screen.dart';
 import '../features/customer/screens/transport/transport_driver_screen.dart';
 import '../features/customer/screens/transport/transport_owner_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/role_guard.dart';
 import '../features/auth/screens/splash_screen.dart';
@@ -70,6 +71,34 @@ class AppRouter {
   /// those pushes, and one observer can't serve two navigators.
   static final RouteObserver<ModalRoute<void>> shellRouteObserver =
       RouteObserver<ModalRoute<void>>();
+
+  /// Path of the Home tab. Back from any other customer screen lands here.
+  static const String customerHome = '/customer/dashboard';
+
+  /// The one back-navigation rule for everything inside the customer shell -
+  /// used by the shell's own PopScope and by the tab screens' PopScopes and
+  /// app-bar back arrows, so the behaviour is the same no matter how a screen
+  /// was reached (bottom nav, a menu, a push from another screen, a deep link):
+  ///
+  ///  1. Something is stacked on top (a screen pushed inside the shell, or a
+  ///     dialog on the root navigator) -> pop it, like a normal back.
+  ///  2. Nothing to pop and we are not on Home -> switch to the Home tab with
+  ///     go(), the same call the bottom nav makes, so the selected tab updates.
+  ///  3. Already on Home with nothing to pop -> leave the app. (Home normally
+  ///     handles this itself with its double-tap-to-exit PopScope, which the
+  ///     router consults before the shell; this is only the fallback.)
+  static void handleCustomerBack(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    if (router.routerDelegate.currentConfiguration.uri.path != customerHome) {
+      router.go(customerHome);
+      return;
+    }
+    SystemNavigator.pop();
+  }
 
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
@@ -323,9 +352,39 @@ class _CustomerShellState extends State<CustomerShell> {
 
         final showBottomNav = visibleItems.length >= 2;
 
-        return Scaffold(
-          body: widget.child,
-          bottomNavigationBar: showBottomNav
+        // System back inside the shell. Tabs are switched with go(), which
+        // REPLACES the shell navigator's single page, so there is never a
+        // page underneath Cart/Profile/Orders to pop back to: when the tab
+        // screen had no PopScope of its own (or Android's predictive back
+        // decided Flutter wasn't handling back, see the listener below) the
+        // press fell through to the OS and closed the app. This PopScope sits
+        // on the ROOT navigator's route for the whole shell, so go_router
+        // reaches it after the shell navigator declined to pop, and it is
+        // never torn down by a tab switch.
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) AppRouter.handleCustomerBack(context);
+          },
+          child: Scaffold(
+            // targetSdk 36 turns Android's predictive back on by default. The
+            // OS then only forwards back presses to Flutter while the framework
+            // reports it can handle them, and the shell's nested Navigator
+            // re-reports "cannot handle" (its stack is one page deep and that
+            // page may have no PopScope) after every tab switch, overriding the
+            // PopScope above - the OS then finishes the activity without
+            // Flutter ever seeing the press. Inside the shell back is ALWAYS
+            // handled here (pop / go Home / Home's own exit), so rewrite that
+            // report, exactly as Flutter's Navigator does for its own children.
+            body: NotificationListener<NavigationNotification>(
+              onNotification: (notification) {
+                if (notification.canHandlePop) return false;
+                const NavigationNotification(canHandlePop: true).dispatch(context);
+                return true;
+              },
+              child: widget.child,
+            ),
+            bottomNavigationBar: showBottomNav
               ? BottomNavigationBar(
                   currentIndex: selectedIndex,
                   onTap: (index) {
@@ -355,6 +414,7 @@ class _CustomerShellState extends State<CustomerShell> {
                   }).toList(),
                 )
               : null,
+          ),
         );
       },
     );

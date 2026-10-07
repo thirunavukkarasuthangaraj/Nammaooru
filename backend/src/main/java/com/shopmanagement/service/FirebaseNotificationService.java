@@ -1,8 +1,14 @@
 package com.shopmanagement.service;
 
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.ApnsFcmOptions;
+import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
 import com.shopmanagement.entity.Customer;
 import com.shopmanagement.entity.UserFcmToken;
@@ -61,11 +67,15 @@ public class FirebaseNotificationService {
         }
     }
 
-    public void sendPromotionalNotification(String title, String message, String customerToken) {
-        sendPromotionalNotification(title, message, customerToken, null);
+    public boolean sendPromotionalNotification(String title, String message, String customerToken) {
+        return sendPromotionalNotification(title, message, customerToken, null);
     }
 
-    public void sendPromotionalNotification(String title, String message, String customerToken, String imageUrl) {
+    /**
+     * @return true when FCM accepted the message; false when it failed (dead
+     *         tokens are deactivated as a side effect, see sendPushNotification).
+     */
+    public boolean sendPromotionalNotification(String title, String message, String customerToken, String imageUrl) {
         try {
             Map<String, String> data = new HashMap<>();
             data.put("type", "promotion");
@@ -75,20 +85,29 @@ public class FirebaseNotificationService {
             }
 
             sendPushNotification(customerToken, title, message, data, imageUrl);
+            return true;
 
         } catch (Exception e) {
-            log.error("Error sending promotional notification", e);
+            log.error("Error sending promotional notification: {}", rootMessage(e));
+            return false;
         }
     }
 
-    public void sendNotificationWithData(String title, String message, String token, Map<String, String> data) {
-        sendNotificationWithData(title, message, token, data, null);
+    public boolean sendNotificationWithData(String title, String message, String token, Map<String, String> data) {
+        return sendNotificationWithData(title, message, token, data, null);
     }
 
-    public void sendNotificationWithData(String title, String message, String token, Map<String, String> data, String imageUrl) {
+    /**
+     * @return true when FCM accepted the message; false when it failed (dead
+     *         tokens are deactivated as a side effect, see sendPushNotification).
+     */
+    public boolean sendNotificationWithData(String title, String message, String token, Map<String, String> data, String imageUrl) {
         try {
             if (data == null) {
                 data = new HashMap<>();
+            } else {
+                // Callers may share one map across many tokens; never mutate theirs
+                data = new HashMap<>(data);
             }
             if (!data.containsKey("timestamp")) {
                 data.put("timestamp", String.valueOf(System.currentTimeMillis()));
@@ -97,9 +116,19 @@ public class FirebaseNotificationService {
                 data.put("imageUrl", imageUrl);
             }
             sendPushNotification(token, title, message, data, imageUrl);
+            return true;
         } catch (Exception e) {
-            log.error("Error sending notification with data", e);
+            log.error("Error sending notification with data: {}", rootMessage(e));
+            return false;
         }
+    }
+
+    private static String rootMessage(Throwable t) {
+        Throwable cur = t;
+        while (cur.getCause() != null && cur.getCause() != cur) {
+            cur = cur.getCause();
+        }
+        return cur.getClass().getSimpleName() + ": " + cur.getMessage();
     }
 
     /**
@@ -182,8 +211,10 @@ public class FirebaseNotificationService {
                     .setTitle(title)
                     .setBody(body);
 
+            boolean hasImage = imageUrl != null && !imageUrl.isEmpty();
+
             // Add image to notification if provided
-            if (imageUrl != null && !imageUrl.isEmpty()) {
+            if (hasImage) {
                 notificationBuilder.setImage(imageUrl);
                 log.info("🖼️ Adding image to notification: {}", imageUrl);
             }
@@ -195,11 +226,28 @@ public class FirebaseNotificationService {
             data.put("playSound", "true");
 
             // Create message
-            Message message = Message.builder()
+            Message.Builder messageBuilder = Message.builder()
                     .setToken(token)
                     .setNotification(notification)
-                    .putAllData(data)
-                    .build();
+                    .putAllData(data);
+
+            if (hasImage) {
+                // Android shows the picture only when it is on the AndroidNotification
+                // (the top-level Notification.image alone is ignored by many devices);
+                // iOS needs mutable-content + fcm_options.image for the service extension.
+                messageBuilder
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setNotification(AndroidNotification.builder()
+                                        .setImage(imageUrl)
+                                        .build())
+                                .build())
+                        .setApnsConfig(ApnsConfig.builder()
+                                .setAps(Aps.builder().setMutableContent(true).build())
+                                .setFcmOptions(ApnsFcmOptions.builder().setImage(imageUrl).build())
+                                .build());
+            }
+
+            Message message = messageBuilder.build();
 
             log.info("📤 Sending message to Firebase Cloud Messaging...");
 
@@ -209,20 +257,45 @@ public class FirebaseNotificationService {
             log.info("🎉 Firebase notification sent successfully! Message ID: {}", response);
             log.info("📱 Notification should now appear on the device");
 
-        } catch (Exception e) {
-            // Check if it's an UNREGISTERED token error
-            if (e.getMessage() != null && (e.getMessage().contains("UNREGISTERED") || e.getMessage().contains("Requested entity was not found"))) {
-                log.warn("🔄 FCM token is invalid/expired. Deactivating token: {}...", token.substring(0, Math.min(30, token.length())));
-                // Deactivate the invalid token so it won't be used again
+        } catch (FirebaseMessagingException e) {
+            if (isDeadTokenError(e)) {
+                // Token no longer belongs to an installed app (uninstall, data clear,
+                // rotation). Firebase returns "NotRegistered"/UNREGISTERED; the row must
+                // be deactivated or every future push to this user silently dies here.
+                log.warn("🔄 FCM token is dead ({} / {}). Deactivating token: {}...",
+                        e.getMessagingErrorCode(), e.getMessage(),
+                        token.substring(0, Math.min(30, token.length())));
                 deactivateInvalidToken(token);
             } else {
-                log.error("❌ Error sending push notification via Firebase Admin SDK", e);
-                log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
+                log.error("❌ Error sending push notification via Firebase Admin SDK (code {}): {}",
+                        e.getMessagingErrorCode(), e.getMessage());
             }
-
-            // Re-throw as runtime exception so the caller can handle it
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            log.error("❌ Error sending push notification via Firebase Admin SDK", e);
+            log.error("💡 Check Firebase configuration, FCM token validity, and internet connection");
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * True when FCM says the registration token itself is unusable, so the row
+     * should be deactivated. Covers the v1 error codes (UNREGISTERED, and
+     * INVALID_ARGUMENT which FCM returns for malformed/foreign tokens) plus the
+     * legacy message strings ("NotRegistered", "registration-token-not-registered").
+     */
+    static boolean isDeadTokenError(FirebaseMessagingException e) {
+        MessagingErrorCode code = e.getMessagingErrorCode();
+        if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
+            return true;
+        }
+        String msg = e.getMessage();
+        if (msg == null) return false;
+        String lower = msg.toLowerCase();
+        return lower.contains("notregistered")
+                || lower.contains("registration-token-not-registered")
+                || lower.contains("unregistered")
+                || lower.contains("requested entity was not found");
     }
 
     private String getNotificationTitle(String status) {

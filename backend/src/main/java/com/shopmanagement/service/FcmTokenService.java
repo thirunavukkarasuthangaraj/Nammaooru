@@ -66,14 +66,30 @@ public class FcmTokenService {
                 }
             }
         } else {
-            // Token rotated by Firebase: deactivate this user's old tokens for the same device
-            if (request.getDeviceId() != null) {
-                userFcmTokenRepository.findByUserIdAndIsActiveTrue(userId).stream()
-                        .filter(row -> request.getDeviceId().equals(row.getDeviceId()))
-                        .forEach(row -> {
-                            row.setIsActive(false);
-                            userFcmTokenRepository.save(row);
-                        });
+            // Token rotated by Firebase (or app reinstalled): this user's older
+            // active tokens for the same physical device are dead weight. With a
+            // deviceId we match on it (older app builds sent none, so a row with
+            // no deviceId and the same deviceType is treated as this phone too).
+            // Without any deviceId, "same deviceType, registered earlier" is the
+            // same phone: one phone holds one token, and a dead token left active
+            // is exactly what every later push to this user fails against.
+            String deviceType = request.getDeviceType() != null ? request.getDeviceType() : "android";
+            LocalDateTime now = LocalDateTime.now();
+            for (UserFcmToken row : userFcmTokenRepository.findByUserIdAndIsActiveTrue(userId)) {
+                boolean sameDevice;
+                if (request.getDeviceId() != null) {
+                    sameDevice = request.getDeviceId().equals(row.getDeviceId())
+                            || (row.getDeviceId() == null && deviceType.equalsIgnoreCase(row.getDeviceType()));
+                } else {
+                    sameDevice = deviceType.equalsIgnoreCase(row.getDeviceType())
+                            && (row.getUpdatedAt() == null || !row.getUpdatedAt().isAfter(now));
+                }
+                if (sameDevice) {
+                    row.setIsActive(false);
+                    userFcmTokenRepository.save(row);
+                    log.info("FCM token rotated: deactivated older token row {} of user {} ({}, deviceId={})",
+                            row.getId(), userId, row.getDeviceType(), row.getDeviceId());
+                }
             }
             entity = new UserFcmToken();
             entity.setUserId(userId);
