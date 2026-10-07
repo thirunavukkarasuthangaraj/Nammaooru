@@ -2184,12 +2184,35 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
         gradient: LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF3D9140)], begin: Alignment.topLeft, end: Alignment.bottomRight),
       ),
       child: Row(children: [
-        Expanded(child: Text(lang.appName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5))),
-        TextButton(onPressed: () => lang.toggleLanguage(), style: TextButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.white12), child: Text(lang.showTamil ? 'English' : 'தமிழ்')),
-        const SizedBox(width: 8),
+        // Logo badge: white disc with the brand house mark, like the mockup
+        Container(
+          width: 40, height: 40,
+          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+          child: const Icon(Icons.home_rounded, color: Color(0xFF2E7D32), size: 24),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(lang.appName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5))),
+        // Outlined language pill with a dropdown caret
+        OutlinedButton(
+          onPressed: () => lang.toggleLanguage(),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white54),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(lang.showTamil ? 'English' : 'தமிழ்', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+          ]),
+        ),
+        const SizedBox(width: 10),
         IconButton.filledTonal(
           tooltip: lang.getText('Notifications', 'அறிவிப்புகள்'),
-          style: IconButton.styleFrom(backgroundColor: Colors.white12, foregroundColor: Colors.white),
+          style: IconButton.styleFrom(backgroundColor: Colors.white24, foregroundColor: Colors.white, fixedSize: const Size(44, 44)),
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
           icon: const Icon(Icons.notifications_none_rounded),
         ),
@@ -2562,46 +2585,36 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       // Same fixed tile height as the real tiles — width-independent
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 96,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        mainAxisExtent: _serviceTileHeight,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
       children: List.generate(4, (index) => Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: const Color(0xFFF3F5F3),
+          borderRadius: BorderRadius.circular(22),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              Column(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(width: 80, height: 14, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4))),
-                  const SizedBox(height: 4),
-                  Container(width: 60, height: 10, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4))),
+                  Container(width: 70, height: 14, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4))),
+                  const SizedBox(height: 6),
+                  Container(width: 56, height: 10, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4))),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       )),
     );
@@ -2633,6 +2646,63 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     return isTamil ? _tourDescriptions[key]![1] : _tourDescriptions[key]![0];
   }
 
+  // Service tile: fixed height so a 2-line title + 2-line subtitle (Tamil
+  // glyphs are tall) can never overflow on a narrow screen.
+  static const double _serviceTileHeight = 108;
+
+  // Short one-liner shown under each service title (en, ta)
+  static const Map<String, List<String>> _serviceSubtitles = {
+    'grocery':        ['Daily needs delivered to your home',  'தினசரி தேவைகள் வீட்டுக்கே'],
+    'food':           ['Hot food from local kitchens',        'உள்ளூர் சமையலில் சூடான உணவு'],
+    'marketplace':    ['Buy & sell used items',               'பழைய பொருட்கள் வாங்க & விற்க'],
+    'farmer':         ['Fresh from our farmers',              'விவசாயிகளிடம் இருந்து நேரடியாக'],
+    'labours':        ['Find skilled local workers',          'திறமையான தொழிலாளர்கள்'],
+    'travels':        ['Buses, cars, vans and more',          'பேருந்து, கார், வேன் மற்றும் பல'],
+    'parcels':        ['Safe & reliable moving services',     'பாதுகாப்பான பேக்கிங் & மூவிங்'],
+    'real-estate':    ['Buy, Sell or Rent properties',        'சொத்து வாங்க, விற்க, வாடகை'],
+    'rentals':        ['Find or list rental items',           'வாடகைக்கு எடுக்க / விட'],
+    'womens-corner':  ["Women products & services",           'பெண்கள் பொருட்கள் & சேவைகள்'],
+    'village':        ['Panchayat & local info',              'பஞ்சாயத்து & உள்ளூர் தகவல்'],
+    'panchayat':      ['Panchayat & local info',              'பஞ்சாயத்து & உள்ளூர் தகவல்'],
+    'jobs':           ['Find jobs near you',                  'அருகில் வேலை வாய்ப்புகள்'],
+    'bus':            ['Live bus timings & tracking',         'பேருந்து நேரம் & கண்காணிப்பு'],
+    'transport':      ['Track your bus live',                 'பேருந்தை நேரலையில் கண்காணிக்க'],
+    'local-shops':    ['Shops around your village',           'உங்கள் ஊர் கடைகள்'],
+    'shops':          ['Shops around your village',           'உங்கள் ஊர் கடைகள்'],
+  };
+
+  // Bundled service pictures (cropped from the home mockup), keyed by a
+  // route fragment. Preferred over the backend imageUrl so the home grid
+  // always shows the same artwork.
+  static const Map<String, String> _serviceAssets = {
+    'grocery':       'assets/images/services/grocery.png',
+    'labours':       'assets/images/services/labours.png',
+    'farmer':        'assets/images/services/farmer.png',
+    'womens-corner': 'assets/images/services/womens_corner.png',
+    'real-estate':   'assets/images/services/real_estate.png',
+    'parcels':       'assets/images/services/parcels.png',
+    'travels':       'assets/images/services/travels.png',
+    'rentals':       'assets/images/services/rentals.png',
+  };
+
+  String? _getServiceAsset(String? route) {
+    if (route == null) return null;
+    for (final entry in _serviceAssets.entries) {
+      if (route.contains(entry.key)) return entry.value;
+    }
+    return null;
+  }
+
+  String _getServiceSubtitle(String? route, bool isTamil) {
+    if (route == null) return '';
+    final key = _serviceSubtitles.keys.firstWhere(
+      (k) => route.contains(k),
+      orElse: () => '',
+    );
+    if (key.isEmpty) return '';
+    return isTamil ? _serviceSubtitles[key]![1] : _serviceSubtitles[key]![0];
+  }
+
   Widget _buildDynamicCategories(LanguageProvider languageProvider) {
     final isTamil = languageProvider.currentLanguage == 'ta';
     return Column(
@@ -2645,9 +2715,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
           // aspect ratio, so narrow screens can never overflow
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisExtent: 96,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+            mainAxisExtent: _serviceTileHeight,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           children: _dynamicFeatures.map((feature) {
             final featureName = feature['featureName']?.toString() ?? '';
@@ -2659,9 +2729,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
             final tile = _buildModernCategoryTile(
               icon: _mapIcon(feature['icon'], route: feature['route']?.toString()),
               title: title,
-              subtitle: '',
+              subtitle: _getServiceSubtitle(feature['route']?.toString(), isTamil),
               color: _parseColor(feature['color']),
               imageUrl: feature['imageUrl']?.toString(),
+              assetPath: _getServiceAsset(feature['route']?.toString()),
               onTap: () => _navigateToFeature(feature['route']),
             );
             if (tourKey == null || desc.isEmpty) return tile;
@@ -2762,7 +2833,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
                   child: Text(
                     lang.getText('Nearby shops', 'அருகிலுள்ள கடைகள்'),
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF1A1A1A),
                     ),
@@ -2770,13 +2841,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
                 ),
                 TextButton(
                   onPressed: () => context.push('/customer/shops'),
-                  child: Text(
-                    lang.getText('See all', 'அனைத்தும்'),
-                    style: const TextStyle(
-                      color: VillageTheme.primaryGreen,
-                      fontWeight: FontWeight.w600,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(
+                      lang.getText('See all', 'அனைத்தும்'),
+                      style: const TextStyle(
+                        color: VillageTheme.primaryGreen,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.chevron_right_rounded, size: 20, color: VillageTheme.primaryGreen),
+                  ]),
                 ),
               ],
             ),
@@ -2807,34 +2883,63 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     required Color color,
     required VoidCallback onTap,
     String? imageUrl,
+    String? assetPath,
   }) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final tint = Color.lerp(color, dark ? const Color(0xFF202923) : Colors.white, dark ? 0.85 : 0.93)!;
+    // Pastel card tinted from the service colour (soft wash on light theme,
+    // deeper wash on dark), a stronger tint for the picture disc and the
+    // chevron disc so they lift off the card - matches the home mockup.
+    final cardTint = Color.lerp(color, dark ? const Color(0xFF202923) : Colors.white, dark ? 0.82 : 0.90)!;
+    final discTint = Color.lerp(color, dark ? const Color(0xFF202923) : Colors.white, dark ? 0.65 : 0.78)!;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
     return DepthPress(child: Material(
-      color: dark ? tint : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: dark ? Colors.white12 : const Color(0xFFE8ECE8))),
+      color: cardTint,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(color: dark ? Colors.white10 : color.withOpacity(0.10)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(ImageUrlHelper.getFullImageUrl(imageUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(icon, color: Colors.white, size: 26)))
-                    : Icon(icon, color: Colors.white, size: 26),
+          padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+          child: Row(children: [
+            // Picture disc (service image from the backend, icon fallback)
+            Container(
+              width: 60, height: 60,
+              decoration: BoxDecoration(color: discTint, shape: BoxShape.circle),
+              clipBehavior: Clip.antiAlias,
+              child: assetPath != null
+                  ? Image.asset(assetPath, fit: BoxFit.cover)
+                  : hasImage
+                      ? Image.network(
+                          ImageUrlHelper.getFullImageUrl(imageUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 30),
+                        )
+                      : Icon(icon, color: color, size: 30),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, height: 1.2, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24))),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, height: 1.25, color: dark ? Colors.white60 : const Color(0xFF5F6B64))),
+                  ],
+                ],
               ),
-              const Spacer(),
-              Icon(Icons.north_east_rounded, size: 17, color: dark ? Colors.white54 : const Color(0xFF78877C)),
-            ]),
-            // A flexible Spacer here pushed the label down by a large,
-            // inconsistent gap on every tile with a short (1-line) title -
-            // most of them - instead of a small, fixed gap right after the icon.
-            const SizedBox(height: 10),
-            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, height: 1.25, fontWeight: FontWeight.w600, color: dark ? Colors.white : const Color(0xFF23392E))),
+            ),
+            const SizedBox(width: 6),
+            // Chevron disc
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(color: discTint, shape: BoxShape.circle),
+              child: Icon(Icons.chevron_right_rounded, size: 22, color: dark ? Colors.white : color),
+            ),
           ]),
         ),
       ),
