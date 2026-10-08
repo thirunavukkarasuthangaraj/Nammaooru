@@ -1,6 +1,7 @@
 import '../screens/transport/where_is_bus_screen.dart';
 import '../../../shared/widgets/gentle_motion.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:showcaseview/showcaseview.dart';
@@ -2901,22 +2902,58 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     if (mounted) setState(() {});
   }
 
-  TextStyle _fitLongestWord(String text, TextStyle style, double maxWidth) {
+  // Returns [style] with the font size lowered just enough that no word in
+  // [text] is ever broken across lines when drawn [maxWidth] wide.
+  //
+  // Flutter breaks a word mid-way (தொழிலாள / ர்) when it is wider than the
+  // line. Rather than estimating word widths, this lays the whole label out
+  // with the exact same paragraph engine, style and text scale the Text
+  // widget uses, and walks the real line boundaries: if a line ends inside
+  // a word the size is stepped down and tried again.
+  TextStyle _fitLongestWord(BuildContext context, String text, TextStyle style, double maxWidth) {
     if (text.isEmpty || maxWidth <= 0 || !maxWidth.isFinite) return style;
-    double longest = 0;
-    for (final word in text.split(RegExp(r'\s+'))) {
-      if (word.isEmpty) continue;
+    final effective = DefaultTextStyle.of(context).style.merge(style);
+    final scaler = MediaQuery.textScalerOf(context);
+    final base = style.fontSize ?? effective.fontSize ?? 14;
+    double size = base;
+    while (true) {
       final painter = TextPainter(
-        text: TextSpan(text: word, style: style),
+        text: TextSpan(text: text, style: effective.copyWith(fontSize: size)),
         textDirection: TextDirection.ltr,
-        maxLines: 1,
-      )..layout();
-      if (painter.width > longest) longest = painter.width;
+        textScaler: scaler,
+      )..layout(maxWidth: maxWidth);
+      if (!_breaksInsideWord(painter, text)) break;
+      if (size <= 8.5) break; // floor: better a shrunken word than illegible
+      size -= 0.5;
     }
-    if (longest <= maxWidth) return style;
-    final base = style.fontSize ?? 14;
-    final fitted = (base * maxWidth / longest).clamp(9.5, base).toDouble();
-    return style.copyWith(fontSize: fitted);
+    if (kDebugMode && size != base) {
+      debugPrint('fit: "$text" max=${maxWidth.toStringAsFixed(1)} size=$base->$size');
+    }
+    return size == base ? style : style.copyWith(fontSize: size);
+  }
+
+  static bool _isSpace(int code) => code == 0x20 || code == 0x0A || code == 0x09 || code == 0x2009 || code == 0x00A0;
+
+  // True if any line of the laid-out paragraph ends in the middle of a word
+  // (neither the last character of the line nor the first of the next is
+  // whitespace).
+  static bool _breaksInsideWord(TextPainter painter, String text) {
+    int pos = 0;
+    while (pos < text.length) {
+      final line = painter.getLineBoundary(TextPosition(offset: pos));
+      final end = line.end;
+      if (end <= pos) break;
+      if (end >= text.length) break;
+      // Characters either side of the break.
+      if (!_isSpace(text.codeUnitAt(end - 1)) && !_isSpace(text.codeUnitAt(end))) {
+        return true;
+      }
+      // Step onto the next line. Line ranges may or may not include the
+      // trailing spaces, so skip over any whitespace at the boundary.
+      pos = end;
+      while (pos < text.length && _isSpace(text.codeUnitAt(pos))) pos++;
+    }
+    return false;
   }
 
   Widget _buildModernCategoryTile({
@@ -2980,8 +3017,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
               // long Tamil word (தொழிலாளர்) is shrunk to fit instead of
               // being broken in the middle.
               child: LayoutBuilder(builder: (context, box) {
-                final titleStyle = _fitLongestWord(title, TextStyle(fontSize: titleSize, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24)), box.maxWidth);
-                final subStyle = _fitLongestWord(subtitle, TextStyle(fontSize: subSize, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64)), box.maxWidth);
+                final titleStyle = _fitLongestWord(context, title, TextStyle(fontSize: titleSize, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24)), box.maxWidth);
+                final subStyle = _fitLongestWord(context, subtitle, TextStyle(fontSize: subSize, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64)), box.maxWidth);
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
