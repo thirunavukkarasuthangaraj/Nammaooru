@@ -117,6 +117,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Tamil glyphs come from a font that can load after the first frame
+    // (always on web, sometimes on a cold Android start). Re-measure the
+    // service-tile titles once it arrives so the word-fit shrink is right.
+    PaintingBinding.instance.systemFonts.addListener(_onSystemFontsChanged);
     print('🔵 CustomerDashboard initState called');
     _checkVersionOnStartup();
     _initLocationThenLoadData();
@@ -282,6 +286,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PaintingBinding.instance.systemFonts.removeListener(_onSystemFontsChanged);
     _autoSlideTimer?.cancel();
     _unifiedOffersController.dispose();
     super.dispose();
@@ -2892,6 +2897,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   /// [maxWidth]. Tamil labels are often a single long word (தொழிலாளர்,
   /// விவசாயிகளிடம்) and Flutter breaks such a word mid-way; multi-word
   /// text that already wraps at spaces is left untouched.
+  void _onSystemFontsChanged() {
+    if (mounted) setState(() {});
+  }
+
   TextStyle _fitLongestWord(String text, TextStyle style, double maxWidth) {
     if (text.isEmpty || maxWidth <= 0 || !maxWidth.isFinite) return style;
     double longest = 0;
