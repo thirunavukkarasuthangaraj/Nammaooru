@@ -2590,9 +2590,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       // Same fixed tile height as the real tiles — width-independent
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisExtent: _serviceTileHeight,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _serviceGridColumns(context),
+        mainAxisExtent: _serviceGridColumns(context) == 1 ? 92 : _serviceTileHeight,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
@@ -2657,6 +2657,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
   // glyphs are tall) can never overflow on a narrow screen.
   static const double _serviceTileHeight = 108;
 
+  int _serviceGridColumns(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 340 ? 1 : 2;
+
   // Short one-liner shown under each service title (en, ta)
   static const Map<String, List<String>> _serviceSubtitles = {
     'grocery':        ['Daily needs delivered to your home',  'தினசரி தேவைகள் வீட்டுக்கே'],
@@ -2720,9 +2723,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
           physics: const NeverScrollableScrollPhysics(),
           // Fixed tile height (icon badge + 2-line label) instead of an
           // aspect ratio, so narrow screens can never overflow
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisExtent: _serviceTileHeight,
+          // Two columns normally; one full-width column on very small phones
+          // (< 340dp) where a half-width card can't hold a title.
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: _serviceGridColumns(context),
+            mainAxisExtent: _serviceGridColumns(context) == 1 ? 92 : _serviceTileHeight,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
@@ -2921,6 +2926,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     final cardTint = Color.lerp(color, dark ? const Color(0xFF202923) : Colors.white, dark ? 0.82 : 0.90)!;
     final discTint = Color.lerp(color, dark ? const Color(0xFF202923) : Colors.white, dark ? 0.65 : 0.78)!;
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    return LayoutBuilder(builder: (context, card) {
+    // Compact metrics when the card is narrow (360dp phones give ~158dp
+    // cards) so the text column keeps ~70dp instead of ~54dp.
+    final compact = card.maxWidth < 175;
+    final disc = compact ? 44.0 : 52.0;
+    final discIcon = compact ? 22.0 : 26.0;
+    final chev = compact ? 22.0 : 26.0;
+    final chevIcon = compact ? 18.0 : 20.0;
+    final pad = compact ? 6.0 : 8.0;
+    final gap = compact ? 6.0 : 8.0;
+    final titleSize = compact ? 13.0 : 14.0;
+    final subSize = compact ? 10.5 : 11.0;
     return DepthPress(child: Material(
       color: cardTint,
       shape: RoundedRectangleBorder(
@@ -2931,11 +2948,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 6, 8),
+          padding: EdgeInsets.fromLTRB(pad, pad, pad - 2, pad),
           child: Row(children: [
             // Picture disc (service image from the backend, icon fallback)
             Container(
-              width: 52, height: 52,
+              width: disc, height: disc,
               decoration: BoxDecoration(color: discTint, shape: BoxShape.circle),
               clipBehavior: Clip.antiAlias,
               child: assetPath != null
@@ -2944,18 +2961,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
                       ? Image.network(
                           ImageUrlHelper.getFullImageUrl(imageUrl),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 26),
+                          errorBuilder: (_, __, ___) => Icon(icon, color: color, size: discIcon),
                         )
-                      : Icon(icon, color: color, size: 26),
+                      : Icon(icon, color: color, size: discIcon),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: gap),
             Expanded(
               // LayoutBuilder gives the real text-column width so a single
               // long Tamil word (தொழிலாளர்) is shrunk to fit instead of
               // being broken in the middle.
               child: LayoutBuilder(builder: (context, box) {
-                final titleStyle = _fitLongestWord(title, TextStyle(fontSize: 14, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24)), box.maxWidth);
-                final subStyle = _fitLongestWord(subtitle, TextStyle(fontSize: 11, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64)), box.maxWidth);
+                final titleStyle = _fitLongestWord(title, TextStyle(fontSize: titleSize, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24)), box.maxWidth);
+                final subStyle = _fitLongestWord(subtitle, TextStyle(fontSize: subSize, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64)), box.maxWidth);
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2972,14 +2989,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
             const SizedBox(width: 4),
             // Chevron disc
             Container(
-              width: 26, height: 26,
+              width: chev, height: chev,
               decoration: BoxDecoration(color: discTint, shape: BoxShape.circle),
-              child: Icon(Icons.chevron_right_rounded, size: 20, color: dark ? Colors.white : color),
+              child: Icon(Icons.chevron_right_rounded, size: chevIcon, color: dark ? Colors.white : color),
             ),
           ]),
         ),
       ),
     ));
+    });
   }
 
   Widget _buildBuySellCard(String name) {
