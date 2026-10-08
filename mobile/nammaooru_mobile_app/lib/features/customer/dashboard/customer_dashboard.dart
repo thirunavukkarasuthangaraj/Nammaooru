@@ -2662,7 +2662,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     'grocery':        ['Daily needs delivered to your home',  'தினசரி தேவைகள் வீட்டுக்கே'],
     'food':           ['Hot food from local kitchens',        'உள்ளூர் சமையலில் சூடான உணவு'],
     'marketplace':    ['Buy & sell used items',               'பழைய பொருட்கள் வாங்க & விற்க'],
-    'farmer':         ['Fresh from our farmers',              'விவசாயிகளிடம் இருந்து நேரடியாக'],
+    'farmer':         ['Fresh from our farmers',              'நேரடியாக விவசாயிகளிடம்'],
     'labours':        ['Find skilled local workers',          'திறமையான தொழிலாளர்கள்'],
     'travels':        ['Buses, cars, vans and more',          'பேருந்து, கார், வேன் மற்றும் பல'],
     'parcels':        ['Safe & reliable moving services',     'பாதுகாப்பான பேக்கிங் & மூவிங்'],
@@ -2883,6 +2883,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
     );
   }
 
+  /// Shrinks [style]'s font only when one word of [text] is wider than
+  /// [maxWidth]. Tamil labels are often a single long word (தொழிலாளர்,
+  /// விவசாயிகளிடம்) and Flutter breaks such a word mid-way; multi-word
+  /// text that already wraps at spaces is left untouched.
+  TextStyle _fitLongestWord(String text, TextStyle style, double maxWidth) {
+    if (text.isEmpty || maxWidth <= 0 || !maxWidth.isFinite) return style;
+    double longest = 0;
+    for (final word in text.split(RegExp(r'\s+'))) {
+      if (word.isEmpty) continue;
+      final painter = TextPainter(
+        text: TextSpan(text: word, style: style),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      if (painter.width > longest) longest = painter.width;
+    }
+    if (longest <= maxWidth) return style;
+    final base = style.fontSize ?? 14;
+    final fitted = (base * maxWidth / longest).clamp(9.5, base).toDouble();
+    return style.copyWith(fontSize: fitted);
+  }
+
   Widget _buildModernCategoryTile({
     required IconData icon,
     required String title,
@@ -2928,17 +2950,24 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24))),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64))),
+              // LayoutBuilder gives the real text-column width so a single
+              // long Tamil word (தொழிலாளர்) is shrunk to fit instead of
+              // being broken in the middle.
+              child: LayoutBuilder(builder: (context, box) {
+                final titleStyle = _fitLongestWord(title, TextStyle(fontSize: 14, height: 1.15, fontWeight: FontWeight.w700, color: dark ? Colors.white : const Color(0xFF1F2A24)), box.maxWidth);
+                final subStyle = _fitLongestWord(subtitle, TextStyle(fontSize: 11, height: 1.2, color: dark ? Colors.white60 : const Color(0xFF5F6B64)), box.maxWidth);
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: titleStyle),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: subStyle),
+                    ],
                   ],
-                ],
-              ),
+                );
+              }),
             ),
             const SizedBox(width: 4),
             // Chevron disc
