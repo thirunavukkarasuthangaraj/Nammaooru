@@ -95,5 +95,8 @@ flutter {
 
 dependencies {
     implementation 'androidx.multidex:multidex:2.0.1'
+    // SMS User Consent API for OTP auto-read (MainActivity.kt). sms_autofill
+    // already pulls this in; pinned here so MainActivity compiles regardless.
+    implementation 'com.google.android.gms:play-services-auth-api-phone:18.1.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }

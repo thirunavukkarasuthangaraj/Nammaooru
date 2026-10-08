@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sms_autofill/sms_autofill.dart';
+import '../../../core/services/sms_user_consent.dart';
 import 'dart:ui';
 import '../providers/forgot_password_provider.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -54,9 +55,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with CodeAu
     }
   }
 
+  /// SMS Retriever (hash-based) plus SMS User Consent (works with the live
+  /// hash-less template after a one-tap allow); either path feeds codeUpdated().
+  void _listenForOtpSms() {
+    listenForCode();
+    SmsUserConsent.start((message) {
+      if (!mounted) return;
+      code = message;
+      codeUpdated();
+    });
+  }
+
   @override
   void dispose() {
     cancel(); // Stop SMS listener
+    SmsUserConsent.stop();
     _emailController.dispose();
     _otpController.dispose();
     _passwordController.dispose();
@@ -510,8 +523,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with CodeAu
       final success = await provider.sendOtp(_emailController.text.trim());
       if (mounted && success) {
         _startResendTimer();
-        // Start listening for SMS via broadcast receiver
-        listenForCode();
+        _listenForOtpSms();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Verification code sent!'), backgroundColor: Color(0xFF4CAF50)),
         );
@@ -586,8 +598,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with CodeAu
     final success = await provider.resendOtp();
     if (mounted && success) {
       _startResendTimer();
-      // Re-start listening for SMS via broadcast receiver
-      listenForCode();
+      _listenForOtpSms();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Code sent again!'), backgroundColor: Color(0xFF4CAF50)),
       );

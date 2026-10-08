@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sms_autofill/sms_autofill.dart';
+import '../../../core/services/sms_user_consent.dart';
 import 'dart:async';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/village_theme.dart';
@@ -61,13 +62,26 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
   void initState() {
     super.initState();
     _startTimer();
-    // Start listening for SMS via broadcast receiver
+    _listenForOtpSms();
+  }
+
+  /// Two readers run side by side: sms_autofill's SMS Retriever (fires only
+  /// when the SMS ends with the app hash) and the SMS User Consent API (works
+  /// with the live hash-less template after a one-tap allow). Whichever gets
+  /// the message first feeds codeUpdated().
+  void _listenForOtpSms() {
     listenForCode();
+    SmsUserConsent.start((message) {
+      if (!mounted) return;
+      code = message;
+      codeUpdated();
+    });
   }
 
   @override
   void dispose() {
     cancel(); // Stop SMS listener
+    SmsUserConsent.stop();
     _timer?.cancel();
     _otpController.dispose();
     super.dispose();
@@ -188,8 +202,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
         );
         _clearOtp();
         _startTimer();
-        // Re-start listening for SMS
-        listenForCode();
+        _listenForOtpSms();
       } else if (authProvider.errorMessage != null) {
         Helpers.showSnackBar(
           context,
