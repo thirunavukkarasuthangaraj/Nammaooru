@@ -2593,6 +2593,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
 
   Widget _buildCategoryLoadingShimmer() {
     return GridView(
+      // A scrollable with no padding inherits the status-bar inset from
+      // MediaQuery, which showed up as a blank band above the tiles.
+      padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       // Same fixed tile height as the real tiles — width-independent
@@ -2725,6 +2728,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> with WidgetsBindi
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GridView(
+          // A scrollable with no padding inherits the status-bar inset from
+          // MediaQuery, which showed up as a blank band between the banner
+          // and the tiles.
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           // Fixed tile height (icon badge + 2-line label) instead of an
