@@ -507,6 +507,22 @@ public class SettingService {
                 "OTP delivery channel for login & forgot password: sms, whatsapp, or both (WhatsApp first, SMS fallback)",
                 "OTP", Setting.SettingType.STRING, Setting.SettingScope.GLOBAL);
 
+        // Auto-renew: posts renew themselves for free instead of expiring. While this is on,
+        // the nightly expired-post cleanup does not delete anything.
+        createDefaultSettingIfNotExists("post.auto_renew.enabled", "true",
+                "Automatically renew posts for free instead of expiring them", "POST_CONFIG", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        // Jobs settings
+        createDefaultSettingIfNotExists("jobs.post.auto_approve", "false",
+                "Auto-approve new job posts (skip pending approval)", "JOBS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        // Local Shops settings
+        createDefaultSettingIfNotExists("local_shops.post.auto_approve", "false",
+                "Auto-approve new local shop listings (skip pending approval)", "LOCAL_SHOPS", Setting.SettingType.BOOLEAN, Setting.SettingScope.GLOBAL);
+
+        createDefaultSettingIfNotExists("local_shops.post.duration_days", "30",
+                "How many days a local shop listing stays visible (0 = no expiry)", "LOCAL_SHOPS", Setting.SettingType.INTEGER, Setting.SettingScope.GLOBAL);
+
         log.info("Default settings initialization completed");
     }
     

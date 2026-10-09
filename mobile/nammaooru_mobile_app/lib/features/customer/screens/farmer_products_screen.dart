@@ -1338,7 +1338,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'FARMER_PRODUCTS');
     handler.renewSingle(
-      onTokenReceived: (paidTokenId) async {
+      onTokenReceived: (int? paidTokenId) async {
         final result = await _farmerService.renewPost(postId, paidTokenId: paidTokenId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1364,7 +1364,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> with Single
     final handler = RenewalPaymentHandler(context: context, postType: 'FARMER_PRODUCTS');
     handler.renewBulk(
       count: count,
-      onTokensReceived: (paidTokenIds) async {
+      onTokensReceived: (List<int?> paidTokenIds) async {
         int successCount = 0;
         for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
           final result = await _farmerService.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);

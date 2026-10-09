@@ -26,6 +26,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 import { CustomerListComponent } from './components/customer-list/customer-list.component';
 import { CustomerFormComponent } from './components/customer-form/customer-form.component';
@@ -152,6 +153,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     MatDividerModule,
     MatAutocompleteModule,
     MatTabsModule,
+    DragDropModule,
     RouterModule.forChild([
       {
         path: '',

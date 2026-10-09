@@ -39,6 +39,7 @@ public class MarketplaceService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
@@ -449,7 +450,8 @@ public class MarketplaceService {
         if (updates.containsKey("category")) post.setCategory((String) updates.get("category"));
         if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("marketplace")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         MarketplacePost saved = marketplacePostRepository.save(post);
         log.info("Marketplace post user-edited: id={}, userId={}", id, user.getId());
@@ -476,15 +478,15 @@ public class MarketplaceService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("marketplace.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "marketplace")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         MarketplacePost saved = marketplacePostRepository.save(post);
         log.info("Marketplace post renewed: id={}, newValidTo={}", postId, saved.getValidTo());

@@ -39,6 +39,8 @@ public class WomensCornerPostService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
+    private final PostImageOrderService postImageOrderService;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
@@ -452,16 +454,10 @@ public class WomensCornerPostService {
         WomensCornerPost post = womensCornerPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
-        if (newImages != null) {
-            for (MultipartFile image : newImages) {
-                if (image != null && !image.isEmpty()) {
-                    finalUrls.add(fileUploadService.uploadFile(image, "womens-corner"));
-                }
-            }
-        }
+        List<String> finalUrls = postImageOrderService.resolveOrderedImages(
+                post.getImageUrls(), keepImageUrls, newImages, "womens-corner");
 
-        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        post.setImageUrls(postImageOrderService.toCsv(finalUrls));
         WomensCornerPost saved = womensCornerPostRepository.save(post);
         log.info("Women's corner post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
         return saved;
@@ -490,7 +486,8 @@ public class WomensCornerPostService {
         if (updates.containsKey("category")) post.setCategory((String) updates.get("category"));
         if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("womens_corner")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         WomensCornerPost saved = womensCornerPostRepository.save(post);
         log.info("Women's corner post user-edited: id={}, userId={}", id, user.getId());
@@ -516,15 +513,15 @@ public class WomensCornerPostService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("womens_corner.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "womens_corner")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         WomensCornerPost saved = womensCornerPostRepository.save(post);
         log.info("Women's corner post renewed: id={}, newValidTo={}", postId, saved.getValidTo());

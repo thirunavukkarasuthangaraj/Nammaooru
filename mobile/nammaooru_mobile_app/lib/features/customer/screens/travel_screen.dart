@@ -1443,7 +1443,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'TRAVELS');
     handler.renewSingle(
-      onTokenReceived: (paidTokenId) async {
+      onTokenReceived: (int? paidTokenId) async {
         final result = await _travelService.renewPost(postId, paidTokenId: paidTokenId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1469,7 +1469,7 @@ class _TravelScreenState extends State<TravelScreen> with SingleTickerProviderSt
     final handler = RenewalPaymentHandler(context: context, postType: 'TRAVELS');
     handler.renewBulk(
       count: count,
-      onTokensReceived: (paidTokenIds) async {
+      onTokensReceived: (List<int?> paidTokenIds) async {
         int successCount = 0;
         for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
           final result = await _travelService.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);

@@ -41,6 +41,8 @@ public class TravelPostService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
+    private final PostImageOrderService postImageOrderService;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
@@ -455,16 +457,10 @@ public class TravelPostService {
         TravelPost post = travelPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
-        if (newImages != null) {
-            for (MultipartFile image : newImages) {
-                if (image != null && !image.isEmpty()) {
-                    finalUrls.add(fileUploadService.uploadFile(image, "travels"));
-                }
-            }
-        }
+        List<String> finalUrls = postImageOrderService.resolveOrderedImages(
+                post.getImageUrls(), keepImageUrls, newImages, "travels");
 
-        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        post.setImageUrls(postImageOrderService.toCsv(finalUrls));
         TravelPost saved = travelPostRepository.save(post);
         log.info("Travel post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
         return saved;
@@ -501,7 +497,8 @@ public class TravelPostService {
         if (updates.containsKey("seatsAvailable")) post.setSeatsAvailable(updates.get("seatsAvailable") != null ? ((Number) updates.get("seatsAvailable")).intValue() : null);
         if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("travel")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         TravelPost saved = travelPostRepository.save(post);
         log.info("Travel post user-edited: id={}, userId={}", id, user.getId());
@@ -527,15 +524,15 @@ public class TravelPostService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("travel.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "travel")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         TravelPost saved = travelPostRepository.save(post);
         log.info("Travel post renewed: id={}, newValidTo={}", postId, saved.getValidTo());

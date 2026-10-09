@@ -33,6 +33,7 @@ public class JobPostService {
     private final NotificationService notificationService;
     private final SettingService settingService;
     private final GlobalPostLimitService globalPostLimitService;
+    private final PostPaymentService postPaymentService;
 
     @Transactional
     public JobPost createPost(String jobTitle, String companyName, String phone,
@@ -46,12 +47,16 @@ public class JobPostService {
 
         globalPostLimitService.checkGlobalPostLimit(user.getId(), null);
 
-        int postLimit = Integer.parseInt(settingService.getSettingValue("jobs.free_post_limit", "3"));
-        if (postLimit > 0) {
-            List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
-            long activeCount = jobPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
-            if (activeCount >= postLimit) {
-                throw new RuntimeException("LIMIT_REACHED");
+        // Jobs has no pay-per-post flow of its own, so this limit is a hard stop with no way
+        // past it. Only enforce it while paid posting is on; otherwise job posting is free.
+        if (postPaymentService.isPaidPostingEnabled()) {
+            int postLimit = Integer.parseInt(settingService.getSettingValue("jobs.free_post_limit", "3"));
+            if (postLimit > 0) {
+                List<PostStatus> activeStatuses = List.of(PostStatus.PENDING_APPROVAL, PostStatus.APPROVED);
+                long activeCount = jobPostRepository.countBySellerUserIdAndStatusIn(user.getId(), activeStatuses);
+                if (activeCount >= postLimit) {
+                    throw new RuntimeException("LIMIT_REACHED");
+                }
             }
         }
 
@@ -82,6 +87,11 @@ public class JobPostService {
 
         int expiryDays = Integer.parseInt(settingService.getSettingValue("jobs.expiry_days", "30"));
 
+        // The admin Post Type Settings screen has always shown a Jobs auto-approve toggle and
+        // saved this key, but nothing read it, so job posts were pending no matter what.
+        boolean autoApprove = Boolean.parseBoolean(
+                settingService.getSettingValue("jobs.post.auto_approve", "false"));
+
         JobPost post = JobPost.builder()
                 .jobTitle(jobTitle)
                 .companyName(companyName)
@@ -99,13 +109,14 @@ public class JobPostService {
                 .longitude(longitude)
                 .sellerUserId(user.getId())
                 .sellerName(user.getFullName() != null ? user.getFullName() : user.getUsername())
-                .status(PostStatus.PENDING_APPROVAL)
+                .status(autoApprove ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL)
                 .validFrom(LocalDateTime.now())
-                .validTo(LocalDateTime.now().plusDays(expiryDays))
+                .validTo(expiryDays > 0 ? LocalDateTime.now().plusDays(expiryDays) : null)
                 .build();
 
         post = jobPostRepository.save(post);
-        log.info("Job post created: id={}, title={}, user={}", post.getId(), jobTitle, username);
+        log.info("Job post created: id={}, title={}, user={}, autoApproved={}",
+                post.getId(), jobTitle, username, autoApprove);
         return post;
     }
 

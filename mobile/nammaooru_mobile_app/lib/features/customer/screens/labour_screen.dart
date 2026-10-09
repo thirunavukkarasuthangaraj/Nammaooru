@@ -1500,7 +1500,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'LABOURS');
     handler.renewSingle(
-      onTokenReceived: (paidTokenId) async {
+      onTokenReceived: (int? paidTokenId) async {
         final result = await _labourService.renewPost(postId, paidTokenId: paidTokenId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1526,7 +1526,7 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
     final handler = RenewalPaymentHandler(context: context, postType: 'LABOURS');
     handler.renewBulk(
       count: count,
-      onTokensReceived: (paidTokenIds) async {
+      onTokensReceived: (List<int?> paidTokenIds) async {
         int successCount = 0;
         for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
           final result = await _labourService.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);

@@ -37,6 +37,12 @@ public class GlobalPostLimitService {
      * Throws LIMIT_REACHED if limit exceeded and no valid paid token.
      */
     public void checkGlobalPostLimit(Long userId, Long paidTokenId) {
+        // Paid posting switched off means there is no way to pay past this limit, so enforcing
+        // it would dead-end the user on a payment screen that cannot complete. Posting is free.
+        if (!postPaymentService.isPaidPostingEnabled()) {
+            return;
+        }
+
         int freePostLimit = Integer.parseInt(
                 settingService.getSettingValue("global.free_post_limit", "1"));
 

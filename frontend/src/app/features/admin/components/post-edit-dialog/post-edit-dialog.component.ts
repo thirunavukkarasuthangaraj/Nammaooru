@@ -1,6 +1,7 @@
 import { Component, HostListener, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { getImageUrl } from '../../../../core/utils/image-url.util';
 
 export type PostEditPostType = 'labour' | 'travel' | 'parcel' | 'marketplace' | 'farmer' | 'realEstate' | 'rental' | 'womensCorner';
@@ -10,6 +11,13 @@ export interface PostEditDialogData {
   post: any;
 }
 
+/**
+ * keepImageUrls is the FINAL ORDERED list of image slots. Each entry is either
+ * an existing image URL (unchanged) or the token `NEW:<i>`, where <i> is the
+ * zero-based index into newImages. The backend walks the list in order and
+ * swaps every `NEW:<i>` for the uploaded URL of newImages[i]. With no tokens
+ * present the behaviour is the old one (new files appended at the end).
+ */
 export interface MultiImageChanges {
   mode: 'multi';
   keepImageUrls: string[];
@@ -36,6 +44,19 @@ interface FieldConfig {
 
 type ImageMode = 'multi' | 'single' | 'none';
 
+/**
+ * One tile in the multi-image grid. Existing and freshly picked images live in
+ * the same ordered list so the admin can drag them among each other - the first
+ * slot is the post thumbnail / profile photo.
+ */
+interface ImageSlot {
+  kind: 'existing' | 'new';
+  /** Existing: the stored image path. New: the preview object URL. */
+  url: string;
+  /** Only set for kind === 'new'. */
+  file: File | null;
+}
+
 @Component({
   selector: 'app-post-edit-dialog',
   templateUrl: './post-edit-dialog.component.html',
@@ -48,9 +69,7 @@ export class PostEditDialogComponent implements OnInit {
 
   // Images (multi mode - labour/travel/parcel/farmer/realEstate/womensCorner/rental)
   imageMode: ImageMode = 'none';
-  existingImageUrls: string[] = [];
-  newImageFiles: File[] = [];
-  newImagePreviews: string[] = [];
+  imageSlots: ImageSlot[] = [];
 
   // Images (single mode - marketplace)
   existingSingleImageUrl: string | null = null;
@@ -252,7 +271,7 @@ export class PostEditDialogComponent implements OnInit {
     if (this.imageMode === 'multi' && imageConfig) {
       const raw = (this.data.post[imageConfig.urlField] || '') as string;
       this.originalImageUrls = raw.split(',').map(u => u.trim()).filter(u => !!u);
-      this.existingImageUrls = [...this.originalImageUrls];
+      this.imageSlots = this.originalImageUrls.map(url => ({ kind: 'existing' as const, url, file: null }));
     } else if (this.imageMode === 'single' && imageConfig) {
       this.originalSingleImageUrl = (this.data.post[imageConfig.urlField] || null) || null;
       this.existingSingleImageUrl = this.originalSingleImageUrl;
@@ -263,8 +282,22 @@ export class PostEditDialogComponent implements OnInit {
     return getImageUrl(path);
   }
 
-  removeExistingImage(url: string): void {
-    this.existingImageUrls = this.existingImageUrls.filter(u => u !== url);
+  /** Existing slots need the CDN/host prefix, new ones are already blob URLs. */
+  slotImageUrl(slot: ImageSlot): string {
+    return slot.kind === 'existing' ? getImageUrl(slot.url) : slot.url;
+  }
+
+  /** Drag-and-drop reorder of the merged image list. First slot = thumbnail. */
+  onImageDrop(event: CdkDragDrop<ImageSlot[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    moveItemInArray(this.imageSlots, event.previousIndex, event.currentIndex);
+  }
+
+  removeImageSlot(index: number): void {
+    const slot = this.imageSlots[index];
+    if (!slot) return;
+    if (slot.kind === 'new') URL.revokeObjectURL(slot.url);
+    this.imageSlots.splice(index, 1);
   }
 
   onFilesSelected(event: Event): void {
@@ -278,20 +311,13 @@ export class PostEditDialogComponent implements OnInit {
     for (const file of files) {
       if (!file.type.startsWith('image/')) continue;
       if (this.imageMode === 'multi') {
-        this.newImageFiles.push(file);
-        this.newImagePreviews.push(URL.createObjectURL(file));
+        this.imageSlots.push({ kind: 'new', url: URL.createObjectURL(file), file });
       } else if (this.imageMode === 'single') {
         if (this.newSingleImagePreview) URL.revokeObjectURL(this.newSingleImagePreview);
         this.newSingleImageFile = file;
         this.newSingleImagePreview = URL.createObjectURL(file);
       }
     }
-  }
-
-  removeNewImage(index: number): void {
-    URL.revokeObjectURL(this.newImagePreviews[index]);
-    this.newImageFiles.splice(index, 1);
-    this.newImagePreviews.splice(index, 1);
   }
 
   removeNewSingleImage(): void {
@@ -328,8 +354,11 @@ export class PostEditDialogComponent implements OnInit {
 
   private hasImageChanges(): boolean {
     if (this.imageMode === 'multi') {
-      return this.newImageFiles.length > 0 ||
-        this.existingImageUrls.length !== this.originalImageUrls.length;
+      // A new file is always a change. Otherwise compare the resulting order
+      // against the original one, so a pure drag-and-drop reorder still saves.
+      if (this.imageSlots.some(slot => slot.kind === 'new')) return true;
+      if (this.imageSlots.length !== this.originalImageUrls.length) return true;
+      return this.imageSlots.some((slot, i) => slot.url !== this.originalImageUrls[i]);
     }
     if (this.imageMode === 'single') {
       return !!this.newSingleImageFile || this.singleImageRemoved;
@@ -340,11 +369,19 @@ export class PostEditDialogComponent implements OnInit {
   private buildImageChanges(): MultiImageChanges | SingleImageChange | undefined {
     if (!this.hasImageChanges()) return undefined;
     if (this.imageMode === 'multi') {
-      return {
-        mode: 'multi',
-        keepImageUrls: this.existingImageUrls,
-        newImages: this.newImageFiles
-      };
+      // Walk the merged list once so the NEW:<i> tokens and the newImages array
+      // are built from the same pass and can never drift apart.
+      const keepImageUrls: string[] = [];
+      const newImages: File[] = [];
+      for (const slot of this.imageSlots) {
+        if (slot.kind === 'new' && slot.file) {
+          keepImageUrls.push(`NEW:${newImages.length}`);
+          newImages.push(slot.file);
+        } else {
+          keepImageUrls.push(slot.url);
+        }
+      }
+      return { mode: 'multi', keepImageUrls, newImages };
     }
     if (this.imageMode === 'single') {
       return {

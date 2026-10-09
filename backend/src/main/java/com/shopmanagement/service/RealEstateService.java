@@ -36,6 +36,8 @@ public class RealEstateService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
+    private final PostImageOrderService postImageOrderService;
     private final UserPostLimitService userPostLimitService;
     private final GlobalPostLimitService globalPostLimitService;
     private final PostPaymentService postPaymentService;
@@ -420,16 +422,10 @@ public class RealEstateService {
         RealEstatePost post = realEstatePostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
-        if (newImages != null) {
-            for (MultipartFile image : newImages) {
-                if (image != null && !image.isEmpty()) {
-                    finalUrls.add(fileUploadService.uploadFile(image, "real-estate"));
-                }
-            }
-        }
+        List<String> finalUrls = postImageOrderService.resolveOrderedImages(
+                post.getImageUrls(), keepImageUrls, newImages, "real-estate");
 
-        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        post.setImageUrls(postImageOrderService.toCsv(finalUrls));
         RealEstatePost saved = realEstatePostRepository.save(post);
         log.info("Real estate post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
         return saved;
@@ -474,7 +470,8 @@ public class RealEstateService {
         if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
         if (updates.containsKey("phone")) post.setOwnerPhone((String) updates.get("phone"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("realestate")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         RealEstatePost saved = realEstatePostRepository.save(post);
         log.info("Real estate post user-edited: id={}, userId={}", id, user.getId());
@@ -493,15 +490,15 @@ public class RealEstateService {
             throw new RuntimeException("Only the owner can renew a post");
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("realestate.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "realestate")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         RealEstatePost saved = realEstatePostRepository.save(post);
         log.info("Real estate post renewed: id={}, newValidTo={}", postId, saved.getValidTo());

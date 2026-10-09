@@ -39,6 +39,8 @@ public class RentalPostService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
+    private final PostImageOrderService postImageOrderService;
     private final GlobalPostLimitService globalPostLimitService;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
@@ -424,16 +426,10 @@ public class RentalPostService {
         RentalPost post = rentalPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rental post not found"));
 
-        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
-        if (newImages != null) {
-            for (MultipartFile image : newImages) {
-                if (image != null && !image.isEmpty()) {
-                    finalUrls.add(fileUploadService.uploadFile(image, "rentals"));
-                }
-            }
-        }
+        List<String> finalUrls = postImageOrderService.resolveOrderedImages(
+                post.getImageUrls(), keepImageUrls, newImages, "rentals");
 
-        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        post.setImageUrls(postImageOrderService.toCsv(finalUrls));
         RentalPost saved = rentalPostRepository.save(post);
         log.info("Rental post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
         return saved;
@@ -469,7 +465,8 @@ public class RentalPostService {
         }
         if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("rental")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         RentalPost saved = rentalPostRepository.save(post);
         log.info("Rental post user-edited: id={}, userId={}", id, user.getId());
@@ -498,15 +495,15 @@ public class RentalPostService {
             throw new RuntimeException("Only the owner can renew a post");
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("rental.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "rental")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         RentalPost saved = rentalPostRepository.save(post);
         log.info("Rental post renewed: id={}, newValidTo={}", postId, saved.getValidTo());

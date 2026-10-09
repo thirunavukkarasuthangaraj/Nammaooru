@@ -1253,7 +1253,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'MARKETPLACE');
     handler.renewSingle(
-      onTokenReceived: (paidTokenId) async {
+      onTokenReceived: (int? paidTokenId) async {
         final result = await _marketplaceService.renewPost(postId, paidTokenId: paidTokenId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1279,7 +1279,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     final handler = RenewalPaymentHandler(context: context, postType: 'MARKETPLACE');
     handler.renewBulk(
       count: count,
-      onTokensReceived: (paidTokenIds) async {
+      onTokensReceived: (List<int?> paidTokenIds) async {
         int successCount = 0;
         for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
           final result = await _marketplaceService.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);

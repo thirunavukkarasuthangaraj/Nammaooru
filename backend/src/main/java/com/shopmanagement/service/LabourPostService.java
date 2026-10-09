@@ -42,6 +42,8 @@ public class LabourPostService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
+    private final PostImageOrderService postImageOrderService;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
@@ -478,16 +480,10 @@ public class LabourPostService {
         LabourPost post = labourPostRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
-        if (newImages != null) {
-            for (MultipartFile image : newImages) {
-                if (image != null && !image.isEmpty()) {
-                    finalUrls.add(fileUploadService.uploadFile(image, "labours"));
-                }
-            }
-        }
+        List<String> finalUrls = postImageOrderService.resolveOrderedImages(
+                post.getImageUrls(), keepImageUrls, newImages, "labours");
 
-        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        post.setImageUrls(postImageOrderService.toCsv(finalUrls));
         LabourPost saved = labourPostRepository.save(post);
         log.info("Labour post images admin-updated: id={}, imageCount={}", id, finalUrls.size());
         return saved;
@@ -522,7 +518,8 @@ public class LabourPostService {
         if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
         if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("labour")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         LabourPost saved = labourPostRepository.save(post);
         log.info("Labour post user-edited: id={}, userId={}", id, user.getId());
@@ -548,15 +545,15 @@ public class LabourPostService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("labour.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "labour")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         LabourPost saved = labourPostRepository.save(post);
         log.info("Labour post renewed: id={}, newValidTo={}", postId, saved.getValidTo());

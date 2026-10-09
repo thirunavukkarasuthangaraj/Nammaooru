@@ -921,7 +921,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'WOMENS_CORNER');
     handler.renewSingle(
-      onTokenReceived: (paidTokenId) async {
+      onTokenReceived: (int? paidTokenId) async {
         final result = await _service.renewPost(postId, paidTokenId: paidTokenId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -947,7 +947,7 @@ class _WomensCornerScreenState extends State<WomensCornerScreen> with SingleTick
     final handler = RenewalPaymentHandler(context: context, postType: 'WOMENS_CORNER');
     handler.renewBulk(
       count: count,
-      onTokensReceived: (paidTokenIds) async {
+      onTokensReceived: (List<int?> paidTokenIds) async {
         int successCount = 0;
         for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
           final result = await _service.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);

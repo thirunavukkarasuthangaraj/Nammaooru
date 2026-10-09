@@ -39,6 +39,8 @@ public class FarmerProductService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
+    private final PostImageOrderService postImageOrderService;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
@@ -431,16 +433,10 @@ public class FarmerProductService {
         FarmerProduct post = farmerProductRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        List<String> finalUrls = new ArrayList<>(keepImageUrls != null ? keepImageUrls : List.of());
-        if (newImages != null) {
-            for (MultipartFile image : newImages) {
-                if (image != null && !image.isEmpty()) {
-                    finalUrls.add(fileUploadService.uploadFile(image, "farmer-products"));
-                }
-            }
-        }
+        List<String> finalUrls = postImageOrderService.resolveOrderedImages(
+                post.getImageUrls(), keepImageUrls, newImages, "farmer-products");
 
-        post.setImageUrls(finalUrls.isEmpty() ? null : String.join(",", finalUrls));
+        post.setImageUrls(postImageOrderService.toCsv(finalUrls));
         FarmerProduct saved = farmerProductRepository.save(post);
         log.info("Farmer product images admin-updated: id={}, imageCount={}", id, finalUrls.size());
         return saved;
@@ -470,7 +466,8 @@ public class FarmerProductService {
         if (updates.containsKey("category")) post.setCategory((String) updates.get("category"));
         if (updates.containsKey("location")) post.setLocation((String) updates.get("location"));
 
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("farmer")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         FarmerProduct saved = farmerProductRepository.save(post);
         log.info("Farmer product user-edited: id={}, userId={}", id, user.getId());
@@ -496,15 +493,15 @@ public class FarmerProductService {
             postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
         }
 
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("farmer.post.duration_days", "30"));
 
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "farmer")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
 
         FarmerProduct saved = farmerProductRepository.save(post);
         log.info("Farmer product renewed: id={}, newValidTo={}", postId, saved.getValidTo());

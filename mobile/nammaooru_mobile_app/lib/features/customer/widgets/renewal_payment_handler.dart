@@ -12,7 +12,7 @@ class RenewalPaymentHandler {
   final String postType;
 
   Razorpay? _razorpay;
-  Function(List<int> paidTokenIds)? _onTokensReceived;
+  Function(List<int?> paidTokenIds)? _onTokensReceived;
   VoidCallback? _onCancelled;
 
   RenewalPaymentHandler({
@@ -20,9 +20,11 @@ class RenewalPaymentHandler {
     required this.postType,
   });
 
-  /// Renew a single post with payment
+  /// Renew a single post.
+  /// [onTokenReceived] gets a real token id on the paid path, or `null` when
+  /// renewal is free (paid posting disabled) and no payment token exists.
   Future<void> renewSingle({
-    required Function(int paidTokenId) onTokenReceived,
+    required Function(int? paidTokenId) onTokenReceived,
     VoidCallback? onCancelled,
   }) async {
     _onTokensReceived = (ids) => onTokenReceived(ids.first);
@@ -30,10 +32,12 @@ class RenewalPaymentHandler {
     await _startPayment(count: 1);
   }
 
-  /// Renew multiple posts with a single payment
+  /// Renew multiple posts.
+  /// [onTokensReceived] always gets exactly [count] entries: real token ids on
+  /// the paid path, or [count] nulls when renewal is free.
   Future<void> renewBulk({
     required int count,
-    required Function(List<int> paidTokenIds) onTokensReceived,
+    required Function(List<int?> paidTokenIds) onTokensReceived,
     VoidCallback? onCancelled,
   }) async {
     _onTokensReceived = onTokensReceived;
@@ -61,11 +65,11 @@ class RenewalPaymentHandler {
     final String keyId = config['razorpayKeyId'] ?? '';
     final int durationDays = config['durationDays'] ?? 30;
 
+    // Paid posting switched off (or no Razorpay key configured) => renewal is
+    // FREE. No payment, no Razorpay instance, no error: just confirm and renew
+    // with a null payment token (the backend accepts renewal without one).
     if (!enabled || keyId.isEmpty) {
-      _showError(lang.getText(
-        'Paid posting is currently unavailable.',
-        'கட்டணமில்லா பதிவு தற்போது கிடைக்கவில்லை.',
-      ));
+      await _startFreeRenewal(count: count, durationDays: durationDays, lang: lang);
       return;
     }
 
@@ -269,6 +273,106 @@ class RenewalPaymentHandler {
       Logger.e('Razorpay open error', 'RENEWAL_PAYMENT', e);
       _showError('Unable to open payment gateway');
     }
+  }
+
+  /// Free renewal: confirm, then hand back one null token per post.
+  Future<void> _startFreeRenewal({
+    required int count,
+    required int durationDays,
+    required LanguageProvider lang,
+  }) async {
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.refresh, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                count == 1
+                    ? lang.getText('Renew Post', 'பதிவை புதுப்பிக்க')
+                    : lang.getText('Renew $count Posts', '$count பதிவுகளை புதுப்பிக்க'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              count == 1
+                  ? lang.getText(
+                      'Renewal is free. Your post will stay active for another $durationDays days.',
+                      'புதுப்பிப்பு இலவசம். உங்கள் பதிவு மேலும் $durationDays நாட்களுக்கு செயலில் இருக்கும்.',
+                    )
+                  : lang.getText(
+                      'Renewal is free. These $count posts will stay active for another $durationDays days.',
+                      'புதுப்பிப்பு இலவசம். இந்த $count பதிவுகள் மேலும் $durationDays நாட்களுக்கு செயலில் இருக்கும்.',
+                    ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.card_giftcard, size: 18, color: Colors.green.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    lang.getText(
+                      'Free for $durationDays days',
+                      '$durationDays நாட்களுக்கு இலவசம்',
+                    ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(lang.getText('Cancel', 'ரத்துசெய்')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(lang.getText('Renew', 'புதுப்பிக்க')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      _onCancelled?.call();
+      return;
+    }
+
+    Logger.i('Free renewal confirmed for $count post(s) of $postType', 'RENEWAL_PAYMENT');
+    // One null token per post, so the screens' per-post loops still line up
+    // one-to-one with the selected post ids.
+    _onTokensReceived?.call(List<int?>.filled(count, null));
   }
 
   Future<void> _handleTestMode(String orderId, int count, List<int>? preTokenIds, LanguageProvider lang) async {

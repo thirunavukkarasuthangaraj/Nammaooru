@@ -495,7 +495,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   void _renewSinglePost(int postId) {
     final handler = RenewalPaymentHandler(context: context, postType: 'PARCELS');
     handler.renewSingle(
-      onTokenReceived: (paidTokenId) async {
+      onTokenReceived: (int? paidTokenId) async {
         final result = await _parcelService.renewPost(postId, paidTokenId: paidTokenId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -521,7 +521,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
     final handler = RenewalPaymentHandler(context: context, postType: 'PARCELS');
     handler.renewBulk(
       count: count,
-      onTokensReceived: (paidTokenIds) async {
+      onTokensReceived: (List<int?> paidTokenIds) async {
         int successCount = 0;
         for (int i = 0; i < selectedIds.length && i < paidTokenIds.length; i++) {
           final result = await _parcelService.renewPost(selectedIds[i], paidTokenId: paidTokenIds[i]);

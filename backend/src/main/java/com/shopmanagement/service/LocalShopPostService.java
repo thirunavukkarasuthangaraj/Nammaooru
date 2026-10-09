@@ -38,6 +38,7 @@ public class LocalShopPostService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final SettingService settingService;
+    private final PostModerationPolicy postModerationPolicy;
     private final UserPostLimitService userPostLimitService;
     private final PostPaymentService postPaymentService;
     private final GlobalPostLimitService globalPostLimitService;
@@ -416,7 +417,8 @@ public class LocalShopPostService {
         if (updates.containsKey("address")) post.setAddress((String) updates.get("address"));
         if (updates.containsKey("timings")) post.setTimings((String) updates.get("timings"));
         if (updates.containsKey("description")) post.setDescription((String) updates.get("description"));
-        post.setStatus(PostStatus.PENDING_APPROVAL);
+        post.setStatus(postModerationPolicy.editKeepsApproval("local_shops")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
         return localShopPostRepository.save(post);
     }
 
@@ -443,14 +445,14 @@ public class LocalShopPostService {
             }
             postPaymentService.consumeToken(paidTokenId, user.getId(), post.getId());
         }
+        postModerationPolicy.assertRenewable(post.getStatus());
         int durationDays = Integer.parseInt(
                 settingService.getSettingValue("local_shops.post.duration_days", "60"));
         post.setValidFrom(LocalDateTime.now());
-        if (durationDays > 0) {
-            post.setValidTo(LocalDateTime.now().plusDays(durationDays));
-        }
+        post.setValidTo(durationDays > 0 ? LocalDateTime.now().plusDays(durationDays) : null);
         post.setExpiryReminderSent(false);
-        post.setStatus(PostStatus.APPROVED);
+        post.setStatus(postModerationPolicy.renewToApproved(post.getStatus(), "local_shops")
+                ? PostStatus.APPROVED : PostStatus.PENDING_APPROVAL);
         return localShopPostRepository.save(post);
     }
 

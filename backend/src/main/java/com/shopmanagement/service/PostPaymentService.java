@@ -378,7 +378,21 @@ public class PostPaymentService {
         return true;
     }
 
+    /**
+     * Whether paid posting is switched on at all. When it is off there is no way for a user to
+     * pay, so every limit that would be enforced by "pay to continue" has to stand down —
+     * otherwise the user is handed a payment screen that cannot complete.
+     */
+    public boolean isPaidPostingEnabled() {
+        return Boolean.parseBoolean(
+                settingService.getSettingValue("paid_post.enabled", "true"));
+    }
+
     public boolean isLimitReached(Long userId) {
+        // Paid posting switched off means posting is free and unlimited
+        if (!isPaidPostingEnabled()) {
+            return false;
+        }
         // Active subscribers have unlimited posts — no per-post payment needed
         if (subscriptionService.hasActiveSubscription(userId)) {
             return false;
