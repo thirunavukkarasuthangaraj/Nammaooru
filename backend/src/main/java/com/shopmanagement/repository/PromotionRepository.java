@@ -30,18 +30,24 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     List<Promotion> findAllActive(@Param("now") LocalDateTime now);
 
     /**
-     * Active promotions shown INSIDE one shop's page: that shop's own only.
+     * Active promotions shown INSIDE one shop's page.
      *
-     * Platform promotions (shopId null) used to be appended here too, so an
-     * admin's home-screen banner showed up inside every single shop as if the
-     * shop had made the offer. They belong on the Home carousel
-     * (findAllPublicActive); whether the code is accepted at checkout for a
-     * given shop is a separate check in PromotionService.validatePromoCode.
+     * Two kinds qualify:
+     *  - the shop's own promotions, and
+     *  - platform-wide PROMO_CODE offers (shopId null) that are public, such as
+     *    a WELCOME50 voucher. Checkout already accepts a platform code at any
+     *    shop, so hiding it on the shop page only stopped customers finding it.
+     *
+     * Platform IMAGE_BANNER rows are deliberately excluded: those are the
+     * admin's Home artwork, and listing them inside every shop made it look as
+     * though the shop itself had made the offer. They stay on the Home carousel
+     * (findAllPublicActive).
      */
     @Query("SELECT p FROM Promotion p WHERE p.status = 'ACTIVE' " +
            "AND p.startDate <= :now AND p.endDate >= :now " +
            "AND (p.usageLimit IS NULL OR p.usedCount < p.usageLimit) " +
-           "AND p.shopId = :shopId")
+           "AND (p.shopId = :shopId " +
+           "     OR (p.shopId IS NULL AND p.isPublic = true AND p.bannerType = 'PROMO_CODE'))")
     List<Promotion> findActiveByShopId(@Param("shopId") Long shopId, @Param("now") LocalDateTime now);
 
     /**
