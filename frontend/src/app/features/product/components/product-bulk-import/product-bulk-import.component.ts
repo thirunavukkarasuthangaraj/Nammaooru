@@ -85,9 +85,13 @@ export class ProductBulkImportComponent implements OnInit {
           // Clear the file after successful import to prevent re-uploading same file
           this.selectedFile = null;
 
-          // Clear local product cache so next page load fetches fresh data from server
+          // Clear local product cache so next page load fetches fresh data from server.
+          // allowEmpty marks this as a deliberate reset; saveProducts otherwise refuses an
+          // empty list so an accidental one can never wipe the catalog.
           localStorage.removeItem('my_products_last_sync');
-          this.offlineStorage.saveProducts([], 0).catch(err =>
+          localStorage.removeItem('pos_products_last_sync');
+          localStorage.removeItem('pos_products_last_full_sync');
+          this.offlineStorage.saveProducts([], 0, { allowEmpty: true }).catch(err =>
             console.warn('Failed to clear product cache:', err)
           );
           console.log('Product cache cleared after bulk import');

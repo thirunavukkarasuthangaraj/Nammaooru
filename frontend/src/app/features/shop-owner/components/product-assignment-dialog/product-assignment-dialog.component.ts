@@ -125,12 +125,20 @@ export class ProductAssignmentDialogComponent implements OnInit {
           localStorage.removeItem('pos_products_last_sync');
           localStorage.setItem('pos_products_changed', 'true');
 
-          // Also add to IndexedDB cache for immediate POS search availability
+          // Also add to IndexedDB cache for immediate POS search availability.
+          // The response is still enveloped here (ResponseInterceptor does not unwrap it),
+          // so the id lives under .data. Reading response.id gave undefined, and a put()
+          // with no key throws DataError into the catch below, so the product was never
+          // cached even though the sync watermark above had already been cleared.
+          const createdId = response?.data?.id ?? response?.id;
           try {
             const shopId = parseInt(localStorage.getItem('current_shop_id') || '0', 10);
             const formValue = this.assignmentForm.value;
+            if (createdId === undefined || createdId === null) {
+              throw new Error('Create response contained no product id');
+            }
             const newCachedProduct = {
-              id: response.id,
+              id: createdId,
               shopId: shopId,
               name: formValue.customName || this.data.product.name,
               nameTamil: formValue.nameTamil || this.data.product.nameTamil || '',

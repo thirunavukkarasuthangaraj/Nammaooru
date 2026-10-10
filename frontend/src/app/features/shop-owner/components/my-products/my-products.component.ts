@@ -396,6 +396,20 @@ export class MyProductsComponent implements OnInit, OnDestroy, AfterViewInit {
         this.loadedFromCache = true;
         this.mapCachedProducts(cachedProducts);
         this.loading = false;
+
+        // Self-heal a cache that has lost records. saveProducts records how many products
+        // it wrote; if the store now holds fewer, treat the cache as untrustworthy and
+        // re-sync, otherwise this screen shows a short catalog until someone clears
+        // browser storage by hand.
+        if (this.shopId) {
+          const expected = await this.offlineStorage.getExpectedProductCount(this.shopId);
+          if (expected !== null && expected > 0 && cachedProducts.length < expected) {
+            console.warn(
+              `My Products: cache holds ${cachedProducts.length} products but ${expected} were cached; re-syncing`
+            );
+            this.loadedFromCache = false;
+          }
+        }
       }
     } catch (error) {
       console.warn('Error loading from cache:', error);

@@ -408,36 +408,98 @@ export class OfflineStorageService {
   // ==================== PRODUCTS ====================
 
   /**
-   * Save products to cache
+   * Replace the whole product cache for a shop.
+   *
+   * This is the ONLY code path that can wipe the catalog, so the safety rules live here
+   * rather than being repeated (and forgotten) at each call site.
+   *
+   * Refuses an empty list unless the caller explicitly opts in. A cancelled HTTP request
+   * resolves to undefined, which callers turned into an empty array and handed straight to
+   * this method; it cleared every product, stamped the sync as successful, and the
+   * cache-first screens then showed an empty or one-item catalog until the user wiped
+   * browser storage by hand. Only a deliberate reset (bulk import) may pass allowEmpty.
    */
-  async saveProducts(products: CachedProduct[], shopId: number): Promise<void> {
+  async saveProducts(
+    products: CachedProduct[],
+    shopId: number,
+    options: { allowEmpty?: boolean } = {}
+  ): Promise<void> {
+    const incoming = products || [];
+
+    if (incoming.length === 0 && !options.allowEmpty) {
+      console.warn(
+        `saveProducts: refusing to clear the product cache for shop ${shopId} with an empty list. ` +
+        `Pass { allowEmpty: true } if this reset is intentional.`
+      );
+      return;
+    }
+
+    // A record with no key throws DataError on put(), which aborts the transaction AFTER
+    // the clear() has been queued - that alone could empty the store. Drop them up front.
+    const writable = incoming.filter(p => p && p.id !== undefined && p.id !== null);
+    if (writable.length !== incoming.length) {
+      console.warn(
+        `saveProducts: skipped ${incoming.length - writable.length} product(s) with no id for shop ${shopId}`
+      );
+    }
+    if (writable.length === 0 && !options.allowEmpty) {
+      console.warn(`saveProducts: nothing writable for shop ${shopId}, leaving the cache untouched`);
+      return;
+    }
+
     const db = await this.getDB();
     const transaction = db.transaction([PRODUCTS_STORE, SYNC_META_STORE], 'readwrite');
     const store = transaction.objectStore(PRODUCTS_STORE);
     const metaStore = transaction.objectStore(SYNC_META_STORE);
 
-    // Clear old products first
-    await this.clearStore(store);
+    // Everything below runs synchronously inside the transaction. An IndexedDB transaction
+    // is only active during the task that created it, so awaiting here (as this method used
+    // to) risks it auto-committing after the clear() but before the writes, leaving the
+    // store empty and throwing TransactionInactiveError on every put().
+    store.clear();
 
-    // Add new products
-    for (const product of products) {
+    for (const product of writable) {
       store.put(product);
     }
 
-    // Update sync timestamp
+    // Read back by getProducts() to detect a cache that lost records behind our back.
     metaStore.put({
       key: `products_sync_${shopId}`,
       timestamp: new Date().toISOString(),
-      count: products.length
+      count: writable.length
     });
 
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => {
-        console.log(`Cached ${products.length} products for shop ${shopId}`);
+        console.log(`Cached ${writable.length} products for shop ${shopId}`);
         resolve();
       };
       transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
     });
+  }
+
+  /**
+   * Expected number of cached products for a shop, as recorded by the last successful
+   * saveProducts. Returns null when nothing has been cached yet. Lets a cache-first screen
+   * notice that the store has lost records and re-sync instead of rendering a short list.
+   */
+  async getExpectedProductCount(shopId: number): Promise<number | null> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(SYNC_META_STORE, 'readonly');
+      const store = transaction.objectStore(SYNC_META_STORE);
+      return await new Promise<number | null>((resolve) => {
+        const request = store.get(`products_sync_${shopId}`);
+        request.onsuccess = () => {
+          const count = request.result?.count;
+          resolve(typeof count === 'number' ? count : null);
+        };
+        request.onerror = () => resolve(null);
+      });
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -1129,16 +1191,10 @@ export class OfflineStorageService {
     return navigator.onLine;
   }
 
-  /**
-   * Clear a store
-   */
-  private clearStore(store: IDBObjectStore): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const request = store.clear();
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
+  // clearStore() was removed: awaiting it suspended execution inside a live IndexedDB
+  // transaction, which could let the transaction commit the clear() before the writes
+  // that were meant to follow it. saveProducts() now calls store.clear() synchronously
+  // inside its own transaction instead.
 
   /**
    * Generate unique offline order ID

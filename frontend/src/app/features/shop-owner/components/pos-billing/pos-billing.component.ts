@@ -1061,6 +1061,10 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     // Instant re-entry: reuse the in-memory catalog kept by PosProductCacheService
     // from the previous visit instead of re-reading IndexedDB. In-place edits
     // (stock, price) share the same array, so nothing is lost across navigation.
+    // Note: this in-memory list holds ACTIVE products only, so it cannot be size-checked
+    // against the cached total (which includes inactive ones). It is always derived from a
+    // successful IndexedDB read, and that read self-heals below, so a damaged catalog is
+    // caught there on the next cold entry.
     const warmProducts = (!bypassWarmCache && this.shopId) ? this.posProductCache.getFor(this.shopId) : null;
     if (warmProducts && warmProducts.length > 0) {
       this.products = warmProducts;
@@ -1140,16 +1144,6 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       }
 
       if (cachedProducts.length > 0) {
-        // Filter out inactive products - only show active/available products in POS
-        // Check both isAvailable flag and status field
-        this.allProductsIncludingInactive = cachedProducts;
-        this.products = cachedProducts.filter(p =>
-          p.isAvailable !== false &&
-          (p as any).status !== 'INACTIVE'
-        );
-        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
-        console.log(`Loaded ${this.products.length} active products from cache (filtered from ${cachedProducts.length} total)`);
-
         // Extract shopId from cached products if not set
         if ((!this.shopId || this.shopId === 0) && cachedProducts.length > 0) {
           const firstProductWithShopId = cachedProducts.find(p => p.shopId);
@@ -1159,6 +1153,33 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
             console.log('POS: Extracted shopId from cached products:', this.shopId);
           }
         }
+
+        // Self-heal a cache that has lost records. saveProducts records how many products
+        // it wrote; if the store now holds fewer, the cache is damaged and trusting it
+        // would show a short catalog indefinitely, because the only other trigger for a
+        // server fetch is the cache being completely empty. Runs after the shopId is
+        // resolved above so it still works on a cold start.
+        if (this.shopId && navigator.onLine) {
+          const expected = await this.offlineStorage.getExpectedProductCount(this.shopId);
+          if (expected !== null && expected > 0 && cachedProducts.length < expected) {
+            console.warn(
+              `POS: cache holds ${cachedProducts.length} products but ${expected} were cached; re-syncing from server`
+            );
+            this.posProductCache.clear();
+            this.loadProductsFromServer();
+            return;
+          }
+        }
+
+        // Filter out inactive products - only show active/available products in POS
+        // Check both isAvailable flag and status field
+        this.allProductsIncludingInactive = cachedProducts;
+        this.products = cachedProducts.filter(p =>
+          p.isAvailable !== false &&
+          (p as any).status !== 'INACTIVE'
+        );
+        this.filteredProducts = this.sortProductsWithCartFirst(this.products);
+        console.log(`Loaded ${this.products.length} active products from cache (filtered from ${cachedProducts.length} total)`);
 
         this.isLoading = false;
         if (this.shopId) this.posProductCache.set(this.shopId, this.products);
@@ -1213,6 +1234,15 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       // (pages x per-page latency) sequentially, which is what stretched a fresh
       // login/refresh into ~30s of "not found" barcode scans while it loaded.
       const first: any = await fetchPage(0);
+
+      // takeUntil fired (navigation/destroy) — cancelled, not empty. Bail out before the
+      // cache write below, which would otherwise replace the catalog with nothing.
+      if (first === undefined || first === null) {
+        console.warn('loadProductsFromServer: load cancelled mid-flight, keeping cached products');
+        this.isLoading = false;
+        return;
+      }
+
       const firstData = first?.data;
       let totalPages = 1;
       if (firstData?.content) {
@@ -1232,6 +1262,14 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         const remainingPages = Array.from({ length: maxPage - 1 }, (_, i) => i + 1);
         const responses = await Promise.all(remainingPages.map(fetchPage));
         for (const response of responses) {
+          // Any cancelled page means this list is incomplete. Render what we have but do
+          // not let it reach the cache as if it were the full catalog.
+          if (response === undefined || response === null) {
+            console.warn('loadProductsFromServer: a page was cancelled, keeping cached products');
+            renderProgress();
+            this.isLoading = false;
+            return;
+          }
           const data = (response as any)?.data;
           const content: any[] = data?.content || (Array.isArray(data) ? data : []);
           rawProducts.push(...content);
@@ -1419,16 +1457,30 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
     let totalPages = 1;
 
     try {
+      let totalElements = -1;
+
       while (page < totalPages) {
         const response: any = await this.http.get<any>(
           `${this.apiUrl}/shop-products/my-products?page=${page}&size=${pageSize}`
         ).pipe(takeUntil(this.destroy$)).toPromise();
+
+        // takeUntil fired (navigation/destroy) — the request was cancelled, not empty.
+        // Without this the empty result below was written over the whole cache, wiping
+        // every product and then stamping the sync as successful. Same guard as
+        // my-products.component.ts syncProductsFromServer().
+        if (response === undefined || response === null) {
+          console.warn('fullSyncInBackground: sync cancelled mid-flight, keeping cached products');
+          return;
+        }
 
         const data = response?.data;
         let content: any[] = [];
         if (data?.content) {
           content = data.content;
           totalPages = data.totalPages || 1;
+          if (typeof data.totalElements === 'number') {
+            totalElements = data.totalElements;
+          }
         } else if (Array.isArray(data)) {
           content = data;
           totalPages = 1;
@@ -1443,12 +1495,30 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       }
 
+      // A page failed or came back short: never replace good cached data with a partial
+      // list, and never stamp the watermarks, or the next delta sync would treat the
+      // truncated catalog as the new baseline.
+      const syncComplete = totalElements < 0 || rawProducts.length >= totalElements;
+      if (!syncComplete) {
+        console.warn(
+          `fullSyncInBackground: incomplete sync (${rawProducts.length}/${totalElements}), keeping cached products`
+        );
+        return;
+      }
+
+      if (rawProducts.length === 0) {
+        console.warn('fullSyncInBackground: server returned no products, keeping cached products');
+        return;
+      }
+
       const allProducts = rawProducts.map((p: any) => this.mapProduct(p));
       const activeProducts = allProducts.filter(p =>
         p.isAvailable !== false && (p as any).status !== 'INACTIVE'
       );
 
-      // Update cache with ALL products (including inactive) for My Products page
+      // Update cache with ALL products (including inactive) for My Products page.
+      // The watermarks are only stamped after this resolves, so a failed write can never
+      // be recorded as a successful sync.
       await this.offlineStorage.saveProducts(allProducts, this.shopId);
       localStorage.setItem(this.POS_CACHE_TIMESTAMP_KEY, Date.now().toString());
       localStorage.setItem(this.POS_FULL_SYNC_KEY, Date.now().toString());
@@ -4313,9 +4383,16 @@ export class PosBillingComponent implements OnInit, OnDestroy, AfterViewInit {
       this.calculateTotals();
     }
 
-    // Update local cache (for online mode)
+    // Update local cache (for online mode).
+    // Write back ONLY the edited product. this.products is filtered to active items, so
+    // replacing the whole cache with it used to delete every inactive product from the
+    // store that My Products reads, on every quick-edit.
     if (navigator.onLine) {
-      await this.offlineStorage.saveProducts(this.products, this.shopId);
+      const edited = this.products.find(p => p.id === productId)
+        || this.allProductsIncludingInactive?.find(p => p.id === productId);
+      if (edited) {
+        await this.offlineStorage.putProducts([edited as any]);
+      }
     }
   }
 
