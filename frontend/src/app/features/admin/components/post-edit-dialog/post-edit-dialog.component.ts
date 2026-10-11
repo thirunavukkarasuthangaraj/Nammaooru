@@ -293,6 +293,29 @@ export class PostEditDialogComponent implements OnInit {
     moveItemInArray(this.imageSlots, event.previousIndex, event.currentIndex);
   }
 
+  /** Positions to offer in each tile's dropdown: 1..n. */
+  get imagePositions(): number[] {
+    return this.imageSlots.map((_, i) => i + 1);
+  }
+
+  /**
+   * Move an image to an explicit position.
+   *
+   * Dragging alone is not enough here: the installed CDK (16.2) only supports a strictly
+   * horizontal or strictly vertical drop list, and this grid wraps onto several rows, so
+   * dragging a tile from one row to another does not reliably land where you aim. Picking
+   * the target number is exact and works regardless of how the tiles wrap.
+   */
+  moveImageToPosition(fromIndex: number, position: number | string): void {
+    const target = Math.round(Number(position)) - 1;
+    if (isNaN(target)) return;
+
+    const clamped = Math.min(Math.max(target, 0), this.imageSlots.length - 1);
+    if (clamped === fromIndex) return;
+
+    moveItemInArray(this.imageSlots, fromIndex, clamped);
+  }
+
   removeImageSlot(index: number): void {
     const slot = this.imageSlots[index];
     if (!slot) return;

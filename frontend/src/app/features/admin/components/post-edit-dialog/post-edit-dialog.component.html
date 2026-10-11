@@ -44,8 +44,17 @@
                cdkDrag
                [cdkDragDisabled]="imageSlots.length < 2"
                title="Drag to reorder - the first image is the thumbnail">
-            <img [src]="slotImageUrl(slot)" alt="Post image" draggable="false">
-            <span class="order-badge" [class.is-cover]="i === 0">{{ i + 1 }}</span>
+            <!-- The image is the only drag handle, so opening the position dropdown or
+                 hitting remove never starts a drag. -->
+            <img cdkDragHandle [src]="slotImageUrl(slot)" alt="Post image" draggable="false">
+            <select class="order-select"
+                    [class.is-cover]="i === 0"
+                    [value]="i + 1"
+                    (click)="$event.stopPropagation()"
+                    (change)="moveImageToPosition(i, $any($event.target).value)"
+                    [title]="'Position ' + (i + 1) + ' - pick a number to move this image there'">
+              <option *ngFor="let pos of imagePositions" [value]="pos">{{ pos }}</option>
+            </select>
             <span class="tile-label" *ngIf="i === 0 || slot.kind === 'new'">
               {{ i === 0 ? (slot.kind === 'new' ? 'Cover &middot; New' : 'Cover') : 'New' }}
             </span>
@@ -60,7 +69,7 @@
           <span>Add</span>
         </label>
       </div>
-      <p class="paste-hint">Drag an image to reorder - the first one ("Cover") is the post thumbnail. Tip: you can also paste an image (Ctrl+V) to add it.</p>
+      <p class="paste-hint">To reorder, click the number on an image and pick the position you want it to take - everything else shifts around it. Position 1 ("Cover") is the post thumbnail. You can also drag images within a row, or paste an image (Ctrl+V) to add one.</p>
     </div>
 
     <!-- Single-image editing (marketplace) -->
