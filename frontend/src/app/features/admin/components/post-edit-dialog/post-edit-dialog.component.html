@@ -45,8 +45,10 @@
                [cdkDragDisabled]="imageSlots.length < 2"
                title="Drag to reorder - the first image is the thumbnail">
             <img [src]="slotImageUrl(slot)" alt="Post image" draggable="false">
-            <span class="primary-badge" *ngIf="i === 0">Cover</span>
-            <span class="new-badge" *ngIf="slot.kind === 'new'">New</span>
+            <span class="order-badge" [class.is-cover]="i === 0">{{ i + 1 }}</span>
+            <span class="tile-label" *ngIf="i === 0 || slot.kind === 'new'">
+              {{ i === 0 ? (slot.kind === 'new' ? 'Cover &middot; New' : 'Cover') : 'New' }}
+            </span>
             <button type="button" class="remove-btn" (click)="removeImageSlot(i)" title="Remove image">
               <mat-icon>close</mat-icon>
             </button>
@@ -73,7 +75,7 @@
         </div>
         <div class="image-tile new" *ngIf="newSingleImagePreview">
           <img [src]="newSingleImagePreview" alt="New image">
-          <span class="new-badge">New</span>
+          <span class="tile-label">New</span>
           <button type="button" class="remove-btn" (click)="removeNewSingleImage()" title="Remove image">
             <mat-icon>close</mat-icon>
           </button>

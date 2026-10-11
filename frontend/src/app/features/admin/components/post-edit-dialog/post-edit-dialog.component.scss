@@ -84,30 +84,47 @@
     }
   }
 
-  .new-badge {
+  // Position in the saved order. Shown on every tile, because with a dozen images a
+  // single "Cover" marker tells you where the first one is but nothing about the rest,
+  // so there was no way to confirm a drag landed where you intended.
+  .order-badge {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  // The first slot is the post thumbnail, so it gets the accent colour instead of grey.
+  .order-badge.is-cover {
+    background: rgba(25, 118, 210, 0.95);
+  }
+
+  .tile-label {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(46, 125, 50, 0.85);
+    background: rgba(25, 118, 210, 0.85);
     color: #fff;
     font-size: 10px;
     text-align: center;
     padding: 1px 0;
+    pointer-events: none;
   }
 
-  .primary-badge {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    background: rgba(25, 118, 210, 0.9);
-    color: #fff;
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    border-radius: 4px;
-    padding: 1px 5px;
+  &.new .tile-label {
+    background: rgba(46, 125, 50, 0.85);
   }
 }
 
