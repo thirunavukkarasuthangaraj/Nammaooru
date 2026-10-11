@@ -57,11 +57,20 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
         customerId: widget.customerId,
         phone: widget.customerPhone,
       );
+      if (!mounted) return;
       setState(() {
         _availablePromos = promos;
         _loadingPromos = false;
+        // Open the panel when there is actually something to claim. Collapsed, this card
+        // only asked "Have a promo code?", which customers read as "type a code you
+        // already know" and skipped - so offers the shop was running went unused even
+        // though the app had already fetched them.
+        if (promos.isNotEmpty && _appliedPromo == null) {
+          _isExpanded = true;
+        }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loadingPromos = false);
     }
   }
@@ -247,13 +256,37 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                 children: [
                   const Icon(Icons.local_offer, color: VillageTheme.primaryGreen),
                   const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Have a promo code?',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Expanded(
+                    // Say what is on offer instead of asking whether they already hold a
+                    // code. "Have a promo code?" reads as a question only a customer who
+                    // already knows a code would answer, so everyone else scrolled past it.
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _availablePromos.isNotEmpty
+                              ? (_availablePromos.length == 1
+                                  ? '1 offer available'
+                                  : '${_availablePromos.length} offers available')
+                              : 'Have a promo code?',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (_availablePromos.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Tap to apply and save on this order',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   Icon(

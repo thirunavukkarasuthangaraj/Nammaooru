@@ -503,6 +503,11 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           },
           accentColor: VillageTheme.primaryGreen,
           categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
+          // The category grid below already lists every trade with an icon, so the
+          // scrolling chip row was showing the same choices twice and eating a row of
+          // height. While a category is active the grid hides, and the bar then shows a
+          // single clearable chip so there is still a way back to all trades.
+          showCategories: false,
         ),
         // Grid + posts scrollable together
         Expanded(

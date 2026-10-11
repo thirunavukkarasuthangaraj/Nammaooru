@@ -1624,6 +1624,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const SizedBox(height: 12),
 
+              // Promo Code Widget.
+              // Deliberately the first thing under the Order Summary header. It used to sit
+              // below the Items, Delivery Address and Payment Method cards on this same
+              // step, which is several screens of scrolling down on a phone, so customers
+              // reached the Place Order button without ever seeing that offers existed.
+              PromoCodeWidget(
+                orderAmount: cartProvider.subtotal,
+                shopId: cartProvider.items.isNotEmpty
+                    ? cartProvider.items.first.product.shopDatabaseId?.toString()
+                    : null,
+                // AuthProvider.userId is the login User ID, while the promotions API
+                // expects a Customer table ID. The phone identifies the same customer
+                // reliably; order placement performs a second check with the real ID.
+                customerId: null,
+                customerPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+                onPromoApplied: (result) {
+                  setState(() {
+                    _appliedPromo = result;
+                    _appliedPromoCode = result.promoCode;
+                  });
+                  // Update cart provider with discount
+                  cartProvider.applyPromoDiscount(result.discountAmount);
+                },
+                onPromoRemoved: () {
+                  setState(() {
+                    _appliedPromo = null;
+                    _appliedPromoCode = null;
+                  });
+                  // Remove discount from cart
+                  cartProvider.applyPromoDiscount(0);
+                },
+              ),
+              const SizedBox(height: 12),
+
               // Order Items Card
               Card(
                 elevation: 2,
@@ -1838,36 +1872,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-
-              // Promo Code Widget
-              PromoCodeWidget(
-                orderAmount: cartProvider.subtotal,
-                shopId: cartProvider.items.isNotEmpty
-                    ? cartProvider.items.first.product.shopDatabaseId?.toString()
-                    : null,
-                // AuthProvider.userId is the login User ID, while the promotions API
-                // expects a Customer table ID. The phone identifies the same customer
-                // reliably; order placement performs a second check with the real ID.
-                customerId: null,
-                customerPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
-                onPromoApplied: (result) {
-                  setState(() {
-                    _appliedPromo = result;
-                    _appliedPromoCode = result.promoCode;
-                  });
-                  // Update cart provider with discount
-                  cartProvider.applyPromoDiscount(result.discountAmount);
-                },
-                onPromoRemoved: () {
-                  setState(() {
-                    _appliedPromo = null;
-                    _appliedPromoCode = null;
-                  });
-                  // Remove discount from cart
-                  cartProvider.applyPromoDiscount(0);
-                },
               ),
               const SizedBox(height: 10),
 
