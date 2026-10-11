@@ -503,13 +503,10 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           },
           accentColor: VillageTheme.primaryGreen,
           categoryLabelBuilder: (cat) => _getCategoryTamil(cat, context),
-          // The category grid below already lists every trade with an icon, so the
-          // scrolling chip row was showing the same choices twice and eating a row of
-          // height. While a category is active the grid hides, and the bar then shows a
-          // single clearable chip so there is still a way back to all trades.
-          showCategories: false,
         ),
-        // Grid + posts scrollable together
+        // Posts list. The trade-icon grid that used to sit here was removed: it pushed
+        // the actual labour listings a full screen down, and the chip row above already
+        // offers the same filtering in a fraction of the height.
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadPosts,
@@ -518,8 +515,6 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 children: [
-                  if (_selectedCategory == null)
-                    _buildCategoryGrid(),
                   if (_isLoading)
                     const Padding(
                       padding: EdgeInsets.all(40),
@@ -558,96 +553,6 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCategoryGrid() {
-    final langProvider = Provider.of<LanguageProvider>(context);
-    final categories = _categoryLabels.keys.where((k) => k != 'All').toList();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
-      ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: 0.9,
-        ),
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final cat = categories[index];
-          final isSelected = _selectedCategory == cat;
-          final english = _categoryLabels[cat] ?? cat;
-          final tamil = _categoryTamilMap[cat] ?? cat;
-          final icon = _categoryIcons[cat] ?? Icons.work;
-
-          return GestureDetector(
-            onTap: () => _onCategorySelected(isSelected ? 'All' : cat),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? VillageTheme.primaryGreen.withOpacity(0.12)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? VillageTheme.primaryGreen
-                      : Colors.grey.shade300,
-                  width: isSelected ? 2 : 1,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: VillageTheme.primaryGreen.withOpacity(0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icon,
-                    size: 28,
-                    color: isSelected
-                        ? VillageTheme.primaryGreen
-                        : Colors.grey.shade700,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    langProvider.showTamil ? tamil : english,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? VillageTheme.primaryGreen
-                          : Colors.grey.shade800,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 

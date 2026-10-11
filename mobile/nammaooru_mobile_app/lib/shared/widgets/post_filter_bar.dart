@@ -19,15 +19,6 @@ class PostFilterBar extends StatelessWidget {
   final Color accentColor;
   final String Function(String)? categoryLabelBuilder;
 
-  /// Set false on a screen that already shows every category as a grid of tiles
-  /// (Labours does). Repeating the same categories as a scrolling chip row right
-  /// above that grid is pure duplication and costs a row of screen height.
-  ///
-  /// The chips are not simply dropped: while a category IS active the grid hides
-  /// itself, so a single chip for the current selection is still shown and
-  /// clearing it is what takes the user back to the full grid.
-  final bool showCategories;
-
   const PostFilterBar({
     super.key,
     required this.categories,
@@ -39,7 +30,6 @@ class PostFilterBar extends StatelessWidget {
     required this.onSearchSubmitted,
     this.accentColor = VillageTheme.primaryGreen,
     this.categoryLabelBuilder,
-    this.showCategories = true,
   });
 
   static const List<_RadiusOption> radiusOptions = [
@@ -104,50 +94,25 @@ class PostFilterBar extends StatelessWidget {
                 _buildRadiusChip(context),
                 const SizedBox(width: 8),
                 // Category chips
-                if (showCategories)
-                  ...categories.map((cat) {
-                    final isSelected = (selectedCategory == null && cat == categories.first) ||
-                        selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(categoryLabelBuilder?.call(cat) ?? cat),
-                        selected: isSelected,
-                        onSelected: (_) => onCategoryChanged(cat == categories.first ? null : cat),
-                        selectedColor: accentColor.withOpacity(0.2),
-                        checkmarkColor: accentColor,
-                        labelStyle: TextStyle(
-                          color: isSelected ? accentColor : Colors.grey[700],
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          fontSize: 13,
-                        ),
-                      ),
-                    );
-                  })
-                // Categories are hidden because the screen lists them as a grid, but that
-                // grid only renders while nothing is selected. Without this chip the user
-                // would have no way back to "All" once they picked a category.
-                else if (selectedCategory != null)
-                  Padding(
+                ...categories.map((cat) {
+                  final isSelected = (selectedCategory == null && cat == categories.first) ||
+                      selectedCategory == cat;
+                  return Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: InputChip(
-                      label: Text(
-                        categoryLabelBuilder?.call(selectedCategory!) ?? selectedCategory!,
-                      ),
-                      selected: true,
-                      showCheckmark: false,
-                      onDeleted: () => onCategoryChanged(null),
-                      onPressed: () => onCategoryChanged(null),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      deleteIconColor: accentColor,
+                    child: FilterChip(
+                      label: Text(categoryLabelBuilder?.call(cat) ?? cat),
+                      selected: isSelected,
+                      onSelected: (_) => onCategoryChanged(cat == categories.first ? null : cat),
                       selectedColor: accentColor.withOpacity(0.2),
+                      checkmarkColor: accentColor,
                       labelStyle: TextStyle(
-                        color: accentColor,
-                        fontWeight: FontWeight.w600,
+                        color: isSelected ? accentColor : Colors.grey[700],
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                         fontSize: 13,
                       ),
                     ),
-                  ),
+                  );
+                }),
               ],
             ),
           ),
