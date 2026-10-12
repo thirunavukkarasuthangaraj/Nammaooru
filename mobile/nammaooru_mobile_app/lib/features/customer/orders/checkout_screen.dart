@@ -18,6 +18,7 @@ import '../../../core/storage/secure_storage.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/services/order_service.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/delivery_slot_service.dart';
 import '../../../core/services/address_service.dart';
 import '../../../core/models/address_model.dart';
 import '../../../services/address_api_service.dart';
@@ -73,6 +74,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   // Delivery
   String _selectedDeliverySlot = 'ASAP';
+
+  // Delivery windows offered by the shop. Empty means the server had nothing to offer or
+  // the lookup failed; checkout then behaves exactly as it did before, placing an
+  // immediate order, because a slot lookup must never be the reason a customer cannot buy.
+  final DeliverySlotService _slotService = DeliverySlotService();
+  List<DeliverySlot> _deliverySlots = [];
+  DeliverySlot? _chosenSlot;
+  bool _loadingSlots = false;
   String _deliveryInstructions = '';
 
   // Promo Code
@@ -101,6 +110,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // that tap happened. Running it here too means the bill summary is
       // correct from the moment checkout opens, using the address that just loaded.
       await _refreshShopSettings();
+      await _loadDeliverySlots();
       await _recalculateDeliveryFee();
     });
     OrderPaymentService.getGatewayFeePercent().then((percent) {
@@ -1487,6 +1497,149 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     router.push('/customer/shop/$id');
   }
 
+  /// Delivery time card.
+  ///
+  /// Shown only when the shop actually offers windows. When it offers none the card is
+  /// hidden entirely and checkout behaves exactly as before, so a failed or empty slot
+  /// lookup can never block an order.
+  Widget _buildDeliveryTimeCard() {
+    if (_loadingSlots) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(children: [
+            SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 12),
+            Text('Checking delivery times...', style: TextStyle(fontSize: 13)),
+          ]),
+        ),
+      );
+    }
+
+    if (_deliverySlots.isEmpty) return const SizedBox.shrink();
+
+    final grouped = <String, List<DeliverySlot>>{};
+    for (final slot in _deliverySlots.where((s) => !s.express)) {
+      grouped.putIfAbsent(slot.dayLabel, () => []).add(slot);
+    }
+    final express = _deliverySlots.where((s) => s.express).toList();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(children: [
+              Icon(Icons.schedule, color: VillageTheme.primaryGreen, size: 16),
+              const SizedBox(width: 6),
+              Text('Delivery Time',
+                  style: VillageTheme.textLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: VillageTheme.primaryGreen,
+                    fontSize: 13,
+                  )),
+            ]),
+            const SizedBox(height: 10),
+
+            if (express.isNotEmpty) ...[
+              _buildSlotChip(express.first),
+              const SizedBox(height: 10),
+            ],
+
+            // The shop is shut, so say so rather than leaving the customer to work out
+            // why there is no "deliver now".
+            if (express.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  'This shop is closed right now. Choose a delivery time below.',
+                  style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                ),
+              ),
+
+            for (final day in grouped.keys) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 6),
+                child: Text(day,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: grouped[day]!.map(_buildSlotChip).toList(),
+              ),
+              const SizedBox(height: 6),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSlotChip(DeliverySlot slot) {
+    final selected = _chosenSlot != null &&
+        _chosenSlot!.from == slot.from &&
+        _chosenSlot!.until == slot.until &&
+        _chosenSlot!.express == slot.express;
+
+    // A full window stays visible but unselectable: seeing that 9-11 is gone and 11-1 is
+    // open tells the customer something useful that hiding it would not.
+    final enabled = slot.available;
+
+    return InkWell(
+      onTap: enabled ? () => setState(() => _chosenSlot = slot) : null,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: !enabled
+              ? Colors.grey.shade200
+              : selected
+                  ? VillageTheme.primaryGreen.withOpacity(0.12)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: !enabled
+                ? Colors.grey.shade300
+                : selected
+                    ? VillageTheme.primaryGreen
+                    : Colors.grey.shade400,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(Icons.check_circle,
+                    size: 14, color: VillageTheme.primaryGreen),
+              ),
+            Text(
+              enabled ? slot.timeLabel : '${slot.timeLabel}  (Full)',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                color: !enabled
+                    ? Colors.grey.shade600
+                    : selected
+                        ? VillageTheme.primaryGreen
+                        : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderSummaryStep() {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
@@ -1552,6 +1705,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+
+              // Delivery time first: it decides whether this order can be placed at all
+              // when the shop is closed, so it belongs above everything optional.
+              _buildDeliveryTimeCard(),
               const SizedBox(height: 12),
 
               // Promo Code Widget.
@@ -2094,6 +2252,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (_currentStep == 0) {
       await _saveCurrentAddress();
       await _refreshShopSettings();
+      await _loadDeliverySlots();
       await _recalculateDeliveryFee();
     }
 
@@ -2103,6 +2262,49 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         curve: Curves.easeInOut,
       );
     }
+  }
+
+  /// Load the delivery windows this shop can honour.
+  ///
+  /// Called alongside the shop settings refresh so the list is ready by the time the
+  /// customer reaches the review step. Picks the express option by default when the shop
+  /// offers one, so an ordinary daytime order behaves exactly as it always has.
+  Future<void> _loadDeliverySlots() async {
+    if (!mounted) return;
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    if (cartProvider.items.isEmpty) return;
+
+    final shopId = cartProvider.items.first.product.shopDatabaseId;
+    if (shopId == null) return;
+
+    setState(() => _loadingSlots = true);
+    final slots = await _slotService.getSlots(shopId);
+    if (!mounted) return;
+
+    setState(() {
+      _deliverySlots = slots;
+      _loadingSlots = false;
+      // Keep the current choice if it is still on offer, otherwise fall back to express,
+      // then to the first window that is actually available.
+      final stillThere = _chosenSlot == null
+          ? null
+          : slots.firstWhere(
+              (s) => s.from == _chosenSlot!.from && s.until == _chosenSlot!.until,
+              orElse: () => const DeliverySlot(
+                  dayLabel: '', timeLabel: '', available: false),
+            );
+      if (stillThere != null && stillThere.available) {
+        _chosenSlot = stillThere;
+      } else {
+        _chosenSlot = slots.where((s) => s.express).cast<DeliverySlot?>().firstWhere(
+              (s) => true,
+              orElse: () => slots
+                  .where((s) => s.available)
+                  .cast<DeliverySlot?>()
+                  .firstWhere((s) => true, orElse: () => null),
+            );
+      }
+    });
   }
 
   /// Pull the shop's current settings, whatever the delivery type or whether we know
@@ -2442,6 +2644,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'promoCode': _appliedPromoCode,
           'promotionId': _appliedPromo!.promotionId,
           'deviceUuid': deviceUuid,
+        },
+        // A chosen window makes this a scheduled order; the server revalidates it and
+        // holds the order until shortly before the slot. Express carries no window, so
+        // the order behaves exactly as an immediate one always has.
+        if (_chosenSlot != null && !_chosenSlot!.express) ...{
+          'scheduledFrom': _chosenSlot!.fromIso,
+          'scheduledUntil': _chosenSlot!.untilIso,
         },
         if (_selectedDeliveryType == 'HOME_DELIVERY')
           'deliveryAddress': {
