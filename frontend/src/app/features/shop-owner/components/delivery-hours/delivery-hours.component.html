@@ -1,0 +1,78 @@
+<div class="delivery-hours">
+
+  <div class="header">
+    <div>
+      <h2>Delivery Hours</h2>
+      <p class="subtitle">
+        When you can deliver, which may be narrower than when you are open.
+        Customers can only book delivery windows inside these hours.
+      </p>
+    </div>
+    <button mat-raised-button color="primary"
+            (click)="save()"
+            [disabled]="saving || loading || sameAsBusinessHours">
+      <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
+      <mat-icon *ngIf="!saving">save</mat-icon>
+      Save
+    </button>
+  </div>
+
+  <mat-card class="same-as-card">
+    <mat-slide-toggle
+      color="primary"
+      [checked]="sameAsBusinessHours"
+      [disabled]="saving"
+      (change)="onSameAsBusinessHoursChange($event.checked)">
+      Same as my opening hours
+    </mat-slide-toggle>
+    <p class="hint">
+      Most shops deliver whenever they are open. Turn this off only if you stop
+      delivering before you close, for example open until 9 but no deliveries after 7.
+    </p>
+  </mat-card>
+
+  <div *ngIf="loading" class="loading">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+
+  <mat-card *ngIf="!loading" class="grid-card" [class.readonly]="sameAsBusinessHours">
+    <div class="day-row header-row">
+      <span class="day">Day</span>
+      <span>Delivering</span>
+      <span>From</span>
+      <span>To</span>
+      <span>Break from</span>
+      <span>Break to</span>
+    </div>
+
+    <div class="day-row" *ngFor="let hour of hours">
+      <span class="day">{{ label(hour.dayOfWeek) }}</span>
+
+      <mat-slide-toggle color="primary"
+                        [(ngModel)]="hour.isOpen"
+                        [disabled]="sameAsBusinessHours">
+      </mat-slide-toggle>
+
+      <input type="time" [(ngModel)]="hour.openTime"
+             [disabled]="sameAsBusinessHours || !hour.isOpen">
+      <input type="time" [(ngModel)]="hour.closeTime"
+             [disabled]="sameAsBusinessHours || !hour.isOpen">
+      <input type="time" [(ngModel)]="hour.breakStartTime"
+             [disabled]="sameAsBusinessHours || !hour.isOpen">
+      <input type="time" [(ngModel)]="hour.breakEndTime"
+             [disabled]="sameAsBusinessHours || !hour.isOpen">
+    </div>
+
+    <div class="actions" *ngIf="!sameAsBusinessHours">
+      <button mat-stroked-button (click)="copyFirstOpenDayToAll()">
+        <mat-icon>content_copy</mat-icon>
+        Apply the first delivering day to every day
+      </button>
+    </div>
+  </mat-card>
+
+  <p class="footnote">
+    A day switched off here offers no delivery windows at all, so customers cannot book
+    a delivery for it. Breaks are excluded from the windows customers see.
+  </p>
+</div>

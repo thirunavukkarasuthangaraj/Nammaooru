@@ -18,6 +18,7 @@ import { NotificationsComponent } from './components/notifications/notifications
 import { ProductsPricingComponent } from './components/products-pricing/products-pricing.component';
 import { BusinessSummaryComponent } from './components/business-summary/business-summary.component';
 import { BusinessHoursComponent } from './components/business-hours/business-hours.component';
+import { DeliveryHoursComponent } from './components/delivery-hours/delivery-hours.component';
 import { BrowseProductsComponent } from './components/browse-products/browse-products.component';
 import { ComboListComponent } from './components/combo-management/combo-list.component';
 import { ShopPromoListComponent } from './components/promo-codes/shop-promo-list.component';
@@ -142,6 +143,12 @@ const routes: Routes = [
   {
     path: 'business-hours',
     component: BusinessHoursComponent
+  },
+  {
+    // When the shop DELIVERS, which can be narrower than when it is open. These hours
+    // generate the delivery windows customers can book.
+    path: 'delivery-hours',
+    component: DeliveryHoursComponent
   },
   {
     path: 'notifications',
