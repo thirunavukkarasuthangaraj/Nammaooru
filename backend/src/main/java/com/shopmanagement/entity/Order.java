@@ -110,6 +110,16 @@ public class Order {
     @Column(precision = 10, scale = 6)
     private java.math.BigDecimal deliveryLongitude;
 
+    /**
+     * Delivery window the customer chose, for an order placed while the shop was closed.
+     * Both null means deliver as soon as possible, which is every ordinary order.
+     */
+    @Column(name = "scheduled_from")
+    private LocalDateTime scheduledFrom;
+
+    @Column(name = "scheduled_until")
+    private LocalDateTime scheduledUntil;
+
     private LocalDateTime estimatedDeliveryTime;
     private LocalDateTime actualDeliveryTime;
 
@@ -159,6 +169,8 @@ public class Order {
     
     // Enums
     public enum OrderStatus {
+        /** Accepted for a future delivery window; hidden from the shop until released. */
+        SCHEDULED,
         PENDING, CONFIRMED, PREPARING, READY, READY_FOR_PICKUP, OUT_FOR_DELIVERY, DELIVERED, COMPLETED, CANCELLED, REFUNDED, SELF_PICKUP_COLLECTED, RETURNING_TO_SHOP, RETURNED_TO_SHOP
     }
 

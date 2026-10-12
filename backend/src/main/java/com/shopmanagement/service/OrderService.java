@@ -81,6 +81,7 @@ public class OrderService {
     private final OrderPaymentService orderPaymentService;
     private final WalletService walletService;
     private final ShopOrderNotificationService shopOrderNotificationService;
+    private final DeliverySlotService deliverySlotService;
     private final SettingService settingService;
 
     private static final String ONLINE_PAYMENT_ENABLED_KEY = "payment.online_payment_enabled";
@@ -107,7 +108,8 @@ public class OrderService {
             OrderPaymentService orderPaymentService,
             WalletService walletService,
             ShopOrderNotificationService shopOrderNotificationService,
-            SettingService settingService) {
+            SettingService settingService,
+            DeliverySlotService deliverySlotService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
@@ -130,6 +132,7 @@ public class OrderService {
         this.walletService = walletService;
         this.shopOrderNotificationService = shopOrderNotificationService;
         this.settingService = settingService;
+        this.deliverySlotService = deliverySlotService;
     }
 
     /** Blocks an ONLINE_PAYMENT order when either the platform-wide kill switch or the
@@ -1050,6 +1053,23 @@ public class OrderService {
         return orders.map(this::mapToResponse);
     }
     
+    /**
+     * Orders this shop has scheduled for later, soonest window first.
+     *
+     * SCHEDULED orders are deliberately hidden from the pending list and raise no alert
+     * until the release job hands them over, which is what stops a midnight order ringing
+     * the till. The cost of that is the shop cannot see tomorrow's work, so this gives
+     * them a view of it without pulling it into the active queue.
+     */
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getUpcomingScheduledOrders(Long shopId) {
+        return orderRepository
+                .findUpcomingScheduledByShop(shopId, LocalDateTime.now())
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByShop(Long shopId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -1811,6 +1831,28 @@ public class OrderService {
 
         validateNotOwnShop(shop);
 
+        // A closed shop refuses an IMMEDIATE order, not every order. One carrying a
+        // delivery window is accepted and held until that window, turning a refusal into
+        // a sale. The window is revalidated against the shop's DELIVERY hours, so it can
+        // never land at a time nobody is there.
+        boolean isScheduled = request.getScheduledFrom() != null;
+
+        if (isScheduled) {
+            if (!Boolean.parseBoolean(
+                    settingService.getSettingValue("order.scheduled.enabled", "true"))) {
+                throw new RuntimeException(
+                        "Scheduled delivery is not available right now. Please order during business hours.");
+            }
+            // Never trust the window the app sent. An app left open overnight will happily
+            // submit a slot that has since passed or filled up since the list was built.
+            deliverySlotService.validateSlot(
+                    shop.getId(), request.getScheduledFrom(), request.getScheduledUntil());
+        } else if (!businessHoursService.isShopOpenNow(shop.getId())) {
+            log.warn("Immediate order rejected - shop {} ({}) is closed", shop.getName(), shop.getId());
+            throw new RuntimeException(
+                    "Shop is currently closed. Choose a delivery time or try again during business hours.");
+        }
+
         validateOnlinePaymentAllowed(Order.PaymentMethod.valueOf(request.getPaymentMethod()), shop);
 
         // For home delivery, the delivery address must be within the shop's delivery radius.
@@ -1929,7 +1971,9 @@ public class OrderService {
         Order order = Order.builder()
                 .customer(customer)
                 .shop(shop)
-                .status(Order.OrderStatus.PENDING)
+                // Held in SCHEDULED so the shop never sees it, and the till never rings,
+                // until the release job hands it over shortly before its window.
+                .status(isScheduled ? Order.OrderStatus.SCHEDULED : Order.OrderStatus.PENDING)
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .paymentMethod(Order.PaymentMethod.valueOf(request.getPaymentMethod()))
                 .subtotal(request.getSubtotal())
@@ -1948,7 +1992,9 @@ public class OrderService {
                 .deliveryLongitude(addr != null && addr.getLongitude() != null ? BigDecimal.valueOf(addr.getLongitude()) : null)
                 .deliveryPhone(request.getCustomerInfo().getPhone())
                 .deliveryContactName(request.getCustomerInfo().getFirstName() + " " + request.getCustomerInfo().getLastName())
-                .estimatedDeliveryTime(LocalDateTime.now().plusMinutes(30))
+                .scheduledFrom(request.getScheduledFrom())
+                .scheduledUntil(request.getScheduledUntil())
+                .estimatedDeliveryTime(estimateDeliveryTime(shop, addr, deliveryType))
                 .createdBy("customer")
                 .updatedBy("customer")
                 .build();
@@ -1998,7 +2044,10 @@ public class OrderService {
         // through - notifying now, while the order is still unpaid PENDING,
         // would tell the shop about work that may never happen if the
         // customer abandons or fails checkout.
-        if (savedOrder.getPaymentMethod() != Order.PaymentMethod.ONLINE_PAYMENT) {
+        // A scheduled order must not ring the till now. Its window may be twelve hours
+        // away, and that app alerts like an incoming call for every new order.
+        // ScheduledOrderReleaseService notifies the shop shortly before the window instead.
+        if (savedOrder.getPaymentMethod() != Order.PaymentMethod.ONLINE_PAYMENT && !isScheduled) {
             shopOrderNotificationService.notifyNewOrder(savedOrder);
         }
 
@@ -2578,5 +2627,46 @@ public class OrderService {
         }
 
         return mapToResponse(savedOrder);
+    }
+
+    /**
+     * When this order should reach the customer.
+     *
+     * Was a flat "now + 30 minutes" for every order, so a shop two streets away and one
+     * eight kilometres out made the identical promise and no shop owner could change it.
+     * The estimate is now the shop's own preparation time plus travel time for the actual
+     * distance, which is the same distance the delivery fee is already based on.
+     *
+     * Self pickup has no travel leg: the customer collects once the order is ready.
+     *
+     * Falls back to preparation time alone when either side's coordinates are missing,
+     * rather than inventing a distance.
+     */
+    private LocalDateTime estimateDeliveryTime(Shop shop,
+                                               CustomerOrderRequest.DeliveryAddressRequest addr,
+                                               String deliveryType) {
+        int prepMinutes = shop.getPreparationTimeMinutes() != null
+                ? shop.getPreparationTimeMinutes()
+                : 20;
+
+        if (!"HOME_DELIVERY".equals(deliveryType)) {
+            return LocalDateTime.now().plusMinutes(prepMinutes);
+        }
+
+        if (addr == null || addr.getLatitude() == null || addr.getLongitude() == null
+                || shop.getLatitude() == null || shop.getLongitude() == null) {
+            return LocalDateTime.now().plusMinutes(prepMinutes);
+        }
+
+        double distanceKm = geoLocationUtils.calculateDistance(
+                shop.getLatitude(), shop.getLongitude(),
+                BigDecimal.valueOf(addr.getLatitude()), BigDecimal.valueOf(addr.getLongitude()));
+
+        // Local roads on a two-wheeler: 20 km/h is a conservative average once stops and
+        // traffic are allowed for. Deliberately pessimistic - a late order annoys a
+        // customer far more than an early one.
+        int travelMinutes = (int) Math.ceil(distanceKm / 20.0 * 60.0);
+
+        return LocalDateTime.now().plusMinutes(prepMinutes + travelMinutes);
     }
 }

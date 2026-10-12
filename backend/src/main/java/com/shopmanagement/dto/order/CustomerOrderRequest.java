@@ -12,6 +12,14 @@ public class CustomerOrderRequest {
     private List<OrderItemRequest> items;
     private DeliveryAddressRequest deliveryAddress;
     private String paymentMethod;
+
+    /**
+     * Delivery window the customer picked, for an order placed outside delivery hours.
+     * Both null means deliver as soon as possible, which is every ordinary order.
+     * Revalidated server-side at placement; the values sent here are never trusted.
+     */
+    private java.time.LocalDateTime scheduledFrom;
+    private java.time.LocalDateTime scheduledUntil;
     private BigDecimal subtotal;
     private BigDecimal deliveryFee;
     private BigDecimal discount;

@@ -129,6 +129,26 @@ public class Shop {
     private BigDecimal deliveryRadius = new BigDecimal("5.0");
 
 
+    /**
+     * Minutes this shop needs to prepare an order before a driver can collect it.
+     * The customer-facing estimate is this plus travel time for the distance, replacing
+     * the flat "30 minutes" every shop used to promise regardless of how far away it was.
+     */
+    @Builder.Default
+    @Min(value = 0)
+    @Column(name = "preparation_time_minutes", nullable = false)
+    private Integer preparationTimeMinutes = 20;
+
+    /**
+     * Maximum scheduled orders this shop will accept into one delivery window.
+     * Without a cap a single 9-11 slot takes fifty orders and none of them arrive,
+     * which is worse for the customer than the order being refused up front.
+     */
+    @Builder.Default
+    @Min(value = 1)
+    @Column(name = "max_orders_per_slot", nullable = false)
+    private Integer maxOrdersPerSlot = 10;
+
     @DecimalMin(value = "0.0")
     @Column(name = "free_delivery_above", precision = 10, scale = 2)
     private BigDecimal freeDeliveryAbove;

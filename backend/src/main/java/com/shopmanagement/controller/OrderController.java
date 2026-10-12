@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.shopmanagement.dto.order.DeliverySlot;
+import com.shopmanagement.service.DeliverySlotService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,7 @@ import java.util.Optional;
 public class OrderController {
 
     private final OrderService orderService;
+    private final DeliverySlotService deliverySlotService;
     private final OrderAssignmentService assignmentService;
     private final DeliveryConfirmationService deliveryConfirmationService;
     private final OrderRepository orderRepository;
@@ -125,6 +128,34 @@ public class OrderController {
         log.info("Fetching orders for shop: {}", shopId);
         Page<OrderResponse> response = orderService.getOrdersByShop(shopId, page, size);
         return ResponseUtil.paginated(response);
+    }
+
+    /**
+     * What this shop has coming later: orders accepted for a future delivery window and
+     * not yet released into the pending queue. Lets the shop plan stock for tomorrow
+     * without those orders alerting or appearing overdue today.
+     */
+    /**
+     * Delivery windows this shop can still honour, for the customer to choose from.
+     *
+     * Public: the customer needs to see windows before they are far enough through
+     * checkout to be identified. Windows are generated from the shop's own delivery
+     * hours, so this cannot leak anything the shop has not already published.
+     */
+    @GetMapping("/shop/{shopId}/delivery-slots")
+    public ResponseEntity<ApiResponse<List<DeliverySlot>>> getDeliverySlots(
+            @PathVariable Long shopId) {
+        List<DeliverySlot> slots = deliverySlotService.getAvailableSlots(shopId);
+        return ResponseUtil.success(slots, "Delivery slots fetched successfully");
+    }
+
+    @GetMapping("/shop/{shopId}/scheduled")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('SHOP_OWNER')")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getScheduledOrdersByShop(
+            @PathVariable Long shopId) {
+        log.info("Fetching scheduled orders for shop: {}", shopId);
+        List<OrderResponse> scheduled = orderService.getUpcomingScheduledOrders(shopId);
+        return ResponseUtil.success(scheduled, "Scheduled orders fetched successfully");
     }
 
     @GetMapping("/shop/{shopId}/stats")
