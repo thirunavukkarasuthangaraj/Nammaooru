@@ -311,7 +311,10 @@ class AuthProvider with ChangeNotifier {
         // at their own shop.
         return '/customer/dashboard';
       case 'DELIVERY_PARTNER':
-        return '/delivery-partner/dashboard';
+        // '/delivery-partner/dashboard' was never registered in the router, so this
+        // sent partners to a router error page on every login. Their work lives in
+        // the separate delivery partner app; here they just browse as a customer.
+        return '/customer/dashboard';
       default:
         return '/login';
     }

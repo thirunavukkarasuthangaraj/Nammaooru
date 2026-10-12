@@ -166,13 +166,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Code
         // User is now authenticated, redirect to appropriate dashboard based on role
         // Use context.go() so the ShellRoute (bottom nav) is included
         if (!mounted) return;
-        if (authProvider.isCustomer || authProvider.isShopOwner) {
-          context.go('/customer/dashboard');
-        } else if (authProvider.isDeliveryPartner) {
-          context.go('/delivery-partner/dashboard');
-        } else {
-          context.go('/customer/dashboard');
-        }
+        // Every role browses the customer dashboard here. Shop owners and delivery
+        // partners do their own work in their separate apps, and
+        // '/delivery-partner/dashboard' was never a registered route, so sending
+        // partners there put them on a router error page.
+        context.go('/customer/dashboard');
       } else {
         // Show detailed error message
         final errorMessage = authProvider.errorMessage ?? 'OTP verification failed. Please try again.';

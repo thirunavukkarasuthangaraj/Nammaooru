@@ -80,12 +80,13 @@ class RoleGuard {
   static bool _hasPermissionForRoute(String path, String? userRole) {
     if (userRole == null) return false;
 
+    // Shop owners and delivery partners browse as customers here; their own
+    // work happens in the separate shop owner and delivery partner apps.
     if (path.startsWith('/customer/')) {
-      return userRole == 'CUSTOMER' || userRole == 'USER' || userRole == 'SHOP_OWNER';
-    }
-
-    if (path.startsWith('/shop-owner/')) {
-      return userRole == 'SHOP_OWNER';
+      return userRole == 'CUSTOMER' ||
+          userRole == 'USER' ||
+          userRole == 'SHOP_OWNER' ||
+          userRole == 'DELIVERY_PARTNER';
     }
 
     return true;

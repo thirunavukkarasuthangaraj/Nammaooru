@@ -35,10 +35,6 @@ import '../features/customer/screens/womens_corner_screen.dart';
 import '../features/customer/screens/create_womens_corner_screen.dart';
 import '../features/customer/screens/smart_order_screen.dart';
 import '../features/customer/screens/voice_assistant_screen.dart';
-import '../features/shop_owner/dashboard/shop_owner_dashboard.dart';
-import '../features/shop_owner/orders/order_processing_screen.dart';
-import '../features/shop_owner/products/product_management_screen.dart';
-import '../features/shop_owner/products/browse_catalog_screen.dart';
 // import '../features/delivery_fee_test/delivery_fee_test_screen.dart'; // Temporarily disabled
 import 'package:provider/provider.dart';
 import '../shared/providers/feature_config_provider.dart';
@@ -285,22 +281,6 @@ class AppRouter {
             },
           ),
         ],
-      ),
-      GoRoute(
-        path: '/shop-owner/dashboard',
-        builder: (context, state) => const ShopOwnerDashboard(),
-      ),
-      GoRoute(
-        path: '/shop-owner/orders-management',
-        builder: (context, state) => const OrderProcessingScreen(),
-      ),
-      GoRoute(
-        path: '/shop-owner/products',
-        builder: (context, state) => const ProductManagementScreen(),
-      ),
-      GoRoute(
-        path: '/shop-owner/products/catalog',
-        builder: (context, state) => const BrowseCatalogScreen(),
       ),
     ],
   );
