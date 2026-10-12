@@ -100,6 +100,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // delivery fee was last saved (e.g. a stale platform-fallback ₹50) until
       // that tap happened. Running it here too means the bill summary is
       // correct from the moment checkout opens, using the address that just loaded.
+      await _refreshShopSettings();
       await _recalculateDeliveryFee();
     });
     OrderPaymentService.getGatewayFeePercent().then((percent) {
@@ -2092,6 +2093,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // Save address when moving from address step
     if (_currentStep == 0) {
       await _saveCurrentAddress();
+      await _refreshShopSettings();
       await _recalculateDeliveryFee();
     }
 
@@ -2100,6 +2102,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+    }
+  }
+
+  /// Pull the shop's current settings, whatever the delivery type or whether we know
+  /// the customer's coordinates.
+  ///
+  /// These used to be refreshed only as a side effect of the delivery-fee call, which
+  /// returns early for Self Pickup and when coordinates are unknown. In those cases
+  /// minOrderAmount fell back to 100 and onlinePaymentEnabled stayed at its default of
+  /// true, so online payment was offered for shops that do not accept it and the order
+  /// was only refused by the server at the very end.
+  Future<void> _refreshShopSettings() async {
+    if (!mounted) return;
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    if (cartProvider.items.isEmpty) return;
+
+    final shopId = int.tryParse(
+        cartProvider.items.first.product.shopDatabaseId.toString());
+    if (shopId == null) return;
+
+    try {
+      final shopResponse = await ShopApiService().getShopById(shopId);
+      final shopData = shopResponse['data'];
+      if (shopData == null || !mounted) return;
+
+      final minOrderAmount = (shopData['minOrderAmount'] as num?)?.toDouble();
+      final onlinePaymentEnabled = shopData['onlinePaymentEnabled'] as bool?;
+      if (minOrderAmount != null || onlinePaymentEnabled != null) {
+        cartProvider.setShopStatus(
+          isOpen: cartProvider.isShopOpen,
+          minOrderAmount: minOrderAmount,
+          onlinePaymentEnabled: onlinePaymentEnabled,
+        );
+      }
+    } catch (e) {
+      // Best-effort: a failed lookup leaves the existing values rather than
+      // blocking checkout.
+      debugPrint('Failed to refresh shop settings: $e');
     }
   }
 
@@ -2128,12 +2168,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final shopLat = (shopData?['latitude'] as num?)?.toDouble();
       final shopLng = (shopData?['longitude'] as num?)?.toDouble();
 
-      // minOrderAmount otherwise only gets set from the shop details screen -
-      // a cart item added before that fix, or before this shop visit, would
-      // leave it null here and checkout would silently fall back to 100.
+      // minOrderAmount and onlinePaymentEnabled otherwise only get set from the shop
+      // details screen - a cart item added before that fix, or before this shop visit,
+      // would leave minOrderAmount null (falling back to 100) and onlinePaymentEnabled
+      // stuck at its default of true.
+      //
+      // That default is the dangerous one: online payment would be offered for a shop
+      // that does not accept it, the customer would pick it, and the order would only be
+      // refused by the server at the very end. Reading the real value here means the
+      // option is simply not shown.
       final minOrderAmount = (shopData?['minOrderAmount'] as num?)?.toDouble();
-      if (minOrderAmount != null && mounted) {
-        cartProvider.setShopStatus(isOpen: cartProvider.isShopOpen, minOrderAmount: minOrderAmount);
+      final onlinePaymentEnabled = shopData?['onlinePaymentEnabled'] as bool?;
+      if ((minOrderAmount != null || onlinePaymentEnabled != null) && mounted) {
+        cartProvider.setShopStatus(
+          isOpen: cartProvider.isShopOpen,
+          minOrderAmount: minOrderAmount,
+          onlinePaymentEnabled: onlinePaymentEnabled,
+        );
       }
 
       if (shopLat == null || shopLng == null) return;
