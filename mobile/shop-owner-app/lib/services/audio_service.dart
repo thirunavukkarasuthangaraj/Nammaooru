@@ -122,6 +122,71 @@ class AudioService {
     }
   }
 
+  // ─── Incoming-order ringing ───
+  //
+  // A notification sound plays once for a few seconds and stops, which is how new
+  // orders were being missed in a busy shop. This rings continuously like an incoming
+  // call until the owner accepts or dismisses the order.
+
+  bool _isRinging = false;
+  Timer? _ringTimeout;
+
+  bool get isRinging => _isRinging;
+
+  /// Ring until [stopOrderRinging] is called, or until [maxDuration] elapses so a
+  /// forgotten phone does not ring until the battery dies.
+  Future<void> startOrderRinging({
+    String soundFile = SoundFiles.newOrder,
+    Duration maxDuration = const Duration(minutes: 2),
+  }) async {
+    if (!_isInitialized) await initialize();
+    if (_isRinging) return;
+
+    _isRinging = true;
+    try {
+      await _backgroundPlayer.stop();
+      await _backgroundPlayer.setReleaseMode(ReleaseMode.loop);
+      // Deliberately ignores _volume: an order alert is useless at half volume.
+      await _backgroundPlayer.setVolume(_isMuted ? 0.0 : 1.0);
+      await _backgroundPlayer.play(AssetSource('sounds/$soundFile'));
+
+      _ringTimeout?.cancel();
+      _ringTimeout = Timer(maxDuration, () {
+        print('Order ringing hit its time limit, stopping');
+        stopOrderRinging();
+      });
+
+      _vibrateRepeatedly();
+      print('Order ringing started: $soundFile');
+    } catch (e) {
+      _isRinging = false;
+      print('Failed to start order ringing: $e');
+    }
+  }
+
+  Future<void> stopOrderRinging() async {
+    _ringTimeout?.cancel();
+    _ringTimeout = null;
+    if (!_isRinging) return;
+    _isRinging = false;
+    try {
+      await _backgroundPlayer.stop();
+      await _backgroundPlayer.setReleaseMode(ReleaseMode.release);
+      await _backgroundPlayer.setVolume(_isMuted ? 0.0 : _volume * 0.5);
+      print('Order ringing stopped');
+    } catch (e) {
+      print('Failed to stop order ringing: $e');
+    }
+  }
+
+  /// Buzz every couple of seconds for as long as the ring is active.
+  Future<void> _vibrateRepeatedly() async {
+    while (_isRinging) {
+      await _vibrate();
+      await Future.delayed(const Duration(seconds: 2));
+    }
+  }
+
   // Play success sound
   Future<void> playSuccessSound() async {
     await _playSound(SoundFiles.successChime);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -28,6 +29,53 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 final AudioPlayer audioPlayer = AudioPlayer();
 
+// ─── Incoming-order ringing ───
+//
+// A notification tone plays once for a couple of seconds, which shop owners were
+// missing while serving customers. A new order instead rings on a loop, like an
+// incoming call, until it is accepted, viewed or dismissed.
+
+bool _isRingingForOrder = false;
+Timer? _orderRingTimeout;
+
+bool _isNewOrderType(String type) {
+  final t = type.toLowerCase();
+  return t.isEmpty || t == 'new_order' || t == 'order_placed' || t == 'new order';
+}
+
+Future<void> startOrderRinging() async {
+  if (_isRingingForOrder) return;
+  _isRingingForOrder = true;
+  try {
+    await audioPlayer.stop();
+    await audioPlayer.setReleaseMode(ReleaseMode.loop);
+    await audioPlayer.setVolume(1.0);
+    await audioPlayer.play(AssetSource('sounds/new_order.wav'));
+
+    // Stop after two minutes so a phone left on a counter does not ring all day.
+    _orderRingTimeout?.cancel();
+    _orderRingTimeout = Timer(const Duration(minutes: 2), stopOrderRinging);
+    print('🔔 Order ringing started');
+  } catch (e) {
+    _isRingingForOrder = false;
+    print('❌ Error starting order ring: $e');
+  }
+}
+
+Future<void> stopOrderRinging() async {
+  _orderRingTimeout?.cancel();
+  _orderRingTimeout = null;
+  if (!_isRingingForOrder) return;
+  _isRingingForOrder = false;
+  try {
+    await audioPlayer.stop();
+    await audioPlayer.setReleaseMode(ReleaseMode.release);
+    print('🔕 Order ringing stopped');
+  } catch (e) {
+    print('❌ Error stopping order ring: $e');
+  }
+}
+
 // Global navigator key for navigation from notifications
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -44,6 +92,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 // Handle notification tap
 void _onNotificationTapped(NotificationResponse response) {
   print('🔔 Notification tapped: ${response.payload}');
+  // Accept, View or a plain tap all answer the ring.
+  stopOrderRinging();
   _pendingNotificationPayload = response.payload;
   _navigateToNotifications();
 }
@@ -291,14 +341,20 @@ void main() async {
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
-      // Create notification channel for new orders
+      // Create notification channel for new orders.
+      // The id carries a _v2 suffix because Android freezes a channel's importance and
+      // sound when it is first created and ignores later edits. Anyone who already has
+      // the app would otherwise keep the old silent channel forever.
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'shop_owner_orders',
+        'shop_owner_orders_v2',
         'Order Notifications',
         description: 'Notifications for shop orders',
         importance: Importance.max,
-        sound: RawResourceAndroidNotificationSound('new_order'),
+        sound: RawResourceAndroidNotificationSound('order_ring'),
         playSound: true,
+        enableVibration: true,
+        enableLights: true,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
       );
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
@@ -325,12 +381,18 @@ void main() async {
           print(
               '📬 Notification: ${message.notification!.title} - ${message.notification!.body}');
 
+          final isNewOrder = _isNewOrderType(notificationType);
+
           try {
-            // Play notification sound
-            print('🔊 Attempting to play notification sound...');
-            await audioPlayer.stop(); // Stop any currently playing sound
-            await audioPlayer.play(AssetSource('sounds/new_order.mp3'));
-            print('✅ Sound played successfully');
+            // A new order rings continuously like an incoming call until the owner
+            // accepts or dismisses it. The previous one-shot tone lasted a couple of
+            // seconds and was being missed in a busy shop. Anything else plays once.
+            if (isNewOrder) {
+              await startOrderRinging();
+            } else {
+              await audioPlayer.stop();
+              await audioPlayer.play(AssetSource('sounds/new_order.wav'));
+            }
           } catch (e) {
             print('❌ Error playing sound: $e');
           }
@@ -349,9 +411,36 @@ void main() async {
                   channelDescription: channel.description,
                   importance: Importance.max,
                   priority: Priority.high,
-                  sound: const RawResourceAndroidNotificationSound('new_order'),
+                  sound: const RawResourceAndroidNotificationSound('order_ring'),
                   playSound: true,
                   icon: '@mipmap/ic_launcher',
+                  // Treated as a call so Android gives it call-level prominence, keeps it
+                  // on screen until answered, and can show it over the lock screen.
+                  category: isNewOrder
+                      ? AndroidNotificationCategory.call
+                      : AndroidNotificationCategory.message,
+                  audioAttributesUsage: isNewOrder
+                      ? AudioAttributesUsage.alarm
+                      : AudioAttributesUsage.notification,
+                  fullScreenIntent: isNewOrder,
+                  ongoing: isNewOrder,
+                  autoCancel: !isNewOrder,
+                  actions: isNewOrder
+                      ? const <AndroidNotificationAction>[
+                          AndroidNotificationAction(
+                            'accept_order',
+                            'Accept',
+                            showsUserInterface: true,
+                            cancelNotification: true,
+                          ),
+                          AndroidNotificationAction(
+                            'view_order',
+                            'View',
+                            showsUserInterface: true,
+                            cancelNotification: true,
+                          ),
+                        ]
+                      : null,
                 ),
               ),
             );
@@ -378,6 +467,7 @@ void main() async {
       // Handle notification tap when app is opened from background/terminated state
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         print('🔔 Notification opened app from background: ${message.messageId}');
+        stopOrderRinging();
         _navigateToNotifications();
       });
 

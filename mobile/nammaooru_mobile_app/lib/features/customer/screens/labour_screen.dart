@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -677,6 +678,9 @@ class _LabourScreenState extends State<LabourScreen> with SingleTickerProviderSt
                   // Image or icon
                   if (allImageUrls.isNotEmpty)
                     _SmartThumbnail(
+                      // Keyed to this post: without it Flutter reuses the State object
+                      // across posts at the same position and the photo lags one behind.
+                      key: ValueKey('labour-thumb-${post['id']}'),
                       imageUrls: allImageUrls,
                       width: 110,
                       icon: categoryIcon,
@@ -1689,6 +1693,7 @@ class _SmartThumbnail extends StatefulWidget {
   final Color accentColor;
 
   const _SmartThumbnail({
+    super.key,
     required this.imageUrls,
     required this.width,
     required this.icon,
@@ -1702,17 +1707,41 @@ class _SmartThumbnail extends StatefulWidget {
 class _SmartThumbnailState extends State<_SmartThumbnail> {
   late String _chosenUrl;
 
+  /// Identifies which post the current pick belongs to. Flutter reuses a State object
+  /// when the same widget type reappears at the same position with a different post, and
+  /// initState does NOT run again - so without this the thumbnail kept showing the
+  /// previous labourer's photo until you left the screen and came back.
+  late List<String> _urlsForPick;
+
   @override
   void initState() {
     super.initState();
-    _chosenUrl = widget.imageUrls.first;
-    if (widget.imageUrls.length > 1) _pickBestPhoto();
+    _applyUrls();
   }
 
-  Future<void> _pickBestPhoto() async {
-    for (final url in widget.imageUrls.take(4)) {
+  @override
+  void didUpdateWidget(covariant _SmartThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Same State, different post: recompute instead of keeping the old photo.
+    if (!listEquals(oldWidget.imageUrls, widget.imageUrls)) {
+      _applyUrls();
+    }
+  }
+
+  void _applyUrls() {
+    _urlsForPick = widget.imageUrls;
+    _chosenUrl = widget.imageUrls.first;
+    if (widget.imageUrls.length > 1) _pickBestPhoto(_urlsForPick);
+  }
+
+  Future<void> _pickBestPhoto(List<String> urls) async {
+    for (final url in urls.take(4)) {
       final ratio = await _aspectRatio(url);
-      if (ratio != null && ratio <= 1.15 && mounted && url != _chosenUrl) {
+      if (!mounted) return;
+      // The post may have changed while this lookup was in flight. Dropping the result
+      // stops a late answer for the previous post overwriting the current photo.
+      if (!identical(urls, _urlsForPick)) return;
+      if (ratio != null && ratio <= 1.15 && url != _chosenUrl) {
         setState(() => _chosenUrl = url);
         return;
       }

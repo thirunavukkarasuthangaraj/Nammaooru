@@ -3,6 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io' show Platform;
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 import '../app/routes.dart';
 
 class LocalNotificationService {
@@ -29,6 +31,9 @@ class LocalNotificationService {
     }
 
     try {
+      // Needed by zonedSchedule, which the abandoned-cart reminder uses.
+      tzdata.initializeTimeZones();
+
       // Android initialization settings
       const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -296,6 +301,72 @@ class LocalNotificationService {
   }
 
   /// Cancel a specific notification
+  // ─── Abandoned-cart reminder ───
+  //
+  // The cart lives only on this phone; there is no cart table on the server, so the
+  // backend cannot know that items are waiting and cannot push a reminder. This
+  // schedules the reminder locally instead, which also means it still fires when the
+  // phone is offline.
+
+  /// Fixed id so re-scheduling replaces the pending reminder instead of stacking them up.
+  static const int cartReminderId = 90001;
+
+  /// Remind the customer that their cart is still waiting.
+  /// Re-scheduling cancels any previous reminder, so the timer restarts every time the
+  /// cart changes and a customer who is actively shopping is never interrupted.
+  Future<void> scheduleCartReminder({
+    required int itemCount,
+    Duration delay = const Duration(hours: 2),
+  }) async {
+    if (kIsWeb || itemCount <= 0) return;
+    if (!_initialized) await initialize();
+
+    try {
+      await _notificationsPlugin.cancel(cartReminderId);
+
+      final body = itemCount == 1
+          ? 'You left 1 item in your cart. Order now before it sells out.'
+          : 'You left $itemCount items in your cart. Order now before they sell out.';
+
+      await _notificationsPlugin.zonedSchedule(
+        cartReminderId,
+        'Your cart is waiting',
+        body,
+        tz.TZDateTime.now(tz.local).add(delay),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'cart_reminders',
+            'Cart Reminders',
+            channelDescription: 'Reminds you about items left in your cart',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'cart_reminder',
+      );
+      debugPrint('🛒 Cart reminder scheduled for ${delay.inHours}h ($itemCount items)');
+    } catch (e) {
+      debugPrint('❌ Failed to schedule cart reminder: $e');
+    }
+  }
+
+  /// Called when the cart empties or an order is placed, so a customer who already
+  /// ordered is never told their cart is waiting.
+  Future<void> cancelCartReminder() async {
+    if (kIsWeb) return;
+    try {
+      await _notificationsPlugin.cancel(cartReminderId);
+      debugPrint('🛒 Cart reminder cancelled');
+    } catch (e) {
+      debugPrint('❌ Failed to cancel cart reminder: $e');
+    }
+  }
+
   Future<void> cancelNotification(int id) async {
     try {
       await _notificationsPlugin.cancel(id);

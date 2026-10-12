@@ -14,12 +14,37 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
+    <!-- Order alerts.
+         POST_NOTIFICATIONS is mandatory from Android 13; without it the app cannot show
+         a notification at all, which is why new orders were being missed entirely.
+         USE_FULL_SCREEN_INTENT lets a new order take over the screen like an incoming
+         call. The code already asks for a full screen intent; without this it is ignored.
+         On Android 14+ the user must also grant it in system settings unless the app is a
+         calling app, so the in-app prompt handles that case.
+         VIBRATE and WAKE_LOCK let the alert buzz and wake a sleeping screen. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:label="Shop Owner"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:usesCleartextTraffic="true">
+
+        <!-- When the app is backgrounded or closed, Firebase draws the notification itself
+             and the app's Dart code never runs. Without this it picks a fallback channel
+             with the plain default tone, which is why a new order only made the ordinary
+             notification sound. Pointing it at the order channel makes Android use that
+             channel's loud alert, max importance and alarm stream instead.
+             Must match the channel id created in main.dart. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="shop_owner_orders_v2" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

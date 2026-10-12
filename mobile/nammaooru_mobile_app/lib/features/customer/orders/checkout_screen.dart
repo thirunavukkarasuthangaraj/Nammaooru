@@ -495,7 +495,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               },
               children: [
                 _buildDeliveryAddressStep(),
-                _buildPaymentMethodStep(),
+                // The payment step was removed: it held two options with cash as the
+                // default, and the review page already showed the chosen method. Picking
+                // it is now done on the review page itself, so changing your mind no
+                // longer means walking back a screen and forward again.
                 _buildOrderSummaryStep(),
               ],
             ),
@@ -507,7 +510,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildStepIndicator() {
-    final steps = ['Address', 'Payment', 'Review'];
+    final steps = ['Address', 'Review'];
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1369,122 +1372,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPaymentMethodStep() {
-    final cartProvider = Provider.of<CartProvider>(context);
-    // Shop disabled online payment (or we're now on a shop that never
-    // enabled it) after the customer had it selected - fall back to COD
-    // rather than leaving a hidden, unselectable option chosen.
-    if (!cartProvider.isOnlinePaymentEnabled && _selectedPaymentMethod == 'ONLINE_PAYMENT') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _selectedPaymentMethod = 'CASH_ON_DELIVERY');
-      });
-    }
-    return SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            elevation: 2,
-            shadowColor: Colors.black.withOpacity(0.1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: VillageTheme.primaryGreen,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.payment, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Payment Method',
-                          style: VillageTheme.headingMedium.copyWith(
-                            color: VillageTheme.primaryGreen,
-                            fontSize: 15,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'Choose your payment option',
-                          style: VillageTheme.bodySmall.copyWith(fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildModernPaymentOption(
-                'CASH_ON_DELIVERY',
-                'Cash on Delivery',
-                'Pay when order arrives',
-                Icons.local_shipping,
-                Colors.orange,
-              ),
-              if (cartProvider.isOnlinePaymentEnabled) ...[
-                const SizedBox(height: 10),
-                _buildModernPaymentOption(
-                  'ONLINE_PAYMENT',
-                  'Online Payment',
-                  'Pay now via UPI, card or wallet',
-                  Icons.credit_card,
-                  Colors.blue,
-                ),
-              ],
-            ],
-          ),
-
-          if (_selectedPaymentMethod == 'ONLINE_PAYMENT') ...[
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              color: Colors.blue.shade50,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.blue.shade100),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Icon(Icons.lock_outline, color: Colors.blue.shade700, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'You\'ll be taken to a secure Razorpay checkout to complete payment. '
-                        'A small gateway fee is added to the total to cover the payment processing cost.',
-                        style: TextStyle(fontSize: 12.5, color: Colors.blue.shade900, height: 1.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _buildModernPaymentOption(String value, String title, String subtitle, IconData icon, Color iconColor) {
     final isSelected = _selectedPaymentMethod == value;
@@ -1567,9 +1454,51 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  /// Jump straight back to the shop so the customer can top the order up.
+  ///
+  /// Pushing the shop route rather than popping: checkout can be reached from the cart,
+  /// from a re-order and from a deep link, so the number of screens to pop back through
+  /// is not fixed. Pushing always lands on the right shop.
+  void _goToShopToAddItems(CartProvider cartProvider) {
+    if (cartProvider.items.isEmpty) return;
+    final item = cartProvider.items.first;
+    // shopDatabaseId is the numeric shop id, but it is left null by some product
+    // endpoints (see ProductModel.fromJson), so fall back to the product's shopId.
+    final id = item.product.shopDatabaseId ?? int.tryParse(item.product.shopId.toString());
+
+    // Checkout is pushed as a plain MaterialPageRoute, while the shop page is a
+    // go_router route inside the customer shell. Pushing the route from here put the
+    // shop UNDERNEATH checkout, so the button looked completely dead. Leave the
+    // imperative route first, then navigate; the router is captured beforehand because
+    // this context is deactivated by the pop.
+    final router = GoRouter.of(context);
+    final navigator = Navigator.of(context);
+
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+
+    if (id == null || id == 0) {
+      // No usable shop id (an old cart restored from storage). Dropping back to the
+      // cart still beats leaving the customer stuck on a dead end.
+      return;
+    }
+    router.push('/customer/shop/$id');
+  }
+
   Widget _buildOrderSummaryStep() {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
+        // Carried over from the removed payment step: if the shop turned online payment
+        // off (or the cart moved to a shop that never had it) while ONLINE_PAYMENT was
+        // selected, fall back to cash rather than leaving a hidden option chosen and
+        // sending an order the shop cannot take payment for.
+        if (!cartProvider.isOnlinePaymentEnabled &&
+            _selectedPaymentMethod == 'ONLINE_PAYMENT') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _selectedPaymentMethod = 'CASH_ON_DELIVERY');
+          });
+        }
         return SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(12),
@@ -1859,16 +1788,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _selectedPaymentMethod.replaceAll('_', ' '),
-                        style: VillageTheme.bodyMedium.copyWith(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      // Selectable here, not just displayed. Changing your mind used to
+                      // mean going back a step and picking again, then walking forward
+                      // through the flow a second time.
+                      _buildModernPaymentOption(
+                        'CASH_ON_DELIVERY',
+                        'Cash on Delivery',
+                        'Pay when your order arrives',
+                        Icons.money,
+                        Colors.green,
                       ),
+                      if (cartProvider.isOnlinePaymentEnabled) ...[
+                        const SizedBox(height: 8),
+                        _buildModernPaymentOption(
+                          'ONLINE_PAYMENT',
+                          'Online Payment',
+                          'Pay now by UPI, card or netbanking',
+                          Icons.credit_card,
+                          Colors.blue,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1924,7 +1863,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         Helpers.formatCurrency(cartProvider.total + _onlinePaymentFeeIfApplicable(cartProvider.total)),
                         isTotal: true,
                       ),
-                      // Minimum order warning
+                      // Minimum order warning.
+                      // This used to be a passive notice. A customer only discovered the
+                      // shortfall here, three steps into checkout, and then had to press
+                      // back repeatedly to reach the shop and add something. The button
+                      // takes them straight there instead.
                       if (cartProvider.subtotal < (cartProvider.minOrderAmount ?? 100.0))
                         Container(
                           margin: const EdgeInsets.only(top: 10),
@@ -1934,20 +1877,43 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.orange.shade300),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.info_outline, color: Colors.orange.shade700, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Add ₹${((cartProvider.minOrderAmount ?? 100.0) - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹${(cartProvider.minOrderAmount ?? 100.0).toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.orange.shade700,
-                                    fontWeight: FontWeight.w500,
+                              Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: Colors.orange.shade700, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Add ₹${((cartProvider.minOrderAmount ?? 100.0) - cartProvider.subtotal).toStringAsFixed(2)} more to meet minimum order of ₹${(cartProvider.minOrderAmount ?? 100.0).toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.orange.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _goToShopToAddItems(cartProvider),
+                                  icon: const Icon(Icons.add_shopping_cart, size: 16),
+                                  label: const Text('Add more items'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange.shade700,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    textStyle: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -2063,10 +2029,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: _isPlacingOrder
                       ? const LoadingWidget()
                       : PrimaryButton(
-                          text: _currentStep == 2 ? 'Place Order' : 'Continue',
+                          text: _currentStep == 1 ? 'Place Order' : 'Continue',
                           onPressed:
-                              _currentStep == 2 ? _placeOrder : _nextStep,
-                          icon: _currentStep == 2
+                              _currentStep == 1 ? _placeOrder : _nextStep,
+                          icon: _currentStep == 1
                               ? Icons.check
                               : Icons.arrow_forward,
                         ),
@@ -2129,7 +2095,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       await _recalculateDeliveryFee();
     }
 
-    if (_currentStep < 2) {
+    if (_currentStep < 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -2262,6 +2228,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Helpers.showSnackBar(
             context,
             'Minimum order amount is ₹${minimumOrderAmount.toStringAsFixed(0)}. Current subtotal is ₹${cartProvider.subtotal.toStringAsFixed(2)}',
+            isError: true,
+          );
+        }
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      // Confirm the payment method before taking the order.
+      // Payment is chosen on this same screen now that the separate payment step is
+      // gone, so this is the last point at which a stale or unavailable choice can be
+      // caught. An order sent as ONLINE_PAYMENT to a shop that cannot take it would be
+      // accepted by the server and then be unpayable.
+      if (_selectedPaymentMethod != 'CASH_ON_DELIVERY' &&
+          _selectedPaymentMethod != 'ONLINE_PAYMENT') {
+        if (mounted) {
+          Helpers.showSnackBar(context, 'Please choose a payment method', isError: true);
+        }
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      if (_selectedPaymentMethod == 'ONLINE_PAYMENT' &&
+          !cartProvider.isOnlinePaymentEnabled) {
+        if (mounted) {
+          setState(() => _selectedPaymentMethod = 'CASH_ON_DELIVERY');
+          Helpers.showSnackBar(
+            context,
+            'This shop is not accepting online payment. Switched to Cash on Delivery - please confirm and place the order again.',
             isError: true,
           );
         }

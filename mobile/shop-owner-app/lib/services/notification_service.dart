@@ -131,7 +131,7 @@ class NotificationService {
   Future<void> _createNotificationChannels() async {
     const List<AndroidNotificationChannel> channels = [
       AndroidNotificationChannel(
-        'shop_owner_notifications',
+        'shop_owner_notifications_v2',
         'Shop Owner Notifications',
         description: 'General notifications for shop owner app',
         importance: Importance.high,
@@ -140,27 +140,27 @@ class NotificationService {
         playSound: true,
       ),
       AndroidNotificationChannel(
-        'new_orders',
+        'new_orders_v2',
         'New Orders',
         description: 'Notifications for new orders',
         importance: Importance.max,
-        sound: RawResourceAndroidNotificationSound('new_order'),
+        sound: RawResourceAndroidNotificationSound('order_ring'),
         enableVibration: true,
         enableLights: true,
         ledColor: const Color(0xFF1E88E5),
       ),
       AndroidNotificationChannel(
-        'urgent_alerts',
+        'urgent_alerts_v2',
         'Urgent Alerts',
         description: 'High priority urgent notifications',
         importance: Importance.max,
-        sound: RawResourceAndroidNotificationSound('urgent_alert'),
+        sound: RawResourceAndroidNotificationSound('urgent_ring'),
         enableVibration: true,
         enableLights: true,
         ledColor: const Color(0xFFF44336),
       ),
       AndroidNotificationChannel(
-        'payments',
+        'payments_v2',
         'Payment Notifications',
         description: 'Payment received notifications',
         importance: Importance.high,
@@ -168,7 +168,7 @@ class NotificationService {
         enableVibration: true,
       ),
       AndroidNotificationChannel(
-        'order_updates',
+        'order_updates_v2',
         'Order Updates',
         description: 'Order status update notifications',
         importance: Importance.defaultImportance,
@@ -198,10 +198,17 @@ class NotificationService {
       return;
     }
 
-    // Play sound if enabled
+    // Play sound if enabled.
+    // A new order rings continuously like an incoming call until the owner accepts or
+    // dismisses it. A one-shot tone lasting a few seconds was being missed in a busy
+    // shop, which is the whole complaint. Everything else plays once as before.
     if (notificationSettings.soundEnabled) {
-      final soundFile = notificationSettings.getSoundForCategory(notification.type);
-      await AudioService.instance.playNotificationSound(soundFile);
+      if (notification.type == NotificationTypes.newOrder) {
+        await AudioService.instance.startOrderRinging();
+      } else {
+        final soundFile = notificationSettings.getSoundForCategory(notification.type);
+        await AudioService.instance.playNotificationSound(soundFile);
+      }
     }
 
     // Show local notification
@@ -213,12 +220,46 @@ class NotificationService {
 
   // Show local notification with proper styling
   Future<void> _showLocalNotification(AppNotification notification) async {
+    // A new order is always treated as urgent. The server never sets isHighPriority, so
+    // relying on it meant the full-screen takeover and max importance were permanently
+    // off no matter what the channel config said.
+    final isNewOrder = notification.type == NotificationTypes.newOrder;
+    final urgent = isNewOrder || notification.isHighPriority;
+
+    // Give a new order explicit Accept / View buttons when the server supplied none, so
+    // the owner can silence the ring and act straight from the notification or lock screen.
+    final actions = notification.actions.isNotEmpty
+        ? notification.actions.map((action) => AndroidNotificationAction(
+            action.id,
+            action.title,
+            icon: AndroidBitmap('drawable/${action.icon ?? 'ic_action'}'),
+            contextual: action.style == 'SECONDARY',
+            showsUserInterface: true,
+            cancelNotification: true,
+          )).toList()
+        : (isNewOrder
+            ? <AndroidNotificationAction>[
+                const AndroidNotificationAction(
+                  'accept_order',
+                  'Accept',
+                  showsUserInterface: true,
+                  cancelNotification: true,
+                ),
+                const AndroidNotificationAction(
+                  'view_order',
+                  'View',
+                  showsUserInterface: true,
+                  cancelNotification: true,
+                ),
+              ]
+            : <AndroidNotificationAction>[]);
+
     final androidDetails = AndroidNotificationDetails(
       _getChannelId(notification.type),
       _getChannelName(notification.type),
       channelDescription: _getChannelDescription(notification.type),
-      importance: notification.isHighPriority ? Importance.max : Importance.high,
-      priority: notification.isHighPriority ? Priority.max : Priority.high,
+      importance: urgent ? Importance.max : Importance.high,
+      priority: urgent ? Priority.max : Priority.high,
       showWhen: true,
       when: notification.createdAt.millisecondsSinceEpoch,
       sound: RawResourceAndroidNotificationSound(_getSoundFile(notification.type)),
@@ -234,17 +275,18 @@ class NotificationService {
         contentTitle: notification.title,
         htmlFormatContentTitle: true,
       ),
-      actions: notification.actions.map((action) => AndroidNotificationAction(
-        action.id,
-        action.title,
-        icon: AndroidBitmap('drawable/${action.icon ?? 'ic_action'}'),
-        contextual: action.style == 'SECONDARY',
-        showsUserInterface: true,
-      )).toList(),
+      actions: actions,
       autoCancel: false,  // Don't auto-cancel, keep notification visible
-      ongoing: notification.type == NotificationTypes.newOrder,  // New orders stay in notification tray
-      category: AndroidNotificationCategory.message,
-      fullScreenIntent: notification.isHighPriority && notification.type == NotificationTypes.newOrder,
+      ongoing: isNewOrder,  // New orders stay put until accepted or dismissed
+      // Treated as a call so Android gives it the same prominence as an incoming call,
+      // and plays the alert on the alarm stream rather than the quiet notification one.
+      category: isNewOrder
+          ? AndroidNotificationCategory.call
+          : AndroidNotificationCategory.message,
+      audioAttributesUsage: isNewOrder
+          ? AudioAttributesUsage.alarm
+          : AudioAttributesUsage.notification,
+      fullScreenIntent: isNewOrder,
       timeoutAfter: null,  // No timeout
     );
 
@@ -284,6 +326,10 @@ class NotificationService {
 
   // Handle notification interaction
   void _handleNotificationInteraction(NotificationResponse response) {
+    // Any deliberate interaction answers the "call". Done before the payload is parsed
+    // so a malformed payload can never leave the phone ringing with no way to stop it.
+    AudioService.instance.stopOrderRinging();
+
     try {
       if (response.payload != null) {
         final notificationData = json.decode(response.payload!);
@@ -424,17 +470,17 @@ class NotificationService {
   String _getChannelId(String notificationType) {
     switch (notificationType) {
       case NotificationTypes.newOrder:
-        return 'new_orders';
+        return 'new_orders_v2';
       case NotificationTypes.paymentReceived:
-        return 'payments';
+        return 'payments_v2';
       case 'urgent_alert':
       case 'time_alert':
-        return 'urgent_alerts';
+        return 'urgent_alerts_v2';
       case NotificationTypes.orderCancelled:
       case NotificationTypes.orderModified:
-        return 'order_updates';
+        return 'order_updates_v2';
       default:
-        return 'shop_owner_notifications';
+        return 'shop_owner_notifications_v2';
     }
   }
 
@@ -475,14 +521,14 @@ class NotificationService {
   String _getSoundFile(String notificationType) {
     switch (notificationType) {
       case NotificationTypes.newOrder:
-        return 'new_order';
+        return 'order_ring';
       case NotificationTypes.paymentReceived:
         return 'payment_received';
       case NotificationTypes.orderCancelled:
         return 'order_cancelled';
       case 'urgent_alert':
       case 'time_alert':
-        return 'urgent_alert';
+        return 'urgent_ring';
       case NotificationTypes.customerMessage:
         return 'message_received';
       default:

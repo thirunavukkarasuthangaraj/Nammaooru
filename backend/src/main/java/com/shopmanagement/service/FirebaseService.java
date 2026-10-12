@@ -86,7 +86,8 @@ public class FirebaseService {
                             .setBody(body)
                             .setIcon("ic_notification")
                             .setColor("#4CAF50")
-                            .setSound("default")
+                            .setSound(androidSoundFor(notificationType))
+                            .setChannelId(androidChannelFor(notificationType))
                             .build())
                     .setPriority(AndroidConfig.Priority.HIGH)
                     .build();
@@ -151,7 +152,8 @@ public class FirebaseService {
                             .setBody(body)
                             .setIcon("ic_notification")
                             .setColor("#4CAF50")
-                            .setSound("default")
+                            .setSound(androidSoundFor(notificationType))
+                            .setChannelId(androidChannelFor(notificationType))
                             .build())
                     .setPriority(AndroidConfig.Priority.HIGH)
                     .build();
@@ -336,6 +338,57 @@ public class FirebaseService {
 
         } catch (Exception e) {
             logger.error("Error deleting FCM tokens for user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * Android draws a backgrounded notification itself from this payload and never runs the
+     * app's code, so the channel has to be named here. Without it everything landed on the
+     * default channel at default importance with the default two-second tone - which is why
+     * shop owners were missing new orders however the app configured its own channels.
+     *
+     * Channel ids must match those registered in the shop owner app
+     * (NotificationService._createNotificationChannels).
+     */
+    private String androidChannelFor(String notificationType) {
+        if (notificationType == null) {
+            return "shop_owner_notifications_v2";
+        }
+        switch (notificationType.toLowerCase()) {
+            case "new_order":
+            case "order_placed":
+                return "new_orders_v2";
+            case "urgent":
+            case "urgent_alert":
+                return "urgent_alerts_v2";
+            case "payment_received":
+            case "payment":
+                return "payments_v2";
+            case "order_update":
+            case "order_status":
+                return "order_updates_v2";
+            default:
+                return "shop_owner_notifications_v2";
+        }
+    }
+
+    /** Raw resource name (no extension) of the alert tone for this notification type. */
+    private String androidSoundFor(String notificationType) {
+        if (notificationType == null) {
+            return "notification";
+        }
+        switch (notificationType.toLowerCase()) {
+            case "new_order":
+            case "order_placed":
+                return "order_ring";
+            case "urgent":
+            case "urgent_alert":
+                return "urgent_ring";
+            case "payment_received":
+            case "payment":
+                return "payment_received";
+            default:
+                return "notification";
         }
     }
 }

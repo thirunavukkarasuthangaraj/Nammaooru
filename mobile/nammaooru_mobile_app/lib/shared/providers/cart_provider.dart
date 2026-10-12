@@ -10,6 +10,7 @@ import '../../services/shop_api_service.dart';
 import '../../core/models/cart_model.dart' as CoreCart;
 import '../../core/config/env_config.dart';
 import 'dart:convert';
+import '../../services/local_notification_service.dart';
 
 class CartProvider with ChangeNotifier {
 
@@ -386,6 +387,26 @@ class CartProvider with ChangeNotifier {
 
   String? get appliedPromoCode => _promoCode;
 
+  /// Keep the "your cart is waiting" reminder in step with the cart.
+  ///
+  /// Driven from the single persistence point so every mutator is covered: add, remove,
+  /// quantity change, clear and restore all funnel through here. Re-scheduling restarts
+  /// the timer, so someone still shopping is never interrupted; it only fires once they
+  /// have left the cart alone.
+  void _syncCartReminder() {
+    try {
+      if (_items.isEmpty) {
+        LocalNotificationService.instance.cancelCartReminder();
+      } else {
+        final count = _items.fold<int>(0, (sum, item) => sum + item.quantity);
+        LocalNotificationService.instance.scheduleCartReminder(itemCount: count);
+      }
+    } catch (e) {
+      // Never let a reminder failure break a cart update.
+      if (kDebugMode) print('Cart reminder sync failed: $e');
+    }
+  }
+
   void _saveCartToStorage() {
     // MUST NEVER THROW. Every mutator calls this BETWEEN changing _items and
     // notifyListeners() - an exception here (un-encodable product field,
@@ -393,6 +414,8 @@ class CartProvider with ChangeNotifier {
     // the state had actually changed ("+/- does nothing until I leave and
     // come back"). Persistence is best-effort; the UI update is not.
     try {
+      _syncCartReminder();
+
       final cartData = {
         'items': _items.map((item) => item.toJson()).toList(),
         'promoCode': _promoCode,

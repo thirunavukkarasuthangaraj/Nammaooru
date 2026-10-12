@@ -372,6 +372,24 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     ),
                     const SizedBox(height: 8),
                     ..._availablePromos.take(3).map((promo) => _buildPromoChip(promo)),
+                  ]
+                  // Say so explicitly. An empty box under "Have a promo code?" looks
+                  // broken, when usually it just means this customer has already used
+                  // the offers they were eligible for (most are one per customer).
+                  else if (!_loadingPromos) ...[
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: Colors.grey[500]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'No offers available for you right now. If you have a code, enter it above.',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
 
                   if (_loadingPromos)
