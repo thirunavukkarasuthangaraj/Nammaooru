@@ -1064,7 +1064,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderResponse> getUpcomingScheduledOrders(Long shopId) {
         return orderRepository
-                .findUpcomingScheduledByShop(shopId, LocalDateTime.now())
+                .findUpcomingScheduledByShop(shopId, LocalDateTime.now(), Order.OrderStatus.SCHEDULED)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());

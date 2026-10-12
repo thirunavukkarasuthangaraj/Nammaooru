@@ -2,6 +2,7 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.dto.order.DeliverySlot;
 import com.shopmanagement.entity.DeliveryHours;
+import com.shopmanagement.entity.Order;
 import com.shopmanagement.repository.DeliveryHoursRepository;
 import com.shopmanagement.repository.OrderRepository;
 import com.shopmanagement.shop.entity.Shop;
@@ -112,7 +113,7 @@ public class DeliverySlotService {
                 if (from.isBefore(earliest)) continue;
                 if (overlapsBreak(hours, start, end)) continue;
 
-                long booked = orderRepository.countScheduledInSlot(shopId, from);
+                long booked = orderRepository.countScheduledInSlot(shopId, from, Order.OrderStatus.SCHEDULED);
 
                 slots.add(DeliverySlot.builder()
                         .from(from)

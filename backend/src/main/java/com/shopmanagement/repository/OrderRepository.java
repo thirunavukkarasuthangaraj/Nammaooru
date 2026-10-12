@@ -307,20 +307,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * hidden, so the customer can see it exists and pick the next one.
      */
     @Query("SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId " +
-           "AND o.status = com.shopmanagement.entity.Order.OrderStatus.SCHEDULED " +
-           "AND o.scheduledFrom = :slotFrom")
+           "AND o.status = :status AND o.scheduledFrom = :slotFrom")
     long countScheduledInSlot(@Param("shopId") Long shopId,
-                              @Param("slotFrom") java.time.LocalDateTime slotFrom);
+                              @Param("slotFrom") java.time.LocalDateTime slotFrom,
+                              @Param("status") Order.OrderStatus status);
 
     /**
      * Scheduled orders whose window is close enough to hand to the shop.
      * Backed by the partial index added in V139.
      */
-    @Query("SELECT o FROM Order o WHERE " +
-           "o.status = com.shopmanagement.entity.Order.OrderStatus.SCHEDULED " +
+    @Query("SELECT o FROM Order o WHERE o.status = :status " +
            "AND o.scheduledFrom <= :releaseBefore")
     java.util.List<Order> findScheduledDueForRelease(
-            @Param("releaseBefore") java.time.LocalDateTime releaseBefore);
+            @Param("releaseBefore") java.time.LocalDateTime releaseBefore,
+            @Param("status") Order.OrderStatus status);
 
     /**
      * Scheduled orders a shop has coming, soonest window first.
@@ -330,9 +330,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * stock for it.
      */
     @Query("SELECT o FROM Order o WHERE o.shop.id = :shopId " +
-           "AND o.status = com.shopmanagement.entity.Order.OrderStatus.SCHEDULED " +
-           "AND o.scheduledFrom >= :from " +
+           "AND o.status = :status AND o.scheduledFrom >= :from " +
            "ORDER BY o.scheduledFrom ASC")
     java.util.List<Order> findUpcomingScheduledByShop(@Param("shopId") Long shopId,
-                                                      @Param("from") java.time.LocalDateTime from);
+                                                      @Param("from") java.time.LocalDateTime from,
+                                                      @Param("status") Order.OrderStatus status);
 }

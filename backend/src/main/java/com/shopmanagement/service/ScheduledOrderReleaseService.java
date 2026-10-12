@@ -57,7 +57,7 @@ public class ScheduledOrderReleaseService {
         // over at 10am would be useless.
         LocalDateTime releaseBefore = LocalDateTime.now().plusMinutes(leadMinutes);
 
-        List<Order> due = orderRepository.findScheduledDueForRelease(releaseBefore);
+        List<Order> due = orderRepository.findScheduledDueForRelease(releaseBefore, Order.OrderStatus.SCHEDULED);
         if (due.isEmpty()) return;
 
         int released = 0;
