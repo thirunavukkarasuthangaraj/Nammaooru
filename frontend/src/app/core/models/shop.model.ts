@@ -21,6 +21,10 @@ export interface Shop {
   minOrderAmount: number;
   deliveryRadius: number;
   freeDeliveryAbove?: number;
+  /** Minutes the shop needs to get an order ready; sets the earliest delivery window. */
+  preparationTimeMinutes?: number;
+  /** How many orders the shop accepts in one delivery window. */
+  maxOrdersPerSlot?: number;
   commissionRate: number;
   gstNumber?: string;
   panNumber?: string;
@@ -71,6 +75,8 @@ export interface ShopCreateRequest {
   minOrderAmount?: number;
   deliveryRadius?: number;
   freeDeliveryAbove?: number;
+  preparationTimeMinutes?: number;
+  maxOrdersPerSlot?: number;
   commissionRate?: number;
   gstNumber?: string;
   panNumber?: string;

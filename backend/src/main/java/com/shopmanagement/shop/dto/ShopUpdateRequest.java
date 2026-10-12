@@ -79,6 +79,22 @@ public class ShopUpdateRequest {
 
     private Boolean onlinePaymentEnabled;
 
+    /**
+     * Minutes the shop needs to get an order ready.
+     *
+     * Decides the earliest delivery window a customer is offered, so a shop that needs an
+     * hour stops being promised to deliver in ten minutes. Capped at four hours because a
+     * longer preparation time means the shop should be scheduling, not taking live orders.
+     */
+    @Min(value = 0, message = "Order preparation time cannot be negative")
+    @Max(value = 240, message = "Order preparation time cannot exceed 240 minutes")
+    private Integer preparationTimeMinutes;
+
+    /** How many orders the shop will accept in one delivery window. */
+    @Min(value = 1, message = "A delivery window must allow at least one order")
+    @Max(value = 500, message = "Orders per delivery window cannot exceed 500")
+    private Integer maxOrdersPerSlot;
+
     @DecimalMin(value = "0.0", message = "Commission rate cannot be negative")
     @DecimalMax(value = "100.0", message = "Commission rate cannot exceed 100")
     private BigDecimal commissionRate;

@@ -16,6 +16,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../services/shop_api_service.dart';
+import '../../../core/services/delivery_slot_service.dart';
 import '../orders/checkout_screen.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1003,8 +1004,55 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Check if shop is open before proceeding (using cached status, no API call needed)
+    // A closed shop is no longer a dead end. If the shop has delivery windows left, the
+    // customer can book one and the order is held until shortly before that window, so
+    // the only case that still stops here is a shop with nothing left to offer.
     if (!cartProvider.isShopOpen && mounted) {
+      final proceed = await _offerScheduledDelivery(cartProvider);
+      if (proceed != true) return;
+    }
+
+    if (!mounted) return;
+
+    // Either the shop is open, or the customer chose to book a later delivery window.
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (context) => const CheckoutScreen(),
+      ),
+    );
+  }
+
+  /// Shown instead of the old "Shop Closed, try again later" dead end.
+  ///
+  /// Looks up the shop's remaining delivery windows first. Offering to schedule and then
+  /// dropping the customer onto a checkout screen with no slots to pick would be worse
+  /// than the dead end it replaces, so the scheduling option only appears when a window
+  /// actually exists.
+  ///
+  /// Returns true when the customer wants to continue to checkout.
+  Future<bool?> _offerScheduledDelivery(CartProvider cartProvider) async {
+    final shopId = cartProvider.items.isNotEmpty
+        ? cartProvider.items.first.product.shopDatabaseId
+        : null;
+
+    List<DeliverySlot> slots = [];
+    if (shopId != null) {
+      // A spinner, because this is a network call standing between a tap and a screen.
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      slots = await DeliverySlotService().getSlots(shopId);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!mounted) return false;
+
+    final bookable = slots.where((s) => !s.express && s.available).toList();
+    final shopName = cartProvider.shopName ?? 'This shop';
+
+    if (bookable.isEmpty) {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -1020,7 +1068,8 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
           content: Text(
-            '${cartProvider.shopName ?? 'The shop'} is currently closed and not accepting orders. Please try again during business hours.',
+            '$shopName is closed and has no delivery times left to book. '
+            'Your cart is saved, so you can order once it reopens.',
             style: const TextStyle(fontSize: 13),
           ),
           actions: [
@@ -1034,13 +1083,74 @@ class _CartScreenState extends State<CartScreen> {
           ],
         ),
       );
-      return;
+      return false;
     }
 
-    // User is logged in and shop is open, proceed to checkout
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
-        builder: (context) => const CheckoutScreen(),
+    final next = bookable.first;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.schedule, color: VillageTheme.primaryGreen),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('Shop is closed now', style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$shopName is not delivering at the moment, but you can book a '
+              'delivery time and place the order now.',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: VillageTheme.primaryGreen.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.local_shipping_outlined,
+                      size: 16, color: VillageTheme.primaryGreen),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Earliest: ${next.dayLabel} ${next.timeLabel}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: VillageTheme.primaryGreen,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Not now'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VillageTheme.primaryGreen,
+            ),
+            child: const Text('Schedule delivery',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

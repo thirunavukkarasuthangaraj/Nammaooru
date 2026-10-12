@@ -143,8 +143,10 @@ import * as L from 'leaflet';
                     
                     <mat-form-field *ngSwitchCase="'number'" appearance="outline">
                       <mat-label>{{ field.label }}</mat-label>
-                      <input matInput type="number" step="0.000001" [formControlName]="field.control" [readonly]="!isEditMode" [placeholder]="field.placeholder">
+                      <!-- Latitude and longitude need six decimals; minutes and counts step by 1. -->
+                      <input matInput type="number" [step]="field.step || '0.000001'" [formControlName]="field.control" [readonly]="!isEditMode" [placeholder]="field.placeholder">
                       <mat-icon matPrefix>{{ getFieldIcon(field.control) }}</mat-icon>
+                      <mat-hint *ngIf="field.hint">{{ field.hint }}</mat-hint>
                       <mat-error *ngFor="let error of getFieldErrors(field.control)">{{ error }}</mat-error>
                     </mat-form-field>
 
@@ -970,7 +972,9 @@ export class ShopProfileComponent implements OnInit {
       freeDeliveryAbove: [0],
       selfDeliveryEnabled: [{ value: false, disabled: true }],
       selfDeliveryFee: [null],
-      onlinePaymentEnabled: [true]
+      onlinePaymentEnabled: [true],
+      preparationTimeMinutes: [20, [Validators.min(0), Validators.max(240)]],
+      maxOrdersPerSlot: [10, [Validators.min(1), Validators.max(500)]]
     });
   }
 
@@ -1118,6 +1122,22 @@ export class ShopProfileComponent implements OnInit {
         control: 'onlinePaymentEnabled',
         type: 'toggle',
         hint: 'When off, customers only see Cash on Delivery at checkout for your shop. Also requires the platform-wide Online Payment setting to be on.'
+      },
+      {
+        label: 'Order Preparation Time (minutes)',
+        control: 'preparationTimeMinutes',
+        type: 'number',
+        step: '1',
+        placeholder: 'e.g., 20',
+        hint: 'How long you need to get an order ready. Customers are never offered a delivery time sooner than this, and it is what the app shows as your delivery estimate.'
+      },
+      {
+        label: 'Orders per Delivery Slot',
+        control: 'maxOrdersPerSlot',
+        type: 'number',
+        step: '1',
+        placeholder: 'e.g., 10',
+        hint: 'The most scheduled orders you will take in one delivery window. Once a window is full, customers see it greyed out and pick another.'
       }
     ];
   }
@@ -1179,6 +1199,12 @@ export class ShopProfileComponent implements OnInit {
       }
       if (control.errors['pattern']) {
         errors.push('Only letters, numbers, dots and underscores are allowed');
+      }
+      if (control.errors['min']) {
+        errors.push(`${this.getFieldLabel(controlName)} must be at least ${control.errors['min'].min}`);
+      }
+      if (control.errors['max']) {
+        errors.push(`${this.getFieldLabel(controlName)} cannot be more than ${control.errors['max'].max}`);
       }
     }
     
@@ -1292,6 +1318,8 @@ export class ShopProfileComponent implements OnInit {
       longitude: 'my_location',
       deliveryRadius: 'delivery_dining',
       minOrderAmount: 'shopping_cart',
+      preparationTimeMinutes: 'timer',
+      maxOrdersPerSlot: 'event_available',
       freeDeliveryAbove: 'local_shipping',
       selfDeliveryFee: 'payments'
     };
@@ -1470,7 +1498,10 @@ export class ShopProfileComponent implements OnInit {
             minOrderAmount: shop.minOrderAmount || 0,
             freeDeliveryAbove: shop.freeDeliveryAbove || 0,
             selfDeliveryEnabled: shop.selfDeliveryEnabled === true,
-            selfDeliveryFee: shop.selfDeliveryFee ?? null
+            selfDeliveryFee: shop.selfDeliveryFee ?? null,
+            // ?? not ||, so a shop that genuinely prepares in 0 minutes is not reset to 20.
+            preparationTimeMinutes: shop.preparationTimeMinutes ?? 20,
+            maxOrdersPerSlot: shop.maxOrdersPerSlot ?? 10
           });
 
           // Set email separately since it's disabled
@@ -1610,7 +1641,9 @@ export class ShopProfileComponent implements OnInit {
         minOrderAmount: this.shopForm.value.minOrderAmount,
         freeDeliveryAbove: this.shopForm.value.freeDeliveryAbove,
         selfDeliveryEnabled: this.shopForm.get('selfDeliveryEnabled')?.value === true,
-        selfDeliveryFee: this.shopForm.value.selfDeliveryFee
+        selfDeliveryFee: this.shopForm.value.selfDeliveryFee,
+        preparationTimeMinutes: this.shopForm.value.preparationTimeMinutes,
+        maxOrdersPerSlot: this.shopForm.value.maxOrdersPerSlot
       };
       
       this.shopService.updateShop(this.shop.id, updatedShop).subscribe({
@@ -1639,7 +1672,9 @@ export class ShopProfileComponent implements OnInit {
             minOrderAmount: response.minOrderAmount || 0,
             freeDeliveryAbove: response.freeDeliveryAbove || 0,
             selfDeliveryEnabled: response.selfDeliveryEnabled === true,
-            selfDeliveryFee: response.selfDeliveryFee ?? null
+            selfDeliveryFee: response.selfDeliveryFee ?? null,
+            preparationTimeMinutes: response.preparationTimeMinutes ?? 20,
+            maxOrdersPerSlot: response.maxOrdersPerSlot ?? 10
           });
           this.shopForm.get('selfDeliveryEnabled')?.disable();
 

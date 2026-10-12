@@ -80,6 +80,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // immediate order, because a slot lookup must never be the reason a customer cannot buy.
   final DeliverySlotService _slotService = DeliverySlotService();
   List<DeliverySlot> _deliverySlots = [];
+
+  /// Lets Place Order scroll the slot picker into view instead of only naming it.
+  final GlobalKey _deliveryTimeKey = GlobalKey();
   DeliverySlot? _chosenSlot;
   bool _loadingSlots = false;
   String _deliveryInstructions = '';
@@ -1709,7 +1712,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               // Delivery time first: it decides whether this order can be placed at all
               // when the shop is closed, so it belongs above everything optional.
-              _buildDeliveryTimeCard(),
+              KeyedSubtree(
+                key: _deliveryTimeKey,
+                child: _buildDeliveryTimeCard(),
+              ),
               const SizedBox(height: 12),
 
               // Promo Code Widget.
@@ -2269,6 +2275,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// Called alongside the shop settings refresh so the list is ready by the time the
   /// customer reaches the review step. Picks the express option by default when the shop
   /// offers one, so an ordinary daytime order behaves exactly as it always has.
+  /// Brings the delivery-time card into view after an order is refused for want of a
+  /// slot. Silent when the card is not mounted, which is the case when the shop offers
+  /// no windows at all and there would be nothing to scroll to.
+  void _scrollToDeliveryTime() {
+    final ctx = _deliveryTimeKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+      alignment: 0.1,
+    );
+  }
+
   Future<void> _loadDeliverySlots() async {
     if (!mounted) return;
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -2296,13 +2316,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (stillThere != null && stillThere.available) {
         _chosenSlot = stillThere;
       } else {
-        _chosenSlot = slots.where((s) => s.express).cast<DeliverySlot?>().firstWhere(
-              (s) => true,
-              orElse: () => slots
-                  .where((s) => s.available)
-                  .cast<DeliverySlot?>()
-                  .firstWhere((s) => true, orElse: () => null),
-            );
+        // Default to express when the shop can deliver now, which is what almost every
+        // order wants and what the app has always done.
+        //
+        // When there is no express option the shop is shut, and every remaining choice
+        // is a date and time hours away. Pre-selecting one of those would let a customer
+        // place an order for tomorrow morning believing it was coming today, so the
+        // choice is left empty and Place Order asks for it.
+        _chosenSlot = slots
+            .where((s) => s.express)
+            .cast<DeliverySlot?>()
+            .firstWhere((s) => true, orElse: () => null);
       }
     });
   }
@@ -2592,21 +2616,43 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      // Check if shop is open before placing order (using cached status, no API call needed)
-      if (!cartProvider.isShopOpen) {
+      // A closed shop only blocks an IMMEDIATE order. With a delivery window booked the
+      // order is legitimate: the server holds it and releases it shortly before the slot.
+      // The window itself is revalidated server-side, so this check is about telling the
+      // customer what to do, not about trusting the app.
+      final hasBookedWindow = _chosenSlot != null && !_chosenSlot!.express;
+      if (!cartProvider.isShopOpen && !hasBookedWindow) {
         if (mounted) {
+          final bookable =
+              _deliverySlots.where((s) => !s.express && s.available).toList();
+
           await showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.store_outlined, color: Colors.red.shade400),
+                  Icon(
+                    bookable.isEmpty ? Icons.store_outlined : Icons.schedule,
+                    color: bookable.isEmpty
+                        ? Colors.red.shade400
+                        : VillageTheme.primaryGreen,
+                  ),
                   const SizedBox(width: 8),
-                  const Text('Shop Closed'),
+                  Expanded(
+                    child: Text(bookable.isEmpty
+                        ? 'Shop Closed'
+                        : 'Choose a delivery time'),
+                  ),
                 ],
               ),
               content: Text(
-                'Sorry, ${cartProvider.shopName ?? 'the shop'} is currently closed and not accepting orders. Please try again during business hours.',
+                bookable.isEmpty
+                    ? '${cartProvider.shopName ?? 'The shop'} is closed and has no '
+                        'delivery times left to book. Your cart is saved, so you can '
+                        'order once it reopens.'
+                    : '${cartProvider.shopName ?? 'The shop'} is closed right now. '
+                        'Pick a delivery time above and your order will be sent to the '
+                        'shop in time for that window.',
               ),
               actions: [
                 ElevatedButton(
@@ -2619,6 +2665,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
           );
+
+          // Put the slot picker in front of them rather than making them hunt for it.
+          if (bookable.isNotEmpty) _scrollToDeliveryTime();
         }
         setState(() => _isPlacingOrder = false);
         return;

@@ -1838,10 +1838,10 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
+                // No longer "come back later": a closed shop can still take an order
+                // for a delivery window the customer books at checkout.
                 Text(
-                  context.loc?.translate('shop_closed_message',
-                          args: [_shop?['name'] ?? 'This shop']) ??
-                      'This shop is currently closed. Please try again during business hours.',
+                  'Add what you need and choose a delivery time at checkout.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.orange.shade800,

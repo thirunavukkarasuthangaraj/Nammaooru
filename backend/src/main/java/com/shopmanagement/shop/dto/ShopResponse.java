@@ -42,6 +42,13 @@ public class ShopResponse {
     private Boolean selfDeliveryEnabled;
     private BigDecimal selfDeliveryFee;
     private Boolean onlinePaymentEnabled;
+
+    /** Minutes the shop needs to get an order ready; sets the earliest delivery window. */
+    private Integer preparationTimeMinutes;
+
+    /** How many orders the shop will accept in one delivery window. */
+    private Integer maxOrdersPerSlot;
+
     private BigDecimal commissionRate;
     
     private String gstNumber;
