@@ -49,6 +49,7 @@
       <div class="filter-dropdown">
         <select [(ngModel)]="statusFilter" (change)="onFilterChange()" class="filter-select">
           <option value="ALL">All Orders</option>
+          <option value="SCHEDULED">Scheduled</option>
           <option value="PENDING">Pending</option>
           <option value="CONFIRMED">Confirmed</option>
           <option value="PREPARING">Preparing</option>
@@ -131,6 +132,13 @@
               <span class="order-number" (click)="showOrderDetailsModal(order)">#{{ order.orderNumber }}</span>
               <span class="offline-pending-badge" *ngIf="order.offlinePending" title="Billed offline — will sync to server automatically">Offline</span>
               <div class="order-time">{{ formatOrderTime(order.createdAt) }}</div>
+              <!-- A scheduled order's due window. The time above is when it was placed,
+                   which on these orders is not the time that matters. -->
+              <div class="scheduled-window" *ngIf="isScheduledOrder(order)"
+                   [title]="'Customer booked this delivery window'">
+                <mat-icon>event</mat-icon>
+                <span>{{ formatScheduledWindow(order) }}</span>
+              </div>
             </td>
 
             <!-- Customer -->

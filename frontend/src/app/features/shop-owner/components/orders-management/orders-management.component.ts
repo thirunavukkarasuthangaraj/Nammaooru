@@ -1365,6 +1365,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   getStatusLabel(status: string): string {
     // Convert status to readable format
     switch (status) {
+      case 'SCHEDULED': return 'Scheduled';
       case 'PENDING': return 'Pending';
       case 'CONFIRMED': return 'Confirmed';
       case 'PREPARING': return 'Preparing';
@@ -2013,6 +2014,11 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
                   <div class="info-label">Order Date</div>
                   <div class="info-value">${new Date(order.createdAt).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}</div>
                 </div>
+                ${this.isScheduledOrder(order) ? `
+                <div class="info-item">
+                  <div class="info-label">Delivery Window</div>
+                  <div class="info-value" style="color: #e65100; font-weight: 700;">${this.formatScheduledWindow(order)}</div>
+                </div>` : ''}
                 <div class="info-item">
                   <div class="info-label">Payment Method</div>
                   <div class="info-value">${order.paymentMethod === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : 'Online Payment'}</div>
@@ -2272,6 +2278,58 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   }
 
   // Format date/time in Indian format (d/M, h:mm AM/PM) using IST timezone
+  /**
+   * Parses a server timestamp the same way everywhere on this screen.
+   *
+   * The API sends LocalDateTime, which carries no zone, so the string is read as UTC
+   * unless it already states an offset. Scheduled windows and order times are the same
+   * Java type, so they must go through the same parse or the two would disagree.
+   */
+  private parseServerTime(dateString: string): Date | null {
+    if (!dateString) return null;
+    const hasTimezone = dateString.endsWith('Z') ||
+                        /[+-]\d{2}:\d{2}$/.test(dateString) ||
+                        /[+-]\d{4}$/.test(dateString);
+    const d = new Date(hasTimezone ? dateString : dateString + 'Z');
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  /** True when this order was booked for a delivery window rather than placed for now. */
+  isScheduledOrder(order: any): boolean {
+    return !!(order && order.scheduledFrom);
+  }
+
+  /**
+   * The booked delivery window, as the shop needs to read it at a glance: "Tomorrow,
+   * 7:00 AM - 9:00 AM". Returns an empty string for an ordinary immediate order.
+   */
+  formatScheduledWindow(order: any): string {
+    const from = this.parseServerTime(order?.scheduledFrom);
+    if (!from) return '';
+    const until = this.parseServerTime(order?.scheduledUntil);
+
+    const tz = 'Asia/Kolkata';
+    const dayKey = (d: Date) =>
+      d.toLocaleDateString('en-IN', { timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    let dayLabel: string;
+    if (dayKey(from) === dayKey(now)) {
+      dayLabel = 'Today';
+    } else if (dayKey(from) === dayKey(tomorrow)) {
+      dayLabel = 'Tomorrow';
+    } else {
+      dayLabel = from.toLocaleDateString('en-IN', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    const time = (d: Date) =>
+      d.toLocaleTimeString('en-IN', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true });
+
+    return until ? `${dayLabel}, ${time(from)} - ${time(until)}` : `${dayLabel}, ${time(from)}`;
+  }
+
   formatOrderTime(dateString: string): string {
     if (!dateString) return '';
 
@@ -2699,6 +2757,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   // Status badge class for new design
   getStatusBadgeClass(status: string): string {
     switch (status) {
+      case 'SCHEDULED': return 'badge-scheduled';
       case 'PENDING': return 'badge-pending';
       case 'CONFIRMED': return 'badge-confirmed';
       case 'PREPARING': return 'badge-preparing';

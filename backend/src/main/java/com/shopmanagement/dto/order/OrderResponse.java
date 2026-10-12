@@ -59,6 +59,15 @@ public class OrderResponse {
 
     private LocalDateTime estimatedDeliveryTime;
     private LocalDateTime actualDeliveryTime;
+
+    /**
+     * The delivery window the customer booked, when this is a scheduled order.
+     *
+     * Null on an immediate order. Without these the shop sees a SCHEDULED order with no
+     * indication of when it is due, which is the one thing it needs to know.
+     */
+    private LocalDateTime scheduledFrom;
+    private LocalDateTime scheduledUntil;
     
     private List<OrderItemResponse> orderItems;
     

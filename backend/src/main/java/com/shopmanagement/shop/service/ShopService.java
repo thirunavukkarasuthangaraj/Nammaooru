@@ -1106,6 +1106,8 @@ public class ShopService {
                 .deliveryContactName(order.getDeliveryContactName())
                 .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
                 .actualDeliveryTime(order.getActualDeliveryTime())
+                .scheduledFrom(order.getScheduledFrom())
+                .scheduledUntil(order.getScheduledUntil())
                 .orderItems(orderItemResponses)
                 .assignedToDeliveryPartner(isAssigned)
                 .driverSearchStartedAt(order.getDriverSearchStartedAt() != null

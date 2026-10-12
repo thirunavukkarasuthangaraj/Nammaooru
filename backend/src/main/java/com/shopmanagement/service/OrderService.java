@@ -1712,6 +1712,8 @@ public class OrderService {
                 .fullDeliveryAddress(fullDeliveryAddress)
                 .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
                 .actualDeliveryTime(order.getActualDeliveryTime())
+                .scheduledFrom(order.getScheduledFrom())
+                .scheduledUntil(order.getScheduledUntil())
                 .orderItems(itemResponses)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
