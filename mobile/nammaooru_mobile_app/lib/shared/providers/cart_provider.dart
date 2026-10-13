@@ -11,6 +11,7 @@ import '../../core/models/cart_model.dart' as CoreCart;
 import '../../core/config/env_config.dart';
 import 'dart:convert';
 import '../../services/local_notification_service.dart';
+import '../../services/cart_config_service.dart';
 
 class CartProvider with ChangeNotifier {
 
@@ -393,14 +394,33 @@ class CartProvider with ChangeNotifier {
   /// quantity change, clear and restore all funnel through here. Re-scheduling restarts
   /// the timer, so someone still shopping is never interrupted; it only fires once they
   /// have left the cart alone.
+  /// The delay comes from admin config (`cart.reminder.delay_minutes`), so this has to
+  /// wait for the config read before scheduling. It stays fire-and-forget: the cart
+  /// update and the notify() have already happened by the time this resolves, and the
+  /// fetch is cached for an hour so only the first call of a session touches the network.
   void _syncCartReminder() {
     try {
       if (_items.isEmpty) {
         LocalNotificationService.instance.cancelCartReminder();
-      } else {
-        final count = _items.fold<int>(0, (sum, item) => sum + item.quantity);
-        LocalNotificationService.instance.scheduleCartReminder(itemCount: count);
+        return;
       }
+
+      CartConfigService.instance.fetch().then((_) {
+        // Re-read the cart instead of capturing it: it can change while the config
+        // fetch is in flight, and the reminder uses a fixed notification id, so
+        // whichever callback lands last must be the one holding current state.
+        if (_items.isEmpty || !CartConfigService.instance.reminderEnabled) {
+          LocalNotificationService.instance.cancelCartReminder();
+          return;
+        }
+        final count = _items.fold<int>(0, (sum, item) => sum + item.quantity);
+        LocalNotificationService.instance.scheduleCartReminder(
+          itemCount: count,
+          delays: CartConfigService.instance.reminderDelays,
+        );
+      }).catchError((e) {
+        if (kDebugMode) print('Cart reminder sync failed: $e');
+      });
     } catch (e) {
       // Never let a reminder failure break a cart update.
       if (kDebugMode) print('Cart reminder sync failed: $e');
