@@ -44,6 +44,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   int _currentStep = 0;
   bool _isPlacingOrder = false;
+  // Continue on the address step does real network work before the page can move.
+  // Without this the button sat there looking idle, so customers tapped it again and
+  // ran the whole batch a second time, which made the wait they were reacting to worse.
+  bool _isAdvancing = false;
   bool _saveAddress = true; // Always save by default
   List<SavedAddress> _savedAddresses = [];
   SavedAddress? _selectedSavedAddress;
@@ -2191,7 +2195,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 if (_currentStep > 0) const SizedBox(width: 10),
                 Expanded(
                   flex: 2,
-                  child: _isPlacingOrder
+                  child: _isPlacingOrder || _isAdvancing
                       ? const LoadingWidget()
                       : PrimaryButton(
                           text: _currentStep == 1 ? 'Place Order' : 'Continue',
@@ -2211,6 +2215,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _nextStep() async {
+    // Belt and braces with the button's loading state: a second tap that slips through
+    // would re-run the whole batch concurrently.
+    if (_isAdvancing) return;
+
     // Validate address form on step 0
     if (_currentStep == 0) {
       // Check if form validates
@@ -2254,13 +2262,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
 
-    // Save address when moving from address step
+    // Save the address and get the review step's figures ready.
+    //
+    // These used to run one after another, five network round trips deep, with the page
+    // transition waiting on all of them - and on the api. host that is the slow path from
+    // most Indian ISPs, so the cost was paid five times over. They are independent of each
+    // other, so they now run together and the step costs about as long as its slowest call.
+    //
+    // _refreshShopSettings is deliberately not in this list: _recalculateDeliveryFee reads
+    // the same shop and sets the same minOrderAmount and onlinePaymentEnabled, so calling
+    // both fetched the identical shop record twice to do the same work.
     if (_currentStep == 0) {
-      await _saveCurrentAddress();
-      await _refreshShopSettings();
-      await _loadDeliverySlots();
-      await _recalculateDeliveryFee();
+      setState(() => _isAdvancing = true);
+      try {
+        await Future.wait([
+          _saveCurrentAddress(),
+          _loadDeliverySlots(),
+          _recalculateDeliveryFee(),
+        ]);
+      } finally {
+        // The page must move even if one of these failed; each already handles its own
+        // errors and falls back to existing values rather than blocking checkout.
+        if (mounted) setState(() => _isAdvancing = false);
+      }
     }
+
+    if (!mounted) return;
 
     if (_currentStep < 1) {
       _pageController.nextPage(
